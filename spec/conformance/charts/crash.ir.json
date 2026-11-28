@@ -69,6 +69,8 @@
         "name": "Crash",
         "kind": "compound",
         "doc": "Runs two children and a task, one in each region.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 8,
@@ -86,6 +88,8 @@
             "name": "Busy",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 11,
@@ -103,6 +107,8 @@
                 "name": "A",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 12,
@@ -171,6 +177,8 @@
                 "name": "B",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 18,
@@ -239,6 +247,8 @@
                 "name": "C",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 24,
@@ -308,6 +318,8 @@
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -380,6 +392,8 @@
         "name": "Child",
         "kind": "compound",
         "doc": "Waits for Stop, which never comes, logging its exit.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 35,
@@ -397,6 +411,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 40,
@@ -459,6 +475,8 @@
             "name": "Stopped",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,

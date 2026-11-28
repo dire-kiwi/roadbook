@@ -1,0 +1,34 @@
+/// Tags and meta on states, the machine body included.
+machine Loader() {
+  event Load
+  event Loaded
+  event Fail
+  event Retry
+
+  tags app
+  meta { owner: "payments", tier: 1 }
+
+  initial Idle
+  state Idle {
+    tags idle
+    on Load -> Loading
+  }
+  state Loading {
+    tags busy, network
+    meta { sla: 30, ratio: -0.5, retries: -2, live: true, label: "Loading…" }
+    on Loaded -> Idle
+    on Fail   -> Failed
+  }
+  parallel state Failed {
+    tags busy
+    on Retry -> Loading
+    state Report {
+      tags network
+      meta {
+        channel: "email",
+        urgent: false
+      }
+    }
+    state Wait { tags idle }
+  }
+}

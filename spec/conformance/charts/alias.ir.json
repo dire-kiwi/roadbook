@@ -325,6 +325,8 @@
         "name": "Aliases",
         "kind": "compound",
         "doc": "Counts up to a limit, comparing what it is sent with what it holds.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 19,
@@ -342,6 +344,8 @@
             "name": "Counting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,
@@ -1226,6 +1230,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 51,

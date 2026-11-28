@@ -118,6 +118,8 @@
         "name": "Desk",
         "kind": "compound",
         "doc": "Takes a reservation and keeps the call pending until Answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 9,
@@ -135,6 +137,8 @@
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -228,6 +232,8 @@
             "name": "Holding",
             "kind": "atomic",
             "doc": "A reservation is pending, until Answer replies to it.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -326,6 +332,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -386,6 +394,8 @@
         "name": "Booker",
         "kind": "compound",
         "doc": "Asks the desk for a reservation and waits for the desk to end.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 35,
@@ -403,6 +413,8 @@
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -529,6 +541,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,
@@ -580,6 +594,8 @@
             "name": "Booked",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 48,
@@ -604,6 +620,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 49,

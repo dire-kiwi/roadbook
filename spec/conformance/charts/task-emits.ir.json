@@ -239,6 +239,8 @@
         "name": "Publish",
         "kind": "compound",
         "doc": "Uploads through an emitting task and shows its progress. Can pause, and upload again.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 18,
@@ -256,6 +258,8 @@
             "name": "Uploading",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 28,
@@ -437,6 +441,8 @@
             "name": "Paused",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -483,6 +489,8 @@
             "name": "Stored",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -550,6 +558,8 @@
             "name": "Published",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 43,
@@ -680,6 +690,8 @@
         "name": "Eager",
         "kind": "compound",
         "doc": "Moves on as soon as the upload says it is complete, without waiting for its outcome.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 47,
@@ -697,6 +709,8 @@
             "name": "Uploading",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 56,
@@ -907,6 +921,8 @@
             "name": "Stored",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 66,
@@ -974,6 +990,8 @@
             "name": "Published",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 71,
@@ -1062,6 +1080,8 @@
         "name": "Quiet",
         "kind": "compound",
         "doc": "Invokes `upload` twice: first with `as`, hearing only `Progress`, then without, hearing\nnothing.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 76,
@@ -1079,6 +1099,8 @@
             "name": "Heard",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 81,
@@ -1206,6 +1228,8 @@
             "name": "Unnamed",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 88,
@@ -1309,6 +1333,8 @@
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 94,
@@ -1397,6 +1423,8 @@
         "name": "Gauge",
         "kind": "compound",
         "doc": "Keeps the highest percentage it has heard. It is strict, but a `Progress` whose guard\nfails is dropped like any emitted event.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 99,
@@ -1414,6 +1442,8 @@
             "name": "Uploading",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 104,
@@ -1567,6 +1597,8 @@
             "name": "Stored",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 111,
@@ -1667,6 +1699,8 @@
         "name": "Nested",
         "kind": "compound",
         "doc": "Hears `Progress` in whichever child state it is in. `-> .Second` keeps the upload running.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 115,
@@ -1684,6 +1718,8 @@
             "name": "Working",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 122,
@@ -1701,6 +1737,8 @@
                 "name": "First",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 130,
@@ -1767,6 +1805,8 @@
                 "name": "Second",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 131,
@@ -1925,6 +1965,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 134,
@@ -2013,6 +2055,8 @@
         "name": "Login",
         "kind": "compound",
         "doc": "Signs in, keeping the name of the last step it heard.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 138,
@@ -2030,6 +2074,8 @@
             "name": "Signing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 143,
@@ -2157,6 +2203,8 @@
             "name": "Signed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 150,

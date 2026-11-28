@@ -449,6 +449,10 @@ pub enum Item {
     History(History),
     /// `check property`
     Check(Check),
+    /// `tags a, b`: names host code can ask an active state for.
+    Tags(Tags),
+    /// `meta { key: literal, … }`: data about the state, for tools and host code.
+    Meta(Meta),
 }
 
 impl Item {
@@ -466,6 +470,8 @@ impl Item {
             Item::Output(v) | Item::Fail(v) => v.span,
             Item::History(h) => h.span,
             Item::Check(c) => c.span,
+            Item::Tags(t) => t.span,
+            Item::Meta(m) => m.span,
         }
     }
 }
@@ -576,6 +582,26 @@ pub struct History {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub default: Vec<Target>,
     /// From `history` or `deep` to the end of the name, or of the last default target.
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `tags a, b`: lower-case names, in the order written. `tags` is contextual, like `history`.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Tags {
+    pub names: Vec<Ident>,
+    /// From `tags` to the end of the last name.
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `meta { key: value, … }`: keys and values in the order written. Each value is parsed as
+/// an expression; the compiler accepts only a string, int, float or bool literal (a number
+/// may have a `-`). `meta` is contextual, like `history`.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Meta {
+    pub entries: Vec<FieldValue>,
+    /// From `meta` to the closing brace.
     #[serde(skip)]
     pub span: Span,
 }

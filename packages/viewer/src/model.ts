@@ -30,6 +30,9 @@ export const METRICS = {
   historyD: 28, // diameter of the circle of a history state
   choiceD: 30, // width and height of the diamond of a choice state
   choiceGap: 6, // between a choice's diamond and its name
+  tagH: 15, // height of a tag pill under a state's title
+  tagPad: 6, // inside a tag pill, left and right of its text
+  tagGap: 4, // between two tag pills, and under the band of them
 } as const
 
 /** Width of `text` at `fontSize` px. The browser passes a real measurer; Node estimates. */

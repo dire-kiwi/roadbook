@@ -1109,6 +1109,7 @@ impl<'a> Gen<'a> {
         let handlers = self.handlers(name, &methods);
         let bind = self.bind(&methods);
         let (states, from_state) = self.states(name, m)?;
+        let tags = self.tags(name, m);
         let events = self.events(name, m)?;
         let runners = self.runners(name, m);
         let module_doc = doc(&m.doc);
@@ -1130,6 +1131,7 @@ impl<'a> Gen<'a> {
                 #handlers
                 #states
                 #from_state
+                #tags
                 #events
                 #bind
                 #runners
@@ -1507,13 +1509,15 @@ impl<'a> Gen<'a> {
 
     /// `State` with its nested enums, and `__from_state_id`.
     fn states(&self, machine: &str, m: &Machine) -> Result<(TokenStream, TokenStream), String> {
-        let mut taken: HashSet<String> = ["State", "Event", "Emitted", "Ref", "Handlers", "Bind"]
-            .into_iter()
-            .map(str::to_owned)
-            .chain(self.ir.types.keys().cloned())
-            .chain(self.error_enums.values().map(plain))
-            .chain(self.emitted_enums.values().map(plain))
-            .collect();
+        let mut taken: HashSet<String> = [
+            "State", "Tag", "Event", "Emitted", "Ref", "Handlers", "Bind",
+        ]
+        .into_iter()
+        .map(str::to_owned)
+        .chain(self.ir.types.keys().cloned())
+        .chain(self.error_enums.values().map(plain))
+        .chain(self.emitted_enums.values().map(plain))
+        .collect();
         let mut enums = Vec::new();
         let mut leaves = Vec::new();
         let state = format_ident!("State");
@@ -1545,6 +1549,41 @@ impl<'a> Gen<'a> {
             }
         };
         Ok((quote!(#(#enums)*), from))
+    }
+
+    /// `Tag`, every tag the machine's states declare in document order, and `__from_tag`.
+    fn tags(&self, machine: &str, m: &Machine) -> TokenStream {
+        let tags = m.tags();
+        let variants: Vec<Ident> = tags.iter().map(|t| ident(&camel(t))).collect();
+        let text = format!(
+            "The tags of machine `{machine}`'s states (`tags busy`): what `Actor::tags` gives \
+             and `Actor::has_tag` takes. A run has the tags of its active states."
+        );
+        quote! {
+            #[doc = #text]
+            #[derive(
+                ::core::fmt::Debug, ::core::clone::Clone, ::core::marker::Copy,
+                ::core::cmp::PartialEq, ::core::cmp::Eq, ::core::hash::Hash
+            )]
+            pub enum Tag { #(#variants),* }
+
+            impl Tag {
+                /// The tag as the chart writes it.
+                pub fn as_str(self) -> &'static str {
+                    match self {
+                        #(Tag::#variants => #tags,)*
+                    }
+                }
+            }
+
+            /// The `Tag` of a tag as the chart writes it.
+            fn __from_tag(tag: &str) -> ::core::option::Option<Tag> {
+                match tag {
+                    #(#tags => ::core::option::Option::Some(Tag::#variants),)*
+                    _ => ::core::option::Option::None,
+                }
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1879,7 +1918,7 @@ impl<'a> Gen<'a> {
             pub fn spawn<H: Handlers + 'static>(
                 handlers: ::std::sync::Arc<H>,
                 #(#decl),*
-            ) -> ::roadbook::Actor<Event, State, #output, #error, Emitted> {
+            ) -> ::roadbook::Actor<Event, State, #output, #error, Emitted, Tag> {
                 spawn_with(::roadbook::Config::default(), handlers, #(#names),*)
             }
 
@@ -1888,7 +1927,7 @@ impl<'a> Gen<'a> {
                 config: ::roadbook::Config,
                 handlers: ::std::sync::Arc<H>,
                 #(#decl),*
-            ) -> ::roadbook::Actor<Event, State, #output, #error, Emitted> {
+            ) -> ::roadbook::Actor<Event, State, #output, #error, Emitted, Tag> {
                 let (__in, __refs) = ::roadbook::__private::collect(|| __input(#(#names),*));
                 ::roadbook::__private::spawn(
                     config,
@@ -1900,6 +1939,7 @@ impl<'a> Gen<'a> {
                     ::roadbook::__private::Codec {
                         event: __event,
                         state: __from_state_id,
+                        tag: __from_tag,
                         output: __output,
                         error: __error,
                         emitted: ::roadbook::__private::emitted::<Emitted>,
@@ -1911,7 +1951,7 @@ impl<'a> Gen<'a> {
             pub fn restore<H: Handlers + 'static>(
                 handlers: ::std::sync::Arc<H>,
                 saved: ::roadbook::Saved,
-            ) -> ::core::result::Result<::roadbook::Actor<Event, State, #output, #error, Emitted>, ::roadbook::RestoreError> {
+            ) -> ::core::result::Result<::roadbook::Actor<Event, State, #output, #error, Emitted, Tag>, ::roadbook::RestoreError> {
                 restore_with(::roadbook::Config::default(), handlers, saved)
             }
 
@@ -1920,7 +1960,7 @@ impl<'a> Gen<'a> {
                 config: ::roadbook::Config,
                 handlers: ::std::sync::Arc<H>,
                 saved: ::roadbook::Saved,
-            ) -> ::core::result::Result<::roadbook::Actor<Event, State, #output, #error, Emitted>, ::roadbook::RestoreError> {
+            ) -> ::core::result::Result<::roadbook::Actor<Event, State, #output, #error, Emitted, Tag>, ::roadbook::RestoreError> {
                 ::roadbook::__private::spawn_restored(
                     config,
                     #program,
@@ -1930,6 +1970,7 @@ impl<'a> Gen<'a> {
                     ::roadbook::__private::Codec {
                         event: __event,
                         state: __from_state_id,
+                        tag: __from_tag,
                         output: __output,
                         error: __error,
                         emitted: ::roadbook::__private::emitted::<Emitted>,

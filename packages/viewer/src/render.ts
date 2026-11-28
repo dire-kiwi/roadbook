@@ -5,7 +5,7 @@
 import type { Ir, State } from './ir.ts'
 import { own } from './ir.ts'
 import type { Layout, Point, Box } from './layout.ts'
-import { machineView, stateBox } from './layout.ts'
+import { machineView, stateBox, tagsWidth, tagWidth } from './layout.ts'
 import { METRICS, eventKey, estimateWidth, historyDefaultEdgeId, historyMark, historyText, isChoice, isCopy, isHistory, refMachine, targetEdgeId, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
 import type { EdgeKind, EventRef, Measure, Row } from './model.ts'
 import { DARK, DIAGRAM_CSS, FONTS, LIGHT } from './style.ts'
@@ -310,13 +310,28 @@ function renderState(state: State, parent: State | null, collapsed: boolean, g: 
       `<g class="rb-toggle" data-toggle="${esc(state.id)}"><title>${collapsed ? 'Expand' : 'Collapse'} ${esc(state.name)}</title>` +
       `<rect x="${tx}" y="${ty}" width="${M.toggle}" height="${M.toggle}" rx="3"/><path d="${sign}"/></g>`
   }
+  if (box.tagsH) s += renderTags(state.tags, isContainer ? inset + M.padX : (w - tagsWidth(state.tags, measure)) / 2, inset + box.titleH - (isContainer ? 2 : 4), measure)
   if (box.rows.length) {
-    const sepY = inset + box.titleH
+    const sepY = inset + box.titleH + box.tagsH
     if (!isContainer) s += `<line class="rb-sep" x1="${inset}" x2="${n(w - inset)}" y1="${sepY}" y2="${sepY}"/>`
     const tr = annotate?.transition
     s += renderRows(box.rows, inset, sepY - (isContainer ? M.rowsPadY : 0), measure, tr ? (i) => tr(state.id, i) : undefined)
   }
   if (mark?.badge) s += badge(mark.badge, w - 6, 0)
+  return s + '</g>'
+}
+
+/** A state's tags as pills in a row, from `x` at the top `y`. */
+function renderTags(tags: readonly string[], x: number, y: number, measure: Measure): string {
+  const M = METRICS
+  let s = '<g class="rb-tags">'
+  for (const t of tags) {
+    const w = tagWidth(t, measure)
+    s +=
+      `<rect class="rb-tag-pill" x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${M.tagH}" rx="${M.tagH / 2}"/>` +
+      `<text class="rb-tag-text" x="${n(x + w / 2)}" y="${baseline(y, M.tagH, M.fontEffect)}" text-anchor="middle">${esc(t)}</text>`
+    x += w + M.tagGap
+  }
   return s + '</g>'
 }
 

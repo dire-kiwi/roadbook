@@ -157,6 +157,8 @@
         "name": "Locker",
         "kind": "compound",
         "doc": "One locker, opened with its PIN.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 15,
@@ -174,6 +176,8 @@
             "name": "Shut",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -267,6 +271,8 @@
             "name": "Opened",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 24,
@@ -321,6 +327,8 @@
             "name": "Jammed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -502,6 +510,8 @@
         "name": "Lockers",
         "kind": "compound",
         "doc": "Lockers by number.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 29,
@@ -519,6 +529,8 @@
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -819,6 +831,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,

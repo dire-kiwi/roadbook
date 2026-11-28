@@ -30,6 +30,7 @@ export interface PaymentWebhookDef extends Roadbook.MachineDef {
     | "PaymentWebhook.BadSignature"
     | "PaymentWebhook.Malformed"
     | "PaymentWebhook.Unavailable"
+  readonly tag: never
   readonly fns: {
     readonly signatureValid: {
       readonly args: { readonly body: string; readonly signature: string; readonly secret: string }
@@ -560,6 +561,8 @@ const ir: unknown = {
         "name": "PaymentWebhook",
         "kind": "compound",
         "doc": "The payment provider's webhook: verify, parse, deduplicate, apply, acknowledge.\nEvery final state is one HTTP response.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 11,
@@ -577,6 +580,8 @@ const ir: unknown = {
             "name": "Verifying",
             "kind": "atomic",
             "doc": "The signature check is pure, so it is a guard.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 18,
@@ -676,6 +681,8 @@ const ir: unknown = {
             "name": "Parsing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -784,6 +791,8 @@ const ir: unknown = {
             "name": "CheckingDuplicate",
             "kind": "atomic",
             "doc": "Providers redeliver. An event we have already processed is acknowledged and ignored.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -885,6 +894,8 @@ const ir: unknown = {
             "name": "Applying",
             "kind": "compound",
             "doc": "Apply the event according to its kind.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 43,
@@ -902,6 +913,8 @@ const ir: unknown = {
                 "name": "Routing",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 48,
@@ -1033,6 +1046,8 @@ const ir: unknown = {
                 "name": "MarkingPaid",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 56,
@@ -1181,6 +1196,8 @@ const ir: unknown = {
                 "name": "Backoff",
                 "kind": "atomic",
                 "doc": "Wait before the next attempt. The delay grows with each attempt.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 67,
@@ -1272,6 +1289,8 @@ const ir: unknown = {
                 "name": "NotifyingFailure",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 72,
@@ -1344,6 +1363,8 @@ const ir: unknown = {
                 "name": "RecordingRefund",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 77,
@@ -1463,6 +1484,8 @@ const ir: unknown = {
                 "name": "Applied",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 83,
@@ -1516,6 +1539,8 @@ const ir: unknown = {
             "name": "MarkingProcessed",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 86,
@@ -1588,6 +1613,8 @@ const ir: unknown = {
             "name": "Acknowledged",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 92,
@@ -1618,6 +1645,8 @@ const ir: unknown = {
             "name": "BadSignature",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 93,
@@ -1661,6 +1690,8 @@ const ir: unknown = {
             "name": "Malformed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 94,
@@ -1704,6 +1735,8 @@ const ir: unknown = {
             "name": "Unavailable",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 95,

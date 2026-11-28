@@ -157,6 +157,13 @@ export interface State {
   readonly name: string
   readonly kind: StateKind
   readonly doc: string
+  /** The state's tags, in the order written, each once: `[]` for none. Not part of the hash. */
+  readonly tags: ReadonlyArray<string>
+  /**
+   * The state's `meta`, in the order written: `{}` for none. Only tools and host code read it.
+   * Not part of the hash.
+   */
+  readonly meta: { readonly [key: string]: string | number | boolean }
   readonly span: Span
   /** The state's parameters, in order: `[]` for a state written without them. */
   readonly params: ReadonlyArray<Field>
@@ -338,6 +345,32 @@ export const isHistory = (state: State): boolean => state.kind === "history" || 
  */
 export const childrenOf = (state: State): ReadonlyArray<State> =>
   state.states.some(isHistory) ? state.states.filter((c) => !isHistory(c)) : state.states
+
+const tagIndex = new WeakMap<Machine, ReadonlyMap<string, ReadonlyArray<string>>>()
+
+/**
+ * The tags of a run of `m` whose active states are `active` (in document order): each active
+ * state's tags in the order written, the states in the order of `active`, each tag at its
+ * first place only (execution.md, "Tags"). An id `m` does not have adds nothing.
+ */
+export const tagsOf = (m: Machine, active: ReadonlyArray<string>): ReadonlyArray<string> => {
+  let index = tagIndex.get(m)
+  if (index === undefined) {
+    const byId = new Map<string, ReadonlyArray<string>>()
+    const walk = (s: State) => {
+      if (s.tags.length > 0) byId.set(s.id, s.tags)
+      s.states.forEach(walk)
+    }
+    walk(m.root)
+    tagIndex.set(m, byId)
+    index = byId
+  }
+  const out: Array<string> = []
+  for (const id of active) {
+    for (const t of index.get(id) ?? []) if (!out.includes(t)) out.push(t)
+  }
+  return out
+}
 
 /** The machine's own event `name`: one of its `events` or `internalEvents`. */
 export const ownEvent = (m: Machine, name: string): EventDecl | undefined =>

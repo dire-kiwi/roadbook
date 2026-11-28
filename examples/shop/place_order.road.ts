@@ -41,6 +41,7 @@ export interface PlaceOrderDef extends Roadbook.MachineDef {
     | "PlaceOrder.PaymentFailed"
     | "PlaceOrder.Cancelled"
     | "PlaceOrder.TimedOut"
+  readonly tag: never
   readonly fns: {
     readonly confirmation: {
       readonly args: { readonly order: Order; readonly receipt: Receipt }
@@ -704,6 +705,8 @@ const ir: unknown = {
         "name": "PlaceOrder",
         "kind": "compound",
         "doc": "POST /orders: authenticate, validate, price, take payment, confirm.\nEvery final state is one HTTP response.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 11,
@@ -721,6 +724,8 @@ const ir: unknown = {
             "name": "Authenticating",
             "kind": "atomic",
             "doc": "Turn the bearer token into a user.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 23,
@@ -829,6 +834,8 @@ const ir: unknown = {
             "name": "Processing",
             "kind": "compound",
             "doc": "Everything that happens once we know who is asking.\nCancel and the 30 second budget apply to every step inside.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,
@@ -846,6 +853,8 @@ const ir: unknown = {
                 "name": "Validating",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 38,
@@ -970,6 +979,8 @@ const ir: unknown = {
                 "name": "Pricing",
                 "kind": "atomic",
                 "doc": "Apply the user's prices and discounts.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 46,
@@ -1065,6 +1076,8 @@ const ir: unknown = {
                 "name": "Paying",
                 "kind": "atomic",
                 "doc": "Payment is its own machine: see checkout.road.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 53,
@@ -1248,6 +1261,8 @@ const ir: unknown = {
                 "name": "Confirming",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 61,
@@ -1383,6 +1398,8 @@ const ir: unknown = {
             "name": "Confirmed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 67,
@@ -1432,6 +1449,8 @@ const ir: unknown = {
             "name": "Unauthorized",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 68,
@@ -1475,6 +1494,8 @@ const ir: unknown = {
             "name": "Invalid",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 69,
@@ -1515,6 +1536,8 @@ const ir: unknown = {
             "name": "PaymentFailed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 70,
@@ -1558,6 +1581,8 @@ const ir: unknown = {
             "name": "Cancelled",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 71,
@@ -1601,6 +1626,8 @@ const ir: unknown = {
             "name": "TimedOut",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 72,
@@ -1737,6 +1764,8 @@ const ir: unknown = {
         "name": "Checkout",
         "kind": "compound",
         "doc": "Charge the customer's card, retrying while the payment gateway is down.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 2,
           "line": 4,
@@ -1754,6 +1783,8 @@ const ir: unknown = {
             "name": "Charging",
             "kind": "atomic",
             "doc": "One attempt against the payment gateway.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 12,
@@ -1952,6 +1983,8 @@ const ir: unknown = {
             "name": "Backoff",
             "kind": "atomic",
             "doc": "Wait before the next attempt. The delay grows with each attempt.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 24,
@@ -2043,6 +2076,8 @@ const ir: unknown = {
             "name": "Charged",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 29,
@@ -2075,6 +2110,8 @@ const ir: unknown = {
             "name": "Declined",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 30,
@@ -2107,6 +2144,8 @@ const ir: unknown = {
             "name": "GaveUp",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 31,

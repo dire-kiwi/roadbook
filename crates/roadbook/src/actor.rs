@@ -44,9 +44,10 @@ impl<E: fmt::Debug + fmt::Display> std::error::Error for Stopped<E> {}
 /// The conversions between a machine's Rust types and the driver's values, which the
 /// generated `spawn` supplies.
 #[doc(hidden)]
-pub struct Codec<Event, State, Output, Error, Emitted> {
+pub struct Codec<Event, State, Output, Error, Emitted, Tag> {
     pub event: fn(&Event) -> Result<Value, Defect>,
     pub state: fn(&str) -> Option<State>,
+    pub tag: fn(&str) -> Option<Tag>,
     pub output: fn(Value) -> Output,
     pub error: fn(Value) -> Error,
     pub emitted: fn(Value) -> Emitted,
@@ -58,27 +59,27 @@ pub struct Codec<Event, State, Output, Error, Emitted> {
 /// future of `run`: no exit effects run and the trace has no final record. So does dropping
 /// the future of [`Actor::result`] before it is ready, since it owns the actor.
 /// [`Actor::cancel`] stops it gracefully instead.
-pub struct Actor<Event, State, Output, Error, Emitted> {
+pub struct Actor<Event, State, Output, Error, Emitted, Tag> {
     shared: Arc<Shared>,
     id: String,
     program: &'static Program,
     machine: &'static str,
     #[cfg(feature = "tokio")]
     task: Option<tokio::task::JoinHandle<RunEnd>>,
-    codec: Codec<Event, State, Output, Error, Emitted>,
+    codec: Codec<Event, State, Output, Error, Emitted, Tag>,
     initial: State,
     seen: u64,
 }
 
-impl<Event, State, Output, Error, Emitted> fmt::Debug
-    for Actor<Event, State, Output, Error, Emitted>
+impl<Event, State, Output, Error, Emitted, Tag> fmt::Debug
+    for Actor<Event, State, Output, Error, Emitted, Tag>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Actor").finish_non_exhaustive()
     }
 }
 
-impl<Event, State, Output, Error, Emitted> Actor<Event, State, Output, Error, Emitted> {
+impl<Event, State, Output, Error, Emitted, Tag> Actor<Event, State, Output, Error, Emitted, Tag> {
     /// A handle to the run, which host code can send through and pass to other runs as the
     /// chart's `ref Machine` argument. It can be cloned and outlives the actor; once the run
     /// has ended, what is sent through it is ignored (or, from a machine, `undelivered`).
@@ -110,7 +111,9 @@ impl<Event, State, Output, Error, Emitted> Actor<Event, State, Output, Error, Em
     }
 }
 
-impl<Event, State: Clone, Output, Error, Emitted> Actor<Event, State, Output, Error, Emitted> {
+impl<Event, State: Clone, Output, Error, Emitted, Tag: PartialEq>
+    Actor<Event, State, Output, Error, Emitted, Tag>
+{
     /// Queues an event. Events are taken one at a time, in the order sent. An event sent
     /// after the run ended is ignored.
     ///
@@ -127,6 +130,23 @@ impl<Event, State: Clone, Output, Error, Emitted> Actor<Event, State, Output, Er
     pub fn state(&self) -> State {
         let (_, leaf) = self.shared.state();
         self.decode_state(leaf)
+    }
+
+    /// The tags of the run's active states, each once, in document order: each state's tags in
+    /// the order written, outermost state first (`spec/execution.md#tags`). Like
+    /// [`Actor::state`], what the run's last step left; before its first step, the tags of the
+    /// states down to the state it starts in. Empty once the run has ended.
+    pub fn tags(&self) -> Vec<Tag> {
+        self.shared
+            .tags()
+            .iter()
+            .filter_map(|t| (self.codec.tag)(t))
+            .collect()
+    }
+
+    /// Whether `tag` is one of [`Actor::tags`]: whether some active state has it.
+    pub fn has_tag(&self, tag: Tag) -> bool {
+        self.tags().contains(&tag)
     }
 
     fn decode_state(&self, leaf: Option<String>) -> State {
@@ -230,7 +250,9 @@ impl<Event, State: Clone, Output, Error, Emitted> Actor<Event, State, Output, Er
 }
 
 #[cfg(feature = "tokio")]
-impl<Event, State, Output, Error, Emitted> Drop for Actor<Event, State, Output, Error, Emitted> {
+impl<Event, State, Output, Error, Emitted, Tag> Drop
+    for Actor<Event, State, Output, Error, Emitted, Tag>
+{
     fn drop(&mut self) {
         if let Some(task) = self.task.take() {
             task.abort();
@@ -299,14 +321,14 @@ fn initial_leaf(program: &Program, machine: &str) -> Option<String> {
 /// before starting anything ([`crate::dynamic::restore`]).
 #[doc(hidden)]
 #[cfg_attr(not(feature = "tokio"), allow(unused_variables))]
-pub fn spawn_restored<Event, State, Output, Error, Emitted>(
+pub fn spawn_restored<Event, State, Output, Error, Emitted, Tag>(
     config: Config,
     program: &'static Program,
     machine: &'static str,
     saved: &Saved,
     host: Box<dyn Host + 'static>,
-    codec: Codec<Event, State, Output, Error, Emitted>,
-) -> Result<Actor<Event, State, Output, Error, Emitted>, RestoreError> {
+    codec: Codec<Event, State, Output, Error, Emitted, Tag>,
+) -> Result<Actor<Event, State, Output, Error, Emitted, Tag>, RestoreError> {
     let checked = crate::driver::check(program, Some(machine), saved, &config)?;
     let shared = Shared::claimed();
     let id = config.root_id();
@@ -315,6 +337,8 @@ pub fn spawn_restored<Event, State, Output, Error, Emitted>(
         .expect("a running snapshot has active states")
         .to_owned();
     shared.set_state(&leaf);
+    let tags = program.tags(machine, &checked.0.active);
+    shared.set_tags(tags.into_iter().map(str::to_owned).collect());
     let seen = shared.state().0;
     let initial = (codec.state)(&leaf).expect("a state has a State variant");
     #[cfg(feature = "tokio")]
@@ -351,20 +375,34 @@ pub fn spawn_restored<Event, State, Output, Error, Emitted>(
 /// it reaches the run even if its task has not started yet.
 #[doc(hidden)]
 #[cfg_attr(not(feature = "tokio"), allow(unused_variables))]
-pub fn spawn<Event, State, Output, Error, Emitted>(
+pub fn spawn<Event, State, Output, Error, Emitted, Tag>(
     config: Config,
     program: &'static Program,
     machine: &'static str,
     input: Result<Object, Defect>,
     refs: Vec<RunHandle>,
     host: Box<dyn Host + 'static>,
-    codec: Codec<Event, State, Output, Error, Emitted>,
-) -> Actor<Event, State, Output, Error, Emitted> {
+    codec: Codec<Event, State, Output, Error, Emitted, Tag>,
+) -> Actor<Event, State, Output, Error, Emitted, Tag> {
     let shared = Shared::claimed();
     let id = config.root_id();
     let leaf = initial_leaf(program, machine).expect("the program has the machine");
     // Starting is not a change of state.
     shared.set_state(&leaf);
+    // The states down to it: what its first step will have entered, in a run that starts as
+    // it seems to.
+    let path: Vec<String> = leaf
+        .match_indices('.')
+        .map(|(i, _)| leaf[..i].to_owned())
+        .chain([leaf.clone()])
+        .collect();
+    shared.set_tags(
+        program
+            .tags(machine, &path)
+            .into_iter()
+            .map(str::to_owned)
+            .collect(),
+    );
     let seen = shared.state().0;
     let initial = (codec.state)(&leaf).expect("a machine's initial state has a State variant");
     #[cfg(feature = "tokio")]

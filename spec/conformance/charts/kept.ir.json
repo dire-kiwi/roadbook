@@ -155,6 +155,8 @@
         "name": "Tally",
         "kind": "compound",
         "doc": "Counts what its parent sends it, and naps after five seconds without news.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 9,
@@ -172,6 +174,8 @@
             "name": "Counting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 18,
@@ -319,6 +323,8 @@
             "name": "Napping",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -455,6 +461,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,
@@ -573,6 +581,8 @@
         "name": "Desk",
         "kind": "compound",
         "doc": "Keeps a Tally, passes on what it is told, and hears what it counts.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 36,
@@ -590,6 +600,8 @@
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 44,
@@ -805,6 +817,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 54,
@@ -896,6 +910,8 @@
         "name": "Office",
         "kind": "compound",
         "doc": "Keeps a Desk: two levels of child runs.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 58,
@@ -913,6 +929,8 @@
             "name": "Working",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 64,
@@ -1082,6 +1100,8 @@
             "name": "Shut",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 73,
@@ -1174,6 +1194,8 @@
         "name": "Fetcher",
         "kind": "compound",
         "doc": "Fetches a number, then holds it until it is released.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 77,
@@ -1191,6 +1213,8 @@
             "name": "Fetching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 84,
@@ -1277,6 +1301,8 @@
             "name": "Holding",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 90,
@@ -1323,6 +1349,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 92,
@@ -1396,6 +1424,8 @@
         "name": "Errand",
         "kind": "compound",
         "doc": "Keeps a Fetcher, and releases it when told.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 96,
@@ -1413,6 +1443,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 101,
@@ -1518,6 +1550,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 109,
@@ -1628,6 +1662,8 @@
         "name": "Safe",
         "kind": "compound",
         "doc": "Keeps a secret given to it, and what it was last told.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 113,
@@ -1645,6 +1681,8 @@
             "name": "Locked",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 121,
@@ -1726,6 +1764,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 126,
@@ -1816,6 +1856,8 @@
         "name": "Vault",
         "kind": "compound",
         "doc": "Keeps a Safe, and passes on what it is told.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 130,
@@ -1833,6 +1875,8 @@
             "name": "Holding",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 136,
@@ -1992,6 +2036,8 @@
             "name": "Empty",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 145,

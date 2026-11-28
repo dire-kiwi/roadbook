@@ -41,6 +41,12 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  on A|B  |C -> S\n  state S { on  B |A ignore }\n}\n",
         "machine M() {\n  on A | B | C -> S\n  state S { on B | A ignore }\n}\n",
     ),
+    // `tags` lists its names after one space, separated by `, `; `meta` is a brace list, on
+    // one line unless the source breaks after `{`. A state with only `tags` stays on one line.
+    (
+        "machine M() {\n  state S {\n    tags  busy,network\n    meta {owner:\"p\" ,sla:30}\n  }\n  state T {\n    tags idle\n  }\n  state U {\n    meta {\n      a: 1, b: -2.5\n    }\n  }\n}\n",
+        "machine M() {\n  state S {\n    tags busy, network\n    meta { owner: \"p\", sla: 30 }\n  }\n  state T { tags idle }\n  state U {\n    meta {\n      a: 1, b: -2.5\n    }\n  }\n}\n",
+    ),
     // `in(…)` is written with no space before or inside its parentheses.
     (
         "machine M() {\n  state S { on Go if not in ( P . R ) and in(S)->S }\n}\n",

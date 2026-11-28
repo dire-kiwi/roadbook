@@ -69,6 +69,8 @@
         "name": "Panels",
         "kind": "compound",
         "doc": "Regions with variables of the same name, a parallel state with parameters, and two\ntargets through it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 5,
@@ -86,6 +88,8 @@
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 12,
@@ -201,6 +205,8 @@
             "name": "Panes",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 17,
@@ -231,6 +237,8 @@
                 "name": "Left",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 20,
@@ -271,6 +279,8 @@
                     "name": "A",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 24,
@@ -344,6 +354,8 @@
                     "name": "B",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 25,
@@ -383,6 +395,8 @@
                 "name": "Right",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 28,
@@ -437,6 +451,8 @@
                     "name": "C",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 32,
@@ -510,6 +526,8 @@
                     "name": "D",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 33,

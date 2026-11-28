@@ -898,6 +898,7 @@ export type {name}<{}> = {ts}",
         }
         let mut states = Vec::new();
         state_ids(&m.root, &mut states);
+        let tags: Vec<String> = m.tags().into_iter().map(|t| format!("\"{t}\"")).collect();
 
         let members = vec![
             ("name".into(), Ty::Atom(format!("\"{name}\""))),
@@ -907,6 +908,7 @@ export type {name}<{}> = {ts}",
             ("event".into(), Ty::union(events)),
             ("emits".into(), Ty::union(emitted)),
             ("state".into(), Ty::union(states)),
+            ("tag".into(), Ty::union(tags)),
             ("fns".into(), Ty::Obj(fns)),
             ("actions".into(), Ty::Obj(actions)),
             ("tasks".into(), Ty::Obj(tasks)),

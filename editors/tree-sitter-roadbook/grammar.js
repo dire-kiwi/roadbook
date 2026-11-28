@@ -25,7 +25,7 @@ module.exports = grammar({
   externals: ($) => [$._same_line_after, $._error_sentinel],
 
   // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref`, `sensitive`,
-  // `history`, `deep`, `choice`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `map`,
+  // `history`, `deep`, `choice`, `tags`, `meta`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `map`,
   // the words of a check (`check`, `never`, `reachable`, `only`, `can`, `finish`) and the
   // built-in type names are not, because they mean something only where no name can appear.
   reserved: {
@@ -310,11 +310,21 @@ module.exports = grammar({
     // a choice without them, as it does other items the compiler rejects.
     choice_state: ($) => seq('choice', field('name', $.type_identifier), field('branches', $.branches)),
 
+    // `tags` and `meta` are not reserved either: each starts an item only followed by a name,
+    // or by `{`. The compiler accepts only literals as meta values (RB0232).
+    tags: ($) => seq('tags', field('tag', $.identifier), repeat(seq(',', field('tag', $.identifier)))),
+
+    meta: ($) => seq('meta', '{', commaSep($.meta_entry), '}'),
+
+    meta_entry: ($) => seq(field('key', $.identifier), ':', field('value', $._expression)),
+
     _common_item: ($) =>
       choice(
         $.initial,
         $.state_declaration,
         $.choice_state,
+        $.tags,
+        $.meta,
         $.entry,
         $.exit,
         $.on_transition,

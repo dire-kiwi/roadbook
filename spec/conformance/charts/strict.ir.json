@@ -111,6 +111,8 @@
         "name": "Lock",
         "kind": "compound",
         "doc": "Opens and closes, and takes a loud knock anywhere and a quiet one only while open.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 9,
@@ -128,6 +130,8 @@
             "name": "Closed",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 21,
@@ -299,6 +303,8 @@
             "name": "Opened",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,

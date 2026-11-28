@@ -422,6 +422,8 @@
         "name": "Inventory",
         "kind": "compound",
         "doc": "The stock of one warehouse, shared by every order. It answers a request by\nemitting Reserved or Rejected with the order's id.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 35,
@@ -439,6 +441,8 @@
             "name": "Ready",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 51,
@@ -537,6 +541,8 @@
             "name": "Reserving",
             "kind": "atomic",
             "doc": "One request at a time: another that arrives meanwhile is turned away.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -762,6 +768,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 65,
@@ -967,6 +975,8 @@
         "name": "Order",
         "kind": "compound",
         "doc": "Reserve the items with the warehouse, then take the payment.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 69,
@@ -984,6 +994,8 @@
             "name": "Reserving",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 75,
@@ -1233,6 +1245,8 @@
             "name": "Paying",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 82,
@@ -1381,6 +1395,8 @@
             "name": "Paid",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 89,
@@ -1413,6 +1429,8 @@
             "name": "Unavailable",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 90,
@@ -1445,6 +1463,8 @@
             "name": "Declined",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 91,
@@ -1546,6 +1566,8 @@
         "name": "Supplier",
         "kind": "compound",
         "doc": "Passes deliveries on to the warehouse. It has no `on` for what the Inventory\nemits, so it is sent none of it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 96,
@@ -1563,6 +1585,8 @@
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 102,
@@ -1673,6 +1697,8 @@
             "name": "Stopped",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 107,

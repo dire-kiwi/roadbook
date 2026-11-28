@@ -157,6 +157,8 @@
         "name": "Inventory",
         "kind": "compound",
         "doc": "The stock of one warehouse, which ends when asked to: done on Close, failed\non Fail, with a defect on Crash (when `crash` has one).",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 16,
@@ -174,6 +176,8 @@
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -266,6 +270,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,
@@ -298,6 +304,8 @@
             "name": "Broken",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -389,6 +397,8 @@
         "name": "Order",
         "kind": "compound",
         "doc": "Asks the warehouse for stock and waits for it, until it ends or 5s pass.\nHow the warehouse ended decides where the order goes.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 38,
@@ -406,6 +416,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 41,
@@ -646,6 +658,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 51,
@@ -670,6 +684,8 @@
             "name": "Alarm",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 52,
@@ -694,6 +710,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 53,
@@ -718,6 +736,8 @@
             "name": "TimedOut",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 54,
@@ -790,6 +810,8 @@
         "name": "Clerk",
         "kind": "compound",
         "doc": "Holds a `ref` to the warehouse but has no `on inventory.ended`: it is not\ntold when the warehouse ends.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 59,
@@ -807,6 +829,8 @@
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 64,
@@ -853,6 +877,8 @@
             "name": "Stopped",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 66,
@@ -925,6 +951,8 @@
         "name": "Picker",
         "kind": "compound",
         "doc": "Hears the warehouse's end only while it is Watching: an end that arrives\nwhile it is Idle is dropped.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 71,
@@ -942,6 +970,8 @@
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 76,
@@ -988,6 +1018,8 @@
             "name": "Watching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 78,
@@ -1039,6 +1071,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 80,
@@ -1111,6 +1145,8 @@
         "name": "Guard",
         "kind": "compound",
         "doc": "As Picker, but strict: an end that no transition takes is still dropped,\nnever `unhandled`.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 85,
@@ -1128,6 +1164,8 @@
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 90,
@@ -1174,6 +1212,8 @@
             "name": "Watching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 92,
@@ -1225,6 +1265,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 94,
@@ -1326,6 +1368,8 @@
         "name": "Switcher",
         "kind": "compound",
         "doc": "Watches the warehouse its variable `current` holds: `a`, then `b` after\nSwap. The end of a run `current` no longer holds is dropped.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 99,
@@ -1343,6 +1387,8 @@
             "name": "Watching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 106,
@@ -1445,6 +1491,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 111,

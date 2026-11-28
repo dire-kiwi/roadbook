@@ -259,6 +259,8 @@
         "name": "Batch",
         "kind": "compound",
         "doc": "Uploads files side by side, one task per file name, and counts those stored.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 14,
@@ -276,6 +278,8 @@
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -572,6 +576,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 34,

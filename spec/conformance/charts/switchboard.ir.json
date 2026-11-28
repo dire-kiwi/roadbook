@@ -54,6 +54,8 @@
         "name": "Line",
         "kind": "compound",
         "doc": "One open line, until it is hung up.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -71,6 +73,8 @@
             "name": "Up",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 12,
@@ -117,6 +121,8 @@
             "name": "Down",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 14,
@@ -302,6 +308,8 @@
         "name": "Switchboard",
         "kind": "compound",
         "doc": "Opens lines, holds a lookup taken at night, and pauses to answer it, coming back to the\nstate it was in.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 19,
@@ -319,6 +327,8 @@
             "name": "Working",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -336,6 +346,8 @@
                 "name": "Last",
                 "kind": "history",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 40,
@@ -360,6 +372,8 @@
                 "name": "Day",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 42,
@@ -406,6 +420,8 @@
                 "name": "Night",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 43,
@@ -482,6 +498,8 @@
                 "name": "Held",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 44,
@@ -536,6 +554,8 @@
             "name": "Paused",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 47,
@@ -602,6 +622,8 @@
             "name": "Answered",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 48,
@@ -752,6 +774,8 @@
         "name": "Caller",
         "kind": "compound",
         "doc": "Looks a name up.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 52,
@@ -769,6 +793,8 @@
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -879,6 +905,8 @@
             "name": "Got",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 64,

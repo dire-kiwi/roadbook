@@ -16,6 +16,7 @@ export interface AskerDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Asker" | "Asker.Asking" | "Asker.Got" | "Asker.Gave"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}

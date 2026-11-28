@@ -88,6 +88,8 @@
         "name": "Door",
         "kind": "compound",
         "doc": "Takes a loud knock while shut and any knock while ajar; tells its visitors when it opens.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 6,
@@ -105,6 +107,8 @@
             "name": "Shut",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 15,
@@ -190,6 +194,8 @@
             "name": "Ajar",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -321,6 +327,8 @@
         "name": "Visitor",
         "kind": "compound",
         "doc": "Knocks on its door when told to. Hears `Opened` only while it waits for it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 27,
@@ -338,6 +346,8 @@
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 35,
@@ -384,6 +394,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 37,

@@ -2395,11 +2395,19 @@
           "named": true
         },
         {
+          "type": "meta",
+          "named": true
+        },
+        {
           "type": "on_transition",
           "named": true
         },
         {
           "type": "state_declaration",
+          "named": true
+        },
+        {
+          "type": "tags",
           "named": true
         },
         {
@@ -2579,6 +2587,107 @@
           },
           {
             "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "meta",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "meta_entry",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "meta_entry",
+    "named": true,
+    "fields": {
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "duration",
+            "named": true
+          },
+          {
+            "type": "enum_value",
+            "named": true
+          },
+          {
+            "type": "field_expression",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "in_expression",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "negation",
+            "named": true
+          },
+          {
+            "type": "not_expression",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "record_value",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           }
         ]
@@ -3935,6 +4044,10 @@
           "named": true
         },
         {
+          "type": "meta",
+          "named": true
+        },
+        {
           "type": "on_transition",
           "named": true
         },
@@ -3944,6 +4057,10 @@
         },
         {
           "type": "state_declaration",
+          "named": true
+        },
+        {
+          "type": "tags",
           "named": true
         },
         {
@@ -4122,6 +4239,22 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "tags",
+    "named": true,
+    "fields": {
+      "tag": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -4815,6 +4948,10 @@
     "named": false
   },
   {
+    "type": "meta",
+    "named": false
+  },
+  {
     "type": "never",
     "named": false
   },
@@ -4897,6 +5034,10 @@
   {
     "type": "string_content",
     "named": true
+  },
+  {
+    "type": "tags",
+    "named": false
   },
   {
     "type": "task",

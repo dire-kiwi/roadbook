@@ -99,6 +99,8 @@ export const DIAGRAM_CSS = `
 .rb-row.rb-k-collapsed { fill: var(--rb-muted); font-style: italic; }
 
 .rb-pill { fill: var(--rb-accent-bg); stroke: var(--rb-accent); stroke-width: 1; }
+.rb-tag-pill { fill: var(--rb-bg); stroke: var(--rb-muted); stroke-width: 0.75; }
+.rb-tag-text { font-size: 11px; fill: var(--rb-muted) !important; }
 .rb-pill-text, .rb-pill-text .rb-kw { fill: var(--rb-accent) !important; }
 .rb-pill-text .rb-kw { font-weight: 650; }
 .rb-pill-chevron { fill: none; stroke: var(--rb-accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }

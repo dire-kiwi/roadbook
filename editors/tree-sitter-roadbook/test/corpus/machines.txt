@@ -522,3 +522,53 @@ machine M(choice: int) {
                 (binary_expression
                   (identifier)
                   (integer))))))))))
+
+================================================================================
+Tags and meta
+================================================================================
+
+machine M() {
+  tags app
+  meta { owner: "payments", sla: 30, ratio: -0.5, live: true }
+  state S {
+    tags busy, network
+    meta {}
+    var tags: int = 1
+  }
+}
+
+---
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (tags
+        (identifier))
+      (meta
+        (meta_entry
+          (identifier)
+          (string
+            (string_content)))
+        (meta_entry
+          (identifier)
+          (integer))
+        (meta_entry
+          (identifier)
+          (negation
+            (float)))
+        (meta_entry
+          (identifier)
+          (boolean)))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (tags
+            (identifier)
+            (identifier))
+          (meta)
+          (variable_declaration
+            (identifier)
+            (builtin_type)
+            (integer)))))))

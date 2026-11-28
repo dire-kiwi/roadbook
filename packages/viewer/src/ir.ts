@@ -190,6 +190,10 @@ export interface State {
   name: string
   kind: StateKind
   doc: string
+  /** The state's tags, in the order written: `[]` for none. */
+  tags: string[]
+  /** The state's `meta`, in the order written: `{}` for none. */
+  meta: { [key: string]: string | number | boolean }
   span: Span
   /** The state's parameters, in order: `[]` for a state written without them. */
   params: Field[]

@@ -260,6 +260,28 @@ impl Program {
         parallel.or(active.last()).map(String::as_str)
     }
 
+    /// The tags of a run of `machine` whose active states are `active` (in document order):
+    /// each active state's tags in the order written, the states in the order of `active`,
+    /// each tag at its first place only (`spec/execution.md#tags`). An id `machine` does not
+    /// have adds nothing.
+    pub fn tags<'p>(&'p self, machine: &str, active: &[String]) -> Vec<&'p str> {
+        let mut out: Vec<&str> = Vec::new();
+        let Some((m, idx)) = self.machine(machine) else {
+            return out;
+        };
+        for id in active {
+            let Some(&i) = idx.by_id.get(id) else {
+                continue;
+            };
+            for t in &idx.state(m, i).tags {
+                if !out.contains(&t.as_str()) {
+                    out.push(t);
+                }
+            }
+        }
+        out
+    }
+
     /// The events of a run of machine `sender` that a run of `machine` receives when the
     /// sender emits them: those `machine` has an `on x.E` for, where `x` is a run of
     /// `sender`, in any state (execution.md, "Messages between runs"). It has

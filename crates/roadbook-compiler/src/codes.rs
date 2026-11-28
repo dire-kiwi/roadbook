@@ -163,6 +163,12 @@ pub const CHOICE_WITHOUT_ELSE: Code = Code(227);
 pub const CHOICE_BRANCH_WITHOUT_TARGET: Code = Code(228);
 /// A choice state directly in a parallel state, as one of its regions.
 pub const CHOICE_AS_REGION: Code = Code(229);
+/// A tag written twice on one state, or a second `tags` in one state.
+pub const DUPLICATE_TAG: Code = Code(230);
+/// A key written twice in one state's `meta`, or a second `meta` in one state.
+pub const DUPLICATE_META: Code = Code(231);
+/// A `meta` value that is not a string, int, float or bool literal.
+pub const BAD_META_VALUE: Code = Code(232);
 
 // ───────────── types ─────────────
 
@@ -376,6 +382,9 @@ pub const ALL: &[Code] = &[
     CHOICE_WITHOUT_ELSE,
     CHOICE_BRANCH_WITHOUT_TARGET,
     CHOICE_AS_REGION,
+    DUPLICATE_TAG,
+    DUPLICATE_META,
+    BAD_META_VALUE,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
     BAD_OPERANDS,

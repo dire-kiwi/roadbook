@@ -35,6 +35,7 @@ export interface PublishDef extends Roadbook.MachineDef {
     | "Publish.Publishing"
     | "Publish.Published"
     | "Publish.Failed"
+  readonly tag: never
   readonly fns: {}
   readonly actions: { readonly showProgress: { readonly percent: number } }
   readonly tasks: {
@@ -449,6 +450,8 @@ const ir: unknown = {
         "name": "Publish",
         "kind": "compound",
         "doc": "Publish a post once its attachment is uploaded. The user can pause and resume the upload\nand sees its progress.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 17,
@@ -466,6 +469,8 @@ const ir: unknown = {
             "name": "Uploading",
             "kind": "atomic",
             "doc": "`upload` names the child while it runs, which is exactly while this state is active.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -721,6 +726,8 @@ const ir: unknown = {
             "name": "Publishing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 39,
@@ -817,6 +824,8 @@ const ir: unknown = {
             "name": "Published",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 45,
@@ -849,6 +858,8 @@ const ir: unknown = {
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,
@@ -1009,6 +1020,8 @@ const ir: unknown = {
         "name": "Upload",
         "kind": "compound",
         "doc": "Upload a file in chunks. Can be paused, and reports its progress to whoever invoked it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 1,
           "line": 23,
@@ -1026,6 +1039,8 @@ const ir: unknown = {
             "name": "Sending",
             "kind": "atomic",
             "doc": "One chunk at a time, until every byte is stored.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 35,
@@ -1264,6 +1279,8 @@ const ir: unknown = {
             "name": "Paused",
             "kind": "atomic",
             "doc": "Nothing is sent until the user resumes.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 45,
@@ -1310,6 +1327,8 @@ const ir: unknown = {
             "name": "Finishing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 47,
@@ -1433,6 +1452,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 54,
@@ -1465,6 +1486,8 @@ const ir: unknown = {
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 55,

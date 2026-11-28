@@ -613,6 +613,8 @@
         "name": "PlaceOrder",
         "kind": "compound",
         "doc": "POST /orders: authenticate, validate, price, take payment, confirm.\nEvery final state is one HTTP response.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 11,
@@ -630,6 +632,8 @@
             "name": "Authenticating",
             "kind": "atomic",
             "doc": "Turn the bearer token into a user.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 23,
@@ -738,6 +742,8 @@
             "name": "Processing",
             "kind": "compound",
             "doc": "Everything that happens once we know who is asking.\nCancel and the 30 second budget apply to every step inside.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,
@@ -755,6 +761,8 @@
                 "name": "Validating",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 38,
@@ -879,6 +887,8 @@
                 "name": "Pricing",
                 "kind": "atomic",
                 "doc": "Apply the user's prices and discounts.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 46,
@@ -974,6 +984,8 @@
                 "name": "Paying",
                 "kind": "atomic",
                 "doc": "Payment is its own machine: see checkout.road.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 53,
@@ -1157,6 +1169,8 @@
                 "name": "Confirming",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 61,
@@ -1292,6 +1306,8 @@
             "name": "Confirmed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 67,
@@ -1341,6 +1357,8 @@
             "name": "Unauthorized",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 68,
@@ -1384,6 +1402,8 @@
             "name": "Invalid",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 69,
@@ -1424,6 +1444,8 @@
             "name": "PaymentFailed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 70,
@@ -1467,6 +1489,8 @@
             "name": "Cancelled",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 71,
@@ -1510,6 +1534,8 @@
             "name": "TimedOut",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 72,
@@ -1646,6 +1672,8 @@
         "name": "Checkout",
         "kind": "compound",
         "doc": "Charge the customer's card, retrying while the payment gateway is down.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 2,
           "line": 4,
@@ -1663,6 +1691,8 @@
             "name": "Charging",
             "kind": "atomic",
             "doc": "One attempt against the payment gateway.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 12,
@@ -1861,6 +1891,8 @@
             "name": "Backoff",
             "kind": "atomic",
             "doc": "Wait before the next attempt. The delay grows with each attempt.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 24,
@@ -1952,6 +1984,8 @@
             "name": "Charged",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 29,
@@ -1984,6 +2018,8 @@
             "name": "Declined",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 30,
@@ -2016,6 +2052,8 @@
             "name": "GaveUp",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 31,

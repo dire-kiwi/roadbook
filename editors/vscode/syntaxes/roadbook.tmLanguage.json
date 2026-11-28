@@ -238,6 +238,19 @@
           }
         },
         {
+          "comment": "`tags` is contextual: a state's tags only at the start of a line, followed by a name.",
+          "match": "^\\s*(tags)\\s+([a-z][A-Za-z0-9]*(?:\\s*,\\s*[a-z][A-Za-z0-9]*)*)",
+          "captures": {
+            "1": { "name": "storage.type.tags.roadbook" },
+            "2": { "name": "constant.other.tag.roadbook" }
+          }
+        },
+        {
+          "comment": "`meta` is contextual: a state's meta only at the start of a line, followed by `{`. Its keys and values are a record body's.",
+          "match": "^\\s*(meta)\\s*(?=\\{)",
+          "captures": { "1": { "name": "storage.type.meta.roadbook" } }
+        },
+        {
           "match": "\\b(?:(deep)\\s+)?(history)\\s+([A-Z][A-Za-z0-9]*)",
           "captures": {
             "1": { "name": "storage.modifier.deep.roadbook" },

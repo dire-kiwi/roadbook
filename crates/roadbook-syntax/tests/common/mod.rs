@@ -91,6 +91,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  event A\n  event B\n  event C { reason: string }\n  on A | B -> S\n  state S {\n    on B | C | A if n < 3 -> S  set r = event.reason\n    on A|C {\n      if ok -> S\n      else ignore\n    }\n  }\n}\n",
     ),
     (
+        "tags_meta",
+        "machine M() {\n  tags app\n  meta { owner: \"payments\", sla: 30 }\n  state S {\n    tags busy, network\n    meta { ratio: -0.5, live: true, tags: 1 }\n    on Go -> S\n  }\n  state T { tags idle }\n  state U {\n    var tags: int = 1\n    on Go -> U  set tags = tags + 1\n  }\n}\n",
+    ),
+    (
         "in_state",
         "machine M() {\n  state S {\n    on Go if in(P.R.X) and not in(S) -> S  do note(in(P))\n  }\n}\n",
     ),

@@ -28,6 +28,7 @@ export interface PipelineDef extends Roadbook.MachineDef {
     | "Pipeline.Waiting"
     | "Pipeline.Three"
     | "Pipeline.Done"
+  readonly tag: never
   readonly fns: { readonly patience: { readonly args: {}; readonly returns: Duration.Duration } }
   readonly actions: { readonly log: { readonly text: string } }
   readonly tasks: {
@@ -247,6 +248,8 @@ const ir: unknown = {
         "name": "Pipeline",
         "kind": "compound",
         "doc": "Three steps, with a wait between the second and the third for a nudge or a timer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 15,
@@ -264,6 +267,8 @@ const ir: unknown = {
             "name": "One",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 24,
@@ -377,6 +382,8 @@ const ir: unknown = {
             "name": "Two",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -477,6 +484,8 @@ const ir: unknown = {
             "name": "Waiting",
             "kind": "atomic",
             "doc": "Whichever comes first: a nudge, or the timer.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -583,6 +592,8 @@ const ir: unknown = {
             "name": "Three",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 43,
@@ -683,6 +694,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 49,
@@ -803,6 +816,8 @@ const ir: unknown = {
         "name": "Parent",
         "kind": "compound",
         "doc": "Runs a Pipeline as a child and passes nudges on to it. Past its deadline it cancels the\nPipeline and does a fourth step instead.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 54,
@@ -820,6 +835,8 @@ const ir: unknown = {
             "name": "Running",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 61,
@@ -984,6 +1001,8 @@ const ir: unknown = {
             "name": "Fallback",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 69,
@@ -1052,6 +1071,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 75,
@@ -1084,6 +1105,8 @@ const ir: unknown = {
             "name": "GaveUp",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 76,
@@ -1219,6 +1242,8 @@ const ir: unknown = {
         "name": "Counter",
         "kind": "compound",
         "doc": "Adds what it is sent, and emits each new total to the runs holding a `ref` to it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 80,
@@ -1236,6 +1261,8 @@ const ir: unknown = {
             "name": "Counting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 89,
@@ -1357,6 +1384,8 @@ const ir: unknown = {
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 94,
@@ -1423,6 +1452,8 @@ const ir: unknown = {
         "name": "Adder",
         "kind": "compound",
         "doc": "Works out an amount, sends it to a Counter, and ends once the Counter's total reaches `goal`.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 98,
@@ -1440,6 +1471,8 @@ const ir: unknown = {
             "name": "Working",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 101,
@@ -1539,6 +1572,8 @@ const ir: unknown = {
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 107,
@@ -1617,6 +1652,8 @@ const ir: unknown = {
             "name": "Reached",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 109,
@@ -1705,6 +1742,8 @@ const ir: unknown = {
         "name": "Watcher",
         "kind": "compound",
         "doc": "Counts the ends of its Counter it takes, while it works: once, however the processes\nrunning it crash.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 114,
@@ -1722,6 +1761,8 @@ const ir: unknown = {
             "name": "Working",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 121,
@@ -1790,6 +1831,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 127,
@@ -1999,6 +2042,8 @@ const ir: unknown = {
         "name": "Session",
         "kind": "compound",
         "doc": "One session of a Hub: adds up the pings it is sent, does a step of work when asked, and\ngives up once it has waited `patience()` for anything.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 132,
@@ -2016,6 +2061,8 @@ const ir: unknown = {
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 142,
@@ -2178,6 +2225,8 @@ const ir: unknown = {
             "name": "Working",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 149,
@@ -2281,6 +2330,8 @@ const ir: unknown = {
             "name": "Left",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 155,
@@ -2313,6 +2364,8 @@ const ir: unknown = {
             "name": "Expired",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 156,
@@ -2516,6 +2569,8 @@ const ir: unknown = {
         "name": "Hub",
         "kind": "compound",
         "doc": "Spawns a Session per key and passes pings, work and leaving on to it. Adds up what the\nsessions that end give, and gives the sum when it is finished.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 161,
@@ -2533,6 +2588,8 @@ const ir: unknown = {
             "name": "Serving",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 174,
@@ -2858,6 +2915,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 183,
@@ -2952,6 +3011,8 @@ const ir: unknown = {
         "name": "Relay",
         "kind": "compound",
         "doc": "Runs an Adder as its child, which hears the Counter.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 187,
@@ -2969,6 +3030,8 @@ const ir: unknown = {
             "name": "Running",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 192,
@@ -3064,6 +3127,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 198,
@@ -3152,6 +3217,8 @@ const ir: unknown = {
         "name": "Tracker",
         "kind": "compound",
         "doc": "Notes each `Reached` of its task, and gives how many it took once the task is done.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 208,
@@ -3169,6 +3236,8 @@ const ir: unknown = {
             "name": "Working",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 213,
@@ -3307,6 +3376,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 220,
@@ -3445,6 +3516,8 @@ const ir: unknown = {
         "name": "Crew",
         "kind": "compound",
         "doc": "Spawns a `progress` task per key, notes what they say, and adds up what they give.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 224,
@@ -3462,6 +3535,8 @@ const ir: unknown = {
             "name": "Working",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 234,
@@ -3648,6 +3723,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 241,
@@ -3760,6 +3837,8 @@ const ir: unknown = {
         "name": "Nagger",
         "kind": "compound",
         "doc": "A reminder that belongs to the run: a delayed raise, which leaving `Asleep` does not cancel,\ncounted when it fires.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 246,
@@ -3777,6 +3856,8 @@ const ir: unknown = {
             "name": "Asleep",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 254,
@@ -3842,6 +3923,8 @@ const ir: unknown = {
             "name": "Awake",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 259,
@@ -3929,6 +4012,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 261,
@@ -3987,6 +4072,7 @@ export interface ParentDef extends Roadbook.MachineDef {
   readonly event: Push
   readonly emits: never
   readonly state: "Parent" | "Parent.Running" | "Parent.Fallback" | "Parent.Done" | "Parent.GaveUp"
+  readonly tag: never
   readonly fns: { readonly deadline: { readonly args: {}; readonly returns: Duration.Duration } }
   readonly actions: {}
   readonly tasks: {
@@ -4030,6 +4116,7 @@ export interface CounterDef extends Roadbook.MachineDef {
   readonly event: Add | Close
   readonly emits: Total
   readonly state: "Counter" | "Counter.Counting" | "Counter.Closed"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}
@@ -4049,6 +4136,7 @@ export interface AdderDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Adder" | "Adder.Working" | "Adder.Waiting" | "Adder.Reached"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {
@@ -4074,6 +4162,7 @@ export interface WatcherDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Watcher" | "Watcher.Working" | "Watcher.Done"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {
@@ -4116,6 +4205,7 @@ export interface SessionDef extends Roadbook.MachineDef {
     | "Session.Working"
     | "Session.Left"
     | "Session.Expired"
+  readonly tag: never
   readonly fns: { readonly patience: { readonly args: {}; readonly returns: Duration.Duration } }
   readonly actions: {}
   readonly tasks: {
@@ -4159,6 +4249,7 @@ export interface HubDef extends Roadbook.MachineDef {
   readonly event: Join | Tell | Assign | Part | HubFinish
   readonly emits: never
   readonly state: "Hub" | "Hub.Serving" | "Hub.Done"
+  readonly tag: never
   readonly fns: {}
   readonly actions: { readonly log: { readonly text: string } }
   readonly tasks: {}
@@ -4187,6 +4278,7 @@ export interface RelayDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Relay" | "Relay.Running" | "Relay.Done"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}
@@ -4212,6 +4304,7 @@ export interface TrackerDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Tracker" | "Tracker.Working" | "Tracker.Done"
+  readonly tag: never
   readonly fns: {}
   readonly actions: { readonly note: { readonly percent: number } }
   readonly tasks: {
@@ -4244,6 +4337,7 @@ export interface CrewDef extends Roadbook.MachineDef {
   readonly event: Hire | CrewFinish
   readonly emits: never
   readonly state: "Crew" | "Crew.Working" | "Crew.Done"
+  readonly tag: never
   readonly fns: {}
   readonly actions: { readonly note: { readonly percent: number } }
   readonly tasks: {
@@ -4273,6 +4367,7 @@ export interface NaggerDef extends Roadbook.MachineDef {
   readonly event: Wake
   readonly emits: never
   readonly state: "Nagger" | "Nagger.Asleep" | "Nagger.Awake" | "Nagger.Done"
+  readonly tag: never
   readonly fns: { readonly patience: { readonly args: {}; readonly returns: Duration.Duration } }
   readonly actions: { readonly log: { readonly text: string } }
   readonly tasks: {}

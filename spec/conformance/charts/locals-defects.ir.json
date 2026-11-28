@@ -47,6 +47,8 @@
         "name": "Unset",
         "kind": "compound",
         "doc": "A state variable with no initial value, read by a guard before anything assigns it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 5,
@@ -64,6 +66,8 @@
             "name": "A",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 10,
@@ -168,6 +172,8 @@
             "name": "B",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 18,

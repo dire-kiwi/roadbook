@@ -229,6 +229,8 @@
         "name": "Keep",
         "kind": "compound",
         "doc": "Fetches a page of the users' logins, and gives it back.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 17,
@@ -246,6 +248,8 @@
             "name": "Fetching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 22,
@@ -347,6 +351,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 28,

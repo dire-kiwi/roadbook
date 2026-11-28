@@ -571,6 +571,12 @@ pub struct State {
     pub kind: StateKind,
     /// Doc comment, `""` if none.
     pub doc: String,
+    /// The state's tags (`tags a, b`), in the order written, each once: `[]` for none.
+    /// Host code asks a run for the tags of its active states. Not part of the hash.
+    pub tags: Vec<String>,
+    /// The state's `meta`, in the order written: `{}` for none. Each value is a string, a
+    /// number or a bool. Only tools and host code read it, from the IR. Not part of the hash.
+    pub meta: IndexMap<String, serde_json::Value>,
     /// The whole state, from its first keyword to the closing brace.
     pub span: Span,
     /// The state's parameters, in order: `[]` for a state written without
@@ -1017,6 +1023,22 @@ impl Machine {
         self.events
             .get(name)
             .or_else(|| self.internal_events.get(name))
+    }
+
+    /// Every tag the machine's states declare (`tags busy`), each once, in document order:
+    /// what the generated `Tag` union and enum list.
+    pub fn tags(&self) -> Vec<&str> {
+        fn walk<'a>(s: &'a State, out: &mut Vec<&'a str>) {
+            for t in &s.tags {
+                if !out.contains(&t.as_str()) {
+                    out.push(t);
+                }
+            }
+            s.states.iter().for_each(|c| walk(c, out));
+        }
+        let mut out = Vec::new();
+        walk(&self.root, &mut out);
+        out
     }
 
     /// The names of the machine's delayed raises (`raise … after … as name`), each once, in

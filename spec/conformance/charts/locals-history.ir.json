@@ -80,6 +80,8 @@
         "name": "Hist",
         "kind": "compound",
         "doc": "History states that keep the locals of the states they re-enter.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 4,
@@ -97,6 +99,8 @@
             "name": "Paused",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 12,
@@ -164,6 +168,8 @@
             "name": "Work",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 17,
@@ -181,6 +187,8 @@
                 "name": "Back",
                 "kind": "history",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 20,
@@ -205,6 +213,8 @@
                 "name": "All",
                 "kind": "deepHistory",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 21,
@@ -229,6 +239,8 @@
                 "name": "A",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 23,
@@ -287,6 +299,8 @@
                 "name": "B",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 25,
@@ -348,6 +362,8 @@
                     "name": "X",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 29,
@@ -417,6 +433,8 @@
                     "name": "Y",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 34,

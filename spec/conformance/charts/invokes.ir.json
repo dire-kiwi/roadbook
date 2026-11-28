@@ -261,6 +261,8 @@
         "name": "Watch",
         "kind": "compound",
         "doc": "Three invokes and a timer in one state, and one more invoke in its child state.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 25,
@@ -278,6 +280,8 @@
             "name": "Watching",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -295,6 +299,8 @@
                 "name": "Inner",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 47,
@@ -596,6 +602,8 @@
             "name": "Copied",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 52,
@@ -628,6 +636,8 @@
             "name": "Offline",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 53,
@@ -660,6 +670,8 @@
             "name": "Stopped",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 54,
@@ -741,6 +753,8 @@
         "name": "Lookup",
         "kind": "compound",
         "doc": "The same task twice in one state, told apart by `as`: `a`'s `fail *` is not `b`'s.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 58,
@@ -758,6 +772,8 @@
             "name": "Both",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 63,
@@ -950,6 +966,8 @@
             "name": "Found",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 74,
@@ -982,6 +1000,8 @@
             "name": "Gave",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 75,
@@ -1063,6 +1083,8 @@
         "name": "Ticker",
         "kind": "compound",
         "doc": "A stream task beside the work that ends the state.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 79,
@@ -1080,6 +1102,8 @@
             "name": "Running",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 84,
@@ -1223,6 +1247,8 @@
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 92,
@@ -1319,6 +1345,8 @@
         "name": "Kid",
         "kind": "compound",
         "doc": "Answers a poke, and ends when told to quit.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 96,
@@ -1336,6 +1364,8 @@
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 103,
@@ -1412,6 +1442,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 108,
@@ -1508,6 +1540,8 @@
         "name": "Twins",
         "kind": "compound",
         "doc": "Two children in one state: each is sent to and heard from by its name, and the outcome of\none may send to the other, which is still running.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 113,
@@ -1525,6 +1559,8 @@
             "name": "Both",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 121,
@@ -1821,6 +1857,8 @@
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 134,

@@ -34,6 +34,7 @@ export interface WatchDef extends Roadbook.MachineDef {
     | "Watch.Uploading.Counting"
     | "Watch.Pinging"
     | "Watch.Over"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {

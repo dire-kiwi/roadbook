@@ -130,6 +130,8 @@
         "name": "Desk",
         "kind": "compound",
         "doc": "A help desk that answers questions while it is open.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 6,
@@ -147,6 +149,8 @@
             "name": "Staffed",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 22,
@@ -164,6 +168,8 @@
                 "name": "Free",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 28,
@@ -225,6 +231,8 @@
                 "name": "Held",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 29,
@@ -394,6 +402,8 @@
             "name": "Shut",
             "kind": "atomic",
             "doc": "No `on ask` or `on hold`: in a strict machine, a call here is a defect.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -491,6 +501,8 @@
         "name": "Asker",
         "kind": "compound",
         "doc": "Ask the desk a question; 0 if it does not answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 37,
@@ -508,6 +520,8 @@
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 42,
@@ -611,6 +625,8 @@
             "name": "Got",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 49,
@@ -643,6 +659,8 @@
             "name": "Gave",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 50,
@@ -723,6 +741,8 @@
         "name": "Holder",
         "kind": "compound",
         "doc": "Hold a place with the desk; 0 if it does not answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 54,
@@ -740,6 +760,8 @@
             "name": "Holding",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 59,
@@ -843,6 +865,8 @@
             "name": "Got",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 66,
@@ -875,6 +899,8 @@
             "name": "Gave",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 67,

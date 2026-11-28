@@ -55,6 +55,8 @@
         "name": "Many",
         "kind": "compound",
         "doc": "Runs Leaf ten times.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 5,
@@ -72,6 +74,8 @@
             "name": "Spawning",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 10,
@@ -205,6 +209,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 19,
@@ -258,6 +264,8 @@
         "name": "Leaf",
         "kind": "compound",
         "doc": "Ends as soon as it starts.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 23,
@@ -275,6 +283,8 @@
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,

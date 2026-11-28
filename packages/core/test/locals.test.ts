@@ -81,6 +81,8 @@ const state = (
   name: id.slice(id.lastIndexOf(".") + 1),
   kind,
   doc: "",
+  tags: [],
+  meta: {},
   span: SPAN,
   params: [],
   vars: [],

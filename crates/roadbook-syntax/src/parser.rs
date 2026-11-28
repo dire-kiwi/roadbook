@@ -1051,6 +1051,12 @@ impl Parser<'_> {
         if self.at_choice() {
             return Ok(Some(Item::State(self.choice()?)));
         }
+        if self.at_word("tags") && matches!(self.nth(1), T::Lower | T::Upper | T::Keyword(_)) {
+            return Ok(Some(Item::Tags(self.tags()?)));
+        }
+        if self.at_word("meta") && self.nth(1) == T::Punct(P::LBrace) {
+            return Ok(Some(Item::Meta(self.meta()?)));
+        }
         let mut t = self.tok();
         if self.at_check() {
             return self.check_item(kind);
@@ -1086,10 +1092,10 @@ impl Parser<'_> {
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
-                    "a machine item (`var`, `event`, `internal event`, `emits`, `call`, `children`, `initial`, `state`, `choice`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
+                    "a machine item (`var`, `event`, `internal event`, `emits`, `call`, `children`, `initial`, `state`, `choice`, `tags`, `meta`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
                 }
                 BodyKind::State => {
-                    "a state item (`var`, `initial`, `state`, `choice`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
+                    "a state item (`var`, `initial`, `state`, `choice`, `history`, `tags`, `meta`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
                 }
             };
             return Err(self.unexpected(expected));
@@ -1457,6 +1463,30 @@ impl Parser<'_> {
                 span: body_span,
             },
             span,
+        })
+    }
+
+    /// `tags a, b`. `tags` is contextual: it starts the item only followed by a name or a
+    /// keyword (reported as one).
+    fn tags(&mut self) -> PResult<Tags> {
+        let start = self.bump().span;
+        let mut names = vec![self.lower("a tag name")?];
+        while self.eat_p(P::Comma).is_some() {
+            names.push(self.lower("a tag name")?);
+        }
+        Ok(Tags {
+            names,
+            span: self.since(start),
+        })
+    }
+
+    /// `meta { key: value, … }`. `meta` is contextual: it starts the item only followed by `{`.
+    fn meta(&mut self) -> PResult<Meta> {
+        let start = self.bump().span;
+        let (entries, _) = self.list(P::LBrace, "the entries of `meta`", |p| p.field_value())?;
+        Ok(Meta {
+            entries,
+            span: self.since(start),
         })
     }
 

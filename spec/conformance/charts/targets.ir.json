@@ -121,6 +121,8 @@
         "name": "Player",
         "kind": "compound",
         "doc": "Several targets enter several regions of a parallel state at once, the other regions by\ndefault entry; written with dots in the parallel state, they exit and enter only those\nregions.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 9,
@@ -138,6 +140,8 @@
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 19,
@@ -207,6 +211,8 @@
             "name": "On",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 24,
@@ -224,6 +230,8 @@
                 "name": "Playback",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 30,
@@ -241,6 +249,8 @@
                     "name": "Last",
                     "kind": "history",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 31,
@@ -265,6 +275,8 @@
                     "name": "Playing",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 33,
@@ -289,6 +301,8 @@
                     "name": "Paused",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 34,
@@ -343,6 +357,8 @@
                 "name": "Volume",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 37,
@@ -360,6 +376,8 @@
                     "name": "Normal",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 39,
@@ -384,6 +402,8 @@
                     "name": "Muted",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 40,
@@ -430,6 +450,8 @@
                     "name": "Loud",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 41,
@@ -462,6 +484,8 @@
                 "name": "Light",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 44,

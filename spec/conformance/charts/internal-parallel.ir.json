@@ -88,6 +88,8 @@
         "name": "Sides",
         "kind": "compound",
         "doc": "Internal transitions in a parallel state: one written in a region stays in it, so another\nregion takes the same event too; one written in the parallel state exits and enters only\nthe regions it targets.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 8,
@@ -105,6 +107,8 @@
             "name": "P",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 15,
@@ -122,6 +126,8 @@
                 "name": "A",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 21,
@@ -139,6 +145,8 @@
                     "name": "A1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 26,
@@ -163,6 +171,8 @@
                     "name": "A2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 27,
@@ -243,6 +253,8 @@
                 "name": "B",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 30,
@@ -260,6 +272,8 @@
                     "name": "B1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 34,
@@ -306,6 +320,8 @@
                     "name": "B2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 35,

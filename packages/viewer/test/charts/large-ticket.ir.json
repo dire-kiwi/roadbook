@@ -1205,6 +1205,8 @@
         "name": "SupportTicket",
         "kind": "compound",
         "doc": "A support ticket from the moment it arrives until it is closed.\nEvery top-level final state is one way a ticket can end.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 12,
@@ -1222,6 +1224,8 @@
             "name": "Intake",
             "kind": "compound",
             "doc": "Classify the new ticket and screen out spam and duplicates.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 51,
@@ -1239,6 +1243,8 @@
                 "name": "Classifying",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 56,
@@ -1421,6 +1427,8 @@
                 "name": "ClassifyBackoff",
                 "kind": "atomic",
                 "doc": "Retry loop: the classifier is down, wait and try again.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 67,
@@ -1512,6 +1520,8 @@
                 "name": "Screening",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 72,
@@ -1629,6 +1639,8 @@
                 "name": "Unclassified",
                 "kind": "final",
                 "doc": "The classifier stayed down: carry on with normal priority and no category.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 81,
@@ -1653,6 +1665,8 @@
                 "name": "Accepted",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 82,
@@ -1728,6 +1742,8 @@
             "name": "Triage",
             "kind": "compound",
             "doc": "Find an owner. Unowned past the triage SLA pages the on-call lead.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 86,
@@ -1745,6 +1761,8 @@
                 "name": "Routing",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 96,
@@ -1862,6 +1880,8 @@
                 "name": "Queued",
                 "kind": "atomic",
                 "doc": "Nobody is free: try again every 15 minutes.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 104,
@@ -1913,6 +1933,8 @@
                 "name": "Assigned",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 106,
@@ -2133,6 +2155,8 @@
             "name": "Active",
             "kind": "compound",
             "doc": "The ticket has an owner and is being worked.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 110,
@@ -2150,6 +2174,8 @@
                 "name": "Working",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 123,
@@ -2167,6 +2193,8 @@
                     "name": "WithAgent",
                     "kind": "atomic",
                     "doc": "The agent owns the next move. Nudge them after every 2 hours of silence.",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 129,
@@ -2359,6 +2387,8 @@
                     "name": "WaitingOnCustomer",
                     "kind": "compound",
                     "doc": "The ball is in the customer's court. Two weeks of silence closes the ticket.",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 138,
@@ -2376,6 +2406,8 @@
                         "name": "Waiting",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 144,
@@ -2449,6 +2481,8 @@
                         "name": "Reminded",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 146,
@@ -2522,6 +2556,8 @@
                         "name": "LastCall",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 148,
@@ -2602,6 +2638,8 @@
                     "name": "OnHold",
                     "kind": "atomic",
                     "doc": "Parked by the agent, for example while waiting on a third party.",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 152,
@@ -2735,6 +2773,8 @@
                 "name": "Escalation",
                 "kind": "compound",
                 "doc": "Escalation tiers. Each tier has a deadline before it moves up.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 159,
@@ -2752,6 +2792,8 @@
                     "name": "Tier2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 165,
@@ -2825,6 +2867,8 @@
                     "name": "Tier3",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 170,
@@ -2898,6 +2942,8 @@
                     "name": "Engineering",
                     "kind": "compound",
                     "doc": "Engineering owns it: file a bug and wait for the fix.",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 176,
@@ -2915,6 +2961,8 @@
                         "name": "FilingBug",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 181,
@@ -3114,6 +3162,8 @@
                         "name": "BugBackoff",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 191,
@@ -3197,6 +3247,8 @@
                         "name": "AwaitingFix",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 196,
@@ -3264,6 +3316,8 @@
                         "name": "FixShipped",
                         "kind": "final",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 201,
@@ -3368,6 +3422,8 @@
                 "name": "Resolving",
                 "kind": "parallel",
                 "doc": "Two things at once: check the fix holds, and draft the message to the customer.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 206,
@@ -3385,6 +3441,8 @@
                     "name": "FixCheck",
                     "kind": "compound",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 209,
@@ -3402,6 +3460,8 @@
                         "name": "Verifying",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 212,
@@ -3533,6 +3593,8 @@
                         "name": "Verified",
                         "kind": "final",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 221,
@@ -3565,6 +3627,8 @@
                     "name": "CustomerNotice",
                     "kind": "compound",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 224,
@@ -3582,6 +3646,8 @@
                         "name": "Drafting",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 227,
@@ -3668,6 +3734,8 @@
                         "name": "Drafted",
                         "kind": "final",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 233,
@@ -3754,6 +3822,8 @@
                 "name": "AwaitingConfirmation",
                 "kind": "atomic",
                 "doc": "Resolved on our side. The customer confirms, reopens or goes quiet.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 238,
@@ -3847,6 +3917,8 @@
                 "name": "Reopened",
                 "kind": "atomic",
                 "doc": "Reopen loop: back to the agent, or straight to escalation from the third reopen.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 245,
@@ -4207,6 +4279,8 @@
             "name": "Closing",
             "kind": "compound",
             "doc": "Ask the customer how we did, then close.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 255,
@@ -4224,6 +4298,8 @@
                 "name": "Surveying",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 261,
@@ -4310,6 +4386,8 @@
                 "name": "Surveyed",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 267,
@@ -4368,6 +4446,8 @@
             "name": "Resolved",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 270,
@@ -4426,6 +4506,8 @@
             "name": "AutoClosed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 271,
@@ -4481,6 +4563,8 @@
             "name": "Spam",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 272,
@@ -4536,6 +4620,8 @@
             "name": "Duplicate",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 273,
@@ -4591,6 +4677,8 @@
             "name": "Withdrawn",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 274,
@@ -4646,6 +4734,8 @@
             "name": "OutOfScope",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 275,
@@ -4701,6 +4791,8 @@
             "name": "Merged",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 276,
@@ -4756,6 +4848,8 @@
             "name": "Unresolvable",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 277,
@@ -4900,6 +4994,8 @@
         "name": "SatisfactionSurvey",
         "kind": "compound",
         "doc": "Send a satisfaction survey and wait up to a week for the answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 2,
           "line": 4,
@@ -4917,6 +5013,8 @@
             "name": "Sending",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 11,
@@ -5025,6 +5123,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "Check for an answer once a day.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 19,
@@ -5076,6 +5176,8 @@
             "name": "Polling",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 21,
@@ -5257,6 +5359,8 @@
             "name": "Answered",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 31,
@@ -5308,6 +5412,8 @@
             "name": "NoAnswer",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 32,

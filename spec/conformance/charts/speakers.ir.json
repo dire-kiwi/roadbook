@@ -102,6 +102,8 @@
         "name": "Speaker",
         "kind": "compound",
         "doc": "Says two things when told to, and ends when told to quit.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -119,6 +121,8 @@
             "name": "Talking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 15,
@@ -225,6 +229,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -349,6 +355,8 @@
         "name": "Listener",
         "kind": "compound",
         "doc": "Hears its speakers' `Ping`, from every key but \"quiet\", and never their `Pong`.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 24,
@@ -366,6 +374,8 @@
             "name": "Listening",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 34,
@@ -693,6 +703,8 @@
         "name": "Foreman",
         "kind": "compound",
         "doc": "Strict, with spawned children: what they emit or end with that it does not take is\ndropped, and only its own events can be `unhandled`.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 43,
@@ -710,6 +722,8 @@
             "name": "Working",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 55,

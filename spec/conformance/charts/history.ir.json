@@ -158,6 +158,8 @@
         "name": "Editor",
         "kind": "compound",
         "doc": "Shallow and deep history of one compound state.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 10,
@@ -175,6 +177,8 @@
             "name": "Work",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 22,
@@ -192,6 +196,8 @@
                 "name": "Shallow",
                 "kind": "history",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 27,
@@ -216,6 +222,8 @@
                 "name": "Deep",
                 "kind": "deepHistory",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 28,
@@ -240,6 +248,8 @@
                 "name": "Draft",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 30,
@@ -333,6 +343,8 @@
                 "name": "Review",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 37,
@@ -350,6 +362,8 @@
                     "name": "Read",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 43,
@@ -396,6 +410,8 @@
                     "name": "Comment",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 45,
@@ -616,6 +632,8 @@
             "name": "Help",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 59,
@@ -777,6 +795,8 @@
         "name": "Steps",
         "kind": "compound",
         "doc": "A deep history state that restores a final state, completing its parent.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 66,
@@ -794,6 +814,8 @@
             "name": "Flow",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 76,
@@ -811,6 +833,8 @@
                 "name": "H",
                 "kind": "deepHistory",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 78,
@@ -835,6 +859,8 @@
                 "name": "S1",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 80,
@@ -881,6 +907,8 @@
                 "name": "S2",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 81,
@@ -963,6 +991,8 @@
             "name": "Paused",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 87,
@@ -1040,6 +1070,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 92,
@@ -1125,6 +1157,8 @@
         "name": "Bounce",
         "kind": "compound",
         "doc": "A parent left and returned to through its history state while settling.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 96,
@@ -1142,6 +1176,8 @@
             "name": "P",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 103,
@@ -1159,6 +1195,8 @@
                 "name": "H",
                 "kind": "history",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 105,
@@ -1183,6 +1221,8 @@
                 "name": "A",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 107,
@@ -1229,6 +1269,8 @@
                 "name": "B",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 108,
@@ -1316,6 +1358,8 @@
             "name": "Q",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 111,

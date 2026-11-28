@@ -1,0 +1,25 @@
+{
+  "description": "The tags of a run are those of its active states, each once, in document order, and a `tags` step checks them without writing to the trace. The machine body's `app` holds throughout; a compound state's `open` holds in every state inside it; the two regions of `Loading` both have `network`, which appears once, where the first region has it; the choice the step passes through on `Open` is never among them; and a run that has ended has no active states and no tags, though its final state has one.",
+  "requires": ["parallel"],
+  "chart": "charts/tags.road",
+  "machine": "Gallery",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    { "tags": ["app", "idle"] },
+    { "event": { "_tag": "Open" } },
+    { "tags": ["app", "open", "busy", "network", "slow"] },
+    { "event": { "_tag": "Loaded" } },
+    { "tags": ["app", "open", "ready"] },
+    { "event": { "_tag": "Close" } },
+    { "tags": ["app", "idle"] },
+    { "event": { "_tag": "Open" } },
+    { "tags": ["app", "open", "ready"] },
+    { "event": { "_tag": "Close" } },
+    { "event": { "_tag": "Quit" } },
+    { "tags": [] }
+  ],
+  "status": "done"
+}

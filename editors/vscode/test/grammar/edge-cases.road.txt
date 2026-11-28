@@ -170,3 +170,14 @@ machine Ins() {
     on Go if not in(Main.Volume.Muted) -> Paused(in(Main.Volume.Loud))  do note(in(Main))
   }
 }
+
+// Tags and meta, and both words as names elsewhere.
+machine Tagged() {
+  tags app
+  meta { owner: "payments", sla: 30, ratio: -0.5, live: true }
+  var tags: int = 0
+  state S {
+    tags busy, network
+    on Go -> S  set tags = tags + 1
+  }
+}

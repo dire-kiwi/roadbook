@@ -1,0 +1,20 @@
+machine Spinner() {
+  event Load
+  event Loaded
+  event Stop
+
+  tags app
+
+  initial Idle
+  state Idle {
+    tags idle
+    on Load -> Loading
+  }
+  state Loading {
+    tags busy, network
+    meta { owner: "payments", sla: 30 }
+    on Loaded -> Idle
+    on Stop   -> Done
+  }
+  final state Done {}
+}

@@ -774,6 +774,16 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                     .ok_or_else(|| at(format!("{} has no saved snapshot", snap.run())))?;
                 compare_snapshot(c, &snap.name, &saved).map_err(at)?;
             }
+            Step::Tags(t) => {
+                let tags = runner.top(t.run()).map_err(at)?.tags();
+                if tags != t.tags {
+                    return Err(at(format!(
+                        "{} has the tags {tags:?}, not {:?}",
+                        t.run(),
+                        t.tags
+                    )));
+                }
+            }
             Step::Suspend(snap) => {
                 let run = runner
                     .runs

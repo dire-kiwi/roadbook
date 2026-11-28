@@ -475,6 +475,8 @@
         "name": "PaymentWebhook",
         "kind": "compound",
         "doc": "The payment provider's webhook: verify, parse, deduplicate, apply, acknowledge.\nEvery final state is one HTTP response.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 11,
@@ -492,6 +494,8 @@
             "name": "Verifying",
             "kind": "atomic",
             "doc": "The signature check is pure, so it is a guard.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 18,
@@ -591,6 +595,8 @@
             "name": "Parsing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -699,6 +705,8 @@
             "name": "CheckingDuplicate",
             "kind": "atomic",
             "doc": "Providers redeliver. An event we have already processed is acknowledged and ignored.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -800,6 +808,8 @@
             "name": "Applying",
             "kind": "compound",
             "doc": "Apply the event according to its kind.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 43,
@@ -817,6 +827,8 @@
                 "name": "Routing",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 48,
@@ -948,6 +960,8 @@
                 "name": "MarkingPaid",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 56,
@@ -1096,6 +1110,8 @@
                 "name": "Backoff",
                 "kind": "atomic",
                 "doc": "Wait before the next attempt. The delay grows with each attempt.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 67,
@@ -1187,6 +1203,8 @@
                 "name": "NotifyingFailure",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 72,
@@ -1259,6 +1277,8 @@
                 "name": "RecordingRefund",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 77,
@@ -1378,6 +1398,8 @@
                 "name": "Applied",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 83,
@@ -1431,6 +1453,8 @@
             "name": "MarkingProcessed",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 86,
@@ -1503,6 +1527,8 @@
             "name": "Acknowledged",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 92,
@@ -1533,6 +1559,8 @@
             "name": "BadSignature",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 93,
@@ -1576,6 +1604,8 @@
             "name": "Malformed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 94,
@@ -1619,6 +1649,8 @@
             "name": "Unavailable",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 95,

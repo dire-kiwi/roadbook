@@ -1,0 +1,45 @@
+// Conformance chart: the tags of a run, the tags of its active states, checked by
+// the script's `tags` steps, which write nothing to the trace.
+
+/// An image gallery that loads in two regions that share a tag.
+machine Gallery() {
+  event Open
+  event Loaded
+  event Close
+  event Quit
+
+  var opened: int = 0
+
+  tags app
+  meta { owner: "media", sla: 30, ratio: -0.5, beta: true }
+
+  initial Closed
+
+  state Closed {
+    tags idle
+    on Open -> Route  set opened = opened + 1
+    on Quit -> Done
+  }
+
+  // Passed through in the step that takes `Open`: never one of the run's tags.
+  choice Route {
+    if opened > 1 -> Viewing.Shown
+    else          -> Viewing
+  }
+
+  state Viewing {
+    tags open
+    meta { label: "Viewing" }
+    on Close -> Closed
+    initial Loading
+    parallel state Loading {
+      tags busy
+      on Loaded -> Shown
+      state Thumbs { tags network }
+      state Full   { tags network, slow }
+    }
+    state Shown { tags ready }
+  }
+
+  final state Done { tags idle }
+}

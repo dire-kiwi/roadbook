@@ -143,6 +143,8 @@
         "name": "Catalog",
         "kind": "compound",
         "doc": "Searches its stock for the items it is asked about.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 14,
@@ -160,6 +162,8 @@
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -317,6 +321,8 @@
         "name": "Shopper",
         "kind": "compound",
         "doc": "Asks the catalog which of the items it wants are in stock.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 24,
@@ -334,6 +340,8 @@
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -456,6 +464,8 @@
             "name": "Found",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,

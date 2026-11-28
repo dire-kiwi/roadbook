@@ -34,6 +34,7 @@ export interface BeaconDef extends Roadbook.MachineDef {
   readonly event: Ping | Boom | Stop | Whisper
   readonly emits: Beat | Bye | Heard
   readonly state: "Beacon" | "Beacon.Up" | "Beacon.Over"
+  readonly tag: never
   readonly fns: {}
   readonly actions: { readonly log: { readonly what: string } }
   readonly tasks: {}
@@ -216,6 +217,8 @@ const ir: unknown = {
         "name": "Beacon",
         "kind": "compound",
         "doc": "Emits as it starts, on each `Ping`, after `log` on `Boom`, as it leaves `Up`, and a `Heard`\nwith the sensitive word of each `Whisper`, which listeners hear and the trace redacts.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 8,
@@ -233,6 +236,8 @@ const ir: unknown = {
             "name": "Up",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 22,
@@ -486,6 +491,8 @@ const ir: unknown = {
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,

@@ -91,6 +91,8 @@
         "name": "Editor",
         "kind": "compound",
         "doc": "A shallow default, a deep one through the state above it, and several in\nthe regions of a parallel state.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 6,
@@ -108,6 +110,8 @@
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 15,
@@ -196,6 +200,8 @@
             "name": "Doc",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 21,
@@ -213,6 +219,8 @@
                 "name": "Previous",
                 "kind": "history",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 23,
@@ -239,6 +247,8 @@
                 "name": "Blank",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 25,
@@ -263,6 +273,8 @@
                 "name": "Editing",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 27,
@@ -280,6 +292,8 @@
                     "name": "Typing",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 29,
@@ -326,6 +340,8 @@
                     "name": "Review",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 30,
@@ -388,6 +404,8 @@
             "name": "Notebook",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -405,6 +423,8 @@
                 "name": "Last",
                 "kind": "deepHistory",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 38,
@@ -431,6 +451,8 @@
                 "name": "Cover",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 40,
@@ -455,6 +477,8 @@
                 "name": "Pages",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 42,
@@ -472,6 +496,8 @@
                     "name": "First",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 44,
@@ -496,6 +522,8 @@
                     "name": "Second",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 45,
@@ -542,6 +570,8 @@
                     "name": "Third",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 46,
@@ -604,6 +634,8 @@
             "name": "View",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 52,
@@ -621,6 +653,8 @@
                 "name": "Restore",
                 "kind": "history",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 53,
@@ -648,6 +682,8 @@
                 "name": "Main",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 55,
@@ -665,6 +701,8 @@
                     "name": "Plain",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 57,
@@ -689,6 +727,8 @@
                     "name": "Split",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 58,
@@ -721,6 +761,8 @@
                 "name": "Side",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 61,
@@ -738,6 +780,8 @@
                     "name": "Narrow",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 63,
@@ -762,6 +806,8 @@
                     "name": "Wide",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 64,
@@ -808,6 +854,8 @@
                     "name": "Hidden",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 65,

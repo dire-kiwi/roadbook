@@ -96,6 +96,8 @@
         "name": "Race",
         "kind": "compound",
         "doc": "Take whichever answer the machine is still waiting for.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -113,6 +115,8 @@
             "name": "Slow",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 14,
@@ -210,6 +214,8 @@
             "name": "Quick",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 21,
@@ -286,6 +292,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 27,

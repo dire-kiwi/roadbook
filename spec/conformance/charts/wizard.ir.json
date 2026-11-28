@@ -86,6 +86,8 @@
         "name": "Wizard",
         "kind": "compound",
         "doc": "Two steps of a form, a review that passes straight through, and a result.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -103,6 +105,8 @@
             "name": "Form",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 14,
@@ -120,6 +124,8 @@
                 "name": "Name",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 19,
@@ -195,6 +201,8 @@
                 "name": "Email",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 20,
@@ -270,6 +278,8 @@
                 "name": "Complete",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 22,
@@ -349,6 +359,8 @@
             "name": "Review",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -423,6 +435,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 27,

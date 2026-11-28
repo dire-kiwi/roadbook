@@ -43,6 +43,7 @@ export interface UploadDef extends Roadbook.MachineDef {
     | "Upload.Finishing"
     | "Upload.Done"
     | "Upload.Failed"
+  readonly tag: never
   readonly fns: {
     readonly percentOf: {
       readonly args: { readonly file: File; readonly offset: number }
@@ -368,6 +369,8 @@ const ir: unknown = {
         "name": "Upload",
         "kind": "compound",
         "doc": "Upload a file in chunks. Can be paused, and reports its progress to whoever invoked it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 23,
@@ -385,6 +388,8 @@ const ir: unknown = {
             "name": "Sending",
             "kind": "atomic",
             "doc": "One chunk at a time, until every byte is stored.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 35,
@@ -623,6 +628,8 @@ const ir: unknown = {
             "name": "Paused",
             "kind": "atomic",
             "doc": "Nothing is sent until the user resumes.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 45,
@@ -669,6 +676,8 @@ const ir: unknown = {
             "name": "Finishing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 47,
@@ -792,6 +801,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 54,
@@ -824,6 +835,8 @@ const ir: unknown = {
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 55,

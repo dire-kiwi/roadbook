@@ -223,6 +223,8 @@
         "name": "Session",
         "kind": "compound",
         "doc": "One connection.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 16,
@@ -240,6 +242,8 @@
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 24,
@@ -386,6 +390,8 @@
             "name": "Left",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -418,6 +424,8 @@
             "name": "Dropped",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 30,
@@ -493,6 +501,8 @@
         "name": "Job",
         "kind": "compound",
         "doc": "A job with no result.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 34,
@@ -510,6 +520,8 @@
             "name": "Running",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -561,6 +573,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 37,
@@ -757,6 +771,8 @@
         "name": "Hub",
         "kind": "compound",
         "doc": "Many sessions, one per connection.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 41,
@@ -774,6 +790,8 @@
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -840,6 +858,8 @@
             "name": "Serving",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 58,
@@ -1373,6 +1393,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 70,

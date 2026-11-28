@@ -1092,6 +1092,25 @@ A **listener** is host code that receives what a run emits. It is not a run: the
 - **TypeScript.** `actor.emitted` is a `Stream` of the machine's emitted events (`D["emits"]`), decoded as host code receives events. Each run of the stream subscribes as it starts and unsubscribes when it ends or is interrupted, and ends when the run ends or is suspended. The tools' `RunHandle.listen(f)` calls `f` with each event's JSON as the driver carries out the `emit`, until the function it returns is called or the run ends; `f` must not throw.
 - **Rust.** `actor.subscribe()` gives a `Subscription` of the machine's `Emitted` enum, and the tools' `RunHandle::subscribe()` one of JSON values. `next().await` gives the next event, or `None` once the run has ended and every event before that has been taken; `try_next()` gives one only if it is there. Dropping a subscription unsubscribes it.
 
+### Tags
+
+A state's `tags` ([the IR](ir.md#states)) are names host code asks a run for. The **tags of a snapshot** are those of its active states:
+
+```
+tags(snap):
+  out = []
+  for s in snap.active, in order:      # document order, outermost first
+    for t in s.tags, in order:
+      if t is not in out: append t to out
+  return out
+```
+
+- **Each once, in document order.** A tag of a compound state holds in every state inside it, and two regions with the same tag give it once, where the first region has it.
+- **Between steps.** Host code sees a run's snapshot as its last step left it, so its tags are never those of a choice state or of a state a step passed through. A run that has ended has no active states, and so no tags.
+- **Nothing else.** The core never reads tags or `meta`: they change no selection, no record and no [hash](ir.md#the-machine-hash).
+- **TypeScript.** A driver `Snapshot` has `tags`, `tags(snap)` above, and `hasTag(tag)`. `tagsOf(machine, active)` in the core package computes them.
+- **Rust.** `Actor::tags()` gives the tags of the run's latest snapshot, `Actor::has_tag(tag)` whether one is among them; `Program::tags(machine, active)` computes them. A conformance step `{"tags": [...]}` checks them against the expected list ([script steps](conformance/README.md#casejson)).
+
 ### Carrying out calls
 
 - **Making a call.** For `invoke.start` with `srcKind` `call`, the driver builds `{"kind": "call", "from": <this run's id>, "invoke": …, "call": <src>, "args": …}` and keeps with it a way to answer: a push of an outcome for that invoke onto this run's queue. If the peer `to` is open, it pushes the call onto the peer's queue, as one operation with respect to the peer's closing, as for a message. Otherwise it pushes `{"kind": "invoke.fail", "invoke": …, "error": {"_tag": "Unanswered"}}` onto this run's own queue at once, as a task that fails at once would. It writes no record either way, and runs no host code: a call has no implementation to bind.

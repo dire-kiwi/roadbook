@@ -699,6 +699,17 @@ impl Formatter<'_> {
                 let text = format!("check {}", property_text(&c.property));
                 self.row(whole, indent, vec![text], "", None);
             }
+            Item::Meta(m) => {
+                let entries: Vec<_> = m
+                    .entries
+                    .iter()
+                    .map(|e| (e.span, format!("{}: {}", e.name.name, expr(&e.value))))
+                    .collect();
+                let after = m.span.start.offset + "meta".len() as u32;
+                if let Some(text) = self.brace_list(after, "meta", &entries, whole.0, indent) {
+                    self.row(whole, indent, vec![format!("meta {text}")], "", None);
+                }
+            }
             _ => {
                 let text = inline_item(item).expect("every other item is one line");
                 self.row(whole, indent, vec![text], "", None);
@@ -817,6 +828,10 @@ fn inline_item(item: &Item) -> Option<String> {
         Item::Exit(h) => format!("exit {}", effects(&h.effects)),
         Item::Output(v) => format!("output {}", expr(&v.value)),
         Item::Fail(v) => format!("fail {}", expr(&v.value)),
+        Item::Tags(t) => {
+            let names: Vec<_> = t.names.iter().map(|n| n.name.as_str()).collect();
+            format!("tags {}", names.join(", "))
+        }
         Item::Transition(Transition {
             trigger: tr,
             branches: Branches::Single(b),
@@ -839,6 +854,7 @@ fn inline_item(item: &Item) -> Option<String> {
         | Item::Invoke(_)
         | Item::History(_)
         | Item::Check(_)
+        | Item::Meta(_)
         | Item::Transition(_) => {
             return None;
         }

@@ -1,0 +1,21 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0231]: `meta` key `owner` is written twice on `M.S`
+ --> RB0231-duplicate-meta.road:5:40
+  |
+5 |     meta { owner: "payments", sla: 30, owner: "billing" }
+  |                                        ^^^^^
+  |            ----- already written here
+  |
+  = help: a `meta` has each key once; remove one of them
+
+error[RB0231]: `M.T` already has a `meta`
+  --> RB0231-duplicate-meta.road:10:5
+   |
+ 9 |     meta { sla: 10 }
+   |     ---------------- the first `meta`
+10 |     meta { owner: "ops" }
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: write every entry of the state's `meta` in one `meta { … }`

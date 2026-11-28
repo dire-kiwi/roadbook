@@ -171,6 +171,8 @@ export function defaultCollapsed(machine: Machine, budget = 32): Set<string> {
 export interface StateBox {
   rows: Row[]
   titleH: number
+  /** Height of the band of tag pills under the title: 0 for a state with no tags. */
+  tagsH: number
   width: number
   height: number
 }
@@ -179,11 +181,11 @@ export interface StateBox {
 export function stateBox(state: State, measure: Measure, collapsed = false): StateBox {
   const M = METRICS
   // A history state is a small circle marked `H` or `H*`, with no rows.
-  if (isHistory(state)) return { rows: [], titleH: M.historyD, width: M.historyD, height: M.historyD }
+  if (isHistory(state)) return { rows: [], titleH: M.historyD, tagsH: 0, width: M.historyD, height: M.historyD }
   // A choice state is a small diamond with its name beside it, with no rows.
   if (isChoice(state)) {
     const width = Math.ceil(M.choiceD + M.choiceGap + measure(state.name, M.fontRow, true))
-    return { rows: [], titleH: M.choiceD, width, height: M.choiceD }
+    return { rows: [], titleH: M.choiceD, tagsH: 0, width, height: M.choiceD }
   }
   const rows = stateRows(state, collapsed)
   const isContainer = state.states.length > 0 && !collapsed
@@ -195,15 +197,25 @@ export function stateBox(state: State, measure: Measure, collapsed = false): Sta
     const text = (r.kw ? r.kw + ' ' : '') + r.text
     w = Math.max(w, measure(text, M.fontRow, false) + 2 * M.padX + (r.machine ? 2 * M.machinePillPad + 12 : 0))
   }
+  const tagsH = state.tags.length ? M.tagH + M.tagGap : 0
+  if (state.tags.length) w = Math.max(w, tagsWidth(state.tags, measure) + 2 * M.padX)
   const rowsH = rows.length ? rows.length * M.rowH + 2 * M.rowsPadY : 0
-  const titleH = !isContainer && !rows.length ? 36 : M.titleH
+  const titleH = !isContainer && !rows.length && !tagsH ? 36 : M.titleH
   return {
     rows,
     titleH,
+    tagsH,
     width: Math.ceil(Math.max(w, 92) + 2 * inset),
-    height: Math.ceil(titleH + rowsH + 2 * inset),
+    height: Math.ceil(titleH + tagsH + rowsH + 2 * inset),
   }
 }
+
+/** The width of one tag's pill. */
+export const tagWidth = (tag: string, measure: Measure): number => measure(tag, METRICS.fontEffect, false) + 2 * METRICS.tagPad
+
+/** The width of a state's band of tag pills, side by side. */
+export const tagsWidth = (tags: readonly string[], measure: Measure): number =>
+  tags.reduce((w, t) => w + tagWidth(t, measure), 0) + Math.max(0, tags.length - 1) * METRICS.tagGap
 
 export interface LabelBox {
   lines: LabelLine[]

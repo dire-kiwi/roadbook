@@ -72,6 +72,15 @@ export interface PanelContext {
 const code = (s: string) => `<pre class="rb-code">${esc(s)}</pre>`
 const section = (title: string, body: string) => (body ? `<h3>${esc(title)}</h3>${body}` : '')
 const list = (items: string[]) => (items.length ? `<ul class="rb-list">${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : '')
+/** A state's tags as chips, and its `meta` as a list of keys and values. */
+const tagsHtml = (s: State) => (s.tags.length ? `<p>${s.tags.map((t) => `<span class="rb-chip">${esc(t)}</span>`).join(' ')}</p>` : '')
+const metaHtml = (s: State) => {
+  const entries = Object.entries(s.meta)
+  return entries.length
+    ? `<dl class="rb-kv">${entries.map(([k, v]) => `<dt>${esc(k)}</dt><dd class="rb-mono">${esc(JSON.stringify(v))}</dd>`).join('')}</dl>`
+    : ''
+}
+
 const docHtml = (doc: string) => (doc ? `<p class="rb-doc">${esc(doc).replace(/\n/g, '<br>')}</p>` : '')
 
 function shortId(ctx: PanelContext, id: string): string {
@@ -389,6 +398,8 @@ export function machinePanel(ctx: PanelContext): string {
     head(esc(ctx.machine), 'machine', false) +
     `<p class="rb-path">${esc(sourceText(ir, m.span))}</p>` +
     docHtml(m.doc) +
+    section('Tags', tagsHtml(m.root)) +
+    section('Meta', metaHtml(m.root)) +
     section('Signature', code(signatureText('machine', ctx.machine, m)) + signatureKv(ir, m)) +
     section(
       'Variables',
@@ -483,6 +494,8 @@ export function statePanel(ctx: PanelContext, state: State): string {
     `<p class="rb-path">${esc(state.id)} · ${esc(sourceText(ir, state.span))}</p>` +
     docHtml(state.doc) +
     toggle +
+    section('Tags', tagsHtml(state)) +
+    section('Meta', metaHtml(state)) +
     section(
       'What it does',
       isChoice(state)

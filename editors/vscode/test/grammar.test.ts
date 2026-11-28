@@ -113,6 +113,15 @@ describe('scopes', () => {
     expect(await scopesAt('    always set n = choice + 1', 'choice')).not.toContain('storage.type.choice.roadbook')
   })
 
+  it('marks tags and meta, and both as names elsewhere', async () => {
+    expect(await scopesAt('    tags busy, network', 'tags')).toContain('storage.type.tags.roadbook')
+    expect(await scopesAt('    tags busy, network', 'network')).toContain('constant.other.tag.roadbook')
+    expect(await scopesAt('    meta { owner: "payments", sla: 30 }', 'meta')).toContain('storage.type.meta.roadbook')
+    expect((await scopesAt('    meta { owner: "payments", sla: 30 }', '30')).join(' ')).toContain('constant.numeric')
+    expect(await scopesAt('  var tags: int', 'tags')).toContain('variable.other.definition.roadbook')
+    expect(await scopesAt('    always set n = tags + meta', 'tags')).not.toContain('storage.type.tags.roadbook')
+  })
+
   it('marks in(…) as a keyword and its path as states', async () => {
     const line = '    on Go if not in(Main.Volume.Muted) -> Paused(in(Main.Volume.Loud))  do note(in(Main))'
     expect(await scopesAt(line, 'in')).toContain('keyword.operator.in.roadbook')

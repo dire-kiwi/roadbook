@@ -97,6 +97,8 @@
         "name": "Top",
         "kind": "compound",
         "doc": "Counts pings until the machine's own ten second timer ends it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -114,6 +116,8 @@
             "name": "A",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 21,
@@ -160,6 +164,8 @@
             "name": "B",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 23,
@@ -232,6 +238,8 @@
             "name": "C",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 28,
@@ -256,6 +264,8 @@
             "name": "Late",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 30,

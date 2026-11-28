@@ -27,6 +27,7 @@ export interface ChildDef extends Roadbook.MachineDef {
   readonly event: Pause
   readonly emits: Reserved
   readonly state: "Child" | "Child.Waiting"
+  readonly tag: never
   readonly fns: {}
   readonly actions: { readonly note: { readonly stock: Roadbook.Handle<StockDef> } }
   readonly tasks: {}
@@ -54,6 +55,7 @@ export interface ShopDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Shop" | "Shop.Asking" | "Shop.Over"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}

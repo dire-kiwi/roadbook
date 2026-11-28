@@ -114,6 +114,8 @@
         "name": "Histories",
         "kind": "compound",
         "doc": "History states drawn as circles inside their parents.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -131,6 +133,8 @@
             "name": "Work",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 16,
@@ -148,6 +152,8 @@
                 "name": "Last",
                 "kind": "history",
                 "doc": "Back to where `Work` was.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 19,
@@ -172,6 +178,8 @@
                 "name": "All",
                 "kind": "deepHistory",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 20,
@@ -196,6 +204,8 @@
                 "name": "A",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 22,
@@ -254,6 +264,8 @@
                 "name": "B",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 23,
@@ -271,6 +283,8 @@
                     "name": "B1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 26,
@@ -317,6 +331,8 @@
                     "name": "B2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 27,
@@ -417,6 +433,8 @@
             "name": "Paused",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,
@@ -505,6 +523,8 @@
             "name": "Both",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -522,6 +542,8 @@
                 "name": "Again",
                 "kind": "deepHistory",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 39,
@@ -546,6 +568,8 @@
                 "name": "Regions",
                 "kind": "history",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 40,
@@ -570,6 +594,8 @@
                 "name": "Left",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 41,
@@ -587,6 +613,8 @@
                     "name": "Inside",
                     "kind": "deepHistory",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 43,
@@ -611,6 +639,8 @@
                     "name": "L1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 44,
@@ -657,6 +687,8 @@
                     "name": "L2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 45,
@@ -711,6 +743,8 @@
                 "name": "Right",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 47,
@@ -728,6 +762,8 @@
                     "name": "R1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 49,
@@ -790,6 +826,8 @@
             "name": "Away",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 53,

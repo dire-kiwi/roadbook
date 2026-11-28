@@ -299,6 +299,8 @@
         "name": "Inventory",
         "kind": "compound",
         "doc": "The stock of one warehouse, shared by every order.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 19,
@@ -316,6 +318,8 @@
             "name": "Ready",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 40,
@@ -449,6 +453,8 @@
             "name": "Reserving",
             "kind": "atomic",
             "doc": "One reservation at a time: another call meanwhile is turned away at once.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 47,
@@ -804,6 +810,8 @@
             "name": "Paused",
             "kind": "atomic",
             "doc": "No `on reserve`: a reserve call is dropped, and answered Unanswered.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 58,
@@ -850,6 +858,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 60,
@@ -996,6 +1006,8 @@
         "name": "Order",
         "kind": "compound",
         "doc": "Reserve the items with the warehouse, giving up after 5s.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 64,
@@ -1013,6 +1025,8 @@
             "name": "Reserving",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 70,
@@ -1242,6 +1256,8 @@
             "name": "Reserved",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 79,
@@ -1274,6 +1290,8 @@
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 80,
@@ -1357,6 +1375,8 @@
         "name": "Counter",
         "kind": "compound",
         "doc": "Ask the warehouse how many reservations it holds; 0 if it cannot say.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 84,
@@ -1374,6 +1394,8 @@
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 89,
@@ -1477,6 +1499,8 @@
             "name": "Got",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 96,
@@ -1509,6 +1533,8 @@
             "name": "Gave",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 97,

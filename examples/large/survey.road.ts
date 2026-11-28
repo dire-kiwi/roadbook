@@ -27,6 +27,7 @@ export interface SatisfactionSurveyDef extends Roadbook.MachineDef {
     | "SatisfactionSurvey.Polling"
     | "SatisfactionSurvey.Answered"
     | "SatisfactionSurvey.NoAnswer"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {
@@ -857,6 +858,8 @@ const ir: unknown = {
         "name": "SatisfactionSurvey",
         "kind": "compound",
         "doc": "Send a satisfaction survey and wait up to a week for the answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 4,
@@ -874,6 +877,8 @@ const ir: unknown = {
             "name": "Sending",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 11,
@@ -982,6 +987,8 @@ const ir: unknown = {
             "name": "Waiting",
             "kind": "atomic",
             "doc": "Check for an answer once a day.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 19,
@@ -1033,6 +1040,8 @@ const ir: unknown = {
             "name": "Polling",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 21,
@@ -1214,6 +1223,8 @@ const ir: unknown = {
             "name": "Answered",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -1265,6 +1276,8 @@ const ir: unknown = {
             "name": "NoAnswer",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,

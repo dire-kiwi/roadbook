@@ -128,3 +128,26 @@ machine Generic(boxes: Boxes<duration>) -> Boxes<duration> {
 
   final state Over { output withLongest(boxes) }
 }
+
+/// Tags on the machine body and on states, two regions sharing one.
+machine Spinner() {
+  event Fetch
+  event Fetched
+
+  tags app
+
+  initial Idle
+
+  state Idle {
+    tags idle
+    on Fetch -> Loading
+  }
+
+  parallel state Loading {
+    tags busy
+    meta { owner: "payments" }
+    on Fetched -> Idle
+    state Data   { tags network }
+    state Images { tags network, slow }
+  }
+}

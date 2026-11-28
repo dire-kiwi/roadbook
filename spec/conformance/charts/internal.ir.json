@@ -114,6 +114,8 @@
         "name": "Kept",
         "kind": "compound",
         "doc": "`Session` keeps its timer and its invoke when an internal transition changes the states\nbelow it; an external one restarts both.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 9,
@@ -131,6 +133,8 @@
             "name": "Session",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 17,
@@ -148,6 +152,8 @@
                 "name": "Browsing",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 30,
@@ -220,6 +226,8 @@
                 "name": "Cart",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 36,
@@ -237,6 +245,8 @@
                     "name": "Editing",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 40,
@@ -261,6 +271,8 @@
                     "name": "Reviewing",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 41,
@@ -479,6 +491,8 @@
             "name": "TimedOut",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 45,
@@ -564,6 +578,8 @@
         "name": "Again",
         "kind": "compound",
         "doc": "An internal transition that exits a final state takes back its parent's completion: the\nfirst time `Work` ends, `S`'s `always` goes back into it before `S`'s `done` is tried.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 50,
@@ -581,6 +597,8 @@
             "name": "S",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -598,6 +616,8 @@
                 "name": "Work",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 63,
@@ -673,6 +693,8 @@
                 "name": "Done",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 65,
@@ -793,6 +815,8 @@
             "name": "Out",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 68,

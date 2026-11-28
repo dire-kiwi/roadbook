@@ -1071,6 +1071,8 @@ impl<'p> Cx<'_, 'p> {
             vars: Vec::new(),
             initial: None,
             default,
+            tags: Vec::new(),
+            meta: Default::default(),
             states: Vec::new(),
             entry: Vec::new(),
             exit: Vec::new(),
@@ -2456,6 +2458,9 @@ impl<'p> Cx<'_, 'p> {
                 | Item::History(_)
                 // Resolved once the machine is lowered, in `checks.rs`.
                 | Item::Check(_)
+                // In `tags_and_meta`.
+                | Item::Tags(_)
+                | Item::Meta(_)
                 | Item::State(_) => {}
             }
         }
@@ -2490,6 +2495,7 @@ impl<'p> Cx<'_, 'p> {
             info.result_reads = result_reads;
             info.transition_reads = transition_reads;
         }
+        let (tags, meta) = self.tags_and_meta(body, &id);
         let retry = retry.and_then(|plan| self.check_retry(idx, kind, plan));
         let children = self.nodes[idx].order.clone();
         let states = children.into_iter().map(|c| self.lower_state(c)).collect();
@@ -2507,6 +2513,8 @@ impl<'p> Cx<'_, 'p> {
             vars,
             initial,
             default: Vec::new(),
+            tags,
+            meta,
             states,
             entry,
             exit,
@@ -2519,6 +2527,106 @@ impl<'p> Cx<'_, 'p> {
             self.write_out_retry(&mut lowered, r);
         }
         lowered
+    }
+
+    /// The tags and `meta` of the state whose body is `body`, in the order written. A tag or
+    /// key written twice, or a second `tags` or `meta`, is `RB0230` or `RB0231`; a value that
+    /// is not a literal is `RB0232`. What is reported is left out.
+    fn tags_and_meta(
+        &mut self,
+        body: &Body,
+        id: &str,
+    ) -> (Vec<String>, IndexMap<String, serde_json::Value>) {
+        let mut tags: Vec<(String, Span)> = Vec::new();
+        let mut meta: IndexMap<String, (serde_json::Value, Span)> = IndexMap::new();
+        let (mut tags_item, mut meta_item): (Option<Span>, Option<Span>) = (None, None);
+        for item in &body.items {
+            match item {
+                Item::Tags(t) => {
+                    if let Some(first) = tags_item {
+                        self.ck.diags.push(
+                            Diagnostic::error(
+                                codes::DUPLICATE_TAG,
+                                t.span,
+                                format!("`{id}` already has a `tags`"),
+                            )
+                            .with_secondary(first, "the first `tags`")
+                            .with_help(
+                                "list every tag of the state in one `tags`, separated by commas",
+                            ),
+                        );
+                        continue;
+                    }
+                    tags_item = Some(t.span);
+                    for n in &t.names {
+                        if let Some((_, first)) = tags.iter().find(|(name, _)| *name == n.name) {
+                            self.ck.diags.push(
+                                Diagnostic::error(
+                                    codes::DUPLICATE_TAG,
+                                    n.span,
+                                    format!("tag `{}` is written twice on `{id}`", n.name),
+                                )
+                                .with_secondary(*first, "already written here")
+                                .with_help("a state has each tag once; remove this one"),
+                            );
+                            continue;
+                        }
+                        tags.push((n.name.clone(), n.span));
+                    }
+                }
+                Item::Meta(m) => {
+                    if let Some(first) = meta_item {
+                        self.ck.diags.push(
+                            Diagnostic::error(
+                                codes::DUPLICATE_META,
+                                m.span,
+                                format!("`{id}` already has a `meta`"),
+                            )
+                            .with_secondary(first, "the first `meta`")
+                            .with_help(
+                                "write every entry of the state's `meta` in one `meta { … }`",
+                            ),
+                        );
+                        continue;
+                    }
+                    meta_item = Some(m.span);
+                    for e in &m.entries {
+                        if let Some((_, first)) = meta.get(&e.name.name) {
+                            self.ck.diags.push(
+                                Diagnostic::error(
+                                    codes::DUPLICATE_META,
+                                    e.name.span,
+                                    format!(
+                                        "`meta` key `{}` is written twice on `{id}`",
+                                        e.name.name
+                                    ),
+                                )
+                                .with_secondary(*first, "already written here")
+                                .with_help("a `meta` has each key once; remove one of them"),
+                            );
+                            continue;
+                        }
+                        let Some(value) = meta_literal(&e.value) else {
+                            self.ck.diags.push(
+                                Diagnostic::error(
+                                    codes::BAD_META_VALUE,
+                                    e.value.span,
+                                    format!("the value of `meta` key `{}` is not a literal", e.name.name),
+                                )
+                                .with_help("a `meta` value is a string, int, float or bool written out, such as `\"payments\"`, `30`, `-0.5` or `true`; it is data about the state, never computed"),
+                            );
+                            continue;
+                        };
+                        meta.insert(e.name.name.clone(), (value, e.name.span));
+                    }
+                }
+                _ => {}
+            }
+        }
+        (
+            tags.into_iter().map(|(t, _)| t).collect(),
+            meta.into_iter().map(|(k, (v, _))| (k, v)).collect(),
+        )
     }
 
     /// Checks choice state `idx`: not a region of a parallel state (`RB0229`), a target on
@@ -4847,4 +4955,23 @@ fn dot_span(t: &Target) -> Span {
     end.offset += 1;
     end.col += 1;
     Span { end, ..t.span }
+}
+
+/// The JSON value of a `meta` value: a string, int, float or bool literal, a number with a
+/// `-` before it included. `None` for anything else.
+fn meta_literal(e: &ast::Expr) -> Option<serde_json::Value> {
+    use ast::{ExprKind, UnaryOp};
+    use serde_json::Value;
+    Some(match &e.kind {
+        ExprKind::String(s) => Value::String(s.clone()),
+        ExprKind::Bool(b) => Value::Bool(*b),
+        ExprKind::Int(i) => Value::from(*i),
+        ExprKind::Float(f) => Value::from(*f),
+        ExprKind::Unary(UnaryOp::Neg, inner) => match &inner.kind {
+            ExprKind::Int(i) => Value::from(i.checked_neg()?),
+            ExprKind::Float(f) => Value::from(-*f),
+            _ => return None,
+        },
+        _ => return None,
+    })
 }

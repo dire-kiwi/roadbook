@@ -112,6 +112,8 @@
         "name": "Issuer",
         "kind": "compound",
         "doc": "Issues tokens while it is open; strict, so a call while closed is a defect.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 11,
@@ -129,6 +131,8 @@
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -241,6 +245,8 @@
             "name": "Shut",
             "kind": "atomic",
             "doc": "No `on issue`: a call here ends the run with an `unhandled` defect.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -350,6 +356,8 @@
         "name": "Client",
         "kind": "compound",
         "doc": "Asks the issuer for a token; gives the user it was issued to, or \"\".",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 30,
@@ -367,6 +375,8 @@
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 35,
@@ -489,6 +499,8 @@
             "name": "Got",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 42,
@@ -521,6 +533,8 @@
             "name": "Gave",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 43,

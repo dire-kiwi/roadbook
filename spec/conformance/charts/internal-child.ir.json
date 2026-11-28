@@ -70,6 +70,8 @@
         "name": "Echo",
         "kind": "compound",
         "doc": "A child that answers every `Ping` with a `Pong`.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 4,
@@ -87,6 +89,8 @@
             "name": "Ready",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 11,
@@ -163,6 +167,8 @@
             "name": "Stopped",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 16,
@@ -228,6 +234,8 @@
         "name": "Caller",
         "kind": "compound",
         "doc": "An internal transition written in the invoking state does not leave it, so its child keeps\nrunning and can be sent to from the transition itself.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 21,
@@ -245,6 +253,8 @@
             "name": "Talking",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -262,6 +272,8 @@
                 "name": "Waiting",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 35,
@@ -286,6 +298,8 @@
                 "name": "Heard",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 36,
@@ -421,6 +435,8 @@
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 39,

@@ -176,6 +176,16 @@
       "required": ["suspend"],
       "properties": { "suspend": { "$ref": "#/$defs/snapshotName" }, "run": { "$ref": "#/$defs/topRunId" } }
     },
+    "tags": {
+      "description": "Check the tags of a top-level run (the root run, or the run named by run) now: the tags of its active states, each once, in document order (execution.md, Tags). Writes nothing to the trace.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tags"],
+      "properties": {
+        "tags": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/lowerName" } },
+        "run": { "$ref": "#/$defs/topRunId" }
+      }
+    },
     "together": {
       "description": "Queue several inputs for one run before it takes the first of them, as when they arrive at the same moment. An advance item queues the expiries of the timers due in its window; an emit item the task.emitted input its invoke's emitter would push, or nothing.",
       "type": "object",
@@ -202,7 +212,8 @@
         { "$ref": "#/$defs/together" },
         { "$ref": "#/$defs/snapshot" },
         { "$ref": "#/$defs/restore" },
-        { "$ref": "#/$defs/suspend" }
+        { "$ref": "#/$defs/suspend" },
+        { "$ref": "#/$defs/tags" }
       ]
     }
   }

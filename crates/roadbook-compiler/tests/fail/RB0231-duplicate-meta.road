@@ -1,0 +1,15 @@
+machine M() {
+  event Go
+  initial S
+  state S {
+    meta { owner: "payments", sla: 30, owner: "billing" }
+    on Go -> T
+  }
+  state T {
+    meta { sla: 10 }
+    meta { owner: "ops" }
+  }
+}
+
+// expect: RB0231 at 5:40
+// expect: RB0231 at 10:5

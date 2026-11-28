@@ -111,6 +111,8 @@
         "name": "Ticker",
         "kind": "compound",
         "doc": "Ticks on its own.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 11,
@@ -128,6 +130,8 @@
             "name": "Ticking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 13,
@@ -218,6 +222,8 @@
             "name": "Stopping",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 17,
@@ -263,6 +269,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 18,
@@ -389,6 +397,8 @@
         "name": "Stress",
         "kind": "compound",
         "doc": "Every shape the viewer has to lay out, at once.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 22,
@@ -406,6 +416,8 @@
             "name": "Start",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 35,
@@ -554,6 +566,8 @@
             "name": "Running",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 42,
@@ -571,6 +585,8 @@
                 "name": "Left",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 46,
@@ -588,6 +604,8 @@
                     "name": "A",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 48,
@@ -673,6 +691,8 @@
                     "name": "B",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 52,
@@ -876,6 +896,8 @@
                     "name": "C",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 62,
@@ -921,6 +943,8 @@
                     "name": "LeftDone",
                     "kind": "final",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 63,
@@ -953,6 +977,8 @@
                 "name": "Right",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 66,
@@ -970,6 +996,8 @@
                     "name": "X",
                     "kind": "compound",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 68,
@@ -987,6 +1015,8 @@
                         "name": "X1",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 70,
@@ -1054,6 +1084,8 @@
                         "name": "X2",
                         "kind": "compound",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 74,
@@ -1071,6 +1103,8 @@
                             "name": "Deep",
                             "kind": "compound",
                             "doc": "",
+                            "tags": [],
+                            "meta": {},
                             "span": {
                               "file": 0,
                               "line": 76,
@@ -1088,6 +1122,8 @@
                                 "name": "Deeper",
                                 "kind": "atomic",
                                 "doc": "",
+                                "tags": [],
+                                "meta": {},
                                 "span": {
                                   "file": 0,
                                   "line": 78,
@@ -1202,6 +1238,8 @@
                     "name": "Y",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 84,
@@ -1288,6 +1326,8 @@
                     "name": "RightDone",
                     "kind": "final",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 89,
@@ -1370,6 +1410,8 @@
             "name": "Stopped",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 93,
@@ -1416,6 +1458,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 95,
@@ -1448,6 +1492,8 @@
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 96,
@@ -1491,6 +1537,8 @@
             "name": "Expired",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 97,
@@ -1534,6 +1582,8 @@
             "name": "Quit1",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 98,
@@ -1563,6 +1613,8 @@
             "name": "Quit2",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 99,
@@ -1592,6 +1644,8 @@
             "name": "Quit3",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 100,
@@ -1621,6 +1675,8 @@
             "name": "Quit4",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 101,
@@ -1650,6 +1706,8 @@
             "name": "Quit5",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 102,
@@ -1679,6 +1737,8 @@
             "name": "Exits",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 104,

@@ -167,6 +167,8 @@
         "name": "Router",
         "kind": "compound",
         "doc": "Routes each order by its amount.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 8,
@@ -184,6 +186,8 @@
             "name": "Start",
             "kind": "choice",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 22,
@@ -271,6 +275,8 @@
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 27,
@@ -391,6 +397,8 @@
             "name": "Desk",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -408,6 +416,8 @@
                 "name": "Last",
                 "kind": "deepHistory",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 37,
@@ -434,6 +444,8 @@
                 "name": "Route",
                 "kind": "choice",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 39,
@@ -640,6 +652,8 @@
                 "name": "Vip",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 46,
@@ -664,6 +678,8 @@
                 "name": "Review",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 47,
@@ -695,6 +711,8 @@
                 "name": "Standard",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 48,
@@ -749,6 +767,8 @@
             "name": "Auditing",
             "kind": "choice",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 53,

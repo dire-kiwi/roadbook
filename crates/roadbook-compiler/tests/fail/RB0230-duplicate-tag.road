@@ -1,0 +1,15 @@
+machine M() {
+  event Go
+  initial S
+  state S {
+    tags busy, network, busy
+    on Go -> T
+  }
+  state T {
+    tags idle
+    tags finished
+  }
+}
+
+// expect: RB0230 at 5:25
+// expect: RB0230 at 10:5

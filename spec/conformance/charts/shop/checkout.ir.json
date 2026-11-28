@@ -591,6 +591,8 @@
         "name": "Checkout",
         "kind": "compound",
         "doc": "Charge the customer's card, retrying while the payment gateway is down.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 4,
@@ -608,6 +610,8 @@
             "name": "Charging",
             "kind": "atomic",
             "doc": "One attempt against the payment gateway.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 12,
@@ -806,6 +810,8 @@
             "name": "Backoff",
             "kind": "atomic",
             "doc": "Wait before the next attempt. The delay grows with each attempt.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 24,
@@ -897,6 +903,8 @@
             "name": "Charged",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -929,6 +937,8 @@
             "name": "Declined",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 30,
@@ -961,6 +971,8 @@
             "name": "GaveUp",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,

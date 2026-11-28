@@ -37,6 +37,7 @@ export interface UploaderDef extends Roadbook.MachineDef {
     | "Uploader.Waiting"
     | "Uploader.Stopped"
     | "Uploader.Done"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {
@@ -268,6 +269,8 @@ const ir: unknown = {
         "name": "Uploader",
         "kind": "compound",
         "doc": "Uploads a file, showing its progress, then counts seconds until it is stopped.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 15,
@@ -285,6 +288,8 @@ const ir: unknown = {
             "name": "Uploading",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 24,
@@ -418,6 +423,8 @@ const ir: unknown = {
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -540,6 +547,8 @@ const ir: unknown = {
             "name": "Stopped",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 37,
@@ -586,6 +595,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 41,

@@ -281,6 +281,8 @@
         "name": "Teller",
         "kind": "compound",
         "doc": "Answers questions from whoever invoked it with what it was asked.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -298,6 +300,8 @@
             "name": "Listening",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 14,
@@ -401,6 +405,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 19,
@@ -517,6 +523,8 @@
         "name": "Keeper",
         "kind": "compound",
         "doc": "Invokes a Teller and asks it a question: before it runs, and once it does.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 23,
@@ -534,6 +542,8 @@
             "name": "Asking",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -551,6 +561,8 @@
                 "name": "Ready",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 36,
@@ -784,6 +796,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 44,
@@ -893,6 +907,8 @@
         "name": "Caller",
         "kind": "compound",
         "doc": "Asks a Teller it holds a `ref` to, and keeps the answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 48,
@@ -910,6 +926,8 @@
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 56,
@@ -1078,6 +1096,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 63,

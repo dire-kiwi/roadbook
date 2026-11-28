@@ -77,6 +77,8 @@
         "name": "Receiver",
         "kind": "compound",
         "doc": "Must get First before Second.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 8,
@@ -94,6 +96,8 @@
             "name": "WaitingFirst",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 14,
@@ -140,6 +144,8 @@
             "name": "WaitingSecond",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 16,
@@ -186,6 +192,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 18,
@@ -281,6 +289,8 @@
         "name": "Sender",
         "kind": "compound",
         "doc": "Sends First, then Second, in one transition, to the same peer named two ways.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 22,
@@ -298,6 +308,8 @@
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 30,
@@ -394,6 +406,8 @@
             "name": "Sent",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,

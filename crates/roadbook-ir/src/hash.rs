@@ -58,6 +58,8 @@
 //!   `state` of a `ref` expression or a `set` effect when it is `null`, so a machine
 //!   with no state parameters or variables keeps its 0.12 hash. A state's `default` is
 //!   removed when it is `[]`, so a machine with no history default keeps its 0.13 hash.
+//!   A state's `tags` and `meta` are always removed: they say nothing about what a run
+//!   does, so adding a tag keeps the hash and the snapshots saved before it.
 //!   `calls` and `strict` are always kept.
 //!
 //! Comments, formatting, source positions, `sensitive` marks and unused
@@ -553,6 +555,10 @@ fn strip(v: &mut Value) {
             if m.contains_key("invokes") && m.contains_key("transitions") {
                 state_as_before(m);
                 default_as_before(m);
+                // What tools and host code read about a state, never what a run does. `meta`
+                // goes before the recursion, which would strip its keys.
+                m.remove("tags");
+                m.remove("meta");
             }
             for (key, value) in m.iter_mut() {
                 match value {

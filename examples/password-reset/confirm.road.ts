@@ -33,6 +33,7 @@ export interface ConfirmPasswordResetDef extends Roadbook.MachineDef {
     | "ConfirmPasswordReset.WeakPassword"
     | "ConfirmPasswordReset.UserVanished"
     | "ConfirmPasswordReset.TimedOut"
+  readonly tag: never
   readonly fns: {
     readonly passwordProblems: {
       readonly args: { readonly password: string }
@@ -439,6 +440,8 @@ const ir: unknown = {
         "name": "ConfirmPasswordReset",
         "kind": "compound",
         "doc": "POST /password-reset/confirm: exchange a reset token and a new password\nfor a changed password. Every final state is one HTTP response.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 11,
@@ -456,6 +459,8 @@ const ir: unknown = {
             "name": "Working",
             "kind": "compound",
             "doc": "Everything the request does. The 5 second budget covers all of it.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 15,
@@ -473,6 +478,8 @@ const ir: unknown = {
                 "name": "LookingUp",
                 "kind": "atomic",
                 "doc": "The task reports unknown and expired tokens as errors.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 21,
@@ -603,6 +610,8 @@ const ir: unknown = {
                 "name": "CheckingPolicy",
                 "kind": "atomic",
                 "doc": "The policy is a pure function: an empty list means the password is fine.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 30,
@@ -752,6 +761,8 @@ const ir: unknown = {
                 "name": "Hashing",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 39,
@@ -854,6 +865,8 @@ const ir: unknown = {
                 "name": "Updating",
                 "kind": "atomic",
                 "doc": "The user can be deleted between the lookup and the update.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 46,
@@ -986,6 +999,8 @@ const ir: unknown = {
                 "name": "Notifying",
                 "kind": "atomic",
                 "doc": "Both side effects cannot fail.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 54,
@@ -1104,6 +1119,8 @@ const ir: unknown = {
             "name": "Changed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 60,
@@ -1134,6 +1151,8 @@ const ir: unknown = {
             "name": "UnknownToken",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 61,
@@ -1177,6 +1196,8 @@ const ir: unknown = {
             "name": "ExpiredToken",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 62,
@@ -1220,6 +1241,8 @@ const ir: unknown = {
             "name": "WeakPassword",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 63,
@@ -1267,6 +1290,8 @@ const ir: unknown = {
             "name": "UserVanished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 64,
@@ -1310,6 +1335,8 @@ const ir: unknown = {
             "name": "TimedOut",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 65,

@@ -33,6 +33,8 @@
   "state"
   "history"
   "choice"
+  "tags"
+  "meta"
   "ended"
   "initial"
   "entry"
@@ -206,6 +208,12 @@
 
 (choice_state
   name: (type_identifier) @label)
+
+(tags
+  tag: (identifier) @constant)
+
+(meta_entry
+  key: (identifier) @property)
 
 (initial
   state: (type_identifier) @label)

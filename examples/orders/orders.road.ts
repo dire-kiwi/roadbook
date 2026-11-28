@@ -37,6 +37,7 @@ export interface OrderDef extends Roadbook.MachineDef {
     | "Order.Paid"
     | "Order.Unavailable"
     | "Order.Declined"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {
@@ -371,6 +372,8 @@ const ir: unknown = {
         "name": "Order",
         "kind": "compound",
         "doc": "Reserve the items with the warehouse, then take the payment. The warehouse is a peer that\nlives longer than any order: whoever starts the order passes it in.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 18,
@@ -388,6 +391,8 @@ const ir: unknown = {
             "name": "Reserving",
             "kind": "atomic",
             "doc": "The warehouse answers this order's call alone. `Unanswered` is the built-in error of a\nwarehouse that has closed, or closes before it answers.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -603,6 +608,8 @@ const ir: unknown = {
             "name": "Paying",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 35,
@@ -751,6 +758,8 @@ const ir: unknown = {
             "name": "Paid",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 42,
@@ -783,6 +792,8 @@ const ir: unknown = {
             "name": "Unavailable",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 43,
@@ -815,6 +826,8 @@ const ir: unknown = {
             "name": "Declined",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 44,
@@ -1006,6 +1019,8 @@ const ir: unknown = {
         "name": "Inventory",
         "kind": "compound",
         "doc": "The stock of one warehouse, shared by every order. An order calls `reserve`, and the answer\ngoes to that order alone.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 1,
           "line": 18,
@@ -1023,6 +1038,8 @@ const ir: unknown = {
             "name": "Ready",
             "kind": "atomic",
             "doc": "Waiting for the next call.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 36,
@@ -1135,6 +1152,8 @@ const ir: unknown = {
             "name": "Reserving",
             "kind": "atomic",
             "doc": "One reservation at a time: a call that arrives meanwhile is turned away at once.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 42,
@@ -1333,6 +1352,8 @@ const ir: unknown = {
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 50,

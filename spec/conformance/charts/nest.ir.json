@@ -147,6 +147,8 @@
         "name": "Nest",
         "kind": "compound",
         "doc": "Logs every entry, exit and transition effect, with the counter's value.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 8,
@@ -164,6 +166,8 @@
             "name": "Outer",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 21,
@@ -181,6 +185,8 @@
                 "name": "Middle",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 32,
@@ -198,6 +204,8 @@
                     "name": "Inner",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 41,
@@ -714,6 +722,8 @@
             "name": "Away",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 52,

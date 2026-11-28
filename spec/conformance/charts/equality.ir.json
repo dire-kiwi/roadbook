@@ -339,6 +339,8 @@
         "name": "Equality",
         "kind": "compound",
         "doc": "Compares its inputs, then the items of events, then a task's result and\nerrors against the ones it expects.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 20,
@@ -356,6 +358,8 @@
             "name": "Comparing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 40,
@@ -844,6 +848,8 @@
             "name": "Fetching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 47,
@@ -1058,6 +1064,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,

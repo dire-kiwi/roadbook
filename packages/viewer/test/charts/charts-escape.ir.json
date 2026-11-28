@@ -169,6 +169,8 @@
         "name": "Escape",
         "kind": "compound",
         "doc": "Doc </script><script>alert('doc')</script> <img src=x onerror=alert(2)> & \"quotes\" 'single'\nsecond line <!-- comment",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 12,
@@ -186,6 +188,8 @@
             "name": "A",
             "kind": "atomic",
             "doc": "state doc <img src=x onerror=alert(5)> \"q\"",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -534,6 +538,8 @@
             "name": "K",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 40,
@@ -664,6 +670,8 @@
             "name": "B",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,
@@ -791,6 +799,8 @@
             "name": "P",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 53,
@@ -808,6 +818,8 @@
                 "name": "R1",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 55,
@@ -825,6 +837,8 @@
                     "name": "X",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 55,
@@ -870,6 +884,8 @@
                     "name": "XF",
                     "kind": "final",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 55,
@@ -902,6 +918,8 @@
                 "name": "R2",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 56,
@@ -919,6 +937,8 @@
                     "name": "Y",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 56,
@@ -965,6 +985,8 @@
                     "name": "YF",
                     "kind": "final",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 56,
@@ -1026,6 +1048,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 58,
@@ -1058,6 +1082,8 @@
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 59,
@@ -1241,6 +1267,8 @@
         "name": "EscapePeer",
         "kind": "compound",
         "doc": "Peer doc <img src=x onerror=alert(14)> & \"q\"",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 63,
@@ -1258,6 +1286,8 @@
             "name": "P",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 70,
@@ -1325,6 +1355,8 @@
             "name": "End",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 73,

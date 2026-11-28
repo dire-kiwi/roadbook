@@ -1,0 +1,97 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          strict: false
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - tags:
+                names:
+                  - app
+            - meta:
+                entries:
+                  - name: owner
+                    value:
+                      string: payments
+                  - name: sla
+                    value:
+                      int: 30
+            - state:
+                kind: normal
+                name: S
+                body:
+                  - tags:
+                      names:
+                        - busy
+                        - network
+                  - meta:
+                      entries:
+                        - name: ratio
+                          value:
+                            unary:
+                              - neg
+                              - float: 0.5
+                        - name: live
+                          value:
+                            bool: true
+                        - name: tags
+                          value:
+                            int: 1
+                  - transition:
+                      trigger:
+                        "on":
+                          name: Go
+                      branches:
+                        single:
+                          guard: ~
+                          targets:
+                            - dot: false
+                              path:
+                                - S
+                          effects: []
+                          ignore: false
+            - state:
+                kind: normal
+                name: T
+                body:
+                  - tags:
+                      names:
+                        - idle
+            - state:
+                kind: normal
+                name: U
+                body:
+                  - var:
+                      name: tags
+                      ty:
+                        builtin: int
+                      init:
+                        int: 1
+                  - transition:
+                      trigger:
+                        "on":
+                          name: Go
+                      branches:
+                        single:
+                          guard: ~
+                          targets:
+                            - dot: false
+                              path:
+                                - U
+                          effects:
+                            - set:
+                                var: tags
+                                value:
+                                  binary:
+                                    - +
+                                    - var: tags
+                                    - int: 1
+                          ignore: false
+comments: []

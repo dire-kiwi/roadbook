@@ -344,7 +344,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "id", "name", "kind", "doc", "span", "params", "vars", "initial", "default", "states",
+        "id", "name", "kind", "doc", "tags", "meta", "span", "params", "vars", "initial", "default", "states",
         "entry", "exit", "invokes", "transitions", "output", "fail"
       ],
       "properties": {
@@ -352,6 +352,18 @@
         "name": { "$ref": "#/$defs/upperName" },
         "kind": { "enum": ["atomic", "compound", "parallel", "final", "history", "deepHistory", "choice"] },
         "doc": { "$ref": "#/$defs/doc" },
+        "tags": {
+          "description": "The state's tags, in the order written, each once: [] for none. Not part of the hash.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/lowerName" }
+        },
+        "meta": {
+          "description": "The state's meta, in the order written: {} for none. Each value is a string, a number or a bool. Not part of the hash.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/lowerName" },
+          "additionalProperties": { "type": ["string", "number", "boolean"] }
+        },
         "span": { "$ref": "#/$defs/span" },
         "params": {
           "description": "The state's parameters, in order: given by the transition that enters it.",
@@ -420,6 +432,11 @@
               "transitions": { "maxItems": 0 }
             }
           }
+        },
+        {
+          "description": "A history or choice state has no tags or meta.",
+          "if": { "properties": { "kind": { "enum": ["history", "deepHistory", "choice"] } } },
+          "then": { "properties": { "tags": { "maxItems": 0 }, "meta": { "maxProperties": 0 } } }
         },
         {
           "description": "Only a history state has a default.",

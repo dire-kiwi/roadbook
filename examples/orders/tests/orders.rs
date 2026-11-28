@@ -122,6 +122,7 @@ type Stock = roadbook::Actor<
     (),
     Infallible,
     inventory::inventory::Emitted,
+    inventory::inventory::Tag,
 >;
 
 /// A warehouse holding `qty` of `s1`, restocked by host code through its handle.

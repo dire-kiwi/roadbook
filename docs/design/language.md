@@ -90,6 +90,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | `final state Name { ... }` | Ends the enclosing compound state, or the machine at the top level. |
 | `choice Name { if ... else ... }` | A [choice state](#choice-states): entered and left at once, by the first branch whose guard holds. |
 | `history Name`, `deep history Name` | In a state with children: a [history state](#history-states), a target that returns to where the state was when it was last left. |
+| `tags a, b` / `meta { key: value, … }` | Names host code can ask a run for, and data about the state for tools, here about the machine body (see [tags and meta](#tags-and-meta)). Also in a state. |
 | `check property` | Only directly in a machine body: an assertion about the machine's states, `never A and B`, `reachable A`, `A only after B` or `can finish`, for `roadbook check` to verify (see [checking properties](#checking-properties)). A state path is written from the machine body, like a target at machine level, and may name any state but a history or choice state. Checks are not part of the IR. |
 
 ## Inside a state
@@ -112,6 +113,8 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | `invoke name(args) [as name] [{ done ...  fail Err ... }]` | Run a task or machine while the state is active. A state may have several, each named with `as` ([several invokes](#several-invokes)). `fail *` matches the declared errors not listed. `as` names an invoked machine, so that the state can send to it and receive what it emits, or a task that declares `emits`, so that the state can receive what it emits ([tasks that emit](#tasks-that-emit)). The block of outcomes may be left out when there is nothing it must handle. `invoke x.name(args)` calls the call `name` of the machine the `ref` `x` holds. |
 | `invoke name(args) retry N [on Err] [after delay] { ... }` | The same, run again when it fails, up to `N` more times (see [retrying an invoke](#retrying-an-invoke)). |
 | `output expr` / `fail expr` | Final states at the top level only: the machine's result. |
+| `tags a, b` | Names host code can ask a run for: a run has the tags of its active states (see [tags and meta](#tags-and-meta)). |
+| `meta { key: value, … }` | Data about the state, for tools and host code reading the IR. Each value is a string, int, float or bool literal. |
 
 A transition has up to four parts, all optional except that it must do something (or, for an `on`, say `ignore`):
 
@@ -697,6 +700,32 @@ machine Checkout(user: User) {
 - **Loops.** Branches that lead back to the choice through other states are allowed; the run's limit of 1000 microsteps per step ends one that never settles, as for any guarded `always` loop.
 
 In the IR a choice is a state of kind `choice` whose transitions are its branches, all `always` ([`spec/ir.md`](../../spec/ir.md#choice-states)); runtimes run it as an atomic state. Mermaid export draws it as `<<choice>>`, SCXML export as a `<state>` with eventless transitions. The generated `State` enum and union leave it out, as they leave out history states: a run is never in one between steps. A Rust actor that starts in a choice reports the state its `else` leads to until its first step has run.
+
+## Tags and meta
+
+A state can carry names that host code asks a run for, and data that tools show beside it. Neither changes what a run does.
+
+```
+machine Payment() {
+  event Pay
+  event Paid
+
+  initial Idle
+
+  state Idle { on Pay -> Loading }
+
+  state Loading {
+    tags busy, network
+    meta { owner: "payments", sla: 30 }
+    on Paid -> Idle
+  }
+}
+```
+
+- **`tags a, b`** gives the state lower-case names, in the order written. The tags of a run are those of its active states: at most once each, in document order, outermost state first, so a compound state's tags hold in every state inside it. Host code asks for them instead of listing states: a page shows a spinner while the run `hasTag("busy")`, whichever state that is ([TypeScript](typescript.md#running), [Rust](rust.md#running)). The generated `Tag` union and enum list every tag the machine declares, so a misspelt tag in host code is a type error. A run that has ended has no active states, so no tags.
+- **`meta { key: value, … }`** is data about the state: an owner, a service level, a label. Each value is a string, int, float or bool literal, a number with a `-` before it included (`RB0232`); a value is never computed. The drivers do not expose it: tools and host code read it from the IR, which the generated module embeds.
+- Both may be written in any state and in the machine body, at most once each per state: a second `tags` or a tag written twice is an error (`RB0230`), and so is a second `meta` or a key written twice (`RB0231`). A history state and a choice state have neither, since a run never rests in one. `tags` and `meta` are not reserved: each starts an item only followed by a name, or by `{`.
+- They are not part of the [machine hash](../../spec/ir.md#the-machine-hash): adding or changing a tag keeps the hash, and the snapshots saved before. The viewer shows a state's tags as pills under its name and both in its details, and in simulate mode lists the run's tags. Mermaid and SCXML export leave them out.
 
 ## Data local to a state
 
@@ -1303,6 +1332,9 @@ The compiler's codes:
 | `RB0227` | A choice state whose last branch has a guard: it needs an `else`. | `choice Routing { if vip -> Vip  if big -> Review }` |
 | `RB0228` | A branch of a choice state with no target. | `choice Routing { if vip do flag()  else -> Standard }` |
 | `RB0229` | A choice state that is a region of a parallel state. | `parallel state P { choice C { … }  state Q { … } }` |
+| `RB0230` | A tag written twice on one state, or a second `tags` in one state. | `tags busy, network, busy` |
+| `RB0231` | A key written twice in one state's `meta`, or a second `meta` in one state. | `meta { owner: "a", owner: "b" }` |
+| `RB0232` | A `meta` value that is not a string, int, float or bool literal. | `meta { sla: limit }` |
 | `RB0301` | A value of the wrong type. | `var ratio: float = 1` |
 | `RB0302` | The wrong number of arguments. | `retryDelay(1, 2)` |
 | `RB0303` | An operator on operands it is not defined on, or `==` on a type with a part that cannot be compared. | `attempts + 1.5`, `payload == other` for a `json` |
@@ -1400,7 +1432,7 @@ stateDecl   = [ "final" | "parallel" ] "state" Upper [ params ] "{" { stateItem 
             | "choice" Upper "{" "if" expr action { "if" expr action } "else" action "}" ;
 stateItem   = commonItem
             | varDecl
-            | [ "deep" ] "history" Upper
+            | [ "deep" ] "history" Upper [ "->" statePath { "," statePath } ]
             | "done" branches
             | "invoke" [ lower "." ] name "(" [ expr { "," expr } ] ")" [ "as" lower ] [ retry ]
               [ "{" outcome { outcome } "}" ]
@@ -1408,11 +1440,14 @@ stateItem   = commonItem
             | "fail" expr ;
 commonItem  = "initial" Upper
             | stateDecl
+            | "tags" lower { "," lower }
+            | "meta" "{" [ lower ":" metaValue { "," lower ":" metaValue } ] "}"
             | "entry" effects
             | "exit" effects
             | "on" ( Upper | "*" | lower "." ( Upper | "done" | "fail" ( Upper | "*" ) | "ended" ) | lower ) branches
             | "after" expr branches
             | "always" branches ;
+metaValue   = string | [ "-" ] ( int | float ) | "true" | "false" ;
 retry       = "retry" int [ "on" Upper { "|" Upper } ] [ "after" expr ] ;
 outcome     = "done" branches
             | "fail" ( Upper | "*" ) branches ;
@@ -1468,9 +1503,9 @@ comment     = "//" … end of line ;        doc comment = "///" … end of line 
 Rules the grammar does not express:
 
 - Every comma-separated list accepts a trailing comma.
-- All keywords are reserved: `import type enum error extern fn action task machine strict var event emits call initial state final parallel entry exit on after always done invoke output fail if else set do send emit reply ignore and or not in true false`. `from`, `as`, `retry`, `ref`, `map`, `sensitive`, `history`, `deep`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `check`, `never`, `reachable`, `only`, `can`, `finish` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`) and after a delayed raise's delay (`as`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), at the start of an item of a state body (`history`, `deep`), `choice` followed by a name at the start of a machine or state item, in `children name:` at the start of a machine item, after a collection's machine, in `spawn name[`, `stop name[`, `raise Name` and `cancel name` at the start of an effect (so `action stop()` is still a valid action), in `internal event` at the start of a machine item, and in a check: `check` followed by a name at the start of a machine item, and the words of its property after it (so `var check: int` is still a variable). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field. (`call` is a keyword.)
+- All keywords are reserved: `import type enum error extern fn action task machine strict var event emits call initial state final parallel entry exit on after always done invoke output fail if else set do send emit reply ignore and or not in true false`. `from`, `as`, `retry`, `ref`, `map`, `sensitive`, `history`, `deep`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `check`, `never`, `reachable`, `only`, `can`, `finish` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`) and after a delayed raise's delay (`as`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), at the start of an item of a state body (`history`, `deep`), `choice` followed by a name at the start of a machine or state item, `tags` followed by a name and `meta` followed by `{` at the start of a machine or state item, in `children name:` at the start of a machine item, after a collection's machine, in `spawn name[`, `stop name[`, `raise Name` and `cancel name` at the start of an effect (so `action stop()` is still a valid action), in `internal event` at the start of a machine item, and in a check: `check` followed by a name at the start of a machine item, and the words of its property after it (so `var check: int` is still a variable). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field. (`call` is a keyword.)
 - In a type, the `>` closing type arguments may be written as the first character of a `>=`: `var m: map<string, int>= f()` reads as written (the formatter writes `> =` with a space).
-- A `///` comment documents the declaration, machine, state, history state, event, variable or check that follows it. A `///` anywhere else is an error: use `//`.
+- A `///` comment documents the declaration, machine, state, history state, event, variable or check that follows it (not a `tags` or `meta`). A `///` anywhere else is an error: use `//`.
 - A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust, and so must one in a retry's delay, which the invoke's `{` follows. A `{` after the event of a `send`, `emit` or `raise` is always its record body.
 - `on name.Event` is told from `on Event` by the lower-case name and the `.` after it, and `on name`, which takes a call, by a lower-case name with no `.`. Likewise `invoke x.name(…)` is a call, told from `invoke name(…)` by the `.`.
 - In `reply x done value`, the value is parsed only if it starts on the same line as `done`.

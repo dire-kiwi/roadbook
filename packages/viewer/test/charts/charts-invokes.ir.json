@@ -142,6 +142,8 @@
         "name": "Helper",
         "kind": "compound",
         "doc": "Answers a poke.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 13,
@@ -159,6 +161,8 @@
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -235,6 +239,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -333,6 +339,8 @@
         "name": "Watch",
         "kind": "compound",
         "doc": "Watches a server while it syncs a folder, with a helper beside them.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 29,
@@ -350,6 +358,8 @@
             "name": "Watching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -576,6 +586,8 @@
             "name": "Synced",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 49,
@@ -608,6 +620,8 @@
             "name": "Offline",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 50,
