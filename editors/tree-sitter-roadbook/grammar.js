@@ -116,6 +116,8 @@ module.exports = grammar({
     action_declaration: ($) =>
       seq('action', field('name', $.identifier), field('parameters', $.parameters)),
 
+    // `task upload(file: File) -> Url ! Failed emits Progress { percent: int }`: the events a
+    // task emits come last, one `emits` each.
     task_declaration: ($) =>
       seq(
         'task',
@@ -123,6 +125,7 @@ module.exports = grammar({
         field('parameters', $.parameters),
         optional(seq('->', field('return_type', $._type))),
         optional(field('errors', $.errors)),
+        repeat(field('emits', $.emits_declaration)),
       ),
 
     parameters: ($) => seq('(', commaSep($.parameter), ')'),
@@ -221,13 +224,13 @@ module.exports = grammar({
         optional(field('errors', $.errors)),
       ),
 
-    // `children sessions: Session by SessionId`
+    // `children sessions: Session by SessionId`, or of a task: `children uploads: upload by string`.
     children_declaration: ($) =>
       seq(
         'children',
         field('name', $.identifier),
         ':',
-        field('machine', $.type_identifier),
+        choice(field('machine', $.type_identifier), field('task', $.identifier)),
         'by',
         field('key', $._type),
       ),
@@ -346,22 +349,22 @@ module.exports = grammar({
         field('arguments', $.arguments),
         optional(seq('as', field('alias', $.identifier))),
         optional(field('retry', $.retry)),
-        '{',
-        repeat1(choice($.done_transition, $.fail_transition)),
-        '}',
+        // The block may be left out: `invoke ticks(1s) as clock`.
+        optional(seq('{', repeat1(choice($.done_transition, $.fail_transition)), '}')),
       ),
 
     // `retry 3 on Busy | Gone after backoff(attempt)`: a record value as the delay must be
     // parenthesised, since the invoke's `{` follows, as after an `after` trigger.
+    // With no block after it, an `after` that follows belongs to the retry, as in the compiler.
     retry: ($) =>
-      seq(
+      prec.right(seq(
         'retry',
         field('count', $.integer),
         optional(
           seq('on', field('error', $.type_identifier), repeat(seq('|', field('error', $.type_identifier)))),
         ),
         optional(seq('after', field('delay', $._expression))),
-      ),
+      )),
 
     fail_transition: ($) =>
       seq('fail', field('error', choice($.type_identifier, $._wildcard)), $._branches),
@@ -463,7 +466,7 @@ module.exports = grammar({
         field('key', $._expression),
         ']',
         '=',
-        field('machine', $.type_identifier),
+        choice(field('machine', $.type_identifier), field('task', $.identifier)),
         field('arguments', $.arguments),
       ),
 

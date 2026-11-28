@@ -1474,3 +1474,164 @@ fn internal_targets_and_several_targets() {
     );
     c.shutdown();
 }
+
+const UPLOADS: &str = r#"type File { name: string }
+error UploadFailed { reason: string }
+action show(name: string, percent: int)
+
+/// Sends a file.
+task upload(file: File) -> string ! UploadFailed
+  /// How far it got.
+  emits Progress { percent: int }
+  emits Stage { name: string }
+
+task ticks(every: duration) emits Tick
+
+machine Publish(file: File) {
+  event Add { file: File }
+  var percent: int = 0
+  var seconds: int = 0
+  children uploads: upload by string
+  initial Uploading
+  state Uploading {
+    invoke upload(file) as up {
+      done              -> Waiting
+      fail UploadFailed -> Waiting
+    }
+    on up.Progress set percent = event.percent
+    on up.Stage set percent = 0
+  }
+  state Waiting {
+    invoke ticks(1s) as clock
+    on clock.Tick set seconds = seconds + 1
+    on Add spawn uploads[event.file.name] = upload(event.file)
+    on uploads.Progress do show(key, event.percent)
+    on uploads.Stage do show(event.name, 0)
+    on uploads.done set seconds = 0
+    on uploads.fail * set seconds = 0
+    after 1h -> Done
+  }
+  final state Done {}
+}
+"#;
+
+#[test]
+fn tasks_that_emit() {
+    let p = Project::new("uploads", &[("c.road", UPLOADS)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, UPLOADS);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // A task's emitted event, its field, and a task's `as` name go to their declarations.
+    let definitions = [
+        ("on up.^Progress", "emits ^Progress"),
+        ("on uploads.^Progress", "emits ^Progress"),
+        ("on up.^Stage", "emits ^Stage"),
+        ("percent = event.^percent", "Progress { ^percent"),
+        ("show(key, event.^percent)", "Progress { ^percent"),
+        ("show(event.^name, 0)", "Stage { ^name"),
+        ("on ^up.Progress", "as ^up {"),
+        ("on ^clock.Tick", "as ^clock"),
+        ("on clock.^Tick", "emits ^Tick"),
+    ];
+    for (from, to) in definitions {
+        let loc = c
+            .request("textDocument/definition", at(&uri, UPLOADS, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(UPLOADS, to),
+            "{from} -> {to}"
+        );
+    }
+    let mut params = at(&uri, UPLOADS, "emits ^Progress");
+    params["context"] = json!({ "includeDeclaration": false });
+    let refs = c.request("textDocument/references", params).unwrap();
+    assert_eq!(refs.as_array().unwrap().len(), 2, "{refs}");
+
+    // Hover: the emitted event, what it belongs to and its doc comment; the task with its
+    // emits; and the `as` name.
+    let hover = |c: &mut Client, needle: &str| {
+        let h = c
+            .request("textDocument/hover", at(&uri, UPLOADS, needle))
+            .unwrap();
+        h["contents"]["value"].as_str().unwrap().to_string()
+    };
+    let value = hover(&mut c, "on up.^Progress");
+    assert!(
+        value.starts_with("```roadbook\nemits Progress { percent: int }\n```"),
+        "{value}"
+    );
+    assert!(value.contains("of `upload`"), "{value}");
+    assert!(value.contains("How far it got."), "{value}");
+    let value = hover(&mut c, "invoke ^upload(file)");
+    assert!(
+        value.starts_with(
+            "```roadbook\ntask upload(file: File) -> string ! UploadFailed\n  emits Progress { percent: int }\n  emits Stage { name: string }\n```"
+        ),
+        "{value}"
+    );
+    let value = hover(&mut c, "invoke ^ticks");
+    assert!(
+        value.starts_with("```roadbook\ntask ticks(every: duration) emits Tick\n```"),
+        "{value}"
+    );
+    let value = hover(&mut c, "on ^clock.Tick");
+    assert!(value.contains("invoke ticks(…) as clock"), "{value}");
+
+    // The outline lists a task's emitted events under it.
+    let symbols = c
+        .request(
+            "textDocument/documentSymbol",
+            json!({ "textDocument": { "uri": uri } }),
+        )
+        .unwrap();
+    let upload = symbols
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["name"] == "upload")
+        .unwrap();
+    let names: Vec<&str> = upload["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["Progress", "Stage"]);
+    assert_eq!(upload["children"][0]["detail"], "emits");
+
+    // Rename an emitted event: its `on` triggers through the `as` name and the collection.
+    let why = rename_error(&mut c, &uri, UPLOADS, "emits ^Progress", "Stage");
+    assert!(
+        why.contains("already the name of an emitted event `upload.Stage`"),
+        "{why}"
+    );
+    let out = rename(&mut c, &uri, UPLOADS, "on up.^Progress", "Sent");
+    for e in ["emits Sent {", "on up.Sent set", "on uploads.Sent do"] {
+        assert!(out.contains(e), "no `{e}` in\n{out}");
+    }
+    // Rename a field of one.
+    let out = rename(&mut c, &uri, UPLOADS, "Progress { ^percent", "pct");
+    for e in [
+        "Progress { pct: int }",
+        "percent = event.pct",
+        "show(key, event.pct)",
+    ] {
+        assert!(out.contains(e), "no `{e}` in\n{out}");
+    }
+    // Rename a task's `as` name, which shares the machine's namespace.
+    let why = rename_error(&mut c, &uri, UPLOADS, "as ^clock", "seconds");
+    assert!(
+        why.contains("already the name of a variable `Publish.seconds`"),
+        "{why}"
+    );
+    let why = rename_error(&mut c, &uri, UPLOADS, "as ^clock", "key");
+    assert!(why.contains("reserved"), "{why}");
+    let out = rename(&mut c, &uri, UPLOADS, "as ^clock", "timer");
+    for e in ["invoke ticks(1s) as timer", "on timer.Tick"] {
+        assert!(out.contains(e), "no `{e}` in\n{out}");
+    }
+    c.shutdown();
+}

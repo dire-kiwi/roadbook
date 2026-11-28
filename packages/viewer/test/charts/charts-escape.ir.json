@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "packages/viewer/test/charts/escape.road",
@@ -68,6 +68,7 @@
         "Bad",
         "Worse"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 0,

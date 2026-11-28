@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.8) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.10) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -49,6 +49,8 @@ export interface TaskDecl {
   params: Field[]
   returns: string | null
   errors: string[]
+  /** Events the task emits while it runs (`emits Name { fields }`), to the run that invoked or spawned it. */
+  emits: Record<string, EventDecl>
   doc: string
   span: Span
 }
@@ -81,30 +83,41 @@ export interface Invoke {
   src: string
   /** For a call, the callee: a `ref` address. Null for a task or a machine. */
   to: Address | null
-  /** `invoke Machine(…) as name`: the name the state sends to and receives from, or null. */
+  /**
+   * `invoke Machine(…) as name` or `invoke task(…) as name` (a task that emits): the name the
+   * state sends to and receives from, or null.
+   */
   as: string | null
   args: Expr[]
   span: Span
 }
 
-/** Another running machine: the receiver of a `send`, the sender of an `emitted` trigger. */
+/**
+ * Another running machine, or a running task that emits: the receiver of a `send`, the sender
+ * of an `emitted` trigger. It names its other end by `machine` or by `task`, never both.
+ */
 export interface Address {
   /**
-   * `child`: an `invoke … as name`; `ref`: a parameter or variable of type `ref Machine`;
-   * `children`: the spawned children of the collection `name` (which of them, the item says).
+   * `child`: an `invoke Machine(…) as name`; `task`: an `invoke task(…) as name`; `ref`: a
+   * parameter or variable of type `ref Machine`; `children`: the spawned children of the
+   * collection `name`, machines or tasks (which of them, the item says).
    */
-  kind: 'child' | 'ref' | 'children'
+  kind: 'child' | 'task' | 'ref' | 'children'
   name: string
-  /** The machine at the other end, a key of `machines`. */
-  machine: string
-  /** For a child, the id of the invoking state; null for a ref and for children. */
+  /** The machine at the other end, a key of `machines`: for `child`, `ref`, and `children` of machines. */
+  machine?: string
+  /** The task at the other end, a key of `tasks`: for `task`, and `children` of tasks. Only `emitted` triggers name one. */
+  task?: string
+  /** For a child or a task, the id of the invoking state; null for a ref and for children. */
   state: string | null
 }
 
-/** A collection of spawned children (`children name: Machine by Key`), keyed by its name. */
+/** A collection of spawned children (`children name: Machine by Key`) or tasks (`children name: task by Key`), keyed by its name. */
 export interface ChildrenDecl {
-  /** The machine its children run, a key of `machines`. */
-  machine: string
+  /** What its children are: machines or tasks. */
+  kind: 'machine' | 'task'
+  /** The machine its children run, a key of `machines`, or the task, a key of `tasks`. */
+  src: string
   /** The type of its keys. */
   key: string
   doc: string
@@ -135,8 +148,8 @@ export type Effect =
   | { kind: 'send'; to: Address; key: Expr | null; event: string; value: Expr }
   | { kind: 'emit'; event: string; value: Expr }
   | { kind: 'reply'; call: Expr; outcome: 'done' | 'fail'; value: Expr | null }
-  /** `spawn name[key] = Machine(args)` */
-  | { kind: 'spawn'; children: string; machine: string; key: Expr; args: Expr[] }
+  /** `spawn name[key] = Machine(args)` or `spawn name[key] = task(args)`: `src` is the collection's machine or task. */
+  | { kind: 'spawn'; children: string; src: string; key: Expr; args: Expr[] }
   /** `stop name[key]` */
   | { kind: 'stop'; children: string; key: Expr }
 
@@ -218,4 +231,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.9'
+export const IR_VERSION = '0.10'

@@ -48,7 +48,10 @@ fn the_ir_holds_calls_invokes_and_replies() {
     let invoke = order.invoke.as_ref().unwrap();
     assert_eq!(invoke.kind, InvokeKind::Call);
     assert_eq!(invoke.callee(), "inventory.reserve");
-    assert_eq!(invoke.to.as_ref().unwrap().machine, "Inventory");
+    assert_eq!(
+        invoke.to.as_ref().unwrap().machine.as_deref(),
+        Some("Inventory")
+    );
 }
 
 #[test]

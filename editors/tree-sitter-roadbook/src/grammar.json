@@ -559,6 +559,17 @@
               "type": "BLANK"
             }
           ]
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "FIELD",
+            "name": "emits",
+            "content": {
+              "type": "SYMBOL",
+              "name": "emits_declaration"
+            }
+          }
         }
       ]
     },
@@ -1379,12 +1390,25 @@
           "value": ":"
         },
         {
-          "type": "FIELD",
-          "name": "machine",
-          "content": {
-            "type": "SYMBOL",
-            "name": "type_identifier"
-          }
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "machine",
+              "content": {
+                "type": "SYMBOL",
+                "name": "type_identifier"
+              }
+            },
+            {
+              "type": "FIELD",
+              "name": "task",
+              "content": {
+                "type": "SYMBOL",
+                "name": "identifier"
+              }
+            }
+          ]
         },
         {
           "type": "STRING",
@@ -2097,117 +2121,134 @@
           ]
         },
         {
-          "type": "STRING",
-          "value": "{"
-        },
-        {
-          "type": "REPEAT1",
-          "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "done_transition"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "fail_transition"
-              }
-            ]
-          }
-        },
-        {
-          "type": "STRING",
-          "value": "}"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": "{"
+                },
+                {
+                  "type": "REPEAT1",
+                  "content": {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "done_transition"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "fail_transition"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "STRING",
+                  "value": "}"
+                }
+              ]
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         }
       ]
     },
     "retry": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "retry"
-        },
-        {
-          "type": "FIELD",
-          "name": "count",
-          "content": {
-            "type": "SYMBOL",
-            "name": "integer"
-          }
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SEQ",
-              "members": [
-                {
-                  "type": "STRING",
-                  "value": "on"
-                },
-                {
-                  "type": "FIELD",
-                  "name": "error",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "type_identifier"
-                  }
-                },
-                {
-                  "type": "REPEAT",
-                  "content": {
-                    "type": "SEQ",
-                    "members": [
-                      {
-                        "type": "STRING",
-                        "value": "|"
-                      },
-                      {
-                        "type": "FIELD",
-                        "name": "error",
-                        "content": {
-                          "type": "SYMBOL",
-                          "name": "type_identifier"
+      "type": "PREC_RIGHT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "retry"
+          },
+          {
+            "type": "FIELD",
+            "name": "count",
+            "content": {
+              "type": "SYMBOL",
+              "name": "integer"
+            }
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "STRING",
+                    "value": "on"
+                  },
+                  {
+                    "type": "FIELD",
+                    "name": "error",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "type_identifier"
+                    }
+                  },
+                  {
+                    "type": "REPEAT",
+                    "content": {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "STRING",
+                          "value": "|"
+                        },
+                        {
+                          "type": "FIELD",
+                          "name": "error",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "type_identifier"
+                          }
                         }
-                      }
-                    ]
+                      ]
+                    }
                   }
-                }
-              ]
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SEQ",
-              "members": [
-                {
-                  "type": "STRING",
-                  "value": "after"
-                },
-                {
-                  "type": "FIELD",
-                  "name": "delay",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_expression"
+                ]
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "STRING",
+                    "value": "after"
+                  },
+                  {
+                    "type": "FIELD",
+                    "name": "delay",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_expression"
+                    }
                   }
-                }
-              ]
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        }
-      ]
+                ]
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        ]
+      }
     },
     "fail_transition": {
       "type": "SEQ",
@@ -2994,12 +3035,25 @@
           "value": "="
         },
         {
-          "type": "FIELD",
-          "name": "machine",
-          "content": {
-            "type": "SYMBOL",
-            "name": "type_identifier"
-          }
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "machine",
+              "content": {
+                "type": "SYMBOL",
+                "name": "type_identifier"
+              }
+            },
+            {
+              "type": "FIELD",
+              "name": "task",
+              "content": {
+                "type": "SYMBOL",
+                "name": "identifier"
+              }
+            }
+          ]
         },
         {
           "type": "FIELD",

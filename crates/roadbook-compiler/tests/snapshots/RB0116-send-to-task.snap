@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0116]: `uploads` holds `upload` tasks, which take no events: it cannot be sent `Pause`
+  --> RB0116-send-to-task.road:11:32
+   |
+11 |     on Pause send uploads["a"].Pause  send uploads.*.Pause
+   |                                ^^^^^
+   |
+   = help: a task only emits, as `on uploads.Event`; host code decides how it reacts, so pass what it needs as an argument when it starts
+
+error[RB0116]: `uploads` holds `upload` tasks, which take no events: it cannot be sent `Pause`
+  --> RB0116-send-to-task.road:11:54
+   |
+11 |     on Pause send uploads["a"].Pause  send uploads.*.Pause
+   |                                                      ^^^^^
+   |
+   = help: a task only emits, as `on uploads.Event`; host code decides how it reacts, so pass what it needs as an argument when it starts
+
+error[RB0116]: `up` names the task `upload`, which takes no events: it cannot be sent `Pause`
+  --> RB0116-send-to-task.road:16:24
+   |
+16 |       on Pause send up.Pause
+   |                        ^^^^^
+   |
+   = help: a task only emits, as `on up.Event`; host code decides how it reacts, so pass what it needs as an argument when it starts

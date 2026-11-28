@@ -7,8 +7,9 @@
 // child run is not started) and call invokes (the callee is not run either) end when the reader
 // gives their outcome; timers fire when the reader lets them or advances the clock; functions
 // are answered by the reader when the core calls them; actions do nothing. `send` and `emit`
-// are carried out as their records only: there is no other run to deliver to. A child invoked
-// with `as`, or spawned, can be made to emit one of its events by hand, the machine's own
+// are carried out as their records only: there is no other run to deliver to. A child or a
+// task that emits, invoked with `as` or spawned, can be made to emit one of its events by hand
+// (for a task, the `task.emitted` input its emitter would push; it keeps running), the machine's own
 // calls can be made to it by a simulated caller, whose answer (`reply`) shows as its `replied`
 // record only, and a peer the machine holds a `ref` to and has an `on name.ended` for can be
 // made to end, once, with the status the reader picks.
@@ -80,10 +81,12 @@ export interface InvokeChoice {
   returns: string | null
   /** The declared errors, with their fields; for a call, the built-in `Unanswered` last. */
   errors: { name: string; fields: Field[] }[]
-  /** The `as` name of a machine invoke, through which the child's emitted events reach this run. */
+  /** The `as` name of a machine or task invoke, through which the child's or task's emitted events reach this run. */
   as: string | null
-  /** The events the child machine emits (for an invoke with `as`). */
+  /** The events the child machine emits, or those of the task's the machine hears (for an invoke with `as`). */
   emits: { name: string; fields: Field[] }[]
+  /** Whether the invoke has no outcomes written: it runs until its state is left. */
+  open: boolean
 }
 
 /** A running spawned child and what can end it. */
@@ -94,11 +97,13 @@ export interface SpawnChoice {
   children: string
   key: Json
   src: string
-  /** The machine's result type, or null if it returns nothing. */
+  /** Whether it is a machine or a task: the collection's kind. */
+  srcKind: 'machine' | 'task'
+  /** The machine's or task's result type, or null if it returns nothing. */
   returns: string | null
-  /** The machine's declared errors, with their fields. */
+  /** The machine's or task's declared errors, with their fields. */
   errors: { name: string; fields: Field[] }[]
-  /** The events the machine emits, which reach this run through the collection. */
+  /** The events the machine emits, or those of the task's the machine hears, which reach this run through the collection. */
   emits: { name: string; fields: Field[] }[]
 }
 
@@ -318,18 +323,39 @@ export class Simulation {
 
   /**
    * Makes the child of a running machine invoke with `as`, or a running spawned child, emit
-   * one of its events to this run.
+   * one of its events to this run. For a task (invoked with `as`, or spawned), the event is a
+   * `task.emitted` input, as the task's emitter pushes it, and the task keeps running.
    */
   emitFromChild(invoke: number, value: Tagged): Outcome {
     const spawned = this.current?.snapshot.spawned.find((c) => c.id === invoke)
     const inv = this.current?.snapshot.invokes.find((i) => i.id === invoke)
     const who = spawned ? spawnedText(spawned) : inv?.src
     if (who === undefined) return { kind: 'error', message: `invoke ${invoke} is not running` }
+    const invoked = inv ? findState(this.def, inv.state)?.invoke : undefined
+    const task = spawned ? own(this.def.children, spawned.children)?.kind === 'task' : invoked?.kind === 'task'
+    if (task) {
+      // The emitter pushes only what the machine hears, and nothing for an invoke without `as`.
+      const delivered = (spawned !== undefined || !!invoked?.as) && this.hears(spawned ? own(this.def.children, spawned.children)!.src : inv!.src, value._tag)
+      if (!delivered) return this.choose(`${who} emits ${value._tag}, which nothing hears`, () => {})
+      return this.choose(`${who} emits ${value._tag}`, (w) => this.step(w, { kind: 'task.emitted', invoke, value }))
+    }
     return this.choose(`${who} emits ${value._tag}`, (w) => {
       const message = w.childMessages[invoke] ?? 1
       w.childMessages[invoke] = message + 1
       this.step(w, { kind: 'emitted', from: `${this.run}.${invoke}`, invoke, message, value })
     })
+  }
+
+  /**
+   * Whether the machine hears `event` from the task `task`: it has an `on x.event` through an
+   * address of that task, in any state (execution.md, who receives a task's emits).
+   */
+  hears(task: string, event: string): boolean {
+    let found = false
+    walkStates(this.def.root, (s) => {
+      for (const t of s.transitions) if (t.trigger.kind === 'emitted' && t.trigger.event === event && t.trigger.from.task === task) found = true
+    })
+    return found
   }
 
   /**
@@ -419,12 +445,12 @@ export class Simulation {
       const to = invoke?.to
       const decl =
         srcKind === 'call'
-          ? to && own(own(this.ir.machines, to.machine)?.calls ?? {}, invoke!.src)
+          ? to && own(own(this.ir.machines, to.machine ?? '')?.calls ?? {}, invoke!.src)
           : srcKind === 'machine'
             ? own(this.ir.machines, inv.src)
             : own(this.ir.tasks, inv.src)
       const as = invoke?.as ?? null
-      const child = srcKind === 'machine' ? own(this.ir.machines, inv.src) : undefined
+      const child = srcKind === 'machine' ? own(this.ir.machines, inv.src) : srcKind === 'task' ? own(this.ir.tasks, inv.src) : undefined
       const errors = (decl?.errors ?? []).map((name) => {
         const t = own(this.ir.types, name)
         return { name, fields: t && t.kind === 'error' ? t.fields : [] }
@@ -436,34 +462,38 @@ export class Simulation {
         state: inv.state,
         src: inv.src,
         srcKind,
-        callee: srcKind === 'call' && to ? { machine: to.machine, name: to.name, run: held ?? null } : null,
+        callee: srcKind === 'call' && to ? { machine: to.machine ?? '', name: to.name, run: held ?? null } : null,
         returns: decl?.returns ?? null,
         errors,
         as,
-        emits: as && child ? Object.entries(child.emits).map(([name, d]) => ({ name, fields: d.fields })) : [],
+        emits: as && child ? Object.entries(child.emits).flatMap(([name, d]) => (srcKind !== 'task' || this.hears(inv.src, name) ? [{ name, fields: d.fields }] : [])) : [],
+        open: !findState(m, inv.state)?.transitions.some((t) => t.trigger.kind === 'invoke.done' || t.trigger.kind === 'invoke.fail'),
       }
     })
     const spawned = f.snapshot.spawned.map((c): SpawnChoice => {
-      const src = own(m.children, c.children)?.machine ?? ''
-      const child = own(this.ir.machines, src)
+      const decl = own(m.children, c.children)
+      const src = decl?.src ?? ''
+      const srcKind = decl?.kind ?? 'machine'
+      const child = srcKind === 'task' ? own(this.ir.tasks, src) : own(this.ir.machines, src)
       return {
         id: c.id,
         children: c.children,
         key: c.key,
         src,
+        srcKind,
         returns: child?.returns ?? null,
         errors: (child?.errors ?? []).map((name) => {
           const t = own(this.ir.types, name)
           return { name, fields: t && t.kind === 'error' ? t.fields : [] }
         }),
-        emits: child ? Object.entries(child.emits).map(([name, d]) => ({ name, fields: d.fields })) : [],
+        emits: child ? Object.entries(child.emits).flatMap(([name, d]) => (srcKind !== 'task' || this.hears(src, name) ? [{ name, fields: d.fields }] : [])) : [],
       }
     })
     const timers = f.snapshot.timers.map((t) => ({ id: t.id, state: t.state, index: t.index, delay: t.delay, due: f.due[t.id] ?? f.now + t.delay }))
     // The names an `on name.ended` watches, anywhere in the machine, and the runs they hold now.
     const watched = new Map<string, string>()
     walkStates(m.root, (s) => {
-      for (const t of s.transitions) if (t.trigger.kind === 'ended' && !watched.has(t.trigger.from.name)) watched.set(t.trigger.from.name, t.trigger.from.machine)
+      for (const t of s.transitions) if (t.trigger.kind === 'ended' && !watched.has(t.trigger.from.name)) watched.set(t.trigger.from.name, t.trigger.from.machine ?? '')
     })
     const peers: PeerChoice[] = []
     for (const [name, machine] of watched) {

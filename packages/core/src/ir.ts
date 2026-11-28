@@ -1,12 +1,12 @@
 /**
- * The Roadbook IR, version 0.8, as `spec/ir.md` describes it. The types mirror the JSON;
+ * The Roadbook IR, version 0.10, as `spec/ir.md` describes it. The types mirror the JSON;
  * {@link loadIr} checks the version before anything else.
  */
 import { aliasCycle } from "./typeref.ts"
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.9"
+export const IR_VERSION = "0.10"
 
 export interface Span {
   readonly file: number
@@ -69,6 +69,11 @@ export interface TaskDecl {
   readonly params: ReadonlyArray<Field>
   readonly returns: string | null
   readonly errors: ReadonlyArray<string>
+  /**
+   * The events the task emits while it runs (`emits Name { fields }`), keyed by name, `{}` if
+   * none. They are in the task's own namespace: their type is `task.Name`.
+   */
+  readonly emits: Readonly<Record<string, EventDecl>>
   readonly doc: string
   readonly span: Span
 }
@@ -124,9 +129,15 @@ export interface Machine {
   readonly hash: string
 }
 
-/** `children name: Machine by Key`: a keyed collection of spawned children. */
+/**
+ * `children name: Machine by Key` or `children name: task by Key`: a keyed collection of
+ * spawned children, machines or tasks.
+ */
 export interface ChildrenDecl {
-  readonly machine: string
+  /** Whether the children are machines or tasks. */
+  readonly kind: "machine" | "task"
+  /** What they run: a key of `machines` or of `tasks`, by `kind`. */
+  readonly src: string
   /** The key type: `string`, `int` or an enum, or an alias of one. */
   readonly key: string
   readonly doc: string
@@ -157,22 +168,43 @@ export interface Invoke {
   /** The task's or machine's name, or the call's. */
   readonly src: string
   /** For a call, the callee: an address of kind `ref`. `null` for a task or a machine. */
-  readonly to: Address | null
+  readonly to: MachineAddress | null
   readonly as: string | null
   readonly args: ReadonlyArray<Expr>
   readonly span: Span
 }
 
 /**
- * Another running machine: an invoked child by its `as` name, a `ref` parameter or variable, or
- * the spawned children of a collection.
+ * Another running machine, or a running task that emits: an invoked child or task by its `as`
+ * name, a `ref` parameter or variable, or the spawned children of a collection. It names its
+ * other end by `machine` or by `task`, never both.
  */
-export interface Address {
+export type Address = MachineAddress | TaskAddress
+
+/** An address of a machine: an invoked child, a `ref`, or a collection of machines. */
+export interface MachineAddress {
   readonly kind: "child" | "ref" | "children"
   readonly name: string
   readonly machine: string
+  readonly task?: undefined
   readonly state: string | null
 }
+
+/**
+ * An address of a task: one invoked with `as` (kind `task`), or a collection of tasks. It
+ * appears only in `emitted` triggers, since a task takes no events.
+ */
+export interface TaskAddress {
+  readonly kind: "task" | "children"
+  readonly name: string
+  readonly task: string
+  readonly machine?: undefined
+  readonly state: string | null
+}
+
+/** The name of the machine or task at the other end of `address`. */
+export const peerOf = (address: Address): string =>
+  address.machine !== undefined ? address.machine : address.task
 
 export type Trigger =
   | { readonly kind: "event"; readonly event: string }
@@ -186,7 +218,7 @@ export type Trigger =
   | { readonly kind: "call"; readonly call: string }
   | { readonly kind: "spawn.done"; readonly children: string }
   | { readonly kind: "spawn.fail"; readonly children: string; readonly error: string }
-  | { readonly kind: "ended"; readonly from: Address }
+  | { readonly kind: "ended"; readonly from: MachineAddress }
 
 export interface Transition {
   readonly trigger: Trigger
@@ -205,7 +237,7 @@ export type Effect =
   | { readonly kind: "do"; readonly action: string; readonly args: ReadonlyArray<Expr> }
   | {
     readonly kind: "send"
-    readonly to: Address
+    readonly to: MachineAddress
     /** For a collection, the child's key, or `null` for every running child. */
     readonly key: Expr | null
     readonly event: string
@@ -222,7 +254,8 @@ export type Effect =
   | {
     readonly kind: "spawn"
     readonly children: string
-    readonly machine: string
+    /** The collection's machine or task; which of the two is the collection's `kind`. */
+    readonly src: string
     readonly key: Expr
     readonly args: ReadonlyArray<Expr>
   }

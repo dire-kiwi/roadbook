@@ -1,0 +1,58 @@
+{
+  "description": "An emit and the task's outcome queued together, in the order a task gives them, emit first: both are taken. Then, for the second invoke, an emit and the outcome queued together again, but taking the emit leaves the invoking state: the invoke is still running, since its outcome has not been taken, so it is cancelled, and the queued outcome is stale.",
+  "requires": [
+    "messaging",
+    "task-emits"
+  ],
+  "chart": "charts/task-emits.road",
+  "machine": "Eager",
+  "input": {
+    "size": 100
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "together": [
+        {
+          "task": "upload",
+          "emit": {
+            "_tag": "Progress",
+            "percent": 40
+          }
+        },
+        {
+          "task": "upload",
+          "done": 100
+        }
+      ]
+    },
+    {
+      "event": {
+        "_tag": "Again"
+      }
+    },
+    {
+      "together": [
+        {
+          "task": "upload",
+          "emit": {
+            "_tag": "Progress",
+            "percent": 100
+          }
+        },
+        {
+          "task": "upload",
+          "done": 50
+        }
+      ]
+    },
+    {
+      "event": {
+        "_tag": "Finish"
+      }
+    }
+  ],
+  "status": "done"
+}

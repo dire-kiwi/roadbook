@@ -150,6 +150,12 @@ export type Input =
     readonly message: number
     readonly value: Tagged
   }
+  /**
+   * A task this run invoked with `as`, or spawned, emitted one of its `emits` while it ran:
+   * `invoke` is the id of the invoke or the spawned task. It has no sender run and no message
+   * id; nothing but the task's emitter pushes it.
+   */
+  | { readonly kind: "task.emitted"; readonly invoke: number; readonly value: Tagged }
   /** Run `from` called this machine's call `call` with its invoke `invoke`. */
   | {
     readonly kind: "call"
@@ -279,18 +285,26 @@ export type Command =
   }
   | { readonly kind: "invoke.cancel"; readonly invoke: number }
   /**
-   * Start machine `src` as spawned child `spawn`, which delivers what it emits to this run, and
-   * queue its outcome as a `spawn.*` input when it ends.
+   * Start machine or task `src` as spawned child `spawn`, which delivers what it emits to this
+   * run, and queue its outcome as a `spawn.*` input when it ends.
    */
   | {
     readonly kind: "spawn.start"
     readonly spawn: number
     readonly src: string
+    /** Whether `src` is a machine (a child run) or a task (host work with a live emitter). */
+    readonly srcKind: "machine" | "task"
     readonly args: { readonly [param: string]: Json }
-    /** The saved snapshot the child run restores instead of starting; `null` but from `restore`. */
+    /**
+     * The saved snapshot the child run restores instead of starting; `null` but from `restore`,
+     * and always `null` for a task.
+     */
     readonly saved: Saved | null
   }
-  /** Stop spawned child `spawn` and wait for its cancel step, as `invoke.cancel` does. */
+  /**
+   * Stop spawned child `spawn` and wait for its cancel step, as `invoke.cancel` does; a spawned
+   * task is dropped at once.
+   */
   | { readonly kind: "spawn.stop"; readonly spawn: number }
   | { readonly kind: "timer.start"; readonly timer: number; readonly delay: number }
   | { readonly kind: "timer.cancel"; readonly timer: number }

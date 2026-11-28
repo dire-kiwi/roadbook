@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0220]: `uploads` holds `upload` tasks, not `download`
+  --> RB0220-spawn-task-mismatch.road:15:40
+   |
+15 |     on Add spawn uploads[event.name] = download(event.name)  spawn uploads["c"] = Child(event.name)
+   |                                        ^^^^^^^^
+   |
+   = help: spawn a `upload`, or declare another collection for `download`
+
+error[RB0220]: `uploads` holds `upload` tasks, not `Child`
+  --> RB0220-spawn-task-mismatch.road:15:83
+   |
+15 |     on Add spawn uploads[event.name] = download(event.name)  spawn uploads["c"] = Child(event.name)
+   |                                                                                   ^^^^^
+   |
+   = help: spawn a `upload`, or declare another collection for `Child`

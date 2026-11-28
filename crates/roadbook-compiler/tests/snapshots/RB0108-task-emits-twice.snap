@@ -1,0 +1,28 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0108]: task `upload` emits the event `Progress` twice
+ --> RB0108-task-emits-twice.road:3:9
+  |
+2 |   emits Progress { percent: int }
+  |         -------- first declared here
+3 |   emits Progress { ok: bool }
+  |         ^^^^^^^^
+  |
+  = help: rename one of them, or remove the second
+
+error[RB0108]: `up` is already a variable of `M`
+  --> RB0108-task-emits-twice.road:10:27
+   |
+10 |     invoke upload("f") as up {
+   |                           ^^
+   |
+   = help: an `as` name shares the machine's names with its parameters and variables; choose another
+
+error[RB0315]: `up` is `int`, not a `ref`
+  --> RB0108-task-emits-twice.road:13:8
+   |
+13 |     on up.Progress set percent = event.percent
+   |        ^^
+   |
+   = help: events are sent to, and received from, an `invoke … as name` or a parameter or variable of type `ref Machine`

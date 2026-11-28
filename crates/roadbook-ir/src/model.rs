@@ -373,8 +373,8 @@ pub struct ActionDecl {
     pub span: Span,
 }
 
-/// `task name(params) [-> T] [! E | …]`: effectful, fallible, cancellable
-/// host work.
+/// `task name(params) [-> T] [! E | …] [emits E { fields } …]`: effectful, fallible,
+/// cancellable host work.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TaskDecl {
@@ -384,6 +384,10 @@ pub struct TaskDecl {
     pub returns: Option<TypeRef>,
     /// Declared errors (names of `error` types), in source order.
     pub errors: Vec<String>,
+    /// Events the task emits while it runs (`emits Name { fields }`), keyed by name, in
+    /// source order, `{}` if none. They are in the task's own namespace: their type is
+    /// `task.Name`.
+    pub emits: IndexMap<String, EventDecl>,
     /// Doc comment, `""` if none.
     pub doc: String,
     /// The whole declaration.
@@ -492,12 +496,25 @@ pub const ENDED: &str = "Ended";
 /// The variants of [`ENDED`], in order.
 pub const ENDED_VARIANTS: [&str; 5] = ["Done", "Failed", "Cancelled", "Defect", "Suspended"];
 
-/// `children name: Machine by Key`: a keyed collection of spawned children.
+/// What a `children` collection holds: machines or tasks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ChildrenKind {
+    /// Child machines (`children name: Machine by Key`).
+    Machine,
+    /// Host tasks (`children name: task by Key`).
+    Task,
+}
+
+/// `children name: Machine by Key` or `children name: task by Key`: a keyed collection of
+/// spawned children, machines or tasks.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChildrenDecl {
-    /// The machine the children run, a key of [`Ir::machines`].
-    pub machine: String,
+    /// Whether the children are machines or tasks.
+    pub kind: ChildrenKind,
+    /// What the children run: a key of [`Ir::machines`] or of [`Ir::tasks`], by `kind`.
+    pub src: String,
     /// The key type: `string`, `int` or an enum, or an alias of one.
     pub key: TypeRef,
     /// Doc comment, `""` if none.
@@ -590,9 +607,10 @@ pub struct Invoke {
     /// For a call, the callee: an address of kind `ref`. `None` for a task or
     /// a machine.
     pub to: Option<Address>,
-    /// The name given with `invoke Machine(…) as name`, through which the
-    /// state and its descendants send to the child and receive what it
-    /// emits. `None` without `as`; always `None` for a task and a call.
+    /// The name given with `invoke Machine(…) as name` or `invoke task(…) as name`,
+    /// through which the state and its descendants send to the child and receive what
+    /// it or the task emits. `None` without `as`; always `None` for a call, and for a task
+    /// that declares no `emits`.
     #[serde(rename = "as")]
     pub alias: Option<String>,
     /// Arguments, positional, in parameter order.
@@ -612,7 +630,8 @@ impl Invoke {
     }
 }
 
-/// Whether an [`Address`] names an invoked child, a `ref` value or a children collection.
+/// Whether an [`Address`] names an invoked child, a `ref` value, a children collection or
+/// an invoked task.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AddressKind {
@@ -620,25 +639,88 @@ pub enum AddressKind {
     Child,
     /// A parameter or variable of type `ref Machine`.
     Ref,
-    /// The spawned children of a `children` collection.
+    /// The spawned children of a `children` collection, machines or tasks.
     Children,
+    /// The task of an `invoke task(…) as name`. Only in `emitted` triggers.
+    Task,
 }
 
-/// Another running machine, as a `send` names its receiver, an
+/// Another running machine or a running task, as a `send` names its receiver, an
 /// `on name.Event` trigger its sender and a call invoke its callee.
+///
+/// It names its other end by `machine` (kinds `child`, `ref`, and `children` of a machine
+/// collection) or by `task` (kind `task`, and `children` of a task collection): exactly one
+/// of the two is set, and in JSON the other member is absent.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, try_from = "AddressDe")]
 pub struct Address {
-    /// A child or a ref.
+    /// A child, a ref, a collection or a task.
     pub kind: AddressKind,
     /// The `as` name, the parameter or variable, or the collection.
     pub name: String,
-    /// The machine at the other end, a key of [`Ir::machines`].
-    pub machine: String,
-    /// For a child, the id of the state whose invoke is named `name`: the
+    /// The machine at the other end, a key of [`Ir::machines`], or `None` for a task.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub machine: Option<String>,
+    /// The task at the other end, a key of [`Ir::tasks`], or `None` for a machine.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task: Option<String>,
+    /// For a child or a task, the id of the state whose invoke is named `name`: the
     /// innermost such state containing the item. `None` for a ref or a
     /// collection.
     pub state: Option<String>,
+}
+
+impl Address {
+    /// The name of the machine or task at the other end.
+    pub fn peer(&self) -> &str {
+        self.machine
+            .as_deref()
+            .or(self.task.as_deref())
+            .unwrap_or_default()
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AddressDe {
+    kind: AddressKind,
+    name: String,
+    #[serde(default)]
+    machine: Option<String>,
+    #[serde(default)]
+    task: Option<String>,
+    state: Option<String>,
+}
+
+impl TryFrom<AddressDe> for Address {
+    type Error = String;
+
+    fn try_from(a: AddressDe) -> Result<Address, String> {
+        let task_kind = a.kind == AddressKind::Task;
+        match (&a.machine, &a.task) {
+            (Some(_), None) if !task_kind => {}
+            (None, Some(_)) if task_kind || a.kind == AddressKind::Children => {}
+            _ => {
+                return Err(format!(
+                    "address `{}` of kind `{}` must name exactly one of `machine` and `task`, by its kind",
+                    a.name,
+                    match a.kind {
+                        AddressKind::Child => "child",
+                        AddressKind::Ref => "ref",
+                        AddressKind::Children => "children",
+                        AddressKind::Task => "task",
+                    }
+                ));
+            }
+        }
+        Ok(Address {
+            kind: a.kind,
+            name: a.name,
+            machine: a.machine,
+            task: a.task,
+            state: a.state,
+        })
+    }
 }
 
 /// A transition.
@@ -678,13 +760,14 @@ pub enum Trigger {
         /// The event's name, a key of [`Machine::events`].
         event: String,
     },
-    /// `on name.Event`: an event emitted by an invoked child or by the
-    /// machine a `ref` holds.
+    /// `on name.Event`: an event emitted by an invoked child, by the
+    /// machine a `ref` holds, by a spawned child or by an invoked or spawned task.
     #[serde(rename = "emitted")]
     Emitted {
         /// The sender.
         from: Address,
-        /// The event's name, a key of the sender's [`Machine::emits`].
+        /// The event's name, a key of the sender's [`Machine::emits`] or
+        /// [`TaskDecl::emits`].
         event: String,
     },
     /// `on *`: any event the state has no `on` for. Only the machine's own
@@ -720,7 +803,7 @@ pub enum Trigger {
         /// The call's name, a key of [`Machine::calls`].
         call: String,
     },
-    /// `on name.done`: a spawned child of the collection ended `done`.
+    /// `on name.done`: a spawned child (or task) of the collection ended `done`.
     #[serde(rename = "spawn.done")]
     SpawnDone {
         /// The collection, a key of [`Machine::children`].
@@ -796,12 +879,13 @@ pub enum Effect {
         /// it returns nothing; for `fail`, one of its declared errors.
         value: Option<Expr>,
     },
-    /// `spawn name[key] = Machine(args)`: start a child in a collection.
+    /// `spawn name[key] = Machine(args)` or `spawn name[key] = task(args)`: start a child
+    /// or a task in a collection.
     Spawn {
         /// The collection, a key of [`Machine::children`].
         children: String,
-        /// Its machine.
-        machine: String,
+        /// Its machine or task, the collection's `src`.
+        src: String,
         /// The child's key.
         key: Expr,
         /// Arguments, positional, in parameter order.

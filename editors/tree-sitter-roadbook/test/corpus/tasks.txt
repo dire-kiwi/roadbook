@@ -1,0 +1,160 @@
+================================================================================
+Tasks that emit
+================================================================================
+
+task upload(file: File) -> Url ! UploadFailed
+  /// How far it got.
+  emits Progress { percent: int }
+  emits Stage { sensitive name: string }
+task ticks(every: duration) emits Tick
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (task_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (type_identifier)))
+    (type_identifier)
+    (errors
+      (type_identifier))
+    (doc_comment)
+    (emits_declaration
+      (type_identifier)
+      (fields
+        (field_declaration
+          (identifier)
+          (builtin_type))))
+    (emits_declaration
+      (type_identifier)
+      (fields
+        (field_declaration
+          (sensitive)
+          (identifier)
+          (builtin_type)))))
+  (task_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type)))
+    (emits_declaration
+      (type_identifier))))
+
+================================================================================
+An invoke with no block, and a task's emitted events
+================================================================================
+
+machine M() {
+  initial Waiting
+  state Waiting {
+    invoke ticks(1s) as clock
+    on clock.Tick set seconds = seconds + 1
+  }
+  state Uploading {
+    invoke upload(file) as up retry 2 after 1s
+    after 5s -> Waiting
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (invoke
+            (identifier)
+            (arguments
+              (duration))
+            (identifier))
+          (on_transition
+            (received_event
+              (identifier)
+              (type_identifier))
+            (set
+              (assignment
+                (identifier)
+                (binary_expression
+                  (identifier)
+                  (integer)))))))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (invoke
+            (identifier)
+            (arguments
+              (identifier))
+            (identifier)
+            (retry
+              (integer)
+              (duration)))
+          (after_transition
+            (duration)
+            (target
+              (type_identifier))))))))
+
+================================================================================
+Collections of tasks
+================================================================================
+
+machine M() {
+  children uploads: upload by string
+  initial Open
+  state Open {
+    on Add spawn uploads[event.file.name] = upload(event.file)
+    on uploads.Progress do show(key, event.percent)
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (children_declaration
+        (identifier)
+        (identifier)
+        (builtin_type))
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (spawn
+              (identifier)
+              (field_expression
+                (field_expression
+                  (implicit_name)
+                  (identifier))
+                (identifier))
+              (identifier)
+              (arguments
+                (field_expression
+                  (implicit_name)
+                  (identifier)))))
+          (on_transition
+            (received_event
+              (identifier)
+              (type_identifier))
+            (do
+              (call
+                (identifier)
+                (arguments
+                  (implicit_name)
+                  (field_expression
+                    (implicit_name)
+                    (identifier)))))))))))

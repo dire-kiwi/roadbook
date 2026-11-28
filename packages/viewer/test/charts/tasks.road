@@ -1,0 +1,62 @@
+// Viewer test chart: tasks that emit, through an `as` name and from a collection of tasks, and
+// a stream task, whose invoke has no outcomes.
+
+error UploadFailed { reason: string }
+
+/// Store a file, saying how far it has got.
+task upload(name: string) -> int ! UploadFailed
+  /// How much of the file is stored, in percent.
+  emits Progress { percent: int }
+  /// Which stage the upload has reached.
+  emits Stage { name: string }
+
+/// Emits a `Tick` every `every`, until it is cancelled.
+task ticks(every: duration) emits Tick
+
+action showProgress(name: string, percent: int)
+
+/// Uploads one file and then many, counting the seconds it waits in between.
+machine Uploads(file: string) -> int {
+  event Add    { name: string }
+  event Cancel { name: string }
+  event Next
+  event Close
+
+  /// The uploads running side by side, by file name.
+  children uploads: upload by string
+
+  var percent: int = 0
+  var seconds: int = 0
+  var stored:  int = 0
+
+  initial Single
+
+  state Single {
+    invoke upload(file) as up {
+      done              -> Waiting  set stored = result
+      fail UploadFailed -> Waiting
+    }
+    on up.Progress {
+      if event.percent >= 100 -> Waiting  set percent = 100
+      else                                set percent = event.percent
+    }
+    on up.Stage                           do showProgress(event.name, percent)
+  }
+
+  state Waiting {
+    invoke ticks(1s) as clock
+    on clock.Tick          set seconds = seconds + 1
+    on Next       -> Many
+  }
+
+  state Many {
+    on Add                         spawn uploads[event.name] = upload(event.name)
+    on Cancel                      stop uploads[event.name]
+    on uploads.Progress            do showProgress(key, event.percent)
+    on uploads.done                set stored = stored + result
+    on uploads.fail *              do showProgress(key, 0)
+    on Close            -> Closed
+  }
+
+  final state Closed { output stored }
+}

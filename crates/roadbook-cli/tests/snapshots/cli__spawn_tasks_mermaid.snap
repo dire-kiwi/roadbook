@@ -1,0 +1,24 @@
+---
+source: crates/roadbook-cli/tests/cli.rs
+expression: text(&out.stdout)
+---
+## Batch
+
+`spec/conformance/charts/spawn-tasks.road:14`
+
+```text
+Uploads files side by side, one task per file name, and counts those stored.
+```
+
+```mermaid
+stateDiagram-v2
+  Open: on Add / spawn uploads[event.name] = upload(event.size)
+  Open: on Cancel / stop uploads[event.name]
+  Open: on uploads.Progress / do showProgress(key, event.percent)
+  Open: on uploads.done / set stored = stored + 1, do showStored(key, result)
+  Open: on uploads.fail * / do reportFailure(key, error.reason)
+  Closed: output stored
+  [*] --> Open
+  Open --> Closed: Close
+  Closed --> [*]
+```

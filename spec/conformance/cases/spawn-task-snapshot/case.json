@@ -1,0 +1,53 @@
+{
+  "description": "A run saved with a spawned task running: its `spawned` entry has the key and the arguments, and no `child`. Restored as r2, the task starts again (`spawn.started`) with the same id and its saved arguments, emits again, and ends; r1 carries on untouched.",
+  "requires": [
+    "messaging",
+    "spawn",
+    "task-emits",
+    "snapshots"
+  ],
+  "chart": "charts/spawn-tasks.road",
+  "machine": "Batch",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Add",
+        "name": "a",
+        "size": 10
+      }
+    },
+    {
+      "task": "upload",
+      "emit": {
+        "_tag": "Progress",
+        "percent": 30
+      }
+    },
+    {
+      "snapshot": "open"
+    },
+    {
+      "restore": "open",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "task": "upload",
+      "run": "r2",
+      "emit": {
+        "_tag": "Progress",
+        "percent": 60
+      }
+    },
+    {
+      "task": "upload",
+      "run": "r2",
+      "done": 10
+    }
+  ],
+  "status": "running"
+}

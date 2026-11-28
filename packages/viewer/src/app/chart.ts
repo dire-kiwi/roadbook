@@ -14,7 +14,7 @@ import type { Ir } from '../ir.ts'
 import { own } from '../ir.ts'
 import type { ElkLike, Layout } from '../layout.ts'
 import { defaultCollapsed, layoutMachine } from '../layout.ts'
-import { ancestorIds, openingMachine, parseEventKey, transitionId, walkStates } from '../model.ts'
+import { ancestorIds, isTaskEvent, openingMachine, parseEventKey, transitionId, walkStates } from '../model.ts'
 import type { Measure } from '../model.ts'
 import { panelHtml } from '../panel.ts'
 import type { Selection } from '../panel.ts'
@@ -246,9 +246,13 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     return show(name, { select })
   }
 
-  /** Opens an event (`Upload.Progress`) or a call (`Inventory.reserve`): selects it, in its own machine. */
+  /**
+   * Opens an event (`Upload.Progress`) or a call (`Inventory.reserve`): selects it, in its own
+   * machine. An event a task emits (`upload.Progress`) is shown on the current machine's page.
+   */
   function openEvent(key: string) {
     const ref = parseEventKey(key)
+    if (ref && isTaskEvent(ref)) return own(ir.tasks, ref.machine) ? select({ type: 'event', name: key }) : undefined
     if (!ref || !own(ir.machines, ref.machine)) return
     const sel: Selection = { type: 'event', name: ref.event }
     if (ref.machine === current) select(sel)
@@ -317,9 +321,11 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     if (selection.type === 'state') stateEl(visibleId(selection.id))?.classList.add('rb-selected')
     else if (selection.type === 'transition') transitionEls(selection.state, selection.index).forEach((el) => el.classList.add('rb-selected'))
     else {
-      // An event or a call: where it is emitted, sent or replied to here, and the transitions it triggers.
+      // An event or a call: where it is emitted, sent or replied to here, and the transitions it
+      // triggers. An event a task emits (`upload.Progress`) is named in full: where it is handled.
       const name = selection.name
-      svg.querySelectorAll(`[data-event="${q(`${current}.${name}`)}"]`).forEach((el) => el.classList.add('rb-selected'))
+      const key = name.includes('.') ? name : `${current}.${name}`
+      svg.querySelectorAll(`[data-event="${q(key)}"]`).forEach((el) => el.classList.add('rb-selected'))
       const m = own(ir.machines, current)!
       walkStates(m.root, (st) =>
         st.transitions.forEach((t, i) => {

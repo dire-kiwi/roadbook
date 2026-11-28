@@ -692,12 +692,17 @@ impl Parser<'_> {
                     None
                 };
                 let errors = self.errors()?;
+                let mut emits = Vec::new();
+                while self.at_kw(K::Emits) {
+                    emits.push(self.event()?);
+                }
                 (
                     name,
                     DeclKind::Task {
                         params,
                         returns,
                         errors,
+                        emits,
                     },
                 )
             }
@@ -1333,20 +1338,28 @@ impl Parser<'_> {
             && self.nth(2) == T::Punct(P::Colon)
     }
 
-    /// `children name: Machine by Key`
+    /// `children name: Machine by Key` or `children name: task by Key`
     fn children(&mut self) -> PResult<ChildrenDecl> {
         let doc = self.take_doc();
         let start = self.bump().span;
         let name = self.binding("the name of a children collection")?;
         self.expect_p(
             P::Colon,
-            &format!(" and a machine after `children {}`", name.name),
+            &format!(" and a machine or task after `children {}`", name.name),
         )?;
-        let machine = self.upper("the machine of the collection's children")?;
+        // A lower-case name is a task, an upper-case one a machine. `by` is not reserved, so
+        // `children x: by …` names no task: it is the key word with the task left out.
+        let what = "the machine or task of the collection's children";
+        let src = match self.peek() {
+            T::Lower if self.text(self.tok()) == "by" => return Err(self.unexpected(what)),
+            T::Upper | T::Lower => self.bump_ident(),
+            T::Keyword(_) => self.keyword_as_name(what)?,
+            _ => return Err(self.unexpected(what)),
+        };
         if !(self.at(T::Lower) && self.text(self.tok()) == "by") {
             return Err(self.unexpected(&format!(
                 "`by` and the key type after `children {}: {}`",
-                name.name, machine.name
+                name.name, src.name
             )));
         }
         self.bump();
@@ -1354,7 +1367,7 @@ impl Parser<'_> {
         Ok(ChildrenDecl {
             doc,
             name,
-            machine,
+            src,
             key,
             span: self.since(start),
         })
@@ -1742,17 +1755,22 @@ impl Parser<'_> {
                 }
                 let key = self.key()?;
                 self.expect_p(P::Eq, &format!(" after `spawn {}[…]`", children.name))?;
-                let machine = self.upper("the machine to spawn")?;
+                // A lower-case name is a task, an upper-case one a machine.
+                let src = match self.peek() {
+                    T::Upper | T::Lower => self.bump_ident(),
+                    T::Keyword(_) => self.keyword_as_name("the machine or task to spawn")?,
+                    _ => return Err(self.unexpected("the machine or task to spawn")),
+                };
                 if !self.at_p(P::LParen) {
                     return Err(
-                        self.unexpected(&format!("`(` and the arguments of `{}`", machine.name))
+                        self.unexpected(&format!("`(` and the arguments of `{}`", src.name))
                     );
                 }
                 let (args, _) = self.list(P::LParen, "the argument list", |p| p.expr(false))?;
                 out.push(Effect::Spawn(Spawn {
                     children,
                     key,
-                    machine,
+                    src,
                     args,
                     span: self.since(kw.span),
                 }));
@@ -1977,8 +1995,19 @@ impl Parser<'_> {
         } else {
             None
         };
-        let open = self.expect_p(P::LBrace, " and the invoke's outcomes (`done`, `fail`)")?;
         let mut outcomes = Vec::new();
+        // An invoke may leave out its block: `invoke ticks(1s) as clock`.
+        let Some(open) = self.eat_p(P::LBrace) else {
+            return Ok(Invoke {
+                to,
+                callee,
+                args,
+                alias,
+                retry,
+                outcomes,
+                span: self.since(start),
+            });
+        };
         let errors_before = self.diags.len();
         loop {
             let k = self.peek();

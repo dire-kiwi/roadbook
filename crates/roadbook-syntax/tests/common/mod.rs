@@ -75,6 +75,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  /// The sessions.\n  children sessions: Session by string\n  children children: Job by int\n  on Connected spawn sessions[event.id] = Session(event.socket, 1)\n  on Gone stop sessions[event.id]  stop children[2]\n  on All send sessions.*.Notify { text: \"hi\" }\n  on One send sessions[event.id].Notify { text: event.text, }\n  on sessions.Typing do log(key)\n  on sessions.done -> A  set n = n - 1\n  on sessions.fail Lost do log(key)\n  on children.fail * do log(error)\n  state A {}\n}\n",
     ),
     (
+        "task_emits",
+        "task upload(file: string) -> string ! Failed\n  /// How far.\n  emits Progress { percent: int }\n  emits Stage { sensitive name: string }\ntask ticks(every: duration) emits Tick\nmachine M() {\n  children uploads: upload by string\n  on Add spawn uploads[event.name] = upload(event.name)\n  on uploads.Progress do show(key, event.percent)\n  state A {\n    invoke upload(\"x\") as up {\n      done -> A\n    }\n    on up.Progress set p = event.percent\n  }\n  state B {\n    invoke ticks(1s) as clock\n    on clock.Tick set n = n + 1\n  }\n}\n",
+    ),
+    (
         "ended",
         "machine M(peer: ref Peer) {\n  var ended: int = 0\n  on peer.ended if event.status == Ended.Defect -> A\n  state A {\n    on peer.ended {\n      if event.status == Ended.Done -> A  set ended = ended + 1\n      else -> A\n    }\n  }\n}\n",
     ),

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "spec/conformance/charts/parallel.road",
@@ -57,6 +57,7 @@
       "params": [],
       "returns": "int",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 0,
@@ -70,6 +71,7 @@
       "params": [],
       "returns": "int",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 0,

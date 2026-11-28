@@ -122,8 +122,10 @@ impl<'p> Cx<'_, 'p> {
             }
             ir::StateKind::Atomic => {}
         }
-        // `as` on a task is reported as such.
-        if let Some(a) = plan.inv.alias.as_ref().filter(|_| plan.inv.is_machine()) {
+        // `as` on a call, or on a task that emits nothing, is reported as such (`RB0214`).
+        let named = plan.inv.is_machine()
+            || (!plan.inv.is_call() && self.task_emits(&plan.inv.callee.name) == Some(true));
+        if let Some(a) = plan.inv.alias.as_ref().filter(|_| named) {
             self.ck.diags.push(
                 Diagnostic::error(
                     codes::RETRY_WITH_ALIAS,
@@ -131,7 +133,7 @@ impl<'p> Cx<'_, 'p> {
                     format!("`invoke {callee} as {}` cannot `retry`", a.name),
                 )
                 .with_secondary(a.span, "named here")
-                .with_help("each attempt is a new child, so the name would address nothing while the retry waits; drop `as`, or write the retry out as explicit states"),
+                .with_help("each attempt starts it anew, so the name would address nothing while the retry waits; drop `as`, or write the retry out as explicit states"),
             );
             ok = false;
         }

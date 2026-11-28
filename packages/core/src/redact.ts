@@ -10,7 +10,7 @@
  * generic type substituted. A member a type does not declare is left as it is. Values are never
  * changed in place: what is redacted is a copy.
  */
-import type { CallDecl, Field, Ir, Machine } from "./ir.ts"
+import type { CallDecl, Field, Ir, Machine, TaskDecl } from "./ir.ts"
 import { expandType, fieldsOf, parseTypeRef, type TypeRef } from "./typeref.ts"
 import type { Json } from "./json.ts"
 import type { CoreRecord, Defect, Input, InvokeEntry, Saved, SpawnedEntry, Tagged } from "./types.ts"
@@ -41,7 +41,7 @@ const marks = (ir: Ir): Marks => {
   const any = Object.values(ir.types).some((t) => (t.kind === "record" || t.kind === "error") && marked(t.fields)) ||
     Object.values(ir.functions).some((f) => marked(f.params)) ||
     Object.values(ir.actions).some((a) => marked(a.params)) ||
-    Object.values(ir.tasks).some((t) => marked(t.params)) ||
+    Object.values(ir.tasks).some((t) => marked(t.params) || Object.values(t.emits).some((e) => marked(e.fields))) ||
     Object.values(ir.machines).some((m) =>
       marked(m.params) || m.vars.some((v) => v.sensitive) ||
       Object.values(m.calls).some((c) => marked(c.params)) ||
@@ -217,6 +217,30 @@ class Redactor {
     return this.tagged(decls, v)
   }
 
+  /** `v`, an event task `task` emitted, redacted as the event of its tag in the task's `emits`. */
+  private taskEvent(task: TaskDecl | undefined, v: Json): Json {
+    const decl = task === undefined ? undefined : own(task.emits, this.tagOf(v))
+    return this.tagged(decl === undefined ? [] : [decl.fields], v)
+  }
+
+  /**
+   * `v`, a stale event a task emitted, whose invoke or spawned task has ended, so that its task
+   * is not known: redacted as each task of the IR that emits an event of its tag with exactly its
+   * members would, as {@link Redactor.emitted} does for machines.
+   */
+  private staleTaskEvent(v: Json): Json {
+    const tag = this.tagOf(v)
+    const members = isObject(v) ? Object.keys(v).filter((k) => k !== "_tag") : []
+    const fits = (fields: ReadonlyArray<Field>) =>
+      fields.length === members.length && fields.every((f) => members.includes(f.name))
+    const decls: Array<ReadonlyArray<Field>> = []
+    for (const t of Object.values(this.ir.tasks)) {
+      const decl = own(t.emits, tag)
+      if (decl !== undefined && fits(decl.fields)) decls.push(decl.fields)
+    }
+    return this.tagged(decls, v)
+  }
+
   /** `v`, a tagged error, redacted by its tag. */
   private error(v: Json): Json {
     const decl = own(this.ir.types, this.tagOf(v))
@@ -270,10 +294,11 @@ class Redactor {
     return this.active ? this.anyInput(m, invokes, spawned, input) as I : input
   }
 
-  /** The machine the children of collection `children` of `m` run. */
-  private collection(m: Machine, children: string): Machine | undefined {
+  /** What the children of collection `children` of `m` run: a machine or a task. */
+  private collection(m: Machine, children: string): Machine | TaskDecl | undefined {
     const decl = own(m.children, children)
-    return decl === undefined ? undefined : own(this.ir.machines, decl.machine)
+    if (decl === undefined) return undefined
+    return decl.kind === "task" ? own(this.ir.tasks, decl.src) : own(this.ir.machines, decl.src)
   }
 
   private anyInput(
@@ -291,6 +316,21 @@ class Redactor {
         // whose invoke has ended), so the event is redacted as each machine that emits an
         // event of its name would redact it.
         return { ...input, value: this.emitted(input.value) as typeof input.value }
+      case "task.emitted": {
+        // By the task its invoke or spawned task runs; a stale one's is not known.
+        const inv = invokes.find((i) => i.id === input.invoke)
+        const ch = spawned.find((c) => c.id === input.invoke)
+        const decl = ch === undefined ? undefined : own(m.children, ch.children)
+        const task = inv !== undefined
+          ? own(this.ir.tasks, inv.src)
+          : decl?.kind === "task"
+          ? own(this.ir.tasks, decl.src)
+          : undefined
+        const value = inv === undefined && ch === undefined
+          ? this.staleTaskEvent(input.value)
+          : this.taskEvent(task, input.value)
+        return { ...input, value: value as typeof input.value }
+      }
       case "call":
         return { ...input, args: this.object(own(m.calls, input.call)?.params ?? [], input.args) }
       case "invoke.done": {
@@ -347,8 +387,10 @@ class Redactor {
           : own(this.ir.machines, record.src)?.params ?? []
         return { ...record, args: this.object(params, record.args) }
       }
-      case "spawn.started":
-        return { ...record, args: this.object(own(this.ir.machines, record.src)?.params ?? [], record.args) }
+      case "spawn.started": {
+        const src = own(this.ir.tasks, record.src) ?? own(this.ir.machines, record.src)
+        return { ...record, args: this.object(src?.params ?? [], record.args) }
+      }
       case "emitted":
         return { ...record, value: this.event(m, true, record.value) as typeof record.value }
       // A `reply`'s result by the call's result type, and its error by its tag.

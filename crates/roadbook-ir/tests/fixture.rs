@@ -315,6 +315,186 @@ fn hash_writes_one_target_as_before() {
     assert!(t["target"].is_string(), "{t}");
 }
 
+/// The hash of a machine that uses none of IR 0.10's additions (task emits, task addresses,
+/// collections of tasks) is its 0.9 hash. The stored hashes of both fixtures were written by
+/// the 0.9 compiler, and `bless_or_check_hashes` checks them; this checks the view's shape.
+#[test]
+fn hash_writes_a_machine_collection_and_its_spawns_as_0_9_did() {
+    let mut ir = fixture();
+    let span = ir.machines["Checkout"].span;
+    let key: roadbook_ir::TypeRef = "string".parse().unwrap();
+    let place_order = &mut ir.machines["PlaceOrder"];
+    place_order.children.insert(
+        "checkouts".into(),
+        roadbook_ir::ChildrenDecl {
+            kind: roadbook_ir::ChildrenKind::Machine,
+            src: "Checkout".into(),
+            key: key.clone(),
+            doc: String::new(),
+            span,
+        },
+    );
+    let lit = |s: &str| Expr {
+        ty: key.clone(),
+        kind: ExprKind::Lit(Literal::String(s.into())),
+        text: format!("{s:?}"),
+    };
+    place_order.root.entry.push(Effect::Spawn {
+        children: "checkouts".into(),
+        src: "Checkout".into(),
+        key: lit("a"),
+        args: vec![],
+    });
+    let view = roadbook_ir::semantic_view(&ir, "PlaceOrder").unwrap();
+    let m = &view["machines"]["PlaceOrder"];
+    assert_eq!(
+        m["children"]["checkouts"],
+        serde_json::json!({"machine": "Checkout", "key": "string"})
+    );
+    let spawn = &m["root"]["entry"][0];
+    assert_eq!(spawn["machine"], "Checkout", "{spawn}");
+    assert!(spawn.get("src").is_none(), "{spawn}");
+    // A task that emits nothing is written without `emits`.
+    assert!(view["tasks"]["authenticate"].get("emits").is_none());
+}
+
+/// A task's emits, a task's address and a collection of tasks are in the view, and change
+/// the hash.
+#[test]
+fn hash_sees_task_emits_task_addresses_and_task_collections() {
+    let ir = fixture();
+    let checkout = machine_hash(&ir, "Checkout").unwrap();
+    let span = ir.tasks["chargeCard"].span;
+    let progress = roadbook_ir::EventDecl {
+        fields: vec![roadbook_ir::Field {
+            name: "percent".into(),
+            ty: "Role".parse().unwrap(),
+            sensitive: false,
+            doc: String::new(),
+        }],
+        doc: String::new(),
+        span,
+    };
+
+    // An emitted event of a task the machine invokes, with the types of its fields.
+    let mut emitting = ir.clone();
+    emitting.tasks["chargeCard"]
+        .emits
+        .insert("Progress".into(), progress.clone());
+    assert_ne!(machine_hash(&emitting, "Checkout").unwrap(), checkout);
+    let view = roadbook_ir::semantic_view(&emitting, "Checkout").unwrap();
+    assert!(view["tasks"]["chargeCard"]["emits"]["Progress"].is_object());
+    assert!(view["types"]["Role"].is_object());
+    // The same emits on a task the machine does not use change nothing.
+    let mut unused = ir.clone();
+    unused.tasks["authenticate"]
+        .emits
+        .insert("Progress".into(), progress.clone());
+    assert_eq!(machine_hash(&unused, "Checkout").unwrap(), checkout);
+
+    // `on pay.Progress` through the task's `as`: an address of kind `task`, which names no
+    // machine, with `event` of type `chargeCard.Progress`.
+    let mut on = emitting.clone();
+    let charging = &mut on.machines["Checkout"].root.states[0];
+    charging.invoke.as_mut().unwrap().alias = Some("pay".into());
+    let mut t = charging.transitions[0].clone();
+    t.trigger = Trigger::Emitted {
+        from: roadbook_ir::Address {
+            kind: roadbook_ir::AddressKind::Task,
+            name: "pay".into(),
+            machine: None,
+            task: Some("chargeCard".into()),
+            state: Some("Checkout.Charging".into()),
+        },
+        event: "Progress".into(),
+    };
+    t.targets = vec![];
+    t.effects = vec![];
+    let event = Expr {
+        ty: "chargeCard.Progress".parse().unwrap(),
+        kind: ExprKind::Ref {
+            path: vec!["event".into()],
+        },
+        text: "event".into(),
+    };
+    t.guard = Some(Expr {
+        ty: "bool".parse().unwrap(),
+        kind: ExprKind::Op {
+            op: roadbook_ir::Op::Eq,
+            args: vec![event.clone(), event],
+        },
+        text: "event == event".into(),
+    });
+    charging.transitions.push(t);
+    let hash = machine_hash(&on, "Checkout").unwrap();
+    assert_ne!(hash, machine_hash(&emitting, "Checkout").unwrap());
+    let view = roadbook_ir::semantic_view(&on, "Checkout").unwrap();
+    assert_eq!(view["interfaces"], serde_json::json!({}));
+    let from =
+        &view["machines"]["Checkout"]["root"]["states"][0]["transitions"][4]["trigger"]["from"];
+    assert_eq!(from["task"], "chargeCard", "{from}");
+    assert!(from.get("machine").is_none(), "{from}");
+    // An event type of an event the task does not emit is reported.
+    let mut missing = on.clone();
+    missing.tasks["chargeCard"].emits.clear();
+    assert!(machine_hash(&missing, "Checkout").is_err());
+
+    // A collection of tasks adds the task to K, and is written with `kind` and `src`.
+    let mut spawning = ir.clone();
+    spawning.machines["PlaceOrder"].children.insert(
+        "charges".into(),
+        roadbook_ir::ChildrenDecl {
+            kind: roadbook_ir::ChildrenKind::Task,
+            src: "chargeCard".into(),
+            key: "string".parse().unwrap(),
+            doc: String::new(),
+            span,
+        },
+    );
+    let view = roadbook_ir::semantic_view(&spawning, "PlaceOrder").unwrap();
+    assert_eq!(
+        view["machines"]["PlaceOrder"]["children"]["charges"],
+        serde_json::json!({"kind": "task", "src": "chargeCard", "key": "string"})
+    );
+    assert!(view["tasks"]["chargeCard"].is_object());
+    assert_eq!(
+        view["machines"].as_object().unwrap().len(),
+        2,
+        "M is unchanged"
+    );
+    let mut changed = spawning.clone();
+    changed.tasks["chargeCard"].params.pop();
+    assert_ne!(
+        machine_hash(&changed, "PlaceOrder").unwrap(),
+        machine_hash(&spawning, "PlaceOrder").unwrap()
+    );
+}
+
+/// An address names its other end by exactly one of `machine` and `task`, by its kind.
+#[test]
+fn an_address_names_a_machine_or_a_task() {
+    let read = |json: &str| serde_json::from_str::<roadbook_ir::Address>(json);
+    let task = read(r#"{"kind": "task", "name": "up", "task": "upload", "state": "A.B"}"#).unwrap();
+    assert_eq!(task.peer(), "upload");
+    assert_eq!(
+        serde_json::to_string(&task).unwrap(),
+        r#"{"kind":"task","name":"up","task":"upload","state":"A.B"}"#
+    );
+    assert!(
+        read(r#"{"kind": "children", "name": "ups", "task": "upload", "state": null}"#).is_ok()
+    );
+    assert!(read(r#"{"kind": "child", "name": "c", "machine": "C", "state": "A"}"#).is_ok());
+    for bad in [
+        r#"{"kind": "task", "name": "up", "machine": "Up", "state": "A"}"#,
+        r#"{"kind": "child", "name": "c", "task": "upload", "state": "A"}"#,
+        r#"{"kind": "ref", "name": "r", "machine": "R", "task": "upload", "state": null}"#,
+        r#"{"kind": "children", "name": "cs", "state": null}"#,
+        r#"{"kind": "ref", "name": "r", "machine": "R", "state": null, "other": 1}"#,
+    ] {
+        assert!(read(bad).is_err(), "{bad}");
+    }
+}
+
 #[test]
 fn hash_handles_recursion_and_reports_missing_declarations() {
     // A machine that invokes itself (legal with an event or `after` between).
@@ -379,10 +559,8 @@ fn messaging_fixture_round_trips_and_matches_the_schema() {
             "ref inventory".into(),
         ),
         ("/sources/1/package".into(), "".into()),
-        (
-            "/machines/Inventory/root/states/1/invoke/as".into(),
-            "reserving".into(),
-        ),
+        // `as` on a call; on a task it is allowed from IR 0.10 (for a task that emits).
+        (format!("{call}/as"), "reserving".into()),
     ];
     for (pointer, value) in cases {
         let mut bad = doc.clone();

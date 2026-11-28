@@ -17,7 +17,7 @@
 //! - M is the machine and every machine it invokes, transitively (a machine
 //!   that invokes itself is included once).
 //! - F, A and K are the functions called (`call`), actions run (`do`) and
-//!   tasks invoked by the machines in M.
+//!   tasks invoked or spawned (the task of a `children` collection) by the machines in M.
 //! - R is every machine outside M that the machines in M, F, A and K name
 //!   without invoking it: by a `ref` type, by the address of a `send`, of
 //!   an `emitted` or `ended` trigger or of a call invoke, or by a dotted event type
@@ -31,7 +31,8 @@
 //!   an `errors` list and by an `invoke.fail` trigger's `error` other than
 //!   `"*"` and the built-in `Unanswered`. A name that is an event of the
 //!   machine being walked (the type of a bare `event`, or of an `emit`
-//!   value), or a dotted event type, is not a type and is skipped.
+//!   value), or a dotted event type (`Machine.Event`, or a task's `task.Event`),
+//!   is not a type and is skipped. An address of kind `task` names no machine.
 //! - `strip` removes every member named `doc`, `span`, `text` or
 //!   `sensitive` from every object, recursively, except the keys of a
 //!   machine's `calls` and `children` maps, which are names the chart chose
@@ -44,7 +45,11 @@
 //!   did before they existed. A transition's `internal` is removed when it
 //!   is `false`, and its `targets`, when it has at most one, is written as
 //!   IR 0.8's `target` (the id, or `null`), so a machine with neither
-//!   internal transitions nor several targets keeps its 0.8 hash. `calls`
+//!   internal transitions nor several targets keeps its 0.8 hash. A
+//!   collection of machines is written in IR 0.9's form, `{"machine", "key"}`
+//!   without `kind` and `src`, and a `spawn` effect of one has `machine` in
+//!   place of `src`; a task's `emits` is removed when it is `{}`. So a machine
+//!   that uses no task emits and spawns no tasks keeps its 0.9 hash. `calls`
 //!   and `strict` are always kept.
 //!
 //! Comments, formatting, source positions, `sensitive` marks and unused
@@ -61,7 +66,8 @@ use sha2::{Digest, Sha256};
 use crate::expr::{Expr, ExprKind};
 use crate::jcs;
 use crate::model::{
-    Address, Call, Effect, Field, InvokeKind, Ir, Machine, State, Trigger, TypeDef, UNANSWERED,
+    Address, Call, ChildrenKind, Effect, Field, InvokeKind, Ir, Machine, State, Trigger, TypeDef,
+    UNANSWERED,
 };
 use crate::types::TypeRef;
 
@@ -144,6 +150,22 @@ impl Walker<'_> {
             Ok(())
         } else if self.events.contains(name) {
             Ok(())
+        } else if let Some((task, event)) = name
+            .split_once('.')
+            .filter(|(t, _)| t.starts_with(|c: char| c.is_ascii_lowercase()))
+        {
+            // `task.Event`: an event a task emits. Like `Machine.Event` it names an event, not
+            // a type; the task is in K through the invoke or collection that receives it.
+            let found = self
+                .ir
+                .tasks
+                .get(task)
+                .is_some_and(|t| t.emits.contains_key(event));
+            if !found {
+                return Err(self.unresolved("event", name));
+            }
+            self.out.tasks.insert(task.to_owned());
+            Ok(())
         } else if let Some((machine, event)) = name.split_once('.') {
             let found = self
                 .ir
@@ -187,7 +209,21 @@ impl Walker<'_> {
     }
 
     fn address(&mut self, a: &Address) -> Result<(), HashError> {
-        self.named_machine(&a.machine)
+        match (&a.machine, &a.task) {
+            (Some(m), _) => self.named_machine(m),
+            // A task's address names no machine for R. Its task is in K through the invoke
+            // or the collection.
+            (None, Some(t)) => self.task(t),
+            (None, None) => Err(self.unresolved("machine", "")),
+        }
+    }
+
+    fn task(&mut self, name: &str) -> Result<(), HashError> {
+        if !self.ir.tasks.contains_key(name) {
+            return Err(self.unresolved("task", name));
+        }
+        self.out.tasks.insert(name.to_owned());
+        Ok(())
     }
 
     fn fields(&mut self, fields: &[Field]) -> Result<(), HashError> {
@@ -229,10 +265,16 @@ impl Walker<'_> {
         self.calls(m.calls.values())?;
         for c in m.children.values() {
             self.type_ref(&c.key)?;
-            if !self.ir.machines.contains_key(&c.machine) {
-                return Err(self.unresolved("machine", &c.machine));
+            match c.kind {
+                // A collection of tasks adds its task to K; M is unchanged.
+                ChildrenKind::Task => self.task(&c.src)?,
+                ChildrenKind::Machine => {
+                    if !self.ir.machines.contains_key(&c.src) {
+                        return Err(self.unresolved("machine", &c.src));
+                    }
+                    self.pending_machines.push(c.src.clone());
+                }
             }
-            self.pending_machines.push(c.machine.clone());
         }
         self.state(&m.root)
     }
@@ -242,12 +284,7 @@ impl Walker<'_> {
         self.effects(&s.exit)?;
         if let Some(inv) = &s.invoke {
             match inv.kind {
-                InvokeKind::Task => {
-                    if !self.ir.tasks.contains_key(&inv.src) {
-                        return Err(self.unresolved("task", &inv.src));
-                    }
-                    self.out.tasks.insert(inv.src.clone());
-                }
+                InvokeKind::Task => self.task(&inv.src)?,
                 InvokeKind::Machine => {
                     if !self.ir.machines.contains_key(&inv.src) {
                         return Err(self.unresolved("machine", &inv.src));
@@ -259,8 +296,12 @@ impl Walker<'_> {
                         return Err(self.unresolved("machine", ""));
                     };
                     self.address(to)?;
-                    if !self.ir.machines[&to.machine].calls.contains_key(&inv.src) {
-                        let name = format!("{}.{}", to.machine, inv.src);
+                    let has_call = to
+                        .machine
+                        .as_ref()
+                        .is_some_and(|m| self.ir.machines[m].calls.contains_key(&inv.src));
+                    if !has_call {
+                        let name = format!("{}.{}", to.peer(), inv.src);
                         return Err(self.unresolved("call", &name));
                     }
                 }
@@ -380,6 +421,9 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
         for e in &d.errors {
             w.type_name(e)?;
         }
+        for e in d.emits.values() {
+            w.fields(&e.fields)?;
+        }
     }
     // Close the types over their own declarations, and add the interfaces of
     // the machines named but not walked whole, with the types their events
@@ -457,6 +501,9 @@ fn strip(v: &mut Value) {
             if m.contains_key("trigger") && m.contains_key("group") {
                 transition_as_before(m);
             }
+            if m.contains_key("root") {
+                machine_as_before(m);
+            }
             for (key, value) in m.iter_mut() {
                 match value {
                     Value::Object(named) if key == "calls" || key == "children" => {
@@ -484,6 +531,49 @@ fn transition_as_before(m: &mut Map<String, Value>) {
             m.remove("targets");
             m.insert("target".into(), target);
         }
+    }
+}
+
+/// Writes what IR 0.10 changed in a machine as 0.9 did where it says nothing new: a
+/// collection of machines is `{"machine": src, "key"}` (no `kind`, no `src`), and a `spawn`
+/// effect of one has `machine` in place of `src`. A machine that spawns no tasks keeps its
+/// 0.9 hash.
+fn machine_as_before(m: &mut Map<String, Value>) {
+    let mut machine_collections = BTreeSet::new();
+    if let Some(Value::Object(children)) = m.get_mut("children") {
+        for (name, c) in children.iter_mut() {
+            let Value::Object(c) = c else { continue };
+            if c.get("kind").and_then(Value::as_str) == Some("machine") {
+                c.remove("kind");
+                if let Some(src) = c.remove("src") {
+                    c.insert("machine".into(), src);
+                }
+                machine_collections.insert(name.clone());
+            }
+        }
+    }
+    if let Some(root) = m.get_mut("root") {
+        spawns_as_before(root, &machine_collections);
+    }
+}
+
+/// Renames `src` to `machine` in every `spawn` effect of a collection in `machines`, anywhere
+/// below `v`.
+fn spawns_as_before(v: &mut Value, machines: &BTreeSet<String>) {
+    match v {
+        Value::Object(m) => {
+            if m.get("kind").and_then(Value::as_str) == Some("spawn")
+                && m.get("children")
+                    .and_then(Value::as_str)
+                    .is_some_and(|c| machines.contains(c))
+                && let Some(src) = m.remove("src")
+            {
+                m.insert("machine".into(), src);
+            }
+            m.values_mut().for_each(|v| spawns_as_before(v, machines));
+        }
+        Value::Array(a) => a.iter_mut().for_each(|v| spawns_as_before(v, machines)),
+        _ => {}
     }
 }
 
@@ -534,7 +624,19 @@ pub fn semantic_view(ir: &Ir, name: &str) -> Result<Value, HashError> {
         section(&c.functions, |n| &ir.functions[n]),
     );
     view.insert("actions".into(), section(&c.actions, |n| &ir.actions[n]));
-    view.insert("tasks".into(), section(&c.tasks, |n| &ir.tasks[n]));
+    let mut tasks = section(&c.tasks, |n| &ir.tasks[n]);
+    // A task that emits nothing has the hash it had before tasks could emit.
+    if let Value::Object(map) = &mut tasks {
+        for t in map.values_mut() {
+            if let Value::Object(t) = t
+                && t.get("emits")
+                    .is_some_and(|e| e.as_object().is_some_and(Map::is_empty))
+            {
+                t.remove("emits");
+            }
+        }
+    }
+    view.insert("tasks".into(), tasks);
     let mut interfaces = Map::new();
     for n in &c.interfaces {
         let m = &ir.machines[n];

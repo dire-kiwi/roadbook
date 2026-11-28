@@ -62,7 +62,7 @@ export interface ImportJobDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "examples/import-job/import.road",
@@ -289,6 +289,7 @@ const ir: unknown = {
       "errors": [
         "InvalidFile"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -323,6 +324,7 @@ const ir: unknown = {
       "errors": [
         "TransientBatchError"
       ],
+      "emits": {},
       "doc": "Import one batch. Returns how many rows remain after it.",
       "span": {
         "file": 1,

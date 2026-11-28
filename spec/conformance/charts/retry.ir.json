@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "spec/conformance/charts/retry.road",
@@ -95,6 +95,7 @@
         "Busy",
         "Gone"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 0,
@@ -118,6 +119,7 @@
         "Busy",
         "Gone"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 0,

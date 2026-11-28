@@ -1,0 +1,151 @@
+// Conformance chart: tasks that emit while they run, taken through an `as` name. What a task
+// emits is an input of the run that invoked it: taken, dropped or stale, never sent elsewhere.
+
+/// Store a file of `size` bytes, saying how far it has got. Returns the bytes stored.
+task upload(size: int) -> int
+  /// How much of the file is stored, in percent.
+  emits Progress { percent: int }
+  /// Which stage the upload has reached. No machine here hears it.
+  emits Stage { name: string }
+
+/// Sign in as `user`, saying which step it has reached and the code it sent, which is sensitive.
+task signIn(user: string) -> string emits Step { name: string, sensitive code: string }
+
+/// Show how far the upload has got.
+action showProgress(percent: int)
+
+/// Uploads through an emitting task and shows its progress. Can pause, and upload again.
+machine Publish(size: int) -> int {
+  var percent: int = 0
+  var stored:  int = 0
+
+  event Pause
+  event Resume
+  event Finish
+
+  initial Uploading
+
+  state Uploading {
+    invoke upload(size) as up {
+      done -> Stored  set stored = stored + result
+    }
+    on up.Progress            set percent = event.percent  do showProgress(event.percent)
+    on Pause       -> Paused
+  }
+
+  state Paused { on Resume -> Uploading }
+
+  state Stored {
+    on Resume -> Uploading
+    on Finish -> Published
+  }
+
+  final state Published { output stored }
+}
+
+/// Moves on as soon as the upload says it is complete, without waiting for its outcome.
+machine Eager(size: int) -> int {
+  var percent: int = 0
+  var stored:  int = 0
+
+  event Again
+  event Finish
+
+  initial Uploading
+
+  state Uploading {
+    invoke upload(size) as up {
+      done -> Stored  set stored = stored + result
+    }
+    on up.Progress {
+      if event.percent >= 100 -> Stored  set percent = event.percent
+      else                               set percent = event.percent
+    }
+  }
+
+  state Stored {
+    on Again  -> Uploading
+    on Finish -> Published
+  }
+
+  final state Published { output stored }
+}
+
+/// Invokes `upload` twice: first with `as`, hearing only `Progress`, then without, hearing
+/// nothing.
+machine Quiet(size: int) -> int {
+  var stored: int = 0
+
+  initial Heard
+
+  state Heard {
+    invoke upload(size) as up {
+      done -> Unnamed  set stored = result
+    }
+    on up.Progress set stored = event.percent
+  }
+
+  state Unnamed {
+    invoke upload(size) {
+      done -> Over  set stored = stored + result
+    }
+  }
+
+  final state Over { output stored }
+}
+
+/// Keeps the highest percentage it has heard. It is strict, but a `Progress` whose guard
+/// fails is dropped like any emitted event.
+strict machine Gauge(size: int) -> int {
+  var percent: int = 0
+
+  initial Uploading
+
+  state Uploading {
+    invoke upload(size) as up {
+      done -> Stored  set percent = result
+    }
+    on up.Progress if event.percent > percent set percent = event.percent
+  }
+
+  final state Stored { output percent }
+}
+
+/// Hears `Progress` in whichever child state it is in. `-> .Second` keeps the upload running.
+machine Nested(size: int) -> int {
+  var percent: int = 0
+
+  event Next
+
+  initial Working
+
+  state Working {
+    invoke upload(size) as up {
+      done -> Finished  set percent = result
+    }
+    on Next -> .Second
+
+    initial First
+
+    state First  { on up.Progress set percent = event.percent }
+    state Second { on up.Progress do showProgress(event.percent) }
+  }
+
+  final state Finished { output percent }
+}
+
+/// Signs in, keeping the name of the last step it heard.
+machine Login(user: string) -> string {
+  var step: string = ""
+
+  initial Signing
+
+  state Signing {
+    invoke signIn(user) as auth {
+      done -> Signed  set step = result
+    }
+    on auth.Step set step = event.name
+  }
+
+  final state Signed { output step }
+}

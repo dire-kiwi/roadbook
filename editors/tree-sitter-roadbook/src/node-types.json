@@ -946,7 +946,7 @@
       },
       "machine": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "type_identifier",
@@ -957,6 +957,16 @@
       "name": {
         "multiple": false,
         "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "task": {
+        "multiple": false,
+        "required": false,
         "types": [
           {
             "type": "identifier",
@@ -2097,7 +2107,7 @@
     },
     "children": {
       "multiple": true,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "done_transition",
@@ -3528,10 +3538,20 @@
       },
       "machine": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
+      "task": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
             "named": true
           }
         ]
@@ -3784,6 +3804,16 @@
     "type": "task_declaration",
     "named": true,
     "fields": {
+      "emits": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "emits_declaration",
+            "named": true
+          }
+        ]
+      },
       "errors": {
         "multiple": false,
         "required": false,

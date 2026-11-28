@@ -1,0 +1,131 @@
+---
+source: crates/roadbook-cli/tests/cli.rs
+expression: text(&out.stdout)
+---
+## Publish
+
+`spec/conformance/charts/task-emits.road:18`
+
+```text
+Uploads through an emitting task and shows its progress. Can pause, and upload again.
+```
+
+```mermaid
+stateDiagram-v2
+  Uploading: invoke upload(size) as up
+  Uploading: on up.Progress / set percent = event.percent, do showProgress(event.percent)
+  Published: output stored
+  [*] --> Uploading
+  Uploading --> Stored: done / set stored = stored + result
+  Uploading --> Paused: Pause
+  Paused --> Uploading: Resume
+  Stored --> Uploading: Resume
+  Stored --> Published: Finish
+  Published --> [*]
+```
+
+## Eager
+
+`spec/conformance/charts/task-emits.road:47`
+
+```text
+Moves on as soon as the upload says it is complete, without waiting for its outcome.
+```
+
+```mermaid
+stateDiagram-v2
+  Uploading: invoke upload(size) as up
+  Uploading: on up.Progress [else] / set percent = event.percent
+  Published: output stored
+  [*] --> Uploading
+  Uploading --> Stored: done / set stored = stored + result
+  Uploading --> Stored: up.Progress [event.percent >= 100] / set percent = event.percent
+  Stored --> Uploading: Again
+  Stored --> Published: Finish
+  Published --> [*]
+```
+
+## Quiet
+
+`spec/conformance/charts/task-emits.road:76`
+
+```text
+Invokes `upload` twice: first with `as`, hearing only `Progress`, then without, hearing
+nothing.
+```
+
+```mermaid
+stateDiagram-v2
+  Heard: invoke upload(size) as up
+  Heard: on up.Progress / set stored = event.percent
+  Unnamed: invoke upload(size)
+  Over: output stored
+  [*] --> Heard
+  Heard --> Unnamed: done / set stored = result
+  Unnamed --> Over: done / set stored = stored + result
+  Over --> [*]
+```
+
+## Gauge
+
+`spec/conformance/charts/task-emits.road:99`
+
+```text
+Keeps the highest percentage it has heard. It is strict, but a `Progress` whose guard
+fails is dropped like any emitted event.
+```
+
+```mermaid
+stateDiagram-v2
+  Uploading: invoke upload(size) as up
+  Uploading: on up.Progress [event.percent > percent] / set percent = event.percent
+  Stored: output percent
+  [*] --> Uploading
+  Uploading --> Stored: done / set percent = result
+  Stored --> [*]
+```
+
+## Nested
+
+`spec/conformance/charts/task-emits.road:115`
+
+```text
+Hears `Progress` in whichever child state it is in. `-> .Second` keeps the upload running.
+```
+
+```mermaid
+stateDiagram-v2
+  state Working {
+    state "First" as Working_First
+    Working_First: on up.Progress / set percent = event.percent
+    state "Second" as Working_Second
+    Working_Second: on up.Progress / do showProgress(event.percent)
+    [*] --> Working_First
+  }
+  note right of Working
+    invoke upload(size) as up
+  end note
+  Finished: output percent
+  [*] --> Working
+  Working --> Finished: done / set percent = result
+  Working --> Working_Second: Next
+  Finished --> [*]
+```
+
+## Login
+
+`spec/conformance/charts/task-emits.road:138`
+
+```text
+Signs in, keeping the name of the last step it heard.
+```
+
+```mermaid
+stateDiagram-v2
+  Signing: invoke signIn(user) as auth
+  Signing: on auth.Step / set step = event.name
+  Signed: output step
+  [*] --> Signing
+  Signing --> Signed: done / set step = result
+  Signed --> [*]
+```

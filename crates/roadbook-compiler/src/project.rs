@@ -276,10 +276,14 @@ impl Project {
         for (name, mut d) in tasks {
             if let Some(f) = target(&d.span) {
                 remap(&mut d.span);
+                for e in d.emits.values_mut() {
+                    remap(&mut e.span);
+                }
                 let kind = DeclKind::Task {
                     params: ast_fields(&d.params, d.span),
                     returns: d.returns.as_ref().map(|t| ast_type(t, d.span)),
                     errors: d.errors.iter().map(|e| ident(e, d.span)).collect(),
+                    emits: d.emits.iter().map(|(e, ev)| ast_event(e, ev)).collect(),
                 };
                 self.push_decl(f, &name, &d.doc, d.span, kind);
                 self.compiled(f).tasks.insert(name, d);

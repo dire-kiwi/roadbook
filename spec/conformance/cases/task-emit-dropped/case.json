@@ -1,0 +1,36 @@
+{
+  "description": "In a strict machine, a Progress the machine hears but whose guard fails is `dropped`, not an `unhandled` defect, as for any emitted event; one whose guard holds is taken.",
+  "requires": [
+    "messaging",
+    "task-emits"
+  ],
+  "chart": "charts/task-emits.road",
+  "machine": "Gauge",
+  "input": {
+    "size": 10
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "upload",
+      "emit": {
+        "_tag": "Progress",
+        "percent": 50
+      }
+    },
+    {
+      "task": "upload",
+      "emit": {
+        "_tag": "Progress",
+        "percent": 20
+      }
+    },
+    {
+      "task": "upload",
+      "done": 100
+    }
+  ],
+  "status": "done"
+}

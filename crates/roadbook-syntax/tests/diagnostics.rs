@@ -59,6 +59,11 @@ fn each_syntax_error_has_its_code() {
             s("    invoke f() retry 2 on busy {\n      done -> S\n    }"),
             "RB0012",
         ),
+        // An invoke may leave out its block, but a block it has handles an outcome.
+        (s("    invoke ticks(1s) as clock {\n    }"), "RB0010"),
+        ("task t() emits progress".into(), "RB0012"),
+        ("task t() emits Tick emits".into(), "RB0010"),
+        (m("  children ups: by string"), "RB0010"),
         (m("  var send: int"), "RB0013"),
         (m("  var emits: int"), "RB0013"),
         (

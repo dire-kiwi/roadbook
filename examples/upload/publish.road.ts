@@ -54,7 +54,7 @@ export interface PublishDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -267,6 +267,7 @@ const ir: unknown = {
       ],
       "returns": "Post",
       "errors": [],
+      "emits": {},
       "doc": "Publish the post, linking to its uploaded attachment.",
       "span": {
         "file": 0,
@@ -295,6 +296,7 @@ const ir: unknown = {
       "errors": [
         "UploadFailed"
       ],
+      "emits": {},
       "doc": "Store the chunk of `file` that starts at `offset`. Returns the offset after it.",
       "span": {
         "file": 1,
@@ -317,6 +319,7 @@ const ir: unknown = {
       "errors": [
         "UploadFailed"
       ],
+      "emits": {},
       "doc": "Ask the storage service to assemble the stored chunks, and return the file's address.",
       "span": {
         "file": 1,

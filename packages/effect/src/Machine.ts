@@ -12,7 +12,25 @@ export interface Callable {
   readonly args: object
   readonly success: unknown
   readonly error: unknown
+  /**
+   * For a task that declares `emits`, the events it emits while it runs: what its emitter
+   * takes. Absent for a task that emits nothing, and for a machine.
+   */
+  readonly emits?: unknown
 }
+
+/** The events a task emits, as its signature gives them: `never` for one that emits nothing. */
+export type EmitsOf<C extends Callable> = C extends { readonly emits: infer E } ? E : never
+
+/**
+ * What a task's implementation is given, after its arguments, to emit the events its task
+ * declares (`emits`) while it runs: each one goes to the run that invoked the task with `as`, or
+ * spawned it, if that run's machine has an `on` for it. It never waits and never fails, except
+ * that an event that does not encode makes the task die with a host `Defect`. Once the task's
+ * invoke is cancelled, its spawned task stopped or its outcome queued, emitting does nothing.
+ * For a task that emits nothing it takes `never`, so it cannot be called.
+ */
+export type Emit<E> = (event: E) => Effect.Effect<void>
 
 /** Everything the code generator emits about one machine, as types. */
 export interface MachineDef {
@@ -51,7 +69,8 @@ export type Handlers<D extends MachineDef> =
   & (keyof D["tasks"] extends never ? {} : {
     readonly tasks: {
       readonly [K in keyof D["tasks"]]: (
-        args: D["tasks"][K]["args"]
+        args: D["tasks"][K]["args"],
+        emit: Emit<EmitsOf<D["tasks"][K]>>
       ) => Effect.Effect<D["tasks"][K]["success"], D["tasks"][K]["error"], any>
     }
   })

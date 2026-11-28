@@ -1,0 +1,68 @@
+{
+  "description": "`stop` of a spawned task, with a Progress from it queued in the same `together`: the task is stopped (`spawn.stopped`) and the Progress is stale. A spawn under a key in use stops the old task and starts a new one with a new id. When the machine finishes it stops the tasks still running, in the order they started.",
+  "requires": [
+    "messaging",
+    "spawn",
+    "task-emits"
+  ],
+  "chart": "charts/spawn-tasks.road",
+  "machine": "Batch",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Add",
+        "name": "a",
+        "size": 10
+      }
+    },
+    {
+      "event": {
+        "_tag": "Add",
+        "name": "b",
+        "size": 20
+      }
+    },
+    {
+      "event": {
+        "_tag": "Add",
+        "name": "c",
+        "size": 30
+      }
+    },
+    {
+      "together": [
+        {
+          "event": {
+            "_tag": "Cancel",
+            "name": "a"
+          }
+        },
+        {
+          "task": "upload",
+          "key": "a",
+          "emit": {
+            "_tag": "Progress",
+            "percent": 40
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "_tag": "Add",
+        "name": "b",
+        "size": 25
+      }
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    }
+  ],
+  "status": "done"
+}

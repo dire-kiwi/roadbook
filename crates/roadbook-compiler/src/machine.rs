@@ -159,11 +159,13 @@ impl Scope {
     }
 }
 
-/// A `children` collection: its machine (`None` if it is not a known machine, already
-/// reported) and its key type.
+/// A `children` collection: its machine or task (`None` if it is not a known one, already
+/// reported), whether it holds tasks, and its key type.
 #[derive(Clone, Debug)]
 pub(crate) struct Collection {
-    pub machine: Option<String>,
+    pub src: Option<String>,
+    /// Written with a lower-case name: `children uploads: upload by string`.
+    pub task: bool,
     pub key: Ty,
     pub symbol: Option<SymbolId>,
 }
@@ -185,7 +187,7 @@ struct Node<'p> {
     /// `None` for the machine's root.
     state: Option<&'p State>,
     depth: usize,
-    /// `invoke Machine(…) as name`: the name and the machine.
+    /// `invoke Machine(…) as name` or `invoke task(…) as name`: the name and the callee.
     alias: Option<(&'p Ident, String)>,
     /// The state's symbol (the machine's, for the root).
     symbol: Option<SymbolId>,
@@ -450,9 +452,13 @@ pub(crate) fn lower<'p>(
             continue;
         }
         seen.insert(c.name.name.clone(), c.name.span);
-        let machine = cx
-            .callee(&c.machine, SigKind::Machine)
-            .map(|_| c.machine.name.clone());
+        let task = c.is_task();
+        let kind = if task {
+            SigKind::Task
+        } else {
+            SigKind::Machine
+        };
+        let src = cx.callee(&c.src, kind).map(|_| c.src.name.clone());
         let key = cx.ck.resolve(file, &c.key);
         let fits = match cx.ck.env.expand(&key) {
             Ty::Builtin(ir::Builtin::String | ir::Builtin::Int) | Ty::Unknown => true,
@@ -473,7 +479,8 @@ pub(crate) fn lower<'p>(
         cx.collections.insert(
             c.name.name.clone(),
             Collection {
-                machine,
+                src,
+                task,
                 key,
                 symbol,
             },
@@ -482,7 +489,12 @@ pub(crate) fn lower<'p>(
         children.insert(
             c.name.name.clone(),
             ir::ChildrenDecl {
-                machine: c.machine.name.clone(),
+                kind: if task {
+                    ir::ChildrenKind::Task
+                } else {
+                    ir::ChildrenKind::Machine
+                },
+                src: c.src.name.clone(),
                 key: ir_type(&c.key),
                 doc: doc(&c.doc),
                 span: ir_span(c.span),
@@ -917,7 +929,8 @@ impl<'p> Cx<'_, 'p> {
             let Some((alias, callee)) = self.nodes[i].alias.clone() else {
                 continue;
             };
-            self.key_as_name(alias, "an invoked machine");
+            let word = callee_word(&callee);
+            self.key_as_name(alias, &format!("an invoked {word}"));
             let mut bad = None;
             if callee.contains('.') {
                 bad = Some(
@@ -931,20 +944,28 @@ impl<'p> Cx<'_, 'p> {
                     )
                     .with_help("a call is answered once, with its outcome; talk to the machine through its `ref` instead; remove `as …`"),
                 );
-            } else if !callee.starts_with(|c: char| c.is_ascii_uppercase()) {
-                bad = Some(
-                    Diagnostic::error(
-                        codes::ALIAS_ON_TASK,
-                        alias.span,
-                        format!(
-                            "`{callee}` is a task, so `as {}` gives it a name nothing can use",
-                            alias.name
-                        ),
-                    )
-                    .with_help(
-                        "only an invoked machine can be sent events and emit them; remove `as …`",
+            } else if word == "task" && self.task_emits(&callee) == Some(false) {
+                let declared = self
+                    .ck
+                    .sigs
+                    .get(&callee)
+                    .map(|s| s.name_span)
+                    .filter(|_| !self.ck.is_compiled(self.file));
+                let mut d = Diagnostic::error(
+                    codes::ALIAS_ON_TASK,
+                    alias.span,
+                    format!(
+                        "`{callee}` is a task that declares no `emits`, so `as {}` gives it a name nothing can use",
+                        alias.name
                     ),
+                )
+                .with_help(
+                    "a task's `as` name receives what it emits: declare `emits Event` on the task, or remove `as …`",
                 );
+                if let Some(span) = declared {
+                    d = d.with_secondary(span, "declared here");
+                }
+                bad = Some(d);
             } else if let Some(v) = self.vars.get(&alias.name) {
                 let what = if v.param { "a parameter" } else { "a variable" };
                 bad = Some(
@@ -978,12 +999,14 @@ impl<'p> Cx<'_, 'p> {
                                 codes::DUPLICATE_NAME,
                                 alias.span,
                                 format!(
-                                    "`{}` already names the machine invoked by `{}`, which contains this state",
-                                    alias.name, self.nodes[a].id
+                                    "`{}` already names the {} invoked by `{}`, which contains this state",
+                                    alias.name,
+                                    callee_word(&self.nodes[a].alias.as_ref().map_or(String::new(), |x| x.1.clone())),
+                                    self.nodes[a].id
                                 ),
                             )
                             .with_secondary(outer.span, "named here")
-                            .with_help("choose another name: both children run at once here"),
+                            .with_help("choose another name: both invokes run at once here"),
                         );
                         break;
                     }
@@ -994,6 +1017,17 @@ impl<'p> Cx<'_, 'p> {
                 self.ck.diags.push(d);
                 self.nodes[i].alias = None;
             }
+        }
+    }
+
+    /// For a declared task, whether it declares any `emits`; `None` for anything else.
+    pub(crate) fn task_emits(&self, name: &str) -> Option<bool> {
+        match self.ck.names.lookup(self.file, name) {
+            Found::Decl(id) => match &self.ck.names.decl(id).kind {
+                DeclKind::Task { emits, .. } => Some(!emits.is_empty()),
+                _ => None,
+            },
+            _ => None,
         }
     }
 
@@ -1015,25 +1049,37 @@ impl<'p> Cx<'_, 'p> {
     fn address(&mut self, node: usize, name: &Ident) -> Option<(ir::Address, Option<usize>)> {
         let mut up = Some(node);
         while let Some(a) = up {
-            if let Some((alias, machine)) = &self.nodes[a].alias
+            if let Some((alias, callee)) = &self.nodes[a].alias
                 && alias.name == name.name
             {
                 if let Some(symbol) = self.nodes[a].alias_symbol {
                     self.ck.index.refer(symbol, name.span);
                 }
-                // An invoke of a machine that is not declared (already reported) names a child
-                // with no known events: the name is in scope, but nothing is checked against it.
+                // An invoke of a machine or task that is not declared (already reported) names
+                // a child with no known events: the name is in scope, but nothing is checked
+                // against it.
+                let task = callee_word(callee) == "task";
                 let known = matches!(
-                    self.ck.names.lookup(self.file, machine),
-                    Found::Decl(id) if matches!(self.ck.names.decl(id).kind, DeclKind::Machine(_))
+                    self.ck.names.lookup(self.file, callee),
+                    Found::Decl(id) if match self.ck.names.decl(id).kind {
+                        DeclKind::Machine(_) => !task,
+                        DeclKind::Task { .. } => task,
+                        _ => false,
+                    }
                 );
                 if !known {
                     return None;
                 }
+                let (kind, machine, task) = if task {
+                    (ir::AddressKind::Task, None, Some(callee.clone()))
+                } else {
+                    (ir::AddressKind::Child, Some(callee.clone()), None)
+                };
                 let address = ir::Address {
-                    kind: ir::AddressKind::Child,
+                    kind,
                     name: name.name.clone(),
-                    machine: machine.clone(),
+                    machine,
+                    task,
                     state: Some(self.nodes[a].id.clone()),
                 };
                 return Some((address, Some(a)));
@@ -1044,11 +1090,17 @@ impl<'p> Cx<'_, 'p> {
             if let Some(symbol) = c.symbol {
                 self.ck.index.refer(symbol, name.span);
             }
-            let machine = c.machine?;
+            let src = c.src?;
+            let (machine, task) = if c.task {
+                (None, Some(src))
+            } else {
+                (Some(src), None)
+            };
             let address = ir::Address {
                 kind: ir::AddressKind::Children,
                 name: name.name.clone(),
                 machine,
+                task,
                 state: None,
             };
             return Some((address, None));
@@ -1061,7 +1113,8 @@ impl<'p> Cx<'_, 'p> {
                     let address = ir::Address {
                         kind: ir::AddressKind::Ref,
                         name: name.name.clone(),
-                        machine,
+                        machine: Some(machine),
+                        task: None,
                         state: None,
                     };
                     return Some((address, None));
@@ -1081,19 +1134,19 @@ impl<'p> Cx<'_, 'p> {
             );
             return None;
         }
-        let elsewhere = self
-            .nodes
-            .iter()
-            .find(|n| n.alias.as_ref().is_some_and(|(a, _)| a.name == name.name))
-            .map(|n| n.id.clone());
+        let elsewhere = self.nodes.iter().find_map(|n| match &n.alias {
+            Some((a, callee)) if a.name == name.name => Some((n.id.clone(), callee_word(callee))),
+            _ => None,
+        });
         let mut d = match &elsewhere {
-            Some(state) => Diagnostic::error(
+            Some((state, word)) => Diagnostic::error(
                 codes::UNKNOWN_ADDRESS,
                 name.span,
-                format!("`{}` is not in scope here: it names the machine `{state}` invokes", name.name),
+                format!("`{}` is not in scope here: it names the {word} `{state}` invokes", name.name),
             )
             .with_help(format!(
-                "an `as` name is in scope only in the invoking state and the states inside it, while the child runs; move this into `{state}`"
+                "an `as` name is in scope only in the invoking state and the states inside it, while the {} runs; move this into `{state}`",
+                if *word == "task" { "task" } else { "child" }
             )),
             None => Diagnostic::error(
                 codes::UNKNOWN_ADDRESS,
@@ -1137,15 +1190,16 @@ impl<'p> Cx<'_, 'p> {
     fn peer(&mut self, node: usize, name: &Ident) -> Option<ir::Address> {
         let child = |state: &str| {
             format!(
-                "an invoked child's end is its invoke's outcome: handle it with `done` and `fail` inside the `invoke {{ }}` of `{state}`"
+                "an invoke's end is its outcome: handle it with `done` and `fail` inside the `invoke {{ }}` of `{state}`"
             )
         };
         let mut up = Some(node);
         while let Some(a) = up {
-            if let Some((alias, _)) = &self.nodes[a].alias
+            if let Some((alias, callee)) = &self.nodes[a].alias
                 && alias.name == name.name
             {
                 let (span, state) = (alias.span, self.nodes[a].id.clone());
+                let word = callee_word(callee);
                 if let Some(symbol) = self.nodes[a].alias_symbol {
                     self.ck.index.refer(symbol, name.span);
                 }
@@ -1154,7 +1208,7 @@ impl<'p> Cx<'_, 'p> {
                         codes::ENDED_NOT_A_PEER,
                         name.span,
                         format!(
-                            "`{}` names the machine `{state}` invokes, not a `ref`, so it has no `ended`",
+                            "`{}` names the {word} `{state}` invokes, not a `ref`, so it has no `ended`",
                             name.name
                         ),
                     )
@@ -1201,7 +1255,8 @@ impl<'p> Cx<'_, 'p> {
                 return Some(ir::Address {
                     kind: ir::AddressKind::Ref,
                     name: name.name.clone(),
-                    machine,
+                    machine: Some(machine),
+                    task: None,
                     state: None,
                 });
             }
@@ -1219,13 +1274,16 @@ impl<'p> Cx<'_, 'p> {
             .nodes
             .iter()
             .find(|n| n.alias.as_ref().is_some_and(|(a, _)| a.name == name.name))
-            .map(|n| (n.id.clone(), n.alias.as_ref().map(|(a, _)| a.span)));
-        if let Some((state, span)) = elsewhere {
+            .map(|n| {
+                let (a, callee) = n.alias.as_ref().expect("found by its alias");
+                (n.id.clone(), Some(a.span), callee_word(callee))
+            });
+        if let Some((state, span, word)) = elsewhere {
             let mut d = Diagnostic::error(
                 codes::ENDED_NOT_A_PEER,
                 name.span,
                 format!(
-                    "`{}` names the machine `{state}` invokes, not a `ref`, so it has no `ended`",
+                    "`{}` names the {word} `{state}` invokes, not a `ref`, so it has no `ended`",
                     name.name
                 ),
             )
@@ -1324,6 +1382,31 @@ impl<'p> Cx<'_, 'p> {
                     }
                     return None;
                 };
+                if let Some(task) = &address.task {
+                    if let Some(SendKey::Key(k)) = &m.key {
+                        self.expr(k, scope);
+                    }
+                    let what = if address.kind == ir::AddressKind::Children {
+                        format!("`{}` holds `{task}` tasks, which take no events", to.name)
+                    } else {
+                        format!(
+                            "`{}` names the task `{task}`, which takes no events",
+                            to.name
+                        )
+                    };
+                    self.ck.diags.push(
+                        Diagnostic::error(
+                            codes::NOT_ACCEPTED,
+                            event.span,
+                            format!("{what}: it cannot be sent `{}`", event.name),
+                        )
+                        .with_help(format!(
+                            "a task only emits, as `on {}.Event`; host code decides how it reacts, so pass what it needs as an argument when it starts",
+                            to.name
+                        )),
+                    );
+                    return None;
+                }
                 let is_collection = address.kind == ir::AddressKind::Children;
                 let key = match (&m.key, is_collection) {
                     (Some(SendKey::Key(k)), true) => {
@@ -1380,26 +1463,27 @@ impl<'p> Cx<'_, 'p> {
                 if let Some(i) = invoking {
                     self.check_running(place, i, to);
                 }
+                let receiver_name = address.peer().to_owned();
                 let iface = self
                     .ck
                     .interfaces
-                    .get(&address.machine)
+                    .get(&receiver_name)
                     .cloned()
                     .unwrap_or_default();
-                let receiver = self.ck.decl_symbol(&address.machine);
+                let receiver = self.ck.decl_symbol(&receiver_name);
                 self.ck.refer_member(self.file, receiver, event);
                 let fields = iface.events.get(&event.name).cloned();
                 if fields.is_none() {
                     self.not_declared(
                         codes::NOT_ACCEPTED,
-                        &address.machine,
+                        &receiver_name,
                         &iface,
                         event,
                         false,
                         &to.name,
                     );
                 }
-                let ty = Ty::Event(format!("{}.{}", address.machine, event.name));
+                let ty = Ty::Event(format!("{receiver_name}.{}", event.name));
                 let value = self.message_value(m, &ty, fields.as_deref(), scope);
                 Some(ir::Effect::Send {
                     to: address,
@@ -1530,7 +1614,7 @@ impl<'p> Cx<'_, 'p> {
             )
         } else if alias {
             format!(
-                "`{}` names an invoked machine, not a children collection",
+                "`{}` names an invoke's machine or task, not a children collection",
                 name.name
             )
         } else {
@@ -1539,7 +1623,7 @@ impl<'p> Cx<'_, 'p> {
         let mut d = Diagnostic::error(codes::NOT_A_COLLECTION, name.span, what);
         if alias {
             d = d.with_help(format!(
-                "an invoked child is reached with `send {0}.Event` and `on {0}.Event`, and its outcome is handled inside its `invoke {{ }}`",
+                "what an invoke runs is reached with `on {0}.Event` (and a machine with `send {0}.Event`), and its outcome is handled inside its `invoke {{ }}`",
                 name.name
             ));
         } else if let Some(s) = suggest(&name.name, self.collections.keys().map(String::as_str)) {
@@ -1550,7 +1634,7 @@ impl<'p> Cx<'_, 'p> {
             );
         } else {
             d = d.with_help(format!(
-                "`{written}` needs a collection declared in the machine body: `children {}: Machine by Key`",
+                "`{written}` needs a collection declared in the machine body: `children {}: Machine by Key` or `children {0}: task by Key`",
                 name.name
             ));
         }
@@ -2040,27 +2124,26 @@ impl<'p> Cx<'_, 'p> {
                 if address.kind == ir::AddressKind::Children {
                     scope.key = Implicit::Has(self.collections[&from.name].key.clone());
                 }
-                let sender = self.ck.decl_symbol(&address.machine);
+                // The machine or task that emits it: their names never clash.
+                let sender_name = address.peer().to_owned();
+                let sender = self.ck.decl_symbol(&sender_name);
                 self.ck.refer_member(self.file, sender, event);
                 let iface = self
                     .ck
                     .interfaces
-                    .get(&address.machine)
+                    .get(&sender_name)
                     .cloned()
                     .unwrap_or_default();
                 if iface.emits.contains_key(&event.name) {
-                    scope.event =
-                        Implicit::Has(Ty::Event(format!("{}.{}", address.machine, event.name)));
+                    scope.event = Implicit::Has(Ty::Event(format!("{sender_name}.{}", event.name)));
                     self.ck
                         .received
-                        .insert((address.machine.clone(), event.name.clone()));
-                    self.info.receives.push((
-                        event.span,
-                        address.machine.clone(),
-                        event.name.clone(),
-                    ));
+                        .insert((sender_name.clone(), event.name.clone()));
+                    self.info
+                        .receives
+                        .push((event.span, sender_name.clone(), event.name.clone()));
                 } else {
-                    let machine = address.machine.clone();
+                    let machine = sender_name.clone();
                     self.not_declared(
                         codes::NOT_EMITTED,
                         &machine,
@@ -2160,14 +2243,14 @@ impl<'p> Cx<'_, 'p> {
                 scope.result = Implicit::Has(Ty::Unknown);
                 if let Some(c) = self.collection(from, &format!("on {}.done", from.name)) {
                     scope.key = Implicit::Has(c.key.clone());
-                    if let Some(sig) = c.machine.as_ref().and_then(|m| self.ck.sigs.get(m)) {
+                    if let Some(sig) = c.src.as_ref().and_then(|m| self.ck.sigs.get(m)) {
                         scope.result = match &sig.returns {
                             Some(t) => Implicit::Has(t.clone()),
                             None => Implicit::Bad(
                                 codes::NO_RESULT,
                                 format!(
                                     "`{}` returns nothing, so `on {}.done` has no `result`",
-                                    c.machine.as_deref().unwrap_or_default(),
+                                    c.src.as_deref().unwrap_or_default(),
                                     from.name
                                 ),
                             ),
@@ -2184,12 +2267,8 @@ impl<'p> Cx<'_, 'p> {
                 let shown = format!("on {}.fail", from.name);
                 if let Some(c) = self.collection(from, &shown) {
                     scope.key = Implicit::Has(c.key.clone());
-                    let machine = c.machine.clone().unwrap_or_default();
-                    let sig = c
-                        .machine
-                        .as_ref()
-                        .and_then(|m| self.ck.sigs.get(m))
-                        .cloned();
+                    let machine = c.src.clone().unwrap_or_default();
+                    let sig = c.src.as_ref().and_then(|m| self.ck.sigs.get(m)).cloned();
                     // The errors the state lists in its own `on name.fail` triggers.
                     let listed: Vec<String> = self.nodes[idx]
                         .body
@@ -2799,43 +2878,42 @@ impl<'p> Cx<'_, 'p> {
                         &format!("the key of `{}`", sp.children.name),
                         Dest::Shown,
                     );
-                    let sig = self.callee(&sp.machine, SigKind::Machine);
+                    // A lower-case name is a task, an upper-case one a machine.
+                    let kind = if callee_word(&sp.src.name) == "task" {
+                        SigKind::Task
+                    } else {
+                        SigKind::Machine
+                    };
+                    let sig = self.callee(&sp.src, kind);
                     if let Some(c) = &c {
                         self.info.spawned.insert(sp.children.name.clone());
-                        if let Some(m) = &c.machine
+                        if let Some(m) = &c.src
                             && sig.is_some()
-                            && *m != sp.machine.name
+                            && *m != sp.src.name
                         {
+                            let held = if c.task { "tasks" } else { "machines" };
                             self.ck.diags.push(
                                 Diagnostic::error(
                                     codes::SPAWN_MACHINE_MISMATCH,
-                                    sp.machine.span,
+                                    sp.src.span,
                                     format!(
-                                        "`{}` holds `{m}` machines, not `{}`",
-                                        sp.children.name, sp.machine.name
+                                        "`{}` holds `{m}` {held}, not `{}`",
+                                        sp.children.name, sp.src.name
                                     ),
                                 )
                                 .with_help(format!(
                                     "spawn a `{m}`, or declare another collection for `{}`",
-                                    sp.machine.name
+                                    sp.src.name
                                 )),
                             );
                         }
                     }
-                    let span = sp.machine.span.to(sp.span);
-                    let args = self.args(
-                        &sp.machine,
-                        span,
-                        &sp.args,
-                        sig.as_ref(),
-                        SigKind::Machine,
-                        scope,
-                        None,
-                    );
+                    let span = sp.src.span.to(sp.span);
+                    let args = self.args(&sp.src, span, &sp.args, sig.as_ref(), kind, scope, None);
                     if c.is_some() {
                         out.push(ir::Effect::Spawn {
                             children: sp.children.name.clone(),
-                            machine: sp.machine.name.clone(),
+                            src: sp.src.name.clone(),
                             key,
                             args,
                         });
@@ -3191,7 +3269,7 @@ impl<'p> Cx<'_, 'p> {
                 SigKind::Task
             },
             &Scope::none(),
-            to.as_ref().map(|a| (a.name.as_str(), a.machine.as_str())),
+            to.as_ref().map(|a| (a.name.as_str(), a.peer())),
         );
         let arg_reads = std::mem::take(&mut self.reads);
         // What the invoke can fail with: a call also with `Unanswered`.
@@ -3384,7 +3462,7 @@ impl<'p> Cx<'_, 'p> {
             alias: inv
                 .alias
                 .as_ref()
-                .filter(|_| is_machine)
+                .filter(|_| !is_call)
                 .map(|a| a.name.clone()),
             args,
             span: ir_span(inv.span),
@@ -3432,7 +3510,8 @@ impl<'p> Cx<'_, 'p> {
                 let address = ir::Address {
                     kind: ir::AddressKind::Ref,
                     name: to.name.clone(),
-                    machine: machine.clone(),
+                    machine: Some(machine.clone()),
+                    task: None,
                     state: None,
                 };
                 let callee = self.ck.decl_symbol(&machine);
@@ -3536,6 +3615,16 @@ impl<'p> Cx<'_, 'p> {
 }
 
 /// `invoke name`: where diagnostics about an invoke point.
+/// "task" for a lower-case callee (`upload`), "machine" for an upper-case one, by the rule that
+/// tells them apart in `invoke`, `children` and `spawn`.
+pub(crate) fn callee_word(callee: &str) -> &'static str {
+    if callee.starts_with(|c: char| c.is_ascii_lowercase()) {
+        "task"
+    } else {
+        "machine"
+    }
+}
+
 fn invoke_head(inv: &Invoke) -> Span {
     inv.span.to(inv.callee.span)
 }

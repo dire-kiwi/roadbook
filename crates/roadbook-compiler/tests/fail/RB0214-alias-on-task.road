@@ -10,4 +10,5 @@ machine M() {
   final state Done {}
 }
 
+// `as` on a task is allowed only when it declares an `emits`.
 // expect: RB0214 at 6:23

@@ -1,0 +1,35 @@
+// Conformance chart: a collection of tasks. Each upload is spawned under its file's name,
+// says how far it has got, and ends by itself or is stopped.
+
+error UploadFailed { reason: string }
+
+/// Store a file of `size` bytes, saying how far it has got. Returns the bytes stored.
+task upload(size: int) -> int ! UploadFailed emits Progress { percent: int }
+
+action showProgress(name: string, percent: int)
+action showStored(name: string, size: int)
+action reportFailure(name: string, reason: string)
+
+/// Uploads files side by side, one task per file name, and counts those stored.
+machine Batch() -> int {
+  event Add    { name: string, size: int }
+  event Cancel { name: string }
+  event Close
+
+  children uploads: upload by string
+
+  var stored: int = 0
+
+  initial Open
+
+  state Open {
+    on Add                         spawn uploads[event.name] = upload(event.size)
+    on Cancel                      stop uploads[event.name]
+    on uploads.Progress            do showProgress(key, event.percent)
+    on uploads.done                set stored = stored + 1  do showStored(key, result)
+    on uploads.fail *              do reportFailure(key, error.reason)
+    on Close            -> Closed
+  }
+
+  final state Closed { output stored }
+}

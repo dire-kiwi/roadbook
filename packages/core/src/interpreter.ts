@@ -4,6 +4,7 @@
  */
 import {
   type Address,
+  type ChildrenDecl,
   childrenOf,
   type Effect,
   type Expr,
@@ -11,6 +12,7 @@ import {
   type Ir,
   isHistory,
   type Machine,
+  peerOf,
   type State,
   type Transition,
   UNANSWERED
@@ -192,8 +194,9 @@ class MachineIndex {
   readonly machine: Machine
   /**
    * The emitted events the machine has an `on x.E` for, anywhere in it, by the sender's
-   * machine, and `ended` when it has an `on x.ended` for a run of that machine. A run receives
-   * no others.
+   * machine or task, and `ended` when it has an `on x.ended` for a run of that machine. A run
+   * receives no others. A task's name is lower-case and a machine's upper-case, so the two
+   * never share an entry.
    */
   readonly hears = new Map<string, Set<string>>()
 
@@ -207,9 +210,10 @@ class MachineIndex {
       this.order.set(state.id, this.order.size)
       for (const t of state.transitions) {
         if (t.trigger.kind !== "emitted" && t.trigger.kind !== "ended") continue
-        const events = this.hears.get(t.trigger.from.machine) ?? new Set()
+        const sender = peerOf(t.trigger.from)
+        const events = this.hears.get(sender) ?? new Set()
         events.add(t.trigger.kind === "ended" ? ENDED_INPUT : t.trigger.event)
-        this.hears.set(t.trigger.from.machine, events)
+        this.hears.set(sender, events)
       }
       for (const child of state.states) walk(child, state)
     }
@@ -276,7 +280,9 @@ export const ENDED_INPUT = "ended"
  * The events of a run of machine `sender` that a run of `machine` receives when the sender emits
  * them: those `machine` has an `on x.E` for, where `x` is a run of `sender`, in any state, and
  * {@link ENDED_INPUT} when it has an `on x.ended`, so it is told when such a run closes
- * (execution.md, "Messages between runs").
+ * (execution.md, "Messages between runs"). For a task `sender`, the events of its `emits` that
+ * the run hears from it, through an `as` name or a collection of it: its emitter's heard set
+ * (execution.md, "The emitter").
  */
 export const heard = (ir: Ir, machine: string, sender: string): ReadonlySet<string> =>
   machineIndex(ir, machine).hears.get(sender) ?? NOTHING
@@ -450,8 +456,8 @@ class Macrostep {
           this.failWithDefect(input.defect)
           return
         }
-        const machine = this.collectionMachine(ch.children)
-        if (input.kind === "spawn.fail" && !this.srcErrors(machine).includes(input.error._tag)) {
+        const src = this.collection(ch.children).src
+        if (input.kind === "spawn.fail" && !this.srcErrors(src).includes(input.error._tag)) {
           throw new Abort({ kind: "undeclared", error: input.error._tag })
         }
         if (input.kind === "spawn.done") {
@@ -497,6 +503,18 @@ class Macrostep {
         selected = this.selectEmitted(input, bindings)
         break
       }
+      case "task.emitted": {
+        // Stale once the invoke or spawned task is no longer in the snapshot. Taking one
+        // consumes nothing: the task goes on running.
+        const child = this.spawned.find((c) => c.id === input.invoke)
+        if (child === undefined && !this.invokes.some((i) => i.id === input.invoke)) {
+          this.trace({ kind: "stale", event: shown })
+          return
+        }
+        bindings = child === undefined ? { event: input.value } : { event: input.value, key: child.key }
+        selected = this.selectTaskEmitted(input, bindings)
+        break
+      }
       case "ended":
         // Never stale: nothing is consumed, and the address is read now.
         bindings = { event: { status: input.status } }
@@ -523,11 +541,11 @@ class Macrostep {
     if (this.status === "running") this.startWork()
   }
 
-  /** The machine the children of collection `children` run. */
-  private collectionMachine(children: string): string {
-    const decl = this.index.machine.children[children]
+  /** Collection `children` of the machine: what its children run, a machine or a task. */
+  private collection(children: string): ChildrenDecl {
+    const decl = Object.hasOwn(this.index.machine.children, children) ? this.index.machine.children[children] : undefined
     if (decl === undefined) throw new Error(`no collection ${children} in machine ${this.index.machine.root.id}`)
-    return decl.machine
+    return decl
   }
 
   /** The errors invoke `inv` may fail with: its task's, machine's, or call's, and `Unanswered` for a call. */
@@ -676,8 +694,27 @@ class Macrostep {
     return value === run || (Array.isArray(value) && value.includes(run))
   }
 
-  /** Whether `address` names the run that emitted `input`. */
+  /**
+   * `on name.Event` for an event a task emitted: through an address of kind `task` whose state
+   * owns the invoke, or a collection of tasks that holds the spawned task. No `on *`.
+   */
+  private selectTaskEmitted(input: Extract<Input, { readonly kind: "task.emitted" }>, bindings: Bindings): Array<Selected> {
+    const name = input.value._tag
+    const matches = (t: Transition) =>
+      t.trigger.kind === "emitted" && t.trigger.event === name && this.namesTask(t.trigger.from, input.invoke)
+    return this.selectByWalks(() => matches, bindings)
+  }
+
+  /** Whether `address` names the invoked or spawned task with id `id`. */
+  private namesTask(address: Address, id: number): boolean {
+    if (address.task === undefined) return false
+    if (address.kind === "task") return this.invokes.find((i) => i.id === id)?.state === address.state
+    return this.spawned.find((c) => c.id === id)?.children === address.name
+  }
+
+  /** Whether `address` names the run that emitted `input`. A task is not a run. */
   private namesSender(address: Address, input: Extract<Input, { readonly kind: "emitted" }>): boolean {
+    if (address.task !== undefined) return false
     if (address.kind === "child") {
       return input.invoke !== null && this.invokes.find((i) => i.id === input.invoke)?.state === address.state
     }
@@ -1003,7 +1040,8 @@ class Macrostep {
         }
         case "spawn": {
           const key = this.eval(effect.key, bindings)
-          const params = this.ir.machines[effect.machine]?.params ?? []
+          const params = (this.collection(effect.children).kind === "task" ? this.ir.tasks : this.ir.machines)[effect.src]
+            ?.params ?? []
           const args: Record<string, Json> = {}
           effect.args.forEach((arg, i) => {
             args[params[i]?.name ?? String(i)] = this.eval(arg, bindings)
@@ -1045,11 +1083,21 @@ class Macrostep {
     this.pending = []
   }
 
-  /** Trace and start spawned child `ch`, restoring it from `saved` if it has one. */
+  /**
+   * Trace and start spawned child `ch`, restoring it from `saved` if it has one: a child run,
+   * or for a collection of tasks a task, which never has one.
+   */
   private startChild(ch: SpawnedEntry, saved: Saved | null = null) {
-    const src = this.collectionMachine(ch.children)
+    const { kind, src } = this.collection(ch.children)
     this.trace({ kind: "spawn.started", spawn: ch.id, children: ch.children, key: ch.key, src, args: ch.args })
-    this.commands.push({ kind: "spawn.start", spawn: ch.id, src, args: ch.args, saved })
+    this.commands.push({
+      kind: "spawn.start",
+      spawn: ch.id,
+      src,
+      srcKind: kind,
+      args: ch.args,
+      saved: kind === "task" ? null : saved
+    })
   }
 
   // ---- settling, work, finishing ----

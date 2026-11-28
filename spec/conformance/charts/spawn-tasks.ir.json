@@ -1,0 +1,585 @@
+{
+  "irVersion": "0.10",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/spawn-tasks.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "UploadFailed": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "reason",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 38
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "showProgress": {
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "percent",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 48
+      }
+    },
+    "showStored": {
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 43
+      }
+    },
+    "reportFailure": {
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 11,
+        "col": 1,
+        "endLine": 11,
+        "endCol": 51
+      }
+    }
+  },
+  "tasks": {
+    "upload": {
+      "params": [
+        {
+          "name": "size",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [
+        "UploadFailed"
+      ],
+      "emits": {
+        "Progress": {
+          "fields": [
+            {
+              "name": "percent",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 7,
+            "col": 46,
+            "endLine": 7,
+            "endCol": 77
+          }
+        }
+      },
+      "doc": "Store a file of `size` bytes, saying how far it has got. Returns the bytes stored.",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 77
+      }
+    }
+  },
+  "machines": {
+    "Batch": {
+      "doc": "Uploads files side by side, one task per file name, and counts those stored.",
+      "span": {
+        "file": 0,
+        "line": 14,
+        "col": 1,
+        "endLine": 35,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "stored",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 21,
+            "col": 3,
+            "endLine": 21,
+            "endCol": 22
+          }
+        }
+      ],
+      "events": {
+        "Add": {
+          "fields": [
+            {
+              "name": "name",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            },
+            {
+              "name": "size",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 43
+          }
+        },
+        "Cancel": {
+          "fields": [
+            {
+              "name": "name",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 32
+          }
+        },
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {
+        "uploads": {
+          "kind": "task",
+          "src": "upload",
+          "key": "string",
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 19,
+            "col": 3,
+            "endLine": 19,
+            "endCol": 37
+          }
+        }
+      },
+      "root": {
+        "id": "Batch",
+        "name": "Batch",
+        "kind": "compound",
+        "doc": "Uploads files side by side, one task per file name, and counts those stored.",
+        "span": {
+          "file": 0,
+          "line": 14,
+          "col": 1,
+          "endLine": 35,
+          "endCol": 2
+        },
+        "initial": "Batch.Open",
+        "states": [
+          {
+            "id": "Batch.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 25,
+              "col": 3,
+              "endLine": 32,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Add"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "spawn",
+                    "children": "uploads",
+                    "src": "upload",
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "name"
+                      ],
+                      "type": "string",
+                      "text": "event.name"
+                    },
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "size"
+                        ],
+                        "type": "int",
+                        "text": "event.size"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 26,
+                  "endCol": 82
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Cancel"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "stop",
+                    "children": "uploads",
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "name"
+                      ],
+                      "type": "string",
+                      "text": "event.name"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 5,
+                  "endLine": 27,
+                  "endCol": 60
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "children",
+                    "name": "uploads",
+                    "task": "upload",
+                    "state": null
+                  },
+                  "event": "Progress"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "showProgress",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "key"
+                        ],
+                        "type": "string",
+                        "text": "key"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "percent"
+                        ],
+                        "type": "int",
+                        "text": "event.percent"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 71
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "spawn.done",
+                  "children": "uploads"
+                },
+                "group": 3,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "stored",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "stored"
+                          ],
+                          "type": "int",
+                          "text": "stored"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "stored + 1"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "showStored",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "key"
+                        ],
+                        "type": "string",
+                        "text": "key"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "result"
+                        ],
+                        "type": "int",
+                        "text": "result"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 29,
+                  "col": 5,
+                  "endLine": 29,
+                  "endCol": 87
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "spawn.fail",
+                  "children": "uploads",
+                  "error": "*"
+                },
+                "group": 4,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "reportFailure",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "key"
+                        ],
+                        "type": "string",
+                        "text": "key"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "error",
+                          "reason"
+                        ],
+                        "type": "string",
+                        "text": "error.reason"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 30,
+                  "endCol": 71
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 5,
+                "guard": null,
+                "targets": [
+                  "Batch.Closed"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 31,
+                  "col": 5,
+                  "endLine": 31,
+                  "endCol": 34
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Batch.Closed",
+            "name": "Closed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 34,
+              "col": 3,
+              "endLine": 34,
+              "endCol": 39
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "stored"
+              ],
+              "type": "int",
+              "text": "stored"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:77b636b9fae665a4cb5648d4b8705c4ced673946da2275b9e7fb743fcd35f9e5"
+    }
+  }
+}

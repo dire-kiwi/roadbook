@@ -47,7 +47,7 @@ export interface OverflowDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "packages/effect/test/charts/runtime.road",
@@ -239,6 +239,7 @@ const ir: unknown = {
       "params": [],
       "returns": "int",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 0,

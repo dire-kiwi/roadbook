@@ -1,0 +1,13 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0124]: `clock` names the task `M.A` invokes, not a `ref`, so it has no `ended`
+ --> RB0124-task-ended.road:9:8
+  |
+7 |     invoke ticks(1s) as clock
+  |                         ----- invoked here
+...
+9 |     on clock.ended -> Done
+  |        ^^^^^
+  |
+  = help: an invoke's end is its outcome: handle it with `done` and `fail` inside the `invoke { }` of `M.A`

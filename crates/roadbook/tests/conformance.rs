@@ -36,8 +36,8 @@ use roadbook::{
     Timer,
 };
 use roadbook_conformance::{
-    LoadedCase, Outcome as ScriptOutcome, Status, Step, arrange, compare_run_ids, conformance_dir,
-    load_all, snapshot_text, to_lines,
+    LoadedCase, Outcome as ScriptOutcome, Status, Step, TaskStep, arrange, compare_run_ids,
+    conformance_dir, load_all, snapshot_text, to_lines,
 };
 use roadbook_core::{Object, SrcKind};
 use serde_json::Value;
@@ -52,6 +52,7 @@ const SUPPORTED: &[&str] = &[
     "history",
     "spawn",
     "ended",
+    "task-emits",
 ];
 
 // ---- the executor ------------------------------------------------------------------------
@@ -199,8 +200,21 @@ struct Scripted {
     invoke: u64,
     src: String,
     slot: Arc<Slot>,
+    /// What the driver gave it to emit through: an `emit` step emits through it, so that the
+    /// driver's filter applies.
+    emitter: dynamic::Emitter,
     /// Its outcome was given (or appended to its run's queue by a `together`).
     resolved: bool,
+}
+
+/// A running scripted invoke a step names: its run, its id, its slot and its emitter, and
+/// whether it is a spawned child (or task), whose outcome is a `spawn.*` input.
+struct Found {
+    run: String,
+    invoke: u64,
+    slot: Arc<Slot>,
+    emitter: dynamic::Emitter,
+    spawn: bool,
 }
 
 #[derive(Default)]
@@ -216,23 +230,46 @@ impl Registry {
             .retain(|s| !(s.run == run && s.invoke == invoke));
     }
 
-    /// The one running scripted invoke of `task` (in `run`, if given), marked resolved:
-    /// its run, its id and its slot.
-    fn resolve(&self, task: &str, run: Option<&str>) -> Result<(String, u64, Arc<Slot>), String> {
+    /// The one running scripted invoke of `task` named by `t` (in its run and with its key,
+    /// if given), marked resolved unless the step only emits. `spawned` gives the key of a
+    /// run's spawned child (or task) by its id, `None` for an invoke.
+    fn resolve(
+        &self,
+        t: &TaskStep,
+        spawned: impl Fn(&str, u64) -> Option<Value>,
+    ) -> Result<Found, String> {
+        let task = t.task.as_str();
         let mut invokes = self.invokes.lock().unwrap();
-        let mut found: Vec<&mut Scripted> = invokes
+        let mut found: Vec<(&mut Scripted, Option<Value>)> = invokes
             .iter_mut()
-            .filter(|s| !s.resolved && s.src == task && run.is_none_or(|r| r == s.run))
+            .filter(|s| !s.resolved && s.src == task && t.run.as_deref().is_none_or(|r| r == s.run))
+            .map(|s| {
+                let key = spawned(&s.run, s.invoke);
+                (s, key)
+            })
+            .filter(|(_, key)| {
+                t.key
+                    .as_ref()
+                    .is_none_or(|want| key.as_ref().is_some_and(|k| same_key(k, want)))
+            })
             .collect();
         match found.len() {
             1 => {
-                let s = &mut found[0];
-                s.resolved = true;
-                Ok((s.run.clone(), s.invoke, s.slot.clone()))
+                let (s, key) = &mut found[0];
+                if !matches!(t.outcome, ScriptOutcome::Emit(_)) {
+                    s.resolved = true;
+                }
+                Ok(Found {
+                    run: s.run.clone(),
+                    invoke: s.invoke,
+                    slot: s.slot.clone(),
+                    emitter: s.emitter.clone(),
+                    spawn: key.is_some(),
+                })
             }
             0 => Err(format!("no running scripted invoke of `{task}`")),
             n => Err(format!(
-                "{n} running scripted invokes of `{task}`; name a run"
+                "{n} running scripted invokes of `{task}`; name a run or a key"
             )),
         }
     }
@@ -262,20 +299,54 @@ impl Drop for ScriptedFuture {
     }
 }
 
-fn scripted_outcome(o: &ScriptOutcome) -> Outcome {
+/// The outcome a step ends its invoke with; `None` for an `emit` step, which ends nothing.
+fn scripted_outcome(o: &ScriptOutcome) -> Option<Outcome> {
     match o {
-        ScriptOutcome::Done(v) => Outcome::Done(v.clone()),
-        ScriptOutcome::Fail(e) => Outcome::Fail(e.clone()),
-        ScriptOutcome::Defect(m) => Outcome::Defect(Defect::host(m.clone())),
+        ScriptOutcome::Done(v) => Some(Outcome::Done(v.clone())),
+        ScriptOutcome::Fail(e) => Some(Outcome::Fail(e.clone())),
+        ScriptOutcome::Defect(m) => Some(Outcome::Defect(Defect::host(m.clone()))),
+        ScriptOutcome::Emit(_) => None,
     }
 }
 
-fn outcome_input(invoke: u64, o: Outcome) -> Input {
-    match o {
-        Outcome::Done(value) => Input::InvokeDone { invoke, value },
-        Outcome::Fail(error) => Input::InvokeFail { invoke, error },
-        Outcome::Defect(defect) => Input::InvokeDefect { invoke, defect },
+fn outcome_input(invoke: u64, spawn: bool, o: Outcome) -> Input {
+    match (o, spawn) {
+        (Outcome::Done(value), false) => Input::InvokeDone { invoke, value },
+        (Outcome::Fail(error), false) => Input::InvokeFail { invoke, error },
+        (Outcome::Defect(defect), false) => Input::InvokeDefect { invoke, defect },
+        (Outcome::Done(value), true) => Input::SpawnDone {
+            spawn: invoke,
+            value,
+        },
+        (Outcome::Fail(error), true) => Input::SpawnFail {
+            spawn: invoke,
+            error,
+        },
+        (Outcome::Defect(defect), true) => Input::SpawnDefect {
+            spawn: invoke,
+            defect,
+        },
     }
+}
+
+/// Whether two keys are the same: equal JSON forms, an integral number in any form.
+fn same_key(a: &Value, b: &Value) -> bool {
+    a == b || (a.is_number() && b.is_number() && a.as_f64() == b.as_f64())
+}
+
+/// The key of spawned child (or task) `invoke` of run `run`, by the run's snapshot as its
+/// last step left it; `None` if it is an invoke.
+fn spawned_key(
+    handles: &Mutex<HashMap<String, RunHandle>>,
+    run: &str,
+    invoke: u64,
+) -> Option<Value> {
+    let saved = handles.lock().unwrap().get(run)?.save()?;
+    saved
+        .spawned?
+        .into_iter()
+        .find(|c| c.id == invoke)
+        .map(|c| c.key)
 }
 
 // ---- the host ----------------------------------------------------------------------------
@@ -318,6 +389,7 @@ impl Host for CaseHost<'_> {
                 invoke: call.invoke,
                 src: call.src.clone(),
                 slot: slot.clone(),
+                emitter: call.emitter.clone(),
                 resolved: false,
             });
             return Box::pin(ScriptedFuture {
@@ -576,10 +648,18 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                 runner.settle().map_err(at)?;
             }
             Step::Task(t) => {
-                let (_, _, slot) = registry.resolve(&t.task, t.run.as_deref()).map_err(at)?;
-                *slot.outcome.lock().unwrap() = Some(scripted_outcome(&t.outcome));
-                if let Some(w) = slot.waker.lock().unwrap().take() {
-                    w.wake();
+                let found = registry
+                    .resolve(t, |r, i| spawned_key(&handles, r, i))
+                    .map_err(at)?;
+                match (&t.outcome, scripted_outcome(&t.outcome)) {
+                    // Through the driver's emitter, so that its filter applies.
+                    (ScriptOutcome::Emit(v), _) => found.emitter.emit(v.clone()),
+                    (_, outcome) => {
+                        *found.slot.outcome.lock().unwrap() = outcome;
+                        if let Some(w) = found.slot.waker.lock().unwrap().take() {
+                            w.wake();
+                        }
+                    }
                 }
                 runner.settle().map_err(at)?;
             }
@@ -626,9 +706,20 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                             },
                         )),
                         Step::Task(t) => {
-                            let (run, invoke, _) =
-                                registry.resolve(&t.task, t.run.as_deref()).map_err(at)?;
-                            inputs.push((run, outcome_input(invoke, scripted_outcome(&t.outcome))));
+                            let found = registry
+                                .resolve(t, |r, i| spawned_key(&handles, r, i))
+                                .map_err(at)?;
+                            match (&t.outcome, scripted_outcome(&t.outcome)) {
+                                // The input the emitter would push now, if any.
+                                (ScriptOutcome::Emit(v), _) => {
+                                    if let Some(input) = found.emitter.input(v) {
+                                        inputs.push((found.run, input));
+                                    }
+                                }
+                                (_, Some(o)) => inputs
+                                    .push((found.run, outcome_input(found.invoke, found.spawn, o))),
+                                (_, None) => unreachable!("an emit step"),
+                            }
                         }
                         Step::Advance(d) => {
                             let end = timer.now.load(Ordering::SeqCst) + d;
@@ -645,7 +736,12 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                         }
                     }
                 }
-                let run = inputs[0].0.clone();
+                // Emits the run does not hear give no input.
+                let Some((run, _)) = inputs.first() else {
+                    runner.settle().map_err(at)?;
+                    continue;
+                };
+                let run = run.clone();
                 if inputs.iter().any(|(r, _)| *r != run) {
                     return Err(at("a `together` has inputs for two runs".into()));
                 }

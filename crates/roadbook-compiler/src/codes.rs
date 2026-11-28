@@ -20,11 +20,11 @@ pub const UNKNOWN_ACTION: Code = Code(104);
 pub const UNKNOWN_VARIABLE: Code = Code(105);
 /// An `on` naming an event the machine does not declare.
 pub const UNKNOWN_EVENT: Code = Code(106);
-/// Two top-level declarations with the same name in one compilation, or an event with the
-/// name of a type, error or machine.
+/// Two top-level declarations with the same name in one compilation, or an event (of a machine
+/// or a task) with the name of a type, error or machine.
 pub const DUPLICATE_DECLARATION: Code = Code(107);
-/// Two fields, parameters, variants, variables, events or sibling states with the same name,
-/// or a name imported twice into one file.
+/// Two fields, parameters, variants, variables, events (of a machine, or emitted by one task)
+/// or sibling states with the same name, or a name imported twice into one file.
 pub const DUPLICATE_NAME: Code = Code(108);
 /// A declared name used as something it is not, such as an action in `invoke`.
 pub const WRONG_KIND: Code = Code(109);
@@ -44,11 +44,12 @@ pub const ASSIGN_TO_PARAMETER: Code = Code(114);
 /// parameter or variable.
 pub const UNKNOWN_ADDRESS: Code = Code(115);
 
-/// A `send name.E` of an event the receiving machine does not declare with `event`.
+/// A `send` of an event the receiving machine does not declare with `event`, or a `send` to a
+/// task, which takes no events.
 pub const NOT_ACCEPTED: Code = Code(116);
 
 /// An `emit E` of an event the machine does not declare with `emits`, or an `on name.E` of an
-/// event the sending machine does not.
+/// event the sending machine or task does not.
 pub const NOT_EMITTED: Code = Code(117);
 
 /// An `invoke x.name(…)` of a call `x`'s machine does not declare, an `on name` of a call the
@@ -68,8 +69,8 @@ pub const NOT_A_COLLECTION: Code = Code(121);
 pub const KEY_AS_NAME: Code = Code(122);
 /// A state path in a `check` that names no state of the machine, or names a history state.
 pub const UNKNOWN_CHECK_STATE: Code = Code(123);
-/// An `on name.ended` through an `invoke … as name` child or a `children` collection, whose
-/// ends are their outcomes, not through a `ref`.
+/// An `on name.ended` through an `invoke … as name` child or task or a `children` collection,
+/// whose ends are their outcomes, not through a `ref`.
 pub const ENDED_NOT_A_PEER: Code = Code(124);
 
 // ───────────── structure ─────────────
@@ -106,8 +107,8 @@ pub const DONE_WITHOUT_CHILDREN: Code = Code(212);
 /// state.
 pub const CHILD_NOT_RUNNING: Code = Code(213);
 
-/// `invoke task(…) as name` or `invoke x.call(…) as name`: only an invoked machine has a name
-/// to send to.
+/// `invoke x.call(…) as name`, or `invoke task(…) as name` of a task that declares no `emits`:
+/// only an invoked machine, or a task that emits, has a name to talk through.
 pub const ALIAS_ON_TASK: Code = Code(214);
 
 /// `retry` on the invoke of a state with child states, which cannot be written out as
@@ -127,7 +128,7 @@ pub const RETRY_SHARED_OUTCOME: Code = Code(218);
 
 /// `history H` or `deep history H` in a state with no child states, or in a final state.
 pub const HISTORY_WITHOUT_CHILDREN: Code = Code(219);
-/// A `spawn` of a machine other than its collection's.
+/// A `spawn` of a machine or task that is not its collection's.
 pub const SPAWN_MACHINE_MISMATCH: Code = Code(220);
 /// Several targets of which some have the leading dot of an internal transition and some do not.
 pub const MIXED_TARGETS: Code = Code(221);
@@ -256,7 +257,8 @@ pub const NEVER_EMITTED: Code = Code(905);
 /// An `on name.E` where the sending machine declares `emits E` but never emits it.
 pub const RECEIVES_NOTHING: Code = Code(906);
 
-/// An `emits E` that no `on name.E` in the checked charts receives.
+/// An `emits` that nothing in the checked files receives: a machine's `emits E` that no
+/// `on name.E` receives, or a task's that no `on x.E` through an address of that task does.
 pub const NEVER_RECEIVED: Code = Code(907);
 
 /// A `call` that no `on name` of its machine takes.

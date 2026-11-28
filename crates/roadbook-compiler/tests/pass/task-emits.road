@@ -1,0 +1,90 @@
+// Tasks that emit: an invoke with `as`, a stream task with no outcome block, a nested
+// receiver, a sensitive field and a collection of tasks, with no diagnostics.
+
+type File { name: string, size: int }
+type Url  = string
+
+error UploadFailed { reason: string }
+
+action showProgress(name: string, percent: int)
+action showStored(name: string, url: Url)
+action reportFailure(name: string, reason: string)
+
+/// Uploads a file, saying how far it has got.
+task upload(file: File) -> Url ! UploadFailed
+  /// How much is sent, in percent.
+  emits Progress { percent: int }
+  emits Stage    { name: string }
+
+/// Ticks until it is cancelled.
+task ticks(every: duration) emits Tick
+
+/// Asks for a one-time code.
+task challenge(user: string) emits Code { sensitive code: string }
+
+machine Publish(file: File) -> Url ! UploadFailed {
+  event Stop
+  event Retry
+
+  var percent:        int = 0
+  var stage:          string = ""
+  var seconds:        int = 0
+  sensitive var code: string = ""
+  var url:            Url = ""
+  var failure:        UploadFailed?
+
+  initial Uploading
+  state Uploading {
+    invoke upload(file) as up {
+      done              -> Done     set url = result
+      fail UploadFailed -> Waiting  set failure = error
+    }
+    on up.Progress set percent = event.percent
+    // An internal transition keeps the task running while the child states change.
+    on Stop -> .Checking
+    initial Sending
+    state Sending  { on up.Stage set stage = event.name }
+    state Checking { on up.Stage set percent = 100 }
+  }
+  state Waiting {
+    invoke ticks(1s) as clock
+    on clock.Tick               set seconds = seconds + 1
+    on Retry      -> Uploading
+    on Stop       -> Asking
+    after 1h      -> GaveUp
+  }
+  state Asking {
+    invoke challenge("me") as ask
+    on ask.Code               set code = event.code
+    on Retry    -> Uploading
+  }
+  final state Done   { output url }
+  final state GaveUp { fail UploadFailed { reason: "gave up" } }
+
+  check reachable Uploading.Checking
+  check Uploading.Checking only after Uploading.Sending
+}
+
+machine Batch() -> int {
+  event Add    { file: File }
+  event Cancel { name: string }
+  event Close
+
+  children uploads: upload by string
+
+  var stored: int = 0
+
+  initial Open
+  state Open {
+    on Add                         spawn uploads[event.file.name] = upload(event.file)
+    on Cancel                      stop uploads[event.name]
+    on uploads.Progress            do showProgress(key, event.percent)
+    on uploads.Stage               do showProgress(key, 0)
+    on uploads.done                set stored = stored + 1  do showStored(key, result)
+    on uploads.fail *              do reportFailure(key, error.reason)
+    on Close            -> Closed
+  }
+  final state Closed { output stored }
+
+  check can finish
+}

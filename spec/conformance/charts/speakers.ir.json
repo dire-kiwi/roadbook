@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "spec/conformance/charts/speakers.road",
@@ -318,7 +318,8 @@
       "calls": {},
       "children": {
         "speakers": {
-          "machine": "Speaker",
+          "kind": "machine",
+          "src": "Speaker",
           "key": "string",
           "doc": "",
           "span": {
@@ -375,7 +376,7 @@
                   {
                     "kind": "spawn",
                     "children": "speakers",
-                    "machine": "Speaker",
+                    "src": "Speaker",
                     "key": {
                       "kind": "ref",
                       "path": [
@@ -644,7 +645,8 @@
       "calls": {},
       "children": {
         "speakers": {
-          "machine": "Speaker",
+          "kind": "machine",
+          "src": "Speaker",
           "key": "string",
           "doc": "",
           "span": {
@@ -701,7 +703,7 @@
                   {
                     "kind": "spawn",
                     "children": "speakers",
-                    "machine": "Speaker",
+                    "src": "Speaker",
                     "key": {
                       "kind": "ref",
                       "path": [

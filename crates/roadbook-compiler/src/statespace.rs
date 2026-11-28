@@ -19,7 +19,8 @@
 //!   or call before it ([`Assumption::Unpreempted`]). A machine's own moves race only the
 //!   others.
 //!
-//! The machine's own events and the outcomes of tasks are the host's to give, and a timer
+//! The machine's own events, and the outcomes and emitted events of tasks (invoked or
+//! spawned), are the host's to give, and a timer
 //! that is the only one running expires whenever the run waits long enough, so where no
 //! other machine can act those assume nothing. A path whose edges assume nothing is one a
 //! real run can take, whatever the data and whatever the other machines do.
@@ -53,6 +54,9 @@
 //! - A `children` collection is either empty or may have children, of any keys; once a `spawn`
 //!   effect has run it may have children for the rest of the run (a `stop` never empties it).
 //!   So a spawned child's outcomes and emitted events may arrive at any stable node after it.
+//!   A collection of tasks is the same, its tasks' outcomes and emits assuming nothing.
+//! - An invoked task's emitted events (through its `as` name) may arrive any number of times
+//!   while its invoke runs, as an invoked child machine's may.
 //! - An emitted event from a peer may arrive at any time, from any run that any nonempty set
 //!   of the `ref` parameters and variables of its machine hold. Only the events some `on
 //!   name.Event` expects are inputs: a run is not sent the others (`spec/execution.md`,
@@ -224,13 +228,13 @@ fn add_races(chart: &Chart<'_>, successors: &mut [Successor]) {
 /// Who sent an emitted event.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Sender {
-    /// The child machine invoked (with `as`) by this state.
+    /// The child machine or the task invoked (with `as`) by this state.
     Child(StateIndex),
     /// A peer that these `ref` parameters and variables hold, and none of the others that a
     /// trigger expects the event through. Several names can hold the same run (a variable
     /// set from a parameter, or two arguments given the same handle).
     Refs(Vec<String>),
-    /// A spawned child of this `children` collection.
+    /// A spawned child (or task) of this `children` collection.
     Children(String),
     /// A run that calls the machine (`on c`): any run that holds a `ref` to it.
     Callers,
@@ -809,10 +813,15 @@ impl<'a> Chart<'a> {
             collection_errors: machine
                 .children
                 .values()
-                .map(|d| {
-                    ir.machines
-                        .get(&d.machine)
-                        .map_or(&[][..], |m| m.errors.as_slice())
+                .map(|d| match d.kind {
+                    ir::ChildrenKind::Machine => ir
+                        .machines
+                        .get(&d.src)
+                        .map_or(&[][..], |m| m.errors.as_slice()),
+                    ir::ChildrenKind::Task => ir
+                        .tasks
+                        .get(&d.src)
+                        .map_or(&[][..], |t| t.errors.as_slice()),
                 })
                 .collect(),
             has_always: Vec::new(),
@@ -893,7 +902,9 @@ impl<'a> Chart<'a> {
                             }
                         };
                         match from.kind {
-                            AddressKind::Child => {
+                            // An invoked task's emits are offered like a child's, while
+                            // the invoke runs.
+                            AddressKind::Child | AddressKind::Task => {
                                 if let Some(&st) = from.state.as_deref().and_then(|x| index.get(x))
                                 {
                                     push(&mut child_events[st as usize]);
@@ -905,9 +916,8 @@ impl<'a> Chart<'a> {
                                 }
                             }
                             AddressKind::Ref => {
-                                let names = ref_events
-                                    .entry((from.machine.as_str(), event.as_str()))
-                                    .or_default();
+                                let names =
+                                    ref_events.entry((from.peer(), event.as_str())).or_default();
                                 if !names.contains(&from.name.as_str()) {
                                     names.push(from.name.as_str());
                                 }
@@ -917,9 +927,7 @@ impl<'a> Chart<'a> {
                     // A peer's end is an input from the peer like its emitted events, named
                     // `ended`, which no emitted event can be (event names are capitalised).
                     Trigger::Ended { from } => {
-                        let names = ref_events
-                            .entry((from.machine.as_str(), ENDED))
-                            .or_default();
+                        let names = ref_events.entry((from.peer(), ENDED)).or_default();
                         if !names.contains(&from.name.as_str()) {
                             names.push(from.name.as_str());
                         }
@@ -1287,7 +1295,7 @@ impl<'a> Chart<'a> {
             Cand::Call(n) => pick(&|t| matches!(t, Trigger::Call { call } if call == n)),
             Cand::Emitted(sender, n) => pick(&|t| match t {
                 Trigger::Emitted { from, event } if event == n => match (sender, from.kind) {
-                    (SenderRef::Child(st), AddressKind::Child) => {
+                    (SenderRef::Child(st), AddressKind::Child | AddressKind::Task) => {
                         from.state.as_deref() == Some(self.states[*st as usize].id.as_str())
                     }
                     (SenderRef::Refs(names), AddressKind::Ref) => {
@@ -1543,7 +1551,7 @@ impl<'a> Chart<'a> {
                 InvokeKind::Call => inv
                     .to
                     .as_ref()
-                    .and_then(|to| self.ir.machines.get(&to.machine))
+                    .and_then(|to| self.ir.machines.get(to.peer()))
                     .and_then(|m| m.calls.get(&inv.src))
                     .map(|c| &c.errors[..]),
             }
@@ -1737,10 +1745,29 @@ impl<'a> Chart<'a> {
                 let invoke = self.states[state.index()].invoke.as_ref()?;
                 (invoke.kind != InvokeKind::Task).then(|| Assumption::Machine(input.clone()))
             }
-            Input::Call(_)
-            | Input::Emitted { .. }
-            | Input::SpawnDone { .. }
-            | Input::SpawnFail { .. } => Some(Assumption::Machine(input.clone())),
+            // A task's emits and a spawned task's outcomes are the host's to give, as an
+            // invoked task's outcomes are: they assume nothing.
+            Input::Emitted {
+                from: Sender::Child(state),
+                ..
+            } => {
+                let invoke = self.states[state.index()].invoke.as_ref()?;
+                (invoke.kind != InvokeKind::Task).then(|| Assumption::Machine(input.clone()))
+            }
+            Input::Emitted {
+                from: Sender::Children(children),
+                ..
+            }
+            | Input::SpawnDone { children }
+            | Input::SpawnFail { children, .. } => {
+                let tasks = self
+                    .machine
+                    .children
+                    .get(children)
+                    .is_some_and(|c| c.kind == ir::ChildrenKind::Task);
+                (!tasks).then(|| Assumption::Machine(input.clone()))
+            }
+            Input::Call(_) | Input::Emitted { .. } => Some(Assumption::Machine(input.clone())),
             Input::After { state, index } => {
                 let others = cfg.active.iter().any(|&s| {
                     self.after_blocks[s as usize].iter().any(|&(group, i)| {

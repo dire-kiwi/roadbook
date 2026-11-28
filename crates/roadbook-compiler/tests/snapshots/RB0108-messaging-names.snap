@@ -46,4 +46,4 @@ error[RB0108]: `inner` already names the machine invoked by `M.C`, which contain
 31 |       invoke Child() as inner {
    |                         ^^^^^
    |
-   = help: choose another name: both children run at once here
+   = help: choose another name: both invokes run at once here

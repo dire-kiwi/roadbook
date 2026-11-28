@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0115]: `clock` is not in scope here: it names the task `M.Waiting` invokes
+  --> RB0115-task-alias-out-of-scope.road:13:8
+   |
+13 |     on clock.Tick set seconds = 0
+   |        ^^^^^
+   |
+   = help: an `as` name is in scope only in the invoking state and the states inside it, while the task runs; move this into `M.Waiting`

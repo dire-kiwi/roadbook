@@ -587,3 +587,83 @@ fn map_keys_and_hidden_names() {
         "b.road",
     ));
 }
+
+const TASKS: &str = r#"
+/// How far a file has got.
+type Share { percent: int }
+
+/// Store a file, saying how far it has got.
+task upload(size: int) -> int
+  /// How much of the file is stored.
+  emits Progress { share: Share }
+  emits Stage { name: string }
+
+/// Ticks until it is cancelled.
+task ticks(every: duration) emits Tick
+
+/// Emits nothing.
+task ping()
+"#;
+
+const USES_TASKS: &str = r#"
+import { upload, ticks, ping } from "./tasks.road"
+
+/// Sends a heartbeat of its own, which a task of this file also emits.
+task beat() emits Tick { n: int }
+
+machine Watch() {
+  emits Tick
+
+  var percent: int = 0
+
+  children beats: beat by string
+
+  event Go { name: string }
+
+  initial Uploading
+
+  state Uploading {
+    invoke upload(10) as up {
+      done -> Pinging
+    }
+    on up.Progress set percent = event.share.percent
+    on Go          spawn beats[event.name] = beat()
+    on beats.Tick  set percent = event.n
+
+    initial Counting
+
+    state Counting {
+      invoke ticks(1s) as clock
+      on clock.Tick emit Tick
+    }
+  }
+
+  state Pinging {
+    invoke ping() {
+      done -> Over
+    }
+  }
+
+  final state Over {}
+}
+"#;
+
+#[test]
+fn tasks_that_emit() {
+    let tasks = ir(
+        &mut MemoryLoader::new().with("tasks.road", TASKS),
+        "tasks.road",
+    );
+    let code = gen_ok(&tasks);
+    // A file of tasks only: their events' schemas and nothing else.
+    insta::with_settings!({ prepend_module_to_snapshot => false, omit_expression => true }, {
+        insta::assert_snapshot!("task_emits", without_ir(&tasks, &code));
+    });
+    let watch = ir(
+        &mut MemoryLoader::new()
+            .with("tasks.road", TASKS)
+            .with("watch.road", USES_TASKS),
+        "watch.road",
+    );
+    snapshot("task_emits_used", &watch);
+}

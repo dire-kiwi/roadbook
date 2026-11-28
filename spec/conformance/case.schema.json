@@ -11,7 +11,7 @@
       "description": "Features the case needs beyond the first version's. A runner skips a case that requires a feature it does not implement.",
       "type": "array",
       "uniqueItems": true,
-      "items": { "enum": ["messaging", "parallel", "snapshots", "calls", "history", "spawn", "ended"] }
+      "items": { "enum": ["messaging", "parallel", "snapshots", "calls", "history", "spawn", "ended", "task-emits"] }
     },
     "chart": {
       "description": "The entry .road file, relative to spec/conformance. Its IR is the file next to it with .road replaced by .ir.json.",
@@ -96,21 +96,27 @@
       "properties": { "event": { "$ref": "#/$defs/tagged" }, "run": { "$ref": "#/$defs/topRunId" } }
     },
     "task": {
-      "description": "End the one running scripted invoke of this task (or stubbed machine): with done, fail or defect. run picks the run when several have one.",
+      "description": "End the one running scripted invoke of this task (or stubbed machine): with done, fail or defect; or, with emit, have it emit one of its task's emits through its emitter and keep running. run picks the run when several have one, and key the spawned one by its key.",
       "type": "object",
       "additionalProperties": false,
       "required": ["task"],
       "properties": {
         "task": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" },
         "run": { "$ref": "#/$defs/runId" },
+        "key": {
+          "description": "For a spawned task or a stubbed spawned child, the key of the one meant, when its run has several of that name.",
+          "oneOf": [{ "type": "string" }, { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 }]
+        },
         "done": { "description": "The result value." },
         "fail": { "description": "A declared error.", "$ref": "#/$defs/tagged" },
-        "defect": { "description": "The message of a host defect.", "type": "string" }
+        "defect": { "description": "The message of a host defect.", "type": "string" },
+        "emit": { "description": "An event of the task's emits, which it emits through its emitter.", "$ref": "#/$defs/tagged" }
       },
       "oneOf": [
-        { "required": ["done"], "not": { "anyOf": [{ "required": ["fail"] }, { "required": ["defect"] }] } },
-        { "required": ["fail"], "not": { "anyOf": [{ "required": ["done"] }, { "required": ["defect"] }] } },
-        { "required": ["defect"], "not": { "anyOf": [{ "required": ["done"] }, { "required": ["fail"] }] } }
+        { "required": ["done"], "not": { "anyOf": [{ "required": ["fail"] }, { "required": ["defect"] }, { "required": ["emit"] }] } },
+        { "required": ["fail"], "not": { "anyOf": [{ "required": ["done"] }, { "required": ["defect"] }, { "required": ["emit"] }] } },
+        { "required": ["defect"], "not": { "anyOf": [{ "required": ["done"] }, { "required": ["fail"] }, { "required": ["emit"] }] } },
+        { "required": ["emit"], "not": { "anyOf": [{ "required": ["done"] }, { "required": ["fail"] }, { "required": ["defect"] }] } }
       ]
     },
     "cancel": {
@@ -170,7 +176,7 @@
       "properties": { "suspend": { "$ref": "#/$defs/snapshotName" }, "run": { "$ref": "#/$defs/topRunId" } }
     },
     "together": {
-      "description": "Queue several inputs for one run before it takes the first of them, as when they arrive at the same moment. An advance item queues the expiries of the timers due in its window.",
+      "description": "Queue several inputs for one run before it takes the first of them, as when they arrive at the same moment. An advance item queues the expiries of the timers due in its window; an emit item the task.emitted input its invoke's emitter would push, or nothing.",
       "type": "object",
       "additionalProperties": false,
       "required": ["together"],

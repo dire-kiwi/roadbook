@@ -72,7 +72,7 @@
       "required": ["event"]
     },
     {
-      "description": "The run took the outcome of an invoke, the expiry of a timer, or an event emitted by a child run, whose invoke or timer had already been cancelled. Nothing changed.",
+      "description": "The run took the outcome of an invoke or a spawned child, the expiry of a timer, an event emitted by a child run, or an event emitted by a task, whose invoke, spawned child (or spawned task) or timer is no longer running. Nothing changed.",
       "properties": { "kind": { "const": "stale" }, "event": { "$ref": "#/$defs/event" } },
       "required": ["event"]
     },
@@ -173,13 +173,13 @@
       "required": ["to", "invoke", "call", "outcome", "value"]
     },
     {
-      "description": "A spawned child was started, after the step that spawned it settled, or again on restoring.",
+      "description": "A spawned child was started, after the step that spawned it settled, or again on restoring. src is its machine, or its task for a collection of tasks.",
       "properties": {
         "kind": { "const": "spawn.started" },
         "spawn": { "$ref": "#/$defs/id" },
         "children": { "$ref": "#/$defs/lowerName" },
         "key": { "$ref": "#/$defs/key" },
-        "src": { "$ref": "#/$defs/upperName" },
+        "src": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" },
         "args": { "$ref": "#/$defs/args" }
       },
       "required": ["spawn", "children", "key", "src", "args"]
@@ -310,6 +310,16 @@
             "value": { "$ref": "#/$defs/tagged" }
           },
           "required": ["kind", "from", "invoke", "message", "value"],
+          "additionalProperties": false
+        },
+        {
+          "description": "An event a task emitted while it ran: `invoke` is the id of this run's invoke or spawned task that runs it, and `value` one of the task's emits.",
+          "properties": {
+            "kind": { "const": "task.emitted" },
+            "invoke": { "$ref": "#/$defs/id" },
+            "value": { "$ref": "#/$defs/tagged" }
+          },
+          "required": ["kind", "invoke", "value"],
           "additionalProperties": false
         },
         {

@@ -202,13 +202,13 @@ fn walk(s: &State, parent: Option<usize>, path: &mut Vec<usize>, idx: &mut Machi
     for t in &s.transitions {
         if let Trigger::Emitted { from, event } = &t.trigger {
             idx.hears
-                .entry(from.machine.clone())
+                .entry(from.peer().to_owned())
                 .or_default()
                 .insert(event.clone());
         }
         if let Trigger::Ended { from } = &t.trigger {
             idx.hears
-                .entry(from.machine.clone())
+                .entry(from.peer().to_owned())
                 .or_default()
                 .insert(ENDED_INPUT.to_owned());
         }

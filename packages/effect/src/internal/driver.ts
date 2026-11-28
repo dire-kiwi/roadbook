@@ -142,17 +142,38 @@ export const CurrentInvoke: Context.Reference<InvokeContext | undefined> = Conte
   InvokeContext | undefined
 >("@dire-kiwi/roadbook-effect/InvokeContext", { defaultValue: () => undefined })
 
+// ---- the emitter -----------------------------------------------------------------------------
+
+/**
+ * For each emitter the driver gave a task, what emitting `event` through it now would push: the
+ * `task.emitted` input, or `undefined` if it would push nothing (it is inert or closed, or the
+ * run does not hear the event). Throws if the event does not encode. Only the conformance runner
+ * asks, to resolve the `emit` items of a `together` step.
+ */
+const emitters = new WeakMap<object, (event: unknown) => Core.Input | undefined>()
+
+/** What emitting `event` through `emit`, an emitter the driver gave a task, would push now. */
+export const emitterInput = (emit: unknown, event: unknown): Core.Input | undefined => {
+  const resolve = Predicate.isFunction(emit) ? emitters.get(emit) : undefined
+  if (resolve === undefined) throw new Error("not an emitter the driver gave a task")
+  return resolve(event)
+}
+
+const NOTHING: ReadonlySet<string> = new Set()
+
 // ---- a machine bound to its implementations ----------------------------------------------------
 
 type AnyFn = (args: any) => unknown
 // The services implementations need are provided by whoever runs the machine, so inside the
 // driver they are `never`.
 type AnyEffectFn = (args: any) => Effect.Effect<unknown, unknown>
+/** A task's implementation: its arguments and its emitter. */
+type AnyTaskFn = (args: any, emit: (event: unknown) => Effect.Effect<void>) => Effect.Effect<unknown, unknown>
 
 export interface AnyHandlers {
   readonly fns?: Readonly<Record<string, AnyFn>>
   readonly actions?: Readonly<Record<string, AnyEffectFn>>
-  readonly tasks?: Readonly<Record<string, AnyEffectFn>>
+  readonly tasks?: Readonly<Record<string, AnyTaskFn>>
   readonly machines?: Readonly<Record<string, AnyEffectFn | { readonly run: AnyEffectFn }>>
 }
 
@@ -728,8 +749,45 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       }
 
       /**
-       * Start an invoke, or a spawned child (`spawn.start`, a machine whose emitted events always
-       * reach this run, and whose outcome comes back as a `spawn.*` input).
+       * The emitter of task invoke or spawned task `command` (execution.md, "The emitter"): live
+       * for an invoke with `as` and for a spawned task, with this run's queue, the id and the
+       * events this run's machine hears from the task; inert otherwise. Emitting encodes the
+       * event first, whatever the emitter is: one that does not encode makes the task die with a
+       * host `Defect`. It pushes nothing once its work is cancelled or stopped (`token`) or its
+       * outcome is queued (`ended`), or once the run has closed, and nothing the run does not hear.
+       */
+      const emitterOf = (command: StartCommand, token: CancelToken, ended: () => boolean) => {
+        const { invoke, src } = command
+        const emits = ir.tasks[src]?.emits ?? {}
+        const live = command.as !== null
+        const heard = live ? Core.heard(ir, name, src) : NOTHING
+        const resolve = (event: unknown): Core.Input | undefined => {
+          const tag = Predicate.hasProperty(event, "_tag") ? String(event._tag) : ""
+          const decl = Object.hasOwn(emits, tag) ? emits[tag] : undefined
+          if (decl === undefined) throw new Error(`task ${src} emits no event ${JSON.stringify(tag)}`)
+          const value = codec.encodeTagged(event, `${src}.${tag}`, decl.fields)
+          if (!live || token.cancelled || ended() || !port.open || !heard.has(tag)) return undefined
+          return { kind: "task.emitted", invoke, value }
+        }
+        const emit = (event: unknown): Effect.Effect<void> =>
+          Effect.suspend(() => {
+            let input: Core.Input | undefined
+            try {
+              input = resolve(event)
+            } catch (error) {
+              return Effect.die(new Defect(hostDefect(error)))
+            }
+            if (input !== undefined) push(port, input)
+            return Effect.void
+          })
+        emitters.set(emit, resolve)
+        return emit
+      }
+
+      /**
+       * Start an invoke, or a spawned child (`spawn.start`, a machine or task whose emitted
+       * events always reach this run, and whose outcome comes back as a `spawn.*` input). A task,
+       * invoked or spawned, is given an emitter; it has no invoke context, since it is not a run.
        */
       const startInvoke = (command: StartCommand) => {
         if (command.srcKind === "call") return makeCall(command)
@@ -739,9 +797,13 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         const params = decl?.params ?? []
         const returns = decl?.returns ?? null
         const impl = command.srcKind === "task" ? program.handlers.tasks?.[src] : program.handlers.machines?.[src]
+        // Set once the work has ended, before its outcome is queued: its emitter is closed then.
+        let ended = false
+        const emit = command.srcKind === "task" ? emitterOf(command, token, () => ended) : undefined
         const work = Effect.suspend(() => {
           if (impl === undefined) return Effect.die(new Error(`no implementation of ${command.srcKind} ${src}`))
           const args = codec.decodeArgs(params, command.args)
+          if (emit !== undefined) return (impl as AnyTaskFn)(args, emit)
           return Predicate.hasProperty(impl, "run") ? (impl as { run: AnyEffectFn }).run(args) : (impl as AnyEffectFn)(args)
         })
         const context: InvokeContext | undefined = command.srcKind === "machine"
@@ -759,6 +821,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           }
           : undefined
         const outcome = Effect.map(Effect.exit(work), (exit) => {
+          ended = true
           const input = outcomeInput(codec, command.invoke, src, returns, exit)
           return command.kind === "spawn" ? spawnOutcome(input) : input
         })
@@ -919,7 +982,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
               kind: "spawn",
               invoke: command.spawn,
               src: command.src,
-              srcKind: "machine",
+              srcKind: command.srcKind,
               as: "",
               args: command.args,
               saved: command.saved
@@ -1199,6 +1262,10 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           case "ended":
             // At most one end per peer.
             return `d${input.from}`
+          // A task's emit has no sender run and no message id: never dropped as taken already.
+          // A task that starts again after a crash emits again, and those are new inputs.
+          case "task.emitted":
+            return undefined
           case "call":
             // A caller that recovers hands over again a call it does not know was journalled.
             return `c${input.from}/${input.invoke}`
@@ -1547,7 +1614,7 @@ type Journalled = Core.Input & { readonly via?: RunInfo }
 
 /**
  * What starts a child or a task: an `invoke.start` command, or a `spawn.start` one as an invoke
- * of a machine whose emitted events always reach its parent (`as` is never `null`).
+ * of a machine or task whose emitted events always reach its parent (`as` is never `null`).
  */
 type StartCommand =
   | Extract<Core.Command, { kind: "invoke.start" }>
@@ -1555,7 +1622,7 @@ type StartCommand =
     readonly kind: "spawn"
     readonly invoke: number
     readonly src: string
-    readonly srcKind: "machine"
+    readonly srcKind: "machine" | "task"
     readonly as: string
     readonly args: { readonly [param: string]: Core.Json }
     readonly saved: Core.Saved | null

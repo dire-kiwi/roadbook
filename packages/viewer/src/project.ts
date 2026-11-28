@@ -76,6 +76,8 @@ export interface IndexMachine {
   invokes: number[]
   /** The machines it spawns, with its collections of children (`children name: Machine by Key`) that hold them. */
   spawns: { to: number; names: string[] }[]
+  /** The tasks it spawns, with its collections of tasks (`children name: task by Key`) that hold them. Absent from an index written before IR 0.10. */
+  spawnsTasks?: { task: string; names: string[] }[]
   /** The machines it holds a `ref` to, with the parameters and variables that hold one. */
   refs: { to: number; names: string[] }[]
   /** The events it sends, by receiving machine (to an invoked or spawned child, a ref). */
@@ -111,6 +113,7 @@ export function projectIndex(title: string, pages: { href: string; entry: string
         page,
         invokes: [],
         spawns: [],
+        spawnsTasks: [],
         refs: [],
         sends: [],
         receives: [],
@@ -134,6 +137,7 @@ export function projectIndex(title: string, pages: { href: string; entry: string
         const to = at(r.machine)
         if (to !== undefined) from.spawns.push({ to, names: r.names })
       }
+      from.spawnsTasks = t.spawnsTasks.map((r) => ({ task: r.task, names: r.names }))
       for (const r of t.refs) {
         const to = at(r.machine)
         if (to !== undefined) from.refs.push({ to, names: r.names })
@@ -401,7 +405,7 @@ export function renderIndexLegend(): string {
 }
 
 /**
- * `spawns Session (sessions)`, `ref Inventory (inventory)`, `sends Reserve, Release to Inventory`,
+ * `spawns Session (sessions)`, `spawns task upload (uploads)`, `ref Inventory (inventory)`, `sends Reserve, Release to Inventory`,
  * `calls reserve on Inventory`, `handles Reserved from Inventory`, `hears when Inventory ends
  * (inventory)`, one per line.
  */
@@ -409,6 +413,7 @@ function talksText(index: ProjectIndex, m: IndexMachine): string[] {
   const name = (i: number) => index.machines[i]?.name ?? '?'
   return [
     ...m.spawns.map((r) => `spawns ${name(r.to)} (${r.names.join(', ')})`),
+    ...(m.spawnsTasks ?? []).map((r) => `spawns task ${r.task} (${r.names.join(', ')})`),
     ...m.refs.map((r) => `ref ${name(r.to)} (${r.names.join(', ')})`),
     ...m.sends.map((r) => `sends ${r.events.join(', ')} to ${name(r.to)}`),
     ...m.calls.map((r) => `calls ${r.calls.join(', ')} on ${name(r.to)}`),

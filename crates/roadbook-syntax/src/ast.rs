@@ -143,11 +143,14 @@ pub enum DeclKind {
     Action {
         params: Vec<Field>,
     },
-    /// `task name(params) [-> T] [! E | F]`
+    /// `task name(params) [-> T] [! E | F] { emits Name [{ fields }] }`
     Task {
         params: Vec<Field>,
         returns: Option<TypeRef>,
         errors: Vec<Ident>,
+        /// The `emits` clauses, in source order: events the task emits while it runs.
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        emits: Vec<EventDecl>,
     },
     Machine(Machine),
 }
@@ -390,7 +393,7 @@ pub enum Item {
     Emits(EventDecl),
     /// `call name(params) [-> T] [! E | F]`
     Call(CallDecl),
-    /// `children name: Machine by Key`
+    /// `children name: Machine by Key` or `children name: task by Key`
     Children(ChildrenDecl),
     /// `initial Name`
     Initial(Ident),
@@ -468,16 +471,26 @@ pub struct CallDecl {
     pub span: Span,
 }
 
-/// `children name: Machine by Key`: a keyed collection of spawned children.
+/// `children name: Machine by Key`: a keyed collection of spawned children. A lower-case
+/// `src` (`children uploads: upload by string`) is a task, an upper-case one a machine.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct ChildrenDecl {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub doc: Option<Doc>,
     pub name: Ident,
-    pub machine: Ident,
+    /// The machine or task the children run.
+    #[serde(rename = "machine")]
+    pub src: Ident,
     pub key: TypeRef,
     #[serde(skip)]
     pub span: Span,
+}
+
+impl ChildrenDecl {
+    /// Whether the collection holds tasks: its `src` is lower-case.
+    pub fn is_task(&self) -> bool {
+        self.src.name.starts_with(|c: char| c.is_ascii_lowercase())
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -773,12 +786,14 @@ pub enum SendKey {
     },
 }
 
-/// `spawn name[key] = Machine(args)`
+/// `spawn name[key] = Machine(args)` or `spawn name[key] = task(args)`
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Spawn {
     pub children: Ident,
     pub key: Expr,
-    pub machine: Ident,
+    /// The machine or task to start.
+    #[serde(rename = "machine")]
+    pub src: Ident,
     pub args: Vec<Expr>,
     /// From `spawn` to the closing `)`.
     #[serde(skip)]
@@ -822,13 +837,15 @@ pub struct Invoke {
     pub to: Option<Ident>,
     pub callee: Ident,
     pub args: Vec<Expr>,
-    /// `as name`: the name the state uses to talk to the invoked machine.
+    /// `as name`: the name the state uses to talk to the invoked machine, or to receive what
+    /// the invoked task emits.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alias: Option<Ident>,
     /// `retry N [on E | …] [after delay]`, after the arguments and any `as`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub retry: Option<Retry>,
-    /// `done` and `fail` transitions, in source order.
+    /// `done` and `fail` transitions, in source order. Empty when the invoke has no block
+    /// (`invoke ticks(1s) as clock`); a block has at least one.
     pub outcomes: Vec<Transition>,
     #[serde(skip)]
     pub span: Span,

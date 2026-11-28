@@ -21,7 +21,8 @@
 //!   or transitions: then a `<state>` with the machine's id inside it holds them, and its
 //!   transitions with a target inside it are `type="internal"`, so they do not leave the
 //!   machine. Top-level final states stay children of `<scxml>`, so reaching one ends the run.
-//! - **Triggers** are event names: `on E` is `E`; `on x.E` is `x.E`; `on c`, which takes a call,
+//! - **Triggers** are event names: `on E` is `E`; `on x.E` is `x.E`, also when `x` names a task
+//!   that emits (`invoke upload(…) as up` and `on up.Progress`); `on c`, which takes a call,
 //!   is `call.c` (see [`call_event`]); `on *` lists the machine's events the state has no `on`
 //!   for, never a call; `after d` is a `<send>` of `roadbook.after.<state>.<group>` on entry,
 //!   cancelled on exit; `always` has no event; `done` is `done.state.<state>`; an invoke's `done`
@@ -39,7 +40,9 @@
 //!   with `rb:children` (its machine) and `rb:key`; `spawn c[k] = M(…)` the element `<rb:spawn>`
 //!   and `stop c[k]` `<rb:stop>`, each with `children` and `key`; `send c[k].E` and
 //!   `send c.*.E` a `<send>` with `targetexpr` `c[k]` or `c.*`; `on c.done` is the event
-//!   `done.spawn.c`, `on c.fail E` is `error.E.spawn.c`, and `on c.E` is `c.E`.
+//!   `done.spawn.c`, `on c.fail E` is `error.E.spawn.c`, and `on c.E` is `c.E`. A collection of
+//!   tasks is the same, with `rb:children` its task and `rb:kind="task"`, and its `<rb:spawn>`
+//!   has the task's name as `src` and the type of a task invoke.
 //! - **Invokes** of a task have type `urn:roadbook:task` and the task's name as `src`; of a
 //!   machine, SCXML's type and `src="<Machine>.scxml"`; of a call, type `urn:roadbook:call` and
 //!   `src="x.c"`, the `ref` and the call as the invoke writes them. A final state's `output` is
@@ -50,8 +53,8 @@ use std::path::PathBuf;
 
 use roadbook_compiler::Ir;
 use roadbook_ir::{
-    AddressKind, Effect, Expr, ExprKind, Field, InvokeKind, Literal, Machine, ReplyOutcome, State,
-    StateKind, Transition, Trigger, TypeRef,
+    AddressKind, ChildrenKind, Effect, Expr, ExprKind, Field, InvokeKind, Literal, Machine,
+    ReplyOutcome, State, StateKind, Transition, Trigger, TypeRef,
 };
 
 use crate::workspace::Workspace;
@@ -230,11 +233,14 @@ pub fn document(ir: &Ir, name: &str, m: &Machine) -> String {
         }
         for (name, c) in &m.children {
             w.comment(2, &c.doc);
-            let attrs = [
+            let mut attrs = vec![
                 ("id", name.clone()),
-                ("rb:children", c.machine.clone()),
+                ("rb:children", c.src.clone()),
                 ("rb:key", c.key.to_string()),
             ];
+            if c.kind == ChildrenKind::Task {
+                attrs.push(("rb:kind", "task".into()));
+            }
             w.open(2, "data", &attrs, true);
         }
         w.close(1, "datamodel");
@@ -389,7 +395,7 @@ impl Writer<'_> {
                     inv.callee(),
                     inv.to
                         .as_ref()
-                        .and_then(|to| self.ir.machines.get(&to.machine))
+                        .and_then(|to| self.ir.machines.get(to.peer()))
                         .and_then(|m| m.calls.get(&inv.src))
                         .map(|c| &c.params),
                 ),
@@ -513,8 +519,14 @@ impl Writer<'_> {
                     self.m
                         .children
                         .get(children)
-                        .and_then(|c| self.ir.machines.get(&c.machine))
-                        .map(|m| m.errors.as_slice())
+                        .and_then(|c| match c.kind {
+                            ChildrenKind::Machine => {
+                                self.ir.machines.get(&c.src).map(|m| m.errors.as_slice())
+                            }
+                            ChildrenKind::Task => {
+                                self.ir.tasks.get(&c.src).map(|t| t.errors.as_slice())
+                            }
+                        })
                         .unwrap_or_default()
                         .iter()
                         .map(String::as_str)
@@ -552,7 +564,7 @@ impl Writer<'_> {
                         InvokeKind::Call => inv
                             .to
                             .as_ref()
-                            .and_then(|to| self.ir.machines.get(&to.machine))
+                            .and_then(|to| self.ir.machines.get(to.peer()))
                             .and_then(|m| m.calls.get(&inv.src))
                             .map(|c| &c.errors),
                     });
@@ -686,16 +698,24 @@ impl Writer<'_> {
                 }
                 Effect::Spawn {
                     children,
-                    machine,
+                    src,
                     key,
                     args,
                 } => {
-                    let params = self.ir.machines.get(machine).map(|m| &m.params);
-                    let attrs = [
-                        ("children", children.clone()),
-                        ("key", key.text.clone()),
-                        ("src", format!("{machine}.scxml")),
-                    ];
+                    let task = self
+                        .m
+                        .children
+                        .get(children)
+                        .is_some_and(|c| c.kind == ChildrenKind::Task);
+                    let mut attrs = vec![("children", children.clone()), ("key", key.text.clone())];
+                    let params = if task {
+                        attrs.push(("type", TASK_TYPE.into()));
+                        attrs.push(("src", src.clone()));
+                        self.ir.tasks.get(src).map(|t| &t.params)
+                    } else {
+                        attrs.push(("src", format!("{src}.scxml")));
+                        self.ir.machines.get(src).map(|m| &m.params)
+                    };
                     let empty = args.is_empty();
                     self.open(depth, "rb:spawn", &attrs, empty);
                     if !empty {

@@ -300,7 +300,7 @@ export class Replay {
           }
           case 'spawn.started': {
             const c = own(m.children, str(r.children))
-            if (!c || c.machine !== r.src) out.push(`${at}: ${view.machine} has no children ${str(r.children)} of ${str(r.src)}`)
+            if (!c || c.src !== r.src) out.push(`${at}: ${view.machine} has no children ${str(r.children)} of ${str(r.src)}`)
             break
           }
           case 'timer.started': {
@@ -518,6 +518,8 @@ export function inputText(input: unknown): string {
       return `message ${String(i.message)} from ${str(i.from)}: ${tag(i.value)}${fields(i.value)}`
     case 'emitted':
       return `${tag(i.value)} emitted by ${str(i.from)}${fields(i.value)}`
+    case 'task.emitted':
+      return `${tag(i.value)} emitted by the task of invoke ${String(i.invoke)}${fields(i.value)}`
     case 'call': {
       const args = (i.args ?? {}) as { [k: string]: unknown }
       return `call ${str(i.call)} from ${str(i.from)} (its invoke ${String(i.invoke)})${Object.keys(args).length ? ' ' + jsonText(args, 100) : ''}`

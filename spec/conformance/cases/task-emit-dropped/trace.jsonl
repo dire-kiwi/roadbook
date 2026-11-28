@@ -1,0 +1,16 @@
+{"input":{"size":10},"ir":"sha256:7069a6afc7bcaecb1b3be76d176383782a4b601699fa3cd55fa261ff92e13b34","kind":"started","machine":"Gauge","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Gauge","t":0}
+{"kind":"entered","run":"r1","state":"Gauge.Uploading","t":0}
+{"args":{"size":10},"invoke":1,"kind":"invoke.started","run":"r1","src":"upload","state":"Gauge.Uploading","t":0}
+{"event":{"invoke":1,"kind":"task.emitted","value":{"_tag":"Progress","percent":50}},"kind":"event","run":"r1","t":0}
+{"from":"Gauge.Uploading","index":1,"kind":"transition","run":"r1","t":0,"to":[]}
+{"kind":"set","run":"r1","t":0,"value":50,"var":"percent"}
+{"event":{"invoke":1,"kind":"task.emitted","value":{"_tag":"Progress","percent":20}},"kind":"dropped","run":"r1","t":0}
+{"event":{"invoke":1,"kind":"invoke.done","value":100},"kind":"event","run":"r1","t":0}
+{"from":"Gauge.Uploading","index":0,"kind":"transition","run":"r1","t":0,"to":["Gauge.Stored"]}
+{"kind":"exited","run":"r1","state":"Gauge.Uploading","t":0}
+{"kind":"set","run":"r1","t":0,"value":100,"var":"percent"}
+{"kind":"entered","run":"r1","state":"Gauge.Stored","t":0}
+{"kind":"exited","run":"r1","state":"Gauge.Stored","t":0}
+{"kind":"exited","run":"r1","state":"Gauge","t":0}
+{"kind":"done","output":100,"run":"r1","state":"Gauge.Stored","t":0}

@@ -41,6 +41,10 @@
 //!   saved snapshot as a new run, its child runs where they were (a generated `restore` or
 //!   `resume`, [`dynamic::restore`], [`dynamic::resume`]); a snapshot that does not fit is
 //!   refused with a [`RestoreError`].
+//! - A task that declares `emits` emits through an [`Emitter`], which its `Handlers` method
+//!   is given: each event the invoking run hears becomes a `task.emitted` input on its queue,
+//!   pushed before the task's outcome. A stream task is one that returns nothing and emits
+//!   until its invoke is cancelled, which drops its future.
 //! - [`dynamic`] is the erased interface the generated code adapts to, for hosts that call
 //!   host code by name.
 
@@ -48,6 +52,7 @@ mod actor;
 mod defect;
 mod driver;
 pub mod dynamic;
+mod emit;
 mod env;
 mod handle;
 mod listen;
@@ -59,6 +64,7 @@ pub mod __private;
 
 pub use actor::{Actor, Stopped};
 pub use driver::RunEnd;
+pub use emit::Emitter;
 #[cfg(feature = "tokio")]
 pub use env::TokioTimer;
 pub use env::{

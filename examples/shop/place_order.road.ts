@@ -90,7 +90,7 @@ export interface PlaceOrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "examples/shop/place_order.road",
@@ -506,6 +506,7 @@ const ir: unknown = {
       "errors": [
         "Unauthenticated"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -528,6 +529,7 @@ const ir: unknown = {
       "errors": [
         "ValidationFailed"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -554,6 +556,7 @@ const ir: unknown = {
       ],
       "returns": "Order",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -583,6 +586,7 @@ const ir: unknown = {
         "CardDeclined",
         "GatewayUnavailable"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,

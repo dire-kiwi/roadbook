@@ -209,6 +209,8 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
         const callee = inv.callee
         h += `<p class="rb-cnote rb-task-note">A call to ${esc(callee.machine)}, the run <code>${esc(callee.name)}</code> holds (${esc(JSON.stringify(callee.run))}). Here it is treated as a task: the callee is not run, and you give its answer by hand: done, one of its errors, or <code>Unanswered</code> (the callee dropped the call or ended first).${own(ir.machines, callee.machine) ? ` To step through ${esc(callee.machine)} taking the call, open its tab and simulate it there.` : ''}</p>`
       }
+      if (inv.open) h += `<p class="rb-cnote rb-task-note">No outcomes are written: it runs until ${esc(stateName(inv.state))} is left. If it ends by itself first, its outcome is dropped.</p>`
+      if (inv.srcKind === 'task' && inv.emits.length) h += `<p class="rb-cnote rb-task-note">Make it emit an event as its host code would: it keeps running.</p>`
       const returns = inv.returns
       if (returns === null) h += `<div class="rb-choice">${button(k(`done:${inv.id}`), `${inv.src} done`, () => s.complete(inv.id, { done: null }))}</div>`
       else
@@ -250,7 +252,10 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
   function spawnedHtml(s: Simulation, c: SpawnChoice, k: (x: string) => string): string {
     const name = spawnedText(c)
     let h = `<h4>spawned ${c.id}: <code>${esc(name)}</code> <span class="rb-h-note">${esc(c.src)}</span></h4>`
-    h += `<p class="rb-cnote rb-task-note">A child of ${esc(c.children)}, treated as a task: its run is not started, and you give its outcome by hand.${own(ir.machines, c.src) ? ` To step through ${esc(c.src)} itself, open its tab and simulate it there.` : ''}</p>`
+    h +=
+      c.srcKind === 'task'
+        ? `<p class="rb-cnote rb-task-note">A task of ${esc(c.children)}: you give its outcome by hand${c.emits.length ? ', and make it emit as its host code would (it keeps running)' : ''}.</p>`
+        : `<p class="rb-cnote rb-task-note">A child of ${esc(c.children)}, treated as a task: its run is not started, and you give its outcome by hand.${own(ir.machines, c.src) ? ` To step through ${esc(c.src)} itself, open its tab and simulate it there.` : ''}</p>`
     const returns = c.returns
     if (returns === null) h += `<div class="rb-choice">${button(k(`done:${c.id}`), `${name} done`, () => s.complete(c.id, { done: null }))}</div>`
     else

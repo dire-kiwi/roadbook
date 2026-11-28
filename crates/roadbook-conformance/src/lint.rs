@@ -89,6 +89,12 @@ fn is_top_level(id: &str) -> bool {
     })
 }
 
+/// Whether an invoke's or spawn's `src` names a task: a lower-case name with no dot (a call's
+/// is `address.call`, a machine's upper case).
+fn is_task(src: &str) -> bool {
+    !src.contains('.') && src.starts_with(|c: char| c.is_ascii_lowercase())
+}
+
 fn str_of<'a>(r: &'a Value, k: &str) -> &'a str {
     r.get(k).and_then(Value::as_str).unwrap_or("")
 }
@@ -157,6 +163,9 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 (Some(p), Some((prefix, n))) if p == prefix => {
                     let n: u64 = n.parse().unwrap_or(0);
                     match runs.get(p).and_then(|pr| pr.started_invokes.get(&n)) {
+                        Some((_, src)) if is_task(src) => bad(format!(
+                            "run {id}: invoke {n} of run {p} is the task {src}, which has no run"
+                        )),
                         Some((_, src)) if *src == machine => {}
                         _ => bad(format!(
                             "run {id}: run {p} started no invoke {n} of {machine}"
@@ -368,6 +377,30 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 } else if ekind == "message" {
                     if kind == "stale" {
                         bad("a message is never stale".to_owned());
+                    }
+                } else if ekind == "task.emitted" {
+                    // No sender record: it points at the invoke or spawned task its `invoke`
+                    // names, started in this run, and consumes nothing.
+                    let n = u64_of(&e, "invoke");
+                    let live = run.invokes.contains_key(&n) || run.spawned.contains_key(&n);
+                    match run.started_invokes.get(&n) {
+                        Some((_, src)) if is_task(src) => {
+                            let tag = e["value"]["_tag"].as_str().unwrap_or_default();
+                            let declared = ir.is_none_or(|ir| {
+                                ir.tasks.get(src).is_some_and(|t| t.emits.contains_key(tag))
+                            });
+                            if !declared {
+                                bad(format!("task {src} does not emit {tag}"));
+                            }
+                        }
+                        _ => bad(format!(
+                            "a task's emit of invoke {n}, which started no task in run {id}"
+                        )),
+                    }
+                    if kind == "stale" && live {
+                        bad(format!("stale emit of invoke {n}, which is running"));
+                    } else if kind != "stale" && !live {
+                        bad(format!("a task's emit of invoke {n}, which is not running"));
                     }
                 } else if ekind == "emitted" {
                     match e.get("invoke").and_then(Value::as_u64) {
@@ -584,7 +617,7 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 }
                 if let Some(m) = machine {
                     match m.children.get(&children) {
-                        Some(c) if c.machine == src => {}
+                        Some(c) if c.src == src => {}
                         _ => bad(format!(
                             "{} has no collection {children} of {src}",
                             run.machine

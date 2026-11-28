@@ -84,7 +84,7 @@ export interface PaymentWebhookDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "examples/webhook/webhook.road",
@@ -373,6 +373,7 @@ const ir: unknown = {
       "errors": [
         "MalformedPayload"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -393,6 +394,7 @@ const ir: unknown = {
       ],
       "returns": "bool",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -421,6 +423,7 @@ const ir: unknown = {
       "errors": [
         "DatabaseBusy"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -447,6 +450,7 @@ const ir: unknown = {
       ],
       "returns": null,
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -467,6 +471,7 @@ const ir: unknown = {
       ],
       "returns": null,
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,

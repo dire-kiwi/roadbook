@@ -1,0 +1,80 @@
+import { File, UploadFailed, Url } from "./upload.road"
+
+/// Store `file` in one request, saying how much of it is stored as it goes, and when the
+/// storage service asked it to try a chunk again.
+task storeFile(file: File) -> Url ! UploadFailed
+  emits Progress { percent: int }
+  emits Retrying { attempt: int }
+
+/// A tick every `every`, until the state that invokes it is left: a stream task.
+task ticks(every: duration) emits Tick
+
+/// Show how much of the attachment is stored.
+action showProgress(percent: int)
+
+/// Say that the storage service is being asked again.
+action showRetrying(attempt: int)
+
+/// Show how long the user has been asked to confirm.
+action showWaiting(seconds: int)
+
+/// Show how far one of several files has got.
+action showFileProgress(name: string, percent: int)
+
+/// Attach a file to a message: store it with a task that reports its progress, then wait for
+/// the user to confirm, showing how long they have waited.
+machine Attach(file: File) -> Url ! UploadFailed {
+  var url:     Url
+  var failure: UploadFailed
+  var waited:  int = 0
+
+  event Confirm
+
+  initial Storing
+
+  /// `store` names the task while it runs, so the state hears what it emits.
+  state Storing {
+    invoke storeFile(file) as store {
+      done              -> Confirming  set url = result
+      fail UploadFailed -> Failed      set failure = error
+    }
+    on store.Progress do showProgress(event.percent)
+    on store.Retrying do showRetrying(event.attempt)
+  }
+
+  /// The clock ticks until the user confirms: leaving the state stops it.
+  state Confirming {
+    invoke ticks(1s) as clock
+    on clock.Tick              set waited = waited + 1  do showWaiting(waited)
+    on Confirm    -> Attached
+  }
+
+  final state Attached { output url }
+  final state Failed   { fail failure }
+}
+
+/// Attach several files at once: one `storeFile` task per file, keyed by the file's name, in a
+/// collection of tasks. Counts the files stored.
+machine AttachMany() -> int {
+  var stored: int = 0
+
+  event Add    { file: File }
+  event Cancel { name: string }
+  event Done
+
+  children stores: storeFile by string
+
+  initial Open
+
+  state Open {
+    on Add                                 spawn stores[event.file.name] = storeFile(event.file)
+    on Cancel                              stop stores[event.name]
+    on stores.Progress                     do showFileProgress(key, event.percent)
+    on stores.done                         set stored = stored + 1
+    on stores.fail UploadFailed            do showFileProgress(key, 0)
+    on Done                     -> Closed
+  }
+
+  /// Closing stops the files still being stored.
+  final state Closed { output stored }
+}

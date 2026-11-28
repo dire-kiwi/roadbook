@@ -15,7 +15,19 @@ import { describe, expect, it } from "vitest"
 import { Durable } from "../src/entry-durable.ts"
 import * as Roadbook from "../src/index.ts"
 import { Asker, Desk, Host } from "./charts/durable-calls.road.ts"
-import { Adder, Counter, Hub, Parent, Pipeline, Relay, Session, Watcher } from "./charts/durable.road.ts"
+import {
+  Adder,
+  Counter,
+  Crew,
+  Hub,
+  Parent,
+  Pipeline,
+  Reached,
+  Relay,
+  Session,
+  Tracker,
+  Watcher
+} from "./charts/durable.road.ts"
 import { registryOf } from "../src/internal/durable.ts"
 
 const config = ShardingConfig.layer({
@@ -35,6 +47,7 @@ const makeWorld = () => {
     return found
   }
   const logged: Array<string> = []
+  const notes: Array<number> = []
   const records: Array<Core.TraceRecord> = []
   let attempts = 0
   let patience = 10_000
@@ -42,6 +55,7 @@ const makeWorld = () => {
   const handlers = {
     actions: {
       log: ({ text }: { text: string }) => Effect.sync(() => void logged.push(text)),
+      note: ({ percent }: { percent: number }) => Effect.sync(() => void notes.push(percent)),
       pause: ({ n }: { n: number }) => Deferred.await(gate(100 + n))
     },
     tasks: {
@@ -49,6 +63,15 @@ const makeWorld = () => {
         Effect.gen(function*() {
           counts.set(n, (counts.get(n) ?? 0) + 1)
           yield* Deferred.await(gate(n))
+          return n * 10
+        }),
+      // Halfway as it starts, then done once its gate (200 + n) opens.
+      progress: ({ n }: { n: number }, emit: (event: Reached) => Effect.Effect<void>) =>
+        Effect.gen(function*() {
+          counts.set(200 + n, (counts.get(200 + n) ?? 0) + 1)
+          yield* emit(Reached.make({ percent: 50 }))
+          yield* Deferred.await(gate(200 + n))
+          yield* emit(Reached.make({ percent: 100 }))
           return n * 10
         })
     },
@@ -64,6 +87,7 @@ const makeWorld = () => {
     /** Let the step held by `pause(n)` go on. */
     unpause: (n: number) => Deferred.doneUnsafe(gate(100 + n), Exit.void),
     logged,
+    notes,
     records,
     handlers,
     attempts: () => attempts,
@@ -103,7 +127,9 @@ const machines = (world: World, options: Partial<Durable.Options<any>> = {}) => 
       idempotencyKey: ({ goal }) => `adder-${goal}`,
       ...options
     }),
-    watcher: Durable.workflow(Watcher.implement(world.handlers as never), { idempotencyKey: () => "watcher", ...options })
+    watcher: Durable.workflow(Watcher.implement(world.handlers as never), { idempotencyKey: () => "watcher", ...options }),
+    tracker: Durable.workflow(Tracker.implement(world.handlers as never), { idempotencyKey: ({ id }) => `tracker-${id}`, ...options }),
+    crew: Durable.workflow(Crew.implement(world.handlers as never), { idempotencyKey: ({ id }) => `crew-${id}`, ...options })
   }
 }
 type Machines = ReturnType<typeof machines>
@@ -364,6 +390,55 @@ describe("durable runs across a crash", () => {
           polled = yield* process.run(flows.counter.poll(counterId))
         }
         expect(Option.isSome(polled) && Exit.isSuccess(polled.value)).toBe(true)
+        yield* process.crash
+      })), 20_000)
+})
+
+describe("durable runs of tasks that emit, across a crash", () => {
+  it("replay the emits a run took before the crash, and take those of a task started again as new inputs", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        yield* process.run(flows.tracker.start({ id: "a" }))
+        // The task said it is halfway, and the run took it: journalled, its note made.
+        yield* until(() => world.notes.length === 1)
+        yield* process.crash
+
+        process = yield* start()
+        // The taken emit is replayed (its note, an activity, is not made again). The task was
+        // still running, so it starts again and emits again: a new input, with a new note.
+        yield* until(() => world.count(201) === 2 && world.notes.length === 2)
+        world.open(201)
+        // One replayed, then the two of the task's second attempt.
+        expect(yield* process.run(flows.tracker.run({ id: "a" }))).toBe(3)
+        expect(world.notes).toEqual([50, 50, 100])
+        expect(world.count(201)).toBe(2)
+        yield* process.crash
+      })), 20_000)
+
+  it("run each spawned task as an activity: one that finished is not run again", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        world.open(203)
+        let process = yield* start()
+        const id = yield* process.run(flows.crew.start({ id: "a" }))
+        yield* process.run(flows.crew.send(id, { _tag: "Hire", key: "a", n: 2 }))
+        yield* process.run(flows.crew.send(id, { _tag: "Hire", key: "b", n: 3 }))
+        // a is halfway; b has said both and given 30.
+        yield* until(() => world.notes.length === 3)
+        yield* until(() => world.records.some((r) => r.kind === "set" && r.var === "total" && r.value === 30))
+        yield* process.crash
+
+        process = yield* start()
+        // a starts again and emits again; b's stored outcome is not run again.
+        yield* until(() => world.count(202) === 2 && world.notes.length === 4)
+        expect(world.count(203)).toBe(1)
+        world.open(202)
+        yield* until(() => world.notes.length === 5)
+        yield* until(() => world.records.some((r) => r.kind === "set" && r.var === "total" && r.value === 50))
+        yield* process.run(flows.crew.send(id, { _tag: "Finish" }))
+        expect(yield* process.run(flows.crew.run({ id: "a" }))).toBe(50)
+        expect([...world.notes].sort((x, y) => x - y)).toEqual([50, 50, 50, 100, 100])
         yield* process.crash
       })), 20_000)
 })

@@ -29,7 +29,8 @@ use crate::types::{Ty, TypeDef};
 
 /// Every member marked `sensitive`, as `(owner, member)`: the owner is a record or error type
 /// (its fields), a function, action, task or machine (its parameters), a machine (its
-/// variables), `Machine.Event` (the fields of an event or emitted event), or
+/// variables), `Machine.Event` (the fields of an event or emitted event), `task.Event` (the
+/// fields of an event a task emits), or
 /// [`Sensitive::call`] (the parameters of a call). Declaration names are unique in a
 /// compilation, event keys have a dot and call keys a space, so owners never collide.
 #[derive(Default)]
@@ -51,9 +52,15 @@ impl Sensitive {
                 DeclKind::Record { fields: fs, .. } | DeclKind::Error { fields: fs } => {
                     fields(&mut s, name, fs)
                 }
-                DeclKind::Fn { params, .. }
-                | DeclKind::Action { params }
-                | DeclKind::Task { params, .. } => fields(&mut s, name, params),
+                DeclKind::Fn { params, .. } | DeclKind::Action { params } => {
+                    fields(&mut s, name, params)
+                }
+                DeclKind::Task { params, emits, .. } => {
+                    fields(&mut s, name, params);
+                    for e in emits {
+                        fields(&mut s, &format!("{name}.{}", e.name.name), &e.fields)
+                    }
+                }
                 DeclKind::Machine(m) => {
                     fields(&mut s, name, &m.params);
                     for item in &m.body.items {

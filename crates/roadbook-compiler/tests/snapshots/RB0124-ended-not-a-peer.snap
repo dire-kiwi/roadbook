@@ -18,7 +18,7 @@ error[RB0124]: `upload` names the machine `M.A` invokes, not a `ref`, so it has 
 14 |     on upload.ended -> B
    |        ^^^^^^
    |
-   = help: an invoked child's end is its invoke's outcome: handle it with `done` and `fail` inside the `invoke { }` of `M.A`
+   = help: an invoke's end is its outcome: handle it with `done` and `fail` inside the `invoke { }` of `M.A`
 
 error[RB0124]: `upload` names the machine `M.A` invokes, not a `ref`, so it has no `ended`
   --> RB0124-ended-not-a-peer.road:17:8
@@ -29,4 +29,4 @@ error[RB0124]: `upload` names the machine `M.A` invokes, not a `ref`, so it has 
 17 |     on upload.ended -> A
    |        ^^^^^^
    |
-   = help: an invoked child's end is its invoke's outcome: handle it with `done` and `fail` inside the `invoke { }` of `M.A`
+   = help: an invoke's end is its outcome: handle it with `done` and `fail` inside the `invoke { }` of `M.A`

@@ -281,6 +281,13 @@
 (invoke
   callee: (identifier) @function.call)
 
+; A collection's task, and a task started by `spawn`.
+(children_declaration
+  task: (identifier) @function.call)
+
+(spawn
+  task: (identifier) @function.call)
+
 (import
   name: (identifier) @function)
 

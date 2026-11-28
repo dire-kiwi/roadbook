@@ -1,0 +1,41 @@
+{
+  "description": "A task invoked with `as` emits Progress twice while it runs: each is a `task.emitted` input of invoke 1, taken by `on up.Progress` with `event.percent`, and the invoke keeps running. Then its outcome is taken as usual.",
+  "requires": [
+    "messaging",
+    "task-emits"
+  ],
+  "chart": "charts/task-emits.road",
+  "machine": "Publish",
+  "input": {
+    "size": 100
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "upload",
+      "emit": {
+        "_tag": "Progress",
+        "percent": 50
+      }
+    },
+    {
+      "task": "upload",
+      "emit": {
+        "_tag": "Progress",
+        "percent": 100
+      }
+    },
+    {
+      "task": "upload",
+      "done": 100
+    },
+    {
+      "event": {
+        "_tag": "Finish"
+      }
+    }
+  ],
+  "status": "done"
+}

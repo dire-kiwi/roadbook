@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "spec/conformance/charts/saved.road",
@@ -88,6 +88,7 @@
       ],
       "returns": "int",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 0,
@@ -108,6 +109,7 @@
       ],
       "returns": "string",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 0,
@@ -128,6 +130,7 @@
       ],
       "returns": "string",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 0,

@@ -73,6 +73,8 @@ describe('model text', () => {
       receives: [],
       calls: [{ machine: 'Inventory', calls: ['reserve'] }],
       ends: [],
+      spawnsTasks: [],
+      receivesTasks: [],
     })
     expect(talks(calls, 'Counter').calls).toEqual([{ machine: 'Inventory', calls: ['count'] }])
     expect(talks(calls, 'Inventory').calls).toEqual([])

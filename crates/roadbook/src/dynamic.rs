@@ -14,6 +14,7 @@ use roadbook_core::{Defect, Input, Object, Program, RestoreError, Saved, SrcKind
 use serde_json::Value;
 
 use crate::driver::{Driver, RunEnd};
+pub use crate::emit::DynEmitter as Emitter;
 use crate::env::{BoxFuture, Config};
 use crate::shared::{RunHandle, Shared, claim_context};
 
@@ -29,10 +30,11 @@ pub trait Host: Send + Sync {
     /// Runs action `name` with arguments keyed by parameter name.
     fn action<'a>(&'a self, name: &str, args: Object) -> BoxFuture<'a, Result<(), Defect>>;
 
-    /// Starts the task or machine of `call`. The future's output becomes the invoke's
-    /// outcome. For a machine, the future is polled inside an invoke context, so a
-    /// [`run`] (or a generated `run`) inside it becomes the child run. A call of a peer
-    /// ([`SrcKind::Call`]) never comes here: the driver makes it itself.
+    /// Starts the task or machine of `call`, invoked or spawned. The future's output becomes
+    /// the invoke's (or spawned child's) outcome. For a machine, the future is polled inside
+    /// an invoke context, so a [`run`] (or a generated `run`) inside it becomes the child run.
+    /// A task emits through [`Invocation::emitter`]. A call of a peer ([`SrcKind::Call`])
+    /// never comes here: the driver makes it itself.
     fn invoke<'a>(&'a self, call: Invocation) -> BoxFuture<'a, Outcome>;
 }
 
@@ -50,8 +52,12 @@ pub struct Invocation {
     pub refs: Vec<RunHandle>,
     /// The id of the run that starts it.
     pub run: String,
-    /// The invoke's id in that run.
+    /// The invoke's id in that run, or the spawned child's: the two share one sequence.
     pub invoke: u64,
+    /// What a task emits its events through (`spec/execution.md#the-emitter`): live for an
+    /// invoke with `as` and for a spawned task, inert for an invoke without `as` and for a
+    /// machine.
+    pub emitter: Emitter,
 }
 
 /// How an invoke ended.

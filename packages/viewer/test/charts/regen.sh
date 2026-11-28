@@ -20,7 +20,8 @@ for chart in \
   packages/viewer/test/charts/edges.road \
   packages/viewer/test/charts/escape.road \
   packages/viewer/test/charts/history.road \
-  packages/viewer/test/charts/spawn.road
+  packages/viewer/test/charts/spawn.road \
+  packages/viewer/test/charts/tasks.road
 do
   name=$(basename "$(dirname "$chart")")-$(basename "$chart" .road)
   cargo run -q -p roadbook-cli -- export ir "$chart" -o "$out/$name.ir.json"

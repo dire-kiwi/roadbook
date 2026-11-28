@@ -1,10 +1,13 @@
 ---
 source: crates/roadbook-compiler/tests/fail.rs
 ---
-error[RB0214]: `fetch` is a task, so `as fetching` gives it a name nothing can use
+error[RB0214]: `fetch` is a task that declares no `emits`, so `as fetching` gives it a name nothing can use
  --> RB0214-alias-on-task.road:6:23
   |
+1 | task fetch() -> int
+  |      ----- declared here
+...
 6 |     invoke fetch() as fetching {
   |                       ^^^^^^^^
   |
-  = help: only an invoked machine can be sent events and emit them; remove `as …`
+  = help: a task's `as` name receives what it emits: declare `emits Event` on the task, or remove `as …`

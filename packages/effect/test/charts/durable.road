@@ -1,5 +1,6 @@
 // Charts for the durable driver's crash and resume tests (test/durable.test.ts): work that a
-// crash must not repeat, a timer and an event to wait for, a child run, and a peer.
+// crash must not repeat, a timer and an event to wait for, a child run, a peer, and tasks that
+// say how far they have got.
 
 /// Write a line to the log.
 action log(text: string)
@@ -195,4 +196,47 @@ machine Relay(counter: ref Counter, goal: int) -> int {
   }
 
   final state Done { output got }
+}
+
+/// Note how far a task has got.
+action note(percent: int)
+
+/// One step of work that says how far it has got as it goes. Gives `n * 10`.
+task progress(n: int) -> int emits Reached { percent: int }
+
+/// Notes each `Reached` of its task, and gives how many it took once the task is done.
+machine Tracker(id: string) -> int {
+  var seen: int = 0
+
+  initial Working
+
+  state Working {
+    invoke progress(1) as job {
+      done -> Done
+    }
+    on job.Reached set seen = seen + 1  do note(event.percent)
+  }
+
+  final state Done { output seen }
+}
+
+/// Spawns a `progress` task per key, notes what they say, and adds up what they give.
+machine Crew(id: string) -> int {
+  var total: int = 0
+
+  event Hire   { key: string, n: int }
+  event Finish
+
+  children jobs: progress by string
+
+  initial Working
+
+  state Working {
+    on Hire             spawn jobs[event.key] = progress(event.n)
+    on jobs.Reached     do note(event.percent)
+    on jobs.done        set total = total + result
+    on Finish -> Done
+  }
+
+  final state Done { output total }
 }

@@ -335,7 +335,7 @@ They are comparable. Here is how they line up:
 | Cancelling | An `AbortSignal` the code must check | Interrupting the Effect, or dropping the Rust future, when the state is left |
 | Timeout | `timeout` on the logic, failing with `TimeoutError` | `after` on the invoking state, which is a transition the chart names |
 | Errors | Untyped, `onError` | Declared, and each one has a branch the compiler requires |
-| Events while running | `enq.emit` | None. Only a child machine can emit, which is the gap the "tasks that emit" addition closes |
+| Events while running | `enq.emit` | `emits` on the task, received as `on name.E` through `invoke … as name` (SM-26) |
 | Durable mode | Each `enq.step` is journaled | The whole task is one journaled activity, so a crash re-runs the task from the start |
 
 ## Delayed and self-sent events
@@ -452,12 +452,16 @@ invoke: {
 on: { TICK: { actions: 'count' } },
 ```
 
-**Roadbook** has no such actor. Host code calls `send` on the run's handle, which the chart doesn't show. A task can't report progress either: only a child machine can `emit`.
+**Roadbook** (SM-26) has tasks that declare what they emit. A **stream task** returns nothing and emits until its state is left, which covers callback and observable actors except that it cannot be sent events. The host code gets an `emit` function, the second argument in TypeScript and an `Emitter` in Rust.
 
 ```
-// proposed: a task that declares what it emits
 task upload(file: File) -> Url ! UploadFailed emits Progress { percent: int }
-task ticks(every: duration) emits Tick      // a stream: no result, runs until its state is left
+task ticks(every: duration) emits Tick
+
+state Waiting {
+  invoke ticks(1s) as clock
+  on clock.Tick set seconds = seconds + 1
+}
 
 state Uploading {
   invoke upload(file) as up {

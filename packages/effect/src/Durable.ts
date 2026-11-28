@@ -12,6 +12,12 @@
  * Durable runs that hold a `ref` to one another call one another (`invoke peer.c(…)`), as
  * ordinary runs do: a call, its answer, and the `Unanswered` of a callee that ends survive a
  * crash of either side.
+ *
+ * A task, invoked or spawned, is one activity whether or not it emits. What it emits reaches the
+ * run's queue as it runs, and the emits the run takes are journalled as its inputs and given
+ * again on replay; none is ever dropped as taken already, since an emit has no identity. A task
+ * still running at a crash starts again and emits again, as new inputs; emits it had queued and
+ * the run had not taken are lost.
  */
 import * as Core from "@dire-kiwi/roadbook-core"
 import { Cause, Duration, Effect, Exit, Layer, Option, Queue, Schema, Stream } from "effect"

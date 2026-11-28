@@ -418,7 +418,9 @@ impl<'g> Replay<'g> {
                     event: statespace::ENDED.to_string(),
                 }
             }
-            "emitted" => {
+            // A child's emitted event, or one an invoked or spawned task emits: by the id of
+            // its invoke or spawn.
+            "emitted" | "task.emitted" => {
                 let from = match event["invoke"].as_u64() {
                     // The names known to hold the sender, if any.
                     None => {
