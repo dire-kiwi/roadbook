@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0215]: `M.A` has other invokes, so this one cannot `retry`
+ --> RB0215-retry-beside-invoke.road:8:24
+  |
+8 |     invoke ping() as p retry 2 {
+  |                        ^^^^^^^
+  |
+  = help: `retry` gives the state the children `Attempt` and `Backoff`, which hold its one invoke; move the retried invoke into a state of its own, such as a region of a parallel state

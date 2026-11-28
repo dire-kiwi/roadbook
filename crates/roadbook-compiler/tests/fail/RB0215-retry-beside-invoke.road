@@ -1,0 +1,17 @@
+error Busy
+task ping() ! Busy
+task beat()
+
+machine M() {
+  initial A
+  state A {
+    invoke ping() as p retry 2 {
+      done      -> B
+      fail Busy -> B
+    }
+    invoke beat() as b
+  }
+  final state B {}
+}
+
+// expect: RB0215 at 8:24

@@ -1,0 +1,12 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0108]: `p` already names an invoke of `M.A`
+ --> RB0108-invoke-names.road:7:22
+  |
+6 |     invoke ping() as p { done -> Done }
+  |                      - named here
+7 |     invoke ping() as p { done -> Done }
+  |                      ^
+  |
+  = help: each invoke of a state needs a name of its own; choose another

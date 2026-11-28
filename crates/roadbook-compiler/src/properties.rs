@@ -546,7 +546,7 @@ impl<'a> Eval<'a> {
     /// A transition as a step shows it: `Go [x > 0]`.
     fn step_text(&self, s: StateIndex, index: usize) -> String {
         let state = self.state(s);
-        let trigger = trigger_text(&state.transitions[index].trigger);
+        let trigger = trigger_text(state, &state.transitions[index].trigger);
         match guard_text(state, index) {
             Some(g) => format!("{trigger} [{g}]"),
             None => trigger,
@@ -565,10 +565,17 @@ impl<'a> Eval<'a> {
                 let trigger = match &edge.input {
                     Input::Settled => continue,
                     Input::After { state, index } => {
-                        trigger_text(&self.state(*state).transitions[*index].trigger)
+                        let s = self.state(*state);
+                        trigger_text(s, &s.transitions[*index].trigger)
                     }
-                    Input::InvokeDone { .. } => "done".to_string(),
-                    Input::InvokeFail { error, .. } => format!("fail {error}"),
+                    Input::InvokeDone { state, invoke } => {
+                        format!("{}done", self.invoke_prefix(*state, *invoke))
+                    }
+                    Input::InvokeFail {
+                        state,
+                        invoke,
+                        error,
+                    } => format!("{}fail {error}", self.invoke_prefix(*state, *invoke)),
                     other => g.describe(other),
                 };
                 format!("{trigger} (no transition)")
@@ -584,7 +591,7 @@ impl<'a> Eval<'a> {
                     steps.push(Step {
                         from: state.id.clone(),
                         index: t.index,
-                        trigger: trigger_text(&tr.trigger),
+                        trigger: trigger_text(state, &tr.trigger),
                         guard: guard_text(state, t.index),
                         to: tr.targets.clone(),
                     });
@@ -658,14 +665,7 @@ impl<'a> Eval<'a> {
     /// An assumption as text: "`approved()` holds", "`after 5s` in `A` expires before the
     /// other running timers", "`Checkout` (invoked in `Paying`) ends `done`".
     fn assumption(&self, a: &Assumption) -> Option<String> {
-        let invoked = |s: &StateIndex| {
-            let state = self.state(*s);
-            let src = state.invoke.as_ref().map_or("", |i| i.src.as_str());
-            format!(
-                "`{src}` (invoked in `{}`)",
-                self.relative(self.graph.state_id(*s))
-            )
-        };
+        let invoked = |s: &StateIndex, k: &usize| self.invoked(*s, *k);
         Some(match a {
             Assumption::Guard { transition, holds } => {
                 let state = self.state(transition.state);
@@ -675,26 +675,30 @@ impl<'a> Eval<'a> {
             }
             Assumption::TimerFirst { state, index } => format!(
                 "`{}` in `{}` expires before the other running timers",
-                trigger_text(&self.state(*state).transitions[*index].trigger),
+                trigger_text(self.state(*state), &self.state(*state).transitions[*index].trigger),
                 self.relative(self.graph.state_id(*state))
             ),
             Assumption::Machine(input) => match input {
-                Input::InvokeDone { state } => match self.call(state) {
+                Input::InvokeDone { state, invoke } => match self.call(state, *invoke) {
                     Some((peer, call)) => format!("peer `{peer}` answers `{call}` with `done`"),
-                    None => format!("{} ends `done`", invoked(state)),
+                    None => format!("{} ends `done`", invoked(state, invoke)),
                 },
-                Input::InvokeFail { state, error } => match self.call(state) {
+                Input::InvokeFail {
+                    state,
+                    invoke,
+                    error,
+                } => match self.call(state, *invoke) {
                     Some((peer, call)) if error == ir::UNANSWERED => {
                         format!("peer `{peer}` leaves `{call}` unanswered")
                     }
                     Some((peer, call)) => {
                         format!("peer `{peer}` answers `{call}` with `fail {error}`")
                     }
-                    None => format!("{} fails with `{error}`", invoked(state)),
+                    None => format!("{} fails with `{error}`", invoked(state, invoke)),
                 },
                 Input::Call(c) => format!("another run calls `{c}`"),
                 Input::Emitted { from, event } => match from {
-                    Sender::Child(s) => format!("{} emits `{event}`", invoked(s)),
+                    Sender::Child(s, k) => format!("{} emits `{event}`", invoked(s, k)),
                     Sender::Refs(names) => {
                         let names: Vec<String> = names.iter().map(|n| format!("`{n}`")).collect();
                         if event == crate::statespace::ENDED {
@@ -743,17 +747,7 @@ impl<'a> Eval<'a> {
     /// children of `kids`".
     fn sender(&self, s: &Sender) -> String {
         match s {
-            Sender::Child(state) => {
-                let src = self
-                    .state(*state)
-                    .invoke
-                    .as_ref()
-                    .map_or("", |i| i.src.as_str());
-                format!(
-                    "`{src}` (invoked in `{}`)",
-                    self.relative(self.graph.state_id(*state))
-                )
-            }
+            Sender::Child(state, k) => self.invoked(*state, *k),
             Sender::Refs(names) => {
                 let names: Vec<String> = names.iter().map(|n| format!("`{n}`")).collect();
                 if names.len() == 1 {
@@ -775,9 +769,35 @@ impl<'a> Eval<'a> {
         }
     }
 
-    /// For the invoke of `s`, if it is a call: the name its peer is held by, and the call.
-    fn call(&self, s: &StateIndex) -> Option<(&'a str, &'a str)> {
-        let inv = self.state(*s).invoke.as_ref()?;
+    /// "`Child` (invoked in `A`)", or with several invokes in `A`, "`Child` (invoked in `A`
+    /// as `a`)": the `k`th invoke of `s`.
+    fn invoked(&self, s: StateIndex, k: usize) -> String {
+        let state = self.state(s);
+        let inv = state.invokes.get(k);
+        let src = inv.map_or("", |i| i.src.as_str());
+        let named = match inv.and_then(|i| i.alias.as_deref()) {
+            Some(a) if state.has_several_invokes() => format!(" as `{a}`"),
+            _ => String::new(),
+        };
+        format!(
+            "`{src}` (invoked in `{}`{named})",
+            self.relative(self.graph.state_id(s))
+        )
+    }
+
+    /// `sync: ` for the `k`th invoke of `s` when `s` has several, as [`trigger_text`] names it.
+    fn invoke_prefix(&self, s: StateIndex, k: usize) -> String {
+        let state = self.state(s);
+        match state.invokes.get(k).and_then(|i| i.alias.as_deref()) {
+            Some(a) if state.has_several_invokes() => format!("{a}: "),
+            _ => String::new(),
+        }
+    }
+
+    /// For the `k`th invoke of `s`, if it is a call: the name its peer is held by, and the
+    /// call.
+    fn call(&self, s: &StateIndex, k: usize) -> Option<(&'a str, &'a str)> {
+        let inv = self.state(*s).invokes.get(k)?;
         let to = inv.to.as_ref()?;
         Some((to.name.as_str(), inv.src.as_str()))
     }
@@ -785,10 +805,10 @@ impl<'a> Eval<'a> {
     /// Whether some state's invoke calls the peer that one of `names` holds.
     fn is_callee(&self, names: &[String]) -> bool {
         self.states.values().any(|st| {
-            st.invoke
-                .as_ref()
-                .and_then(|i| i.to.as_ref())
-                .is_some_and(|to| names.contains(&to.name))
+            st.invokes
+                .iter()
+                .filter_map(|i| i.to.as_ref())
+                .any(|to| names.contains(&to.name))
         })
     }
 
