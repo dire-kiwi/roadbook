@@ -964,10 +964,10 @@ impl<'p> Cx<'_, 'p> {
                 let word = callee_word(&callee);
                 self.key_as_name(alias, &format!("an invoked {word}"));
                 let mut bad = None;
-                if several {
-                    // Only a label: a call or a task that emits nothing is reported where the
-                    // name is used to talk to it.
-                } else if callee.contains('.') {
+                // In a state with several invokes, `as` on a call or on a task that emits
+                // nothing is only a label, reported where the name is used to talk to it; it
+                // still shares the machine's namespace.
+                if !several && callee.contains('.') {
                     bad = Some(
                     Diagnostic::error(
                         codes::ALIAS_ON_TASK,
@@ -979,7 +979,7 @@ impl<'p> Cx<'_, 'p> {
                     )
                     .with_help("a call is answered once, with its outcome; talk to the machine through its `ref` instead; remove `as …`"),
                 );
-                } else if word == "task" && self.task_emits(&callee) == Some(false) {
+                } else if !several && word == "task" && self.task_emits(&callee) == Some(false) {
                     let declared = self
                         .ck
                         .sigs
