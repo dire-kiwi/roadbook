@@ -20,6 +20,7 @@ import {
   Counter,
   Crew,
   Hub,
+  Nagger,
   Parent,
   Pipeline,
   Reached,
@@ -113,6 +114,10 @@ const machines = (world: World, options: Partial<Durable.Options<any>> = {}) => 
       ...options
     }),
     pipeline: Durable.workflow(PipelineLive, { idempotencyKey: ({ id }) => id, ...options }),
+    nagger: Durable.workflow(Nagger.implement(world.handlers as never), {
+      idempotencyKey: ({ id }) => `nagger-${id}`,
+      ...options
+    }),
     parent: Durable.workflow(ParentLive, { idempotencyKey: ({ id }) => id, ...options }),
     counter: Durable.workflow(Counter.implement({}), { idempotencyKey: () => "counter", ...options }),
     hub: Durable.workflow(Hub.implement({ ...world.handlers, machines: { Session: SessionLive } } as never), {
@@ -592,6 +597,42 @@ describe("parking", () => {
         world.open(3)
         expect(yield* process.run(flows.pipeline.run({ id: "j" }))).toBe(62)
         expect(world.count(1)).toBe(1)
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
+})
+
+describe("durable runs with a delayed raise", () => {
+  it("keep its deadline across a crash: one that fell due while the process was down fires at once", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        world.setPatience(300)
+        let process = yield* start()
+        const id = yield* process.run(flows.nagger.start({ id: "a" }))
+        yield* until(() => world.records.some((r) => r.kind === "raise.scheduled"))
+        yield* process.run(flows.nagger.send(id, { _tag: "Wake" }))
+        yield* process.crash
+        yield* Effect.sleep(500)
+
+        const restarted = Date.now()
+        process = yield* start()
+        expect(yield* process.run(flows.nagger.run({ id: "a" }))).toBe(1)
+        expect(Date.now() - restarted).toBeLessThan(1000)
+        expect(world.logged.filter((l) => l === "nag")).toEqual(["nag"])
+        yield* process.crash
+      })), 20_000)
+
+  it("park on it: a run that waits only on a delayed raise is idle, and wakes when it is due", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        world.setPatience(1500)
+        const process = yield* start()
+        const id = yield* process.run(flows.nagger.start({ id: "b" }))
+        yield* process.run(flows.nagger.send(id, { _tag: "Wake" }))
+        yield* until(() => world.records.some((r) => r.kind === "raise.scheduled"))
+        const before = world.attempts()
+        // Parked, then replayed when the durable clock fires: a new attempt takes the raise.
+        expect(yield* process.run(flows.nagger.run({ id: "b" }))).toBe(1)
+        expect(world.attempts()).toBeGreaterThan(before)
         yield* process.crash
       }), { park: { after: 100 } }), 20_000)
 })

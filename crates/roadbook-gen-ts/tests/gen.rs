@@ -502,6 +502,23 @@ fn history_states_are_not_states_of_the_union() {
     );
 }
 
+/// Internal events are the machine's own: they are not in the host's event union, and no
+/// schema is generated for them.
+#[test]
+fn internal_events_are_not_the_hosts() {
+    let ir = ir(
+        &mut MemoryLoader::new().with(
+            "r.road",
+            "machine R() {\n  event Go\n  internal event Ping { n: int }\n  initial A\n  \
+             state A { on Go raise Ping { n: 1 } after 1s as ping  on Ping -> A }\n}\n",
+        ),
+        "r.road",
+    );
+    let code = without_ir(&ir, &gen_ok(&ir));
+    assert!(code.contains("readonly event: Go\n"), "{code}");
+    assert!(!code.contains("Ping"), "{code}");
+}
+
 /// Maps and generic types: a generic record or alias is a schema function and an interface
 /// or type of the same parameters, a map a `Schema.Record`, and a generic type on a cycle has
 /// its schema function annotated.
