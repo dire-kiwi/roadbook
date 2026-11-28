@@ -99,6 +99,8 @@ on sessions.done   do loggedOut(key)
 
 The [language page](language.md#many-children) has the rules and checks, [`spec/execution.md`](../../spec/execution.md#spawned-children) what happens at run time, and the conformance cases that `require` `spawn` hold both runtimes to it. The parent never holds a reference to a spawned child as a value: it names the collection and a key, so the collection, like an `as` name, cannot be passed on, and what the parent can say to its children is in its chart.
 
+A collection can hold tasks instead of machines (SM-26): `children uploads: upload by FileId` and `spawn uploads[id] = upload(file)`. That is tracked background work that isn't tied to a state, the alternative to an action that starts work and returns at once: the parent learns how each one ends (`on uploads.done`, `on uploads.fail E`), hears what it emits (`on uploads.Progress`), can `stop` it, and stops it when the parent ends. A task takes no events, so there is no `send` to one. A task invoked in a state can also emit, to that state through its `as` name ([tasks that emit](language.md#tasks-that-emit)).
+
 ### Decided while implementing
 
 - **The collection belongs to the machine, not to a state.** Children outlive the state that spawned them; they end by themselves, by `stop`, by a `spawn` under their key, or when the parent ends. A per-state collection would be `invoke` with a key, and the use cases (sessions, orders, players) are about the whole machine's life.
