@@ -1070,9 +1070,10 @@ class Macrostep {
         this.trace({ kind: "set", var: effect.var, value })
       } else {
         // A variable of a state that is active or being left in this microstep: the compiler
-        // allows no other.
-        const own = this.locals[effect.state]
-        if (own !== undefined) own[effect.var] = value
+        // allows no other. Hand-written IR may name another state, whose member is made, as
+        // the Rust core makes it.
+        const own = (this.locals[effect.state] ??= {})
+        own[effect.var] = value
         this.trace({ kind: "set", var: `${effect.state}.${effect.var}`, value })
       }
     }

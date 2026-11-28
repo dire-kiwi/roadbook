@@ -1,0 +1,2621 @@
+{
+  "irVersion": "0.12",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/locals.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Busy": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 11
+      }
+    }
+  },
+  "functions": {
+    "wait": {
+      "params": [
+        {
+          "name": "attempt",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "duration",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 37
+      }
+    }
+  },
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {
+    "fetch": {
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [],
+      "emits": {},
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 35
+      }
+    },
+    "deliver": {
+      "params": [
+        {
+          "name": "to",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [
+        "Busy"
+      ],
+      "emits": {},
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 11,
+        "col": 1,
+        "endLine": 11,
+        "endCol": 44
+      }
+    }
+  },
+  "machines": {
+    "Counter": {
+      "doc": "State variables: bound each time their state is entered, in order, an initial value\nreading the ones before it and a child's reading its parent's.",
+      "span": {
+        "file": 0,
+        "line": 15,
+        "col": 1,
+        "endLine": 38,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "total",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 19,
+            "col": 3,
+            "endLine": 19,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Tick": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 13
+          }
+        },
+        "Leave": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 14
+          }
+        },
+        "Back": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 18,
+            "col": 3,
+            "endLine": 18,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Counter",
+        "name": "Counter",
+        "kind": "compound",
+        "doc": "State variables: bound each time their state is entered, in order, an initial value\nreading the ones before it and a child's reading its parent's.",
+        "span": {
+          "file": 0,
+          "line": 15,
+          "col": 1,
+          "endLine": 38,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Counter.Counting",
+        "states": [
+          {
+            "id": "Counter.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 23,
+              "col": 3,
+              "endLine": 23,
+              "endCol": 37
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Back"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Counter.Counting"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 16,
+                  "endLine": 23,
+                  "endCol": 35
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Counter.Counting",
+            "name": "Counting",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 25,
+              "col": 3,
+              "endLine": 37,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [
+              {
+                "name": "base",
+                "type": "int",
+                "sensitive": false,
+                "init": {
+                  "kind": "lit",
+                  "value": 10,
+                  "type": "int",
+                  "text": "10"
+                },
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 26,
+                  "endCol": 23
+                }
+              },
+              {
+                "name": "n",
+                "type": "int",
+                "sensitive": false,
+                "init": {
+                  "kind": "op",
+                  "op": "+",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "base"
+                      ],
+                      "state": "Counter.Counting",
+                      "type": "int",
+                      "text": "base"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 1,
+                      "type": "int",
+                      "text": "1"
+                    }
+                  ],
+                  "type": "int",
+                  "text": "base + 1"
+                },
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 5,
+                  "endLine": 27,
+                  "endCol": 29
+                }
+              },
+              {
+                "name": "note",
+                "type": "string?",
+                "sensitive": false,
+                "init": null,
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 22
+                }
+              }
+            ],
+            "initial": "Counter.Counting.Inner",
+            "states": [
+              {
+                "id": "Counter.Counting.Inner",
+                "name": "Inner",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 34,
+                  "col": 5,
+                  "endLine": 36,
+                  "endCol": 6
+                },
+                "params": [],
+                "vars": [
+                  {
+                    "name": "m",
+                    "type": "int",
+                    "sensitive": false,
+                    "init": {
+                      "kind": "op",
+                      "op": "*",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "state": "Counter.Counting",
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 2,
+                          "type": "int",
+                          "text": "2"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "n * 2"
+                    },
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 35,
+                      "col": 7,
+                      "endLine": 35,
+                      "endCol": 25
+                    }
+                  }
+                ],
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "counting",
+                    "type": "string",
+                    "text": "\"counting\""
+                  }
+                ]
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Tick"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "state": "Counter.Counting",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "state": "Counter.Counting",
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "n + 1"
+                    }
+                  },
+                  {
+                    "kind": "set",
+                    "var": "total",
+                    "state": null,
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "total"
+                          ],
+                          "state": null,
+                          "type": "int",
+                          "text": "total"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "total + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 30,
+                  "endCol": 55
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Leave"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Counter.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 31,
+                  "col": 5,
+                  "endLine": 31,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:1adc9a1054a32c90232b018ecadf9c6ad0d61076f0168c8a528e79a0e51dc37a"
+    },
+    "Fetch": {
+      "doc": "State parameters: arguments from `result`, from the left state's own locals on\nre-entry, and from what the transition assigned.",
+      "span": {
+        "file": 0,
+        "line": 42,
+        "col": 1,
+        "endLine": 61,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "last",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 45,
+            "col": 3,
+            "endLine": 45,
+            "endCol": 20
+          }
+        }
+      ],
+      "events": {
+        "Again": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 43,
+            "col": 3,
+            "endLine": 43,
+            "endCol": 14
+          }
+        },
+        "Grow": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 44,
+            "col": 3,
+            "endLine": 44,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Fetch",
+        "name": "Fetch",
+        "kind": "compound",
+        "doc": "State parameters: arguments from `result`, from the left state's own locals on\nre-entry, and from what the transition assigned.",
+        "span": {
+          "file": 0,
+          "line": 42,
+          "col": 1,
+          "endLine": 61,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Fetch.Loading",
+        "states": [
+          {
+            "id": "Fetch.Loading",
+            "name": "Loading",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 49,
+              "col": 3,
+              "endLine": 53,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "fetch",
+              "to": null,
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "id"
+                  ],
+                  "state": null,
+                  "type": "string",
+                  "text": "id"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 50,
+                "col": 5,
+                "endLine": 52,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Fetch.Showing"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Fetch.Showing",
+                    "values": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "result"
+                        ],
+                        "state": null,
+                        "type": "string",
+                        "text": "result"
+                      },
+                      {
+                        "kind": "lit",
+                        "value": 1,
+                        "type": "int",
+                        "text": "1"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 51,
+                  "col": 7,
+                  "endLine": 51,
+                  "endCol": 33
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Fetch.Showing",
+            "name": "Showing",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 55,
+              "col": 3,
+              "endLine": 60,
+              "endCol": 4
+            },
+            "params": [
+              {
+                "name": "body",
+                "type": "string",
+                "sensitive": false,
+                "doc": ""
+              },
+              {
+                "name": "count",
+                "type": "int",
+                "sensitive": false,
+                "doc": ""
+              }
+            ],
+            "vars": [
+              {
+                "name": "seen",
+                "type": "int",
+                "sensitive": false,
+                "init": {
+                  "kind": "op",
+                  "op": "*",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "count"
+                      ],
+                      "state": "Fetch.Showing",
+                      "type": "int",
+                      "text": "count"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 10,
+                      "type": "int",
+                      "text": "10"
+                    }
+                  ],
+                  "type": "int",
+                  "text": "count * 10"
+                },
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 56,
+                  "col": 5,
+                  "endLine": 56,
+                  "endCol": 31
+                }
+              }
+            ],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "body"
+                    ],
+                    "state": "Fetch.Showing",
+                    "type": "string",
+                    "text": "body"
+                  }
+                ]
+              }
+            ],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Again"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Fetch.Showing"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Fetch.Showing",
+                    "values": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "body"
+                        ],
+                        "state": "Fetch.Showing",
+                        "type": "string",
+                        "text": "body"
+                      },
+                      {
+                        "kind": "op",
+                        "op": "+",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "count"
+                            ],
+                            "state": "Fetch.Showing",
+                            "type": "int",
+                            "text": "count"
+                          },
+                          {
+                            "kind": "lit",
+                            "value": 1,
+                            "type": "int",
+                            "text": "1"
+                          }
+                        ],
+                        "type": "int",
+                        "text": "count + 1"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 58,
+                  "col": 5,
+                  "endLine": 58,
+                  "endCol": 41
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Grow"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Fetch.Showing"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Fetch.Showing",
+                    "values": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "body"
+                        ],
+                        "state": "Fetch.Showing",
+                        "type": "string",
+                        "text": "body"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "last"
+                        ],
+                        "state": null,
+                        "type": "int",
+                        "text": "last"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "last",
+                    "state": null,
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "seen"
+                          ],
+                          "state": "Fetch.Showing",
+                          "type": "int",
+                          "text": "seen"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "count"
+                          ],
+                          "state": "Fetch.Showing",
+                          "type": "int",
+                          "text": "count"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "seen + count"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 59,
+                  "col": 5,
+                  "endLine": 59,
+                  "endCol": 66
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:6c1bfa5508b467b5f20878ba78914fc3204f584edb43cd33543bb66601c45886"
+    },
+    "Editor": {
+      "doc": "A target through a state with parameters, a transition inside it that keeps it, an\ninternal one, and one in the machine body.",
+      "span": {
+        "file": 0,
+        "line": 65,
+        "col": 1,
+        "endLine": 86,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Open": {
+          "fields": [
+            {
+              "name": "doc",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 66,
+            "col": 3,
+            "endLine": 66,
+            "endCol": 30
+          }
+        },
+        "Next": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 67,
+            "col": 3,
+            "endLine": 67,
+            "endCol": 13
+          }
+        },
+        "Jump": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 68,
+            "col": 3,
+            "endLine": 68,
+            "endCol": 13
+          }
+        },
+        "Reset": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 69,
+            "col": 3,
+            "endLine": 69,
+            "endCol": 14
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Editor",
+        "name": "Editor",
+        "kind": "compound",
+        "doc": "A target through a state with parameters, a transition inside it that keeps it, an\ninternal one, and one in the machine body.",
+        "span": {
+          "file": 0,
+          "line": 65,
+          "col": 1,
+          "endLine": 86,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Editor.Idle",
+        "states": [
+          {
+            "id": "Editor.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 73,
+              "col": 3,
+              "endLine": 73,
+              "endCol": 59
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Open"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Editor.Editing.Changing"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Editor.Editing",
+                    "values": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "doc"
+                        ],
+                        "state": null,
+                        "type": "string",
+                        "text": "event.doc"
+                      }
+                    ]
+                  },
+                  {
+                    "state": "Editor.Editing.Changing",
+                    "values": [
+                      {
+                        "kind": "lit",
+                        "value": 1,
+                        "type": "int",
+                        "text": "1"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 73,
+                  "col": 16,
+                  "endLine": 73,
+                  "endCol": 57
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Editor.Editing",
+            "name": "Editing",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 75,
+              "col": 3,
+              "endLine": 83,
+              "endCol": 4
+            },
+            "params": [
+              {
+                "name": "doc",
+                "type": "string",
+                "sensitive": false,
+                "doc": ""
+              }
+            ],
+            "vars": [
+              {
+                "name": "edits",
+                "type": "int",
+                "sensitive": false,
+                "init": {
+                  "kind": "lit",
+                  "value": 0,
+                  "type": "int",
+                  "text": "0"
+                },
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 76,
+                  "col": 5,
+                  "endLine": 76,
+                  "endCol": 23
+                }
+              }
+            ],
+            "initial": "Editor.Editing.Viewing",
+            "states": [
+              {
+                "id": "Editor.Editing.Viewing",
+                "name": "Viewing",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 81,
+                  "col": 5,
+                  "endLine": 81,
+                  "endCol": 61
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Next"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "targets": [
+                      "Editor.Editing.Changing"
+                    ],
+                    "internal": false,
+                    "args": [
+                      {
+                        "state": "Editor.Editing.Changing",
+                        "values": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "edits"
+                            ],
+                            "state": "Editor.Editing",
+                            "type": "int",
+                            "text": "edits"
+                          }
+                        ]
+                      }
+                    ],
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 81,
+                      "col": 33,
+                      "endLine": 81,
+                      "endCol": 59
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Editor.Editing.Changing",
+                "name": "Changing",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 82,
+                  "col": 5,
+                  "endLine": 82,
+                  "endCol": 53
+                },
+                "params": [
+                  {
+                    "name": "step",
+                    "type": "int",
+                    "sensitive": false,
+                    "doc": ""
+                  }
+                ],
+                "vars": [],
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Next"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "targets": [
+                      "Editor.Editing.Viewing"
+                    ],
+                    "internal": false,
+                    "args": [],
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 82,
+                      "col": 33,
+                      "endLine": 82,
+                      "endCol": 51
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "doc"
+                    ],
+                    "state": "Editor.Editing",
+                    "type": "string",
+                    "text": "doc"
+                  }
+                ]
+              }
+            ],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Jump"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Editor.Editing.Changing"
+                ],
+                "internal": true,
+                "args": [
+                  {
+                    "state": "Editor.Editing.Changing",
+                    "values": [
+                      {
+                        "kind": "op",
+                        "op": "+",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "edits"
+                            ],
+                            "state": "Editor.Editing",
+                            "type": "int",
+                            "text": "edits"
+                          },
+                          {
+                            "kind": "lit",
+                            "value": 5,
+                            "type": "int",
+                            "text": "5"
+                          }
+                        ],
+                        "type": "int",
+                        "text": "edits + 5"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "edits",
+                    "state": "Editor.Editing",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "edits"
+                          ],
+                          "state": "Editor.Editing",
+                          "type": "int",
+                          "text": "edits"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "edits + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 78,
+                  "col": 5,
+                  "endLine": 78,
+                  "endCol": 59
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Reset"
+            },
+            "group": 0,
+            "guard": null,
+            "targets": [
+              "Editor.Idle"
+            ],
+            "internal": false,
+            "args": [],
+            "effects": [],
+            "span": {
+              "file": 0,
+              "line": 85,
+              "col": 3,
+              "endLine": 85,
+              "endCol": 19
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:6dd19f5a3c5849bac72b61a968c1f4be4c54ae4a5039fe6da564a7fc68a8c73e"
+    },
+    "Verdict": {
+      "doc": "A final state's parameter and variable as the machine's output.",
+      "span": {
+        "file": 0,
+        "line": 89,
+        "col": 1,
+        "endLine": 107,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Judge": {
+          "fields": [
+            {
+              "name": "score",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 90,
+            "col": 3,
+            "endLine": 90,
+            "endCol": 29
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Verdict",
+        "name": "Verdict",
+        "kind": "compound",
+        "doc": "A final state's parameter and variable as the machine's output.",
+        "span": {
+          "file": 0,
+          "line": 89,
+          "col": 1,
+          "endLine": 107,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Verdict.Waiting",
+        "states": [
+          {
+            "id": "Verdict.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 94,
+              "col": 3,
+              "endLine": 99,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Judge"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": ">",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "score"
+                      ],
+                      "state": null,
+                      "type": "int",
+                      "text": "event.score"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 5,
+                      "type": "int",
+                      "text": "5"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.score > 5"
+                },
+                "targets": [
+                  "Verdict.Passed"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Verdict.Passed",
+                    "values": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "score"
+                        ],
+                        "state": null,
+                        "type": "int",
+                        "text": "event.score"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 96,
+                  "col": 7,
+                  "endLine": 96,
+                  "endCol": 48
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Judge"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Verdict.Low"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Verdict.Low",
+                    "values": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "score"
+                        ],
+                        "state": null,
+                        "type": "int",
+                        "text": "event.score"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 97,
+                  "col": 7,
+                  "endLine": 97,
+                  "endCol": 45
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Verdict.Passed",
+            "name": "Passed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 101,
+              "col": 3,
+              "endLine": 101,
+              "endCol": 50
+            },
+            "params": [
+              {
+                "name": "score",
+                "type": "int",
+                "sensitive": false,
+                "doc": ""
+              }
+            ],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "score"
+              ],
+              "state": "Verdict.Passed",
+              "type": "int",
+              "text": "score"
+            },
+            "fail": null
+          },
+          {
+            "id": "Verdict.Low",
+            "name": "Low",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 103,
+              "col": 3,
+              "endLine": 106,
+              "endCol": 4
+            },
+            "params": [
+              {
+                "name": "score",
+                "type": "int",
+                "sensitive": false,
+                "doc": ""
+              }
+            ],
+            "vars": [
+              {
+                "name": "doubled",
+                "type": "int",
+                "sensitive": false,
+                "init": {
+                  "kind": "op",
+                  "op": "*",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "score"
+                      ],
+                      "state": "Verdict.Low",
+                      "type": "int",
+                      "text": "score"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 2,
+                      "type": "int",
+                      "text": "2"
+                    }
+                  ],
+                  "type": "int",
+                  "text": "score * 2"
+                },
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 104,
+                  "col": 5,
+                  "endLine": 104,
+                  "endCol": 33
+                }
+              }
+            ],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "doubled"
+              ],
+              "state": "Verdict.Low",
+              "type": "int",
+              "text": "doubled"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:943dc91ad1f3182fc5d8453a6e9f9f2df6b88eb58ee9605777fed7763bf2ccee"
+    },
+    "Courier": {
+      "doc": "A retry in a state with parameters: its locals live through every attempt.",
+      "span": {
+        "file": 0,
+        "line": 110,
+        "col": 1,
+        "endLine": 124,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "sendingAttempt",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 119,
+            "col": 24,
+            "endLine": 119,
+            "endCol": 59
+          }
+        }
+      ],
+      "events": {
+        "Go": {
+          "fields": [
+            {
+              "name": "to",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 111,
+            "col": 3,
+            "endLine": 111,
+            "endCol": 26
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Courier",
+        "name": "Courier",
+        "kind": "compound",
+        "doc": "A retry in a state with parameters: its locals live through every attempt.",
+        "span": {
+          "file": 0,
+          "line": 110,
+          "col": 1,
+          "endLine": 124,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Courier.Idle",
+        "states": [
+          {
+            "id": "Courier.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 115,
+              "col": 3,
+              "endLine": 115,
+              "endCol": 44
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Courier.Sending"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Courier.Sending",
+                    "values": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "to"
+                        ],
+                        "state": null,
+                        "type": "string",
+                        "text": "event.to"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 115,
+                  "col": 16,
+                  "endLine": 115,
+                  "endCol": 42
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Courier.Sending",
+            "name": "Sending",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 117,
+              "col": 3,
+              "endLine": 123,
+              "endCol": 4
+            },
+            "params": [
+              {
+                "name": "to",
+                "type": "string",
+                "sensitive": false,
+                "doc": ""
+              }
+            ],
+            "vars": [],
+            "initial": "Courier.Sending.Attempt",
+            "states": [
+              {
+                "id": "Courier.Sending.Attempt",
+                "name": "Attempt",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 119,
+                  "col": 5,
+                  "endLine": 122,
+                  "endCol": 6
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "task",
+                  "src": "deliver",
+                  "to": null,
+                  "as": null,
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "to"
+                      ],
+                      "state": "Courier.Sending",
+                      "type": "string",
+                      "text": "to"
+                    }
+                  ],
+                  "span": {
+                    "file": 0,
+                    "line": 119,
+                    "col": 5,
+                    "endLine": 122,
+                    "endCol": 6
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "targets": [
+                      "Courier.Idle"
+                    ],
+                    "internal": false,
+                    "args": [],
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 120,
+                      "col": 7,
+                      "endLine": 120,
+                      "endCol": 24
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "Busy"
+                    },
+                    "group": 1,
+                    "guard": {
+                      "kind": "op",
+                      "op": "<",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "sendingAttempt"
+                          ],
+                          "state": null,
+                          "type": "int",
+                          "text": "sendingAttempt"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 2,
+                          "type": "int",
+                          "text": "2"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "sendingAttempt < 2"
+                    },
+                    "targets": [
+                      "Courier.Sending.Backoff"
+                    ],
+                    "internal": false,
+                    "args": [],
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "sendingAttempt",
+                        "state": null,
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "sendingAttempt"
+                              ],
+                              "state": null,
+                              "type": "int",
+                              "text": "sendingAttempt"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "sendingAttempt + 1"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 119,
+                      "col": 24,
+                      "endLine": 119,
+                      "endCol": 59
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "Busy"
+                    },
+                    "group": 1,
+                    "guard": null,
+                    "targets": [
+                      "Courier.Idle"
+                    ],
+                    "internal": false,
+                    "args": [],
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 121,
+                      "col": 7,
+                      "endLine": 121,
+                      "endCol": 24
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Courier.Sending.Backoff",
+                "name": "Backoff",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 119,
+                  "col": 24,
+                  "endLine": 119,
+                  "endCol": 59
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "after",
+                      "delay": {
+                        "kind": "call",
+                        "fn": "wait",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "sendingAttempt"
+                            ],
+                            "state": null,
+                            "type": "int",
+                            "text": "sendingAttempt"
+                          }
+                        ],
+                        "type": "duration",
+                        "text": "wait(sendingAttempt)"
+                      }
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "targets": [
+                      "Courier.Sending.Attempt"
+                    ],
+                    "internal": false,
+                    "args": [],
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 119,
+                      "col": 24,
+                      "endLine": 119,
+                      "endCol": 59
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [
+              {
+                "kind": "set",
+                "var": "sendingAttempt",
+                "state": null,
+                "value": {
+                  "kind": "lit",
+                  "value": 0,
+                  "type": "int",
+                  "text": "0"
+                }
+              },
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "to"
+                    ],
+                    "state": "Courier.Sending",
+                    "type": "string",
+                    "text": "to"
+                  }
+                ]
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:3a5bc16e3dd8fbc29bd1b10887a3defb81b91365c5b810d7832c3f97b39f3fbe"
+    },
+    "Overflow": {
+      "doc": "An argument that overflows: the step is atomic and the run ends with a defect.",
+      "span": {
+        "file": 0,
+        "line": 127,
+        "col": 1,
+        "endLine": 138,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "big",
+          "type": "float",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 128,
+            "col": 3,
+            "endLine": 128,
+            "endCol": 11
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Overflow",
+        "name": "Overflow",
+        "kind": "compound",
+        "doc": "An argument that overflows: the step is atomic and the run ends with a defect.",
+        "span": {
+          "file": 0,
+          "line": 127,
+          "col": 1,
+          "endLine": 138,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Overflow.A",
+        "states": [
+          {
+            "id": "Overflow.A",
+            "name": "A",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 132,
+              "col": 3,
+              "endLine": 135,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [
+              {
+                "name": "twice",
+                "type": "float",
+                "sensitive": false,
+                "init": {
+                  "kind": "op",
+                  "op": "*",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "big"
+                      ],
+                      "state": null,
+                      "type": "float",
+                      "text": "big"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 2.0,
+                      "type": "float",
+                      "text": "2.0"
+                    }
+                  ],
+                  "type": "float",
+                  "text": "big * 2.0"
+                },
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 133,
+                  "col": 5,
+                  "endLine": 133,
+                  "endCol": 33
+                }
+              }
+            ],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Overflow.B"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Overflow.B",
+                    "values": [
+                      {
+                        "kind": "op",
+                        "op": "*",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "twice"
+                            ],
+                            "state": "Overflow.A",
+                            "type": "float",
+                            "text": "twice"
+                          },
+                          {
+                            "kind": "lit",
+                            "value": 10.0,
+                            "type": "float",
+                            "text": "10.0"
+                          }
+                        ],
+                        "type": "float",
+                        "text": "twice * 10.0"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 134,
+                  "col": 5,
+                  "endLine": 134,
+                  "endCol": 29
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Overflow.B",
+            "name": "B",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 137,
+              "col": 3,
+              "endLine": 137,
+              "endCol": 29
+            },
+            "params": [
+              {
+                "name": "n",
+                "type": "float",
+                "sensitive": false,
+                "doc": ""
+              }
+            ],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:39c7ba4b5ed59db10037be23eab82631000036d101decdd19f6c2c477d7337ef"
+    },
+    "Vault": {
+      "doc": "Sensitive parameters and variables are redacted in `set` records.",
+      "span": {
+        "file": 0,
+        "line": 141,
+        "col": 1,
+        "endLine": 156,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Unlock": {
+          "fields": [
+            {
+              "name": "pin",
+              "type": "int",
+              "sensitive": true,
+              "doc": ""
+            },
+            {
+              "name": "user",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 142,
+            "col": 3,
+            "endLine": 142,
+            "endCol": 52
+          }
+        },
+        "Wrong": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 143,
+            "col": 3,
+            "endLine": 143,
+            "endCol": 14
+          }
+        },
+        "Lock": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 144,
+            "col": 3,
+            "endLine": 144,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Vault",
+        "name": "Vault",
+        "kind": "compound",
+        "doc": "Sensitive parameters and variables are redacted in `set` records.",
+        "span": {
+          "file": 0,
+          "line": 141,
+          "col": 1,
+          "endLine": 156,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Vault.Locked",
+        "states": [
+          {
+            "id": "Vault.Locked",
+            "name": "Locked",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 148,
+              "col": 3,
+              "endLine": 148,
+              "endCol": 60
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Unlock"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Vault.Open"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Vault.Open",
+                    "values": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "pin"
+                        ],
+                        "state": null,
+                        "type": "int",
+                        "text": "event.pin"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "user"
+                        ],
+                        "state": null,
+                        "type": "string",
+                        "text": "event.user"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 148,
+                  "col": 18,
+                  "endLine": 148,
+                  "endCol": 58
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Vault.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 150,
+              "col": 3,
+              "endLine": 155,
+              "endCol": 4
+            },
+            "params": [
+              {
+                "name": "pin",
+                "type": "int",
+                "sensitive": true,
+                "doc": ""
+              },
+              {
+                "name": "user",
+                "type": "string",
+                "sensitive": false,
+                "doc": ""
+              }
+            ],
+            "vars": [
+              {
+                "name": "guess",
+                "type": "int",
+                "sensitive": true,
+                "init": {
+                  "kind": "ref",
+                  "path": [
+                    "pin"
+                  ],
+                  "state": "Vault.Open",
+                  "type": "int",
+                  "text": "pin"
+                },
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 151,
+                  "col": 5,
+                  "endLine": 151,
+                  "endCol": 35
+                }
+              },
+              {
+                "name": "shown",
+                "type": "string",
+                "sensitive": false,
+                "init": {
+                  "kind": "ref",
+                  "path": [
+                    "user"
+                  ],
+                  "state": "Vault.Open",
+                  "type": "string",
+                  "text": "user"
+                },
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 152,
+                  "col": 5,
+                  "endLine": 152,
+                  "endCol": 39
+                }
+              }
+            ],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Wrong"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "guess",
+                    "state": "Vault.Open",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "guess"
+                          ],
+                          "state": "Vault.Open",
+                          "type": "int",
+                          "text": "guess"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "guess + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 153,
+                  "col": 5,
+                  "endLine": 153,
+                  "endCol": 46
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Lock"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Vault.Locked"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 154,
+                  "col": 5,
+                  "endLine": 154,
+                  "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:840f02b2049028bc435940e8d0a19ac1238a70b4b76c7718f9bece10593a1efd"
+    }
+  }
+}

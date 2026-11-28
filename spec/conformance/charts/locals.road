@@ -1,0 +1,156 @@
+// Conformance chart: data local to a state. State variables bound on each entry and
+// dropped on exit, state parameters given by the transitions that enter their states,
+// final states, retry, defects and redaction. Parallel states are in `locals-regions.road`
+// and history states in `locals-history.road`.
+
+error Busy
+
+action log(what: string)
+fn wait(attempt: int)    -> duration
+task fetch(id: string)   -> string
+task deliver(to: string)             ! Busy
+
+/// State variables: bound each time their state is entered, in order, an initial value
+/// reading the ones before it and a child's reading its parent's.
+machine Counter() {
+  event Tick
+  event Leave
+  event Back
+  var total: int = 0
+
+  initial Counting
+
+  state Idle { on Back -> Counting }
+
+  state Counting {
+    var base: int = 10
+    var n:    int = base + 1
+    var note: string?
+    entry do log("counting")
+    on Tick           set n = n + 1, total = total + 1
+    on Leave -> Idle
+    initial Inner
+
+    state Inner {
+      var m: int = n * 2
+    }
+  }
+}
+
+/// State parameters: arguments from `result`, from the left state's own locals on
+/// re-entry, and from what the transition assigned.
+machine Fetch(id: string) {
+  event Again
+  event Grow
+  var last: int = 0
+
+  initial Loading
+
+  state Loading {
+    invoke fetch(id) {
+      done -> Showing(result, 1)
+    }
+  }
+
+  state Showing(body: string, count: int) {
+    var seen: int = count * 10
+    exit do log(body)
+    on Again -> Showing(body, count + 1)
+    on Grow  -> Showing(body, last)       set last = seen + count
+  }
+}
+
+/// A target through a state with parameters, a transition inside it that keeps it, an
+/// internal one, and one in the machine body.
+machine Editor() {
+  event Open  { doc: string }
+  event Next
+  event Jump
+  event Reset
+
+  initial Idle
+
+  state Idle { on Open -> Editing(event.doc).Changing(1) }
+
+  state Editing(doc: string) {
+    var edits: int = 0
+    exit do log(doc)
+    on Jump -> .Changing(edits + 5)  set edits = edits + 1
+    initial Viewing
+
+    state Viewing             { on Next -> Changing(edits) }
+    state Changing(step: int) { on Next -> Viewing }
+  }
+
+  on Reset -> Idle
+}
+
+/// A final state's parameter and variable as the machine's output.
+machine Verdict() -> int {
+  event Judge { score: int }
+
+  initial Waiting
+
+  state Waiting {
+    on Judge {
+      if event.score > 5 -> Passed(event.score)
+      else               -> Low(event.score)
+    }
+  }
+
+  final state Passed(score: int) { output score }
+
+  final state Low(score: int) {
+    var doubled: int = score * 2
+    output doubled
+  }
+}
+
+/// A retry in a state with parameters: its locals live through every attempt.
+machine Courier() {
+  event Go { to: string }
+
+  initial Idle
+
+  state Idle { on Go -> Sending(event.to) }
+
+  state Sending(to: string) {
+    entry do log(to)
+    invoke deliver(to) retry 2 on Busy after wait(attempt) {
+      done      -> Idle
+      fail Busy -> Idle
+    }
+  }
+}
+
+/// An argument that overflows: the step is atomic and the run ends with a defect.
+machine Overflow(big: float) {
+  event Go
+
+  initial A
+
+  state A {
+    var twice: float = big * 2.0
+    on Go -> B(twice * 10.0)
+  }
+
+  final state B(n: float) {}
+}
+
+/// Sensitive parameters and variables are redacted in `set` records.
+machine Vault() {
+  event Unlock { sensitive pin: int, user: string }
+  event Wrong
+  event Lock
+
+  initial Locked
+
+  state Locked { on Unlock -> Open(event.pin, event.user) }
+
+  state Open(sensitive pin: int, user: string) {
+    sensitive var guess: int = pin
+    var shown:           string = user
+    on Wrong            set guess = guess + 1
+    on Lock  -> Locked
+  }
+}

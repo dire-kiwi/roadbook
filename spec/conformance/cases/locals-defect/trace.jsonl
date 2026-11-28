@@ -1,0 +1,5 @@
+{"input":{"big":1e+307},"ir":"sha256:39c7ba4b5ed59db10037be23eab82631000036d101decdd19f6c2c477d7337ef","kind":"started","machine":"Overflow","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Overflow","t":0}
+{"kind":"entered","run":"r1","state":"Overflow.A","t":0}
+{"kind":"set","run":"r1","t":0,"value":2e+307,"var":"Overflow.A.twice"}
+{"defect":{"expr":"twice * 10.0","kind":"overflow"},"kind":"defect","run":"r1","t":0}

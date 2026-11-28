@@ -1,0 +1,40 @@
+// Conformance chart: history states that keep the locals of the states they re-enter.
+
+/// History states that keep the locals of the states they re-enter.
+machine Hist() {
+  event Step
+  event Pause
+  event Resume
+  event Rewind
+
+  initial Paused
+
+  state Paused {
+    on Resume -> Work.Back
+    on Rewind -> Work.All
+  }
+
+  state Work {
+    on Pause -> Paused
+    initial A
+    history Back
+    deep history All
+
+    state A { on Step -> B(1) }
+
+    state B(n: int) {
+      var marks: int = n * 100
+      initial X
+
+      state X {
+        var x: int = n
+        on Step -> Y
+      }
+
+      state Y {
+        var y: int = marks + 1
+        on Step set y = y + 1
+      }
+    }
+  }
+}

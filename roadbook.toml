@@ -23,6 +23,7 @@ gen-exclude = [
 allow-unassigned = [
   "packages/effect/test/charts/runtime.road",
   "spec/conformance/charts/defects.road",
+  "spec/conformance/charts/locals-defects.road",
 ]
 
 # Other packages a chart can import from, by name, and their directories. `examples/orders`

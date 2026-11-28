@@ -1,0 +1,565 @@
+{
+  "irVersion": "0.12",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/locals-history.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Hist": {
+      "doc": "History states that keep the locals of the states they re-enter.",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 40,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Step": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 5,
+            "col": 3,
+            "endLine": 5,
+            "endCol": 13
+          }
+        },
+        "Pause": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 6,
+            "col": 3,
+            "endLine": 6,
+            "endCol": 14
+          }
+        },
+        "Resume": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 7,
+            "col": 3,
+            "endLine": 7,
+            "endCol": 15
+          }
+        },
+        "Rewind": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 15
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Hist",
+        "name": "Hist",
+        "kind": "compound",
+        "doc": "History states that keep the locals of the states they re-enter.",
+        "span": {
+          "file": 0,
+          "line": 4,
+          "col": 1,
+          "endLine": 40,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Hist.Paused",
+        "states": [
+          {
+            "id": "Hist.Paused",
+            "name": "Paused",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 12,
+              "col": 3,
+              "endLine": 15,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Resume"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Hist.Work.Back"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 13,
+                  "col": 5,
+                  "endLine": 13,
+                  "endCol": 27
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Rewind"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Hist.Work.All"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 14,
+                  "col": 5,
+                  "endLine": 14,
+                  "endCol": 26
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Hist.Work",
+            "name": "Work",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 17,
+              "col": 3,
+              "endLine": 39,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": "Hist.Work.A",
+            "states": [
+              {
+                "id": "Hist.Work.Back",
+                "name": "Back",
+                "kind": "history",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 20,
+                  "col": 5,
+                  "endLine": 20,
+                  "endCol": 17
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Hist.Work.All",
+                "name": "All",
+                "kind": "deepHistory",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 5,
+                  "endLine": 21,
+                  "endCol": 21
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Hist.Work.A",
+                "name": "A",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 5,
+                  "endLine": 23,
+                  "endCol": 32
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Step"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "targets": [
+                      "Hist.Work.B"
+                    ],
+                    "internal": false,
+                    "args": [
+                      {
+                        "state": "Hist.Work.B",
+                        "values": [
+                          {
+                            "kind": "lit",
+                            "value": 1,
+                            "type": "int",
+                            "text": "1"
+                          }
+                        ]
+                      }
+                    ],
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 23,
+                      "col": 15,
+                      "endLine": 23,
+                      "endCol": 30
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Hist.Work.B",
+                "name": "B",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 5,
+                  "endLine": 38,
+                  "endCol": 6
+                },
+                "params": [
+                  {
+                    "name": "n",
+                    "type": "int",
+                    "sensitive": false,
+                    "doc": ""
+                  }
+                ],
+                "vars": [
+                  {
+                    "name": "marks",
+                    "type": "int",
+                    "sensitive": false,
+                    "init": {
+                      "kind": "op",
+                      "op": "*",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "state": "Hist.Work.B",
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 100,
+                          "type": "int",
+                          "text": "100"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "n * 100"
+                    },
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 26,
+                      "col": 7,
+                      "endLine": 26,
+                      "endCol": 31
+                    }
+                  }
+                ],
+                "initial": "Hist.Work.B.X",
+                "states": [
+                  {
+                    "id": "Hist.Work.B.X",
+                    "name": "X",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 29,
+                      "col": 7,
+                      "endLine": 32,
+                      "endCol": 8
+                    },
+                    "params": [],
+                    "vars": [
+                      {
+                        "name": "x",
+                        "type": "int",
+                        "sensitive": false,
+                        "init": {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "state": "Hist.Work.B",
+                          "type": "int",
+                          "text": "n"
+                        },
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 30,
+                          "col": 9,
+                          "endLine": 30,
+                          "endCol": 23
+                        }
+                      }
+                    ],
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Step"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [
+                          "Hist.Work.B.Y"
+                        ],
+                        "internal": false,
+                        "args": [],
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 31,
+                          "col": 9,
+                          "endLine": 31,
+                          "endCol": 21
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Hist.Work.B.Y",
+                    "name": "Y",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 34,
+                      "col": 7,
+                      "endLine": 37,
+                      "endCol": 8
+                    },
+                    "params": [],
+                    "vars": [
+                      {
+                        "name": "y",
+                        "type": "int",
+                        "sensitive": false,
+                        "init": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "marks"
+                              ],
+                              "state": "Hist.Work.B",
+                              "type": "int",
+                              "text": "marks"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "marks + 1"
+                        },
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 35,
+                          "col": 9,
+                          "endLine": 35,
+                          "endCol": 31
+                        }
+                      }
+                    ],
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Step"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [],
+                        "internal": false,
+                        "args": [],
+                        "effects": [
+                          {
+                            "kind": "set",
+                            "var": "y",
+                            "state": "Hist.Work.B.Y",
+                            "value": {
+                              "kind": "op",
+                              "op": "+",
+                              "args": [
+                                {
+                                  "kind": "ref",
+                                  "path": [
+                                    "y"
+                                  ],
+                                  "state": "Hist.Work.B.Y",
+                                  "type": "int",
+                                  "text": "y"
+                                },
+                                {
+                                  "kind": "lit",
+                                  "value": 1,
+                                  "type": "int",
+                                  "text": "1"
+                                }
+                              ],
+                              "type": "int",
+                              "text": "y + 1"
+                            }
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 36,
+                          "col": 9,
+                          "endLine": 36,
+                          "endCol": 30
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Pause"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Hist.Paused"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 5,
+                  "endLine": 18,
+                  "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:1d941d10a4bb026ea3e7bceb9642e1257d71f49874792352b8f6b40a67befacb"
+    }
+  }
+}

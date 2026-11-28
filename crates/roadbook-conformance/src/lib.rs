@@ -52,6 +52,7 @@ pub const FEATURES: &[&str] = &[
     "ended",
     "task-emits",
     "raise",
+    "locals",
 ];
 
 /// `spec/conformance` in this repository.

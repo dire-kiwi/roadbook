@@ -1,0 +1,35 @@
+{
+  "description": "State variables are bound each time their state is entered, after its `entered` record and before its entry effects, each with a `set` record named after the state: an initial value reads the variables before it, an optional one with none starts as null, and a child's reads its parent's. A transition with no target assigns one; leaving drops them, and entering again binds them afresh.",
+  "requires": [
+    "locals"
+  ],
+  "chart": "charts/locals.road",
+  "machine": "Counter",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Tick"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Leave"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Back"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Tick"
+      }
+    }
+  ],
+  "status": "running"
+}

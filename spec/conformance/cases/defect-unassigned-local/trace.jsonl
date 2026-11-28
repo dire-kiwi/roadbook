@@ -1,0 +1,4 @@
+{"input":{},"ir":"sha256:7062508bc362e0514a57a29e8bba0abc5b62a280c603d198eba53941d8b8f77b","kind":"started","machine":"Unset","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Unset","t":0}
+{"kind":"entered","run":"r1","state":"Unset.A","t":0}
+{"defect":{"kind":"unassigned","var":"Unset.A.count"},"kind":"defect","run":"r1","t":0}

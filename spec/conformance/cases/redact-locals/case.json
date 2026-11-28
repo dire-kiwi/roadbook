@@ -1,0 +1,42 @@
+{
+  "description": "Sensitive state parameters and variables are redacted in the `set` records that bind and assign them, and in the snapshot of a `restored` record; the saved snapshot keeps their values.",
+  "requires": [
+    "locals",
+    "snapshots"
+  ],
+  "chart": "charts/locals.road",
+  "machine": "Vault",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Unlock",
+        "pin": 1234,
+        "user": "ada"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Wrong"
+      }
+    },
+    {
+      "snapshot": "open"
+    },
+    {
+      "restore": "open",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Wrong"
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "running"
+}

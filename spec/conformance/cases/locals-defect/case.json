@@ -1,0 +1,22 @@
+{
+  "description": "An argument that overflows is a runtime error: the step is atomic, so there is no event record and nothing of the transition, and the run ends with the defect, its states as they were.",
+  "requires": [
+    "locals"
+  ],
+  "chart": "charts/locals.road",
+  "machine": "Overflow",
+  "input": {
+    "big": 1e+307
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    }
+  ],
+  "status": "defect"
+}

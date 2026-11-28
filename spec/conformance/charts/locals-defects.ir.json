@@ -1,0 +1,220 @@
+{
+  "irVersion": "0.12",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/locals-defects.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Unset": {
+      "doc": "A state variable with no initial value, read by a guard before anything assigns it.",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 19,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 6,
+            "col": 3,
+            "endLine": 6,
+            "endCol": 11
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Unset",
+        "name": "Unset",
+        "kind": "compound",
+        "doc": "A state variable with no initial value, read by a guard before anything assigns it.",
+        "span": {
+          "file": 0,
+          "line": 5,
+          "col": 1,
+          "endLine": 19,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Unset.A",
+        "states": [
+          {
+            "id": "Unset.A",
+            "name": "A",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 10,
+              "col": 3,
+              "endLine": 16,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [
+              {
+                "name": "count",
+                "type": "int",
+                "sensitive": false,
+                "init": null,
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 11,
+                  "col": 5,
+                  "endLine": 11,
+                  "endCol": 19
+                }
+              }
+            ],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": ">",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "count"
+                      ],
+                      "state": "Unset.A",
+                      "type": "int",
+                      "text": "count"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 0,
+                      "type": "int",
+                      "text": "0"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "count > 0"
+                },
+                "targets": [
+                  "Unset.B"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 13,
+                  "col": 7,
+                  "endLine": 13,
+                  "endCol": 24
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Unset.B"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 14,
+                  "col": 7,
+                  "endLine": 14,
+                  "endCol": 24
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Unset.B",
+            "name": "B",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 18,
+              "col": 3,
+              "endLine": 18,
+              "endCol": 25
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Unset.A"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 13,
+                  "endLine": 18,
+                  "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:7062508bc362e0514a57a29e8bba0abc5b62a280c603d198eba53941d8b8f77b"
+    }
+  }
+}

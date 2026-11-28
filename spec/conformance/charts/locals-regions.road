@@ -1,0 +1,36 @@
+// Conformance chart: data local to a state in a parallel state and its regions.
+
+/// Regions with variables of the same name, a parallel state with parameters, and two
+/// targets through it.
+machine Panels() {
+  event Go
+  event Tick
+  event Both
+
+  initial Idle
+
+  state Idle {
+    on Go   -> Panes("p", 1)
+    on Both -> Panes("q", 2).Left.B(7), Panes.Right.D
+  }
+
+  parallel state Panes(label: string, k: int) {
+    on Go -> Idle
+
+    state Left {
+      var n: int = k
+      initial A
+
+      state A         { on Tick set n = n + 1 }
+      state B(x: int) {}
+    }
+
+    state Right {
+      var n: int = k * 10
+      initial C
+
+      state C { on Tick set n = n + 1 }
+      state D {}
+    }
+  }
+}

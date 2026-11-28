@@ -98,7 +98,8 @@ export const supported: ReadonlyArray<string> = [
   "spawn",
   "ended",
   "task-emits",
-  "raise"
+  "raise",
+  "locals"
 ]
 
 /** Whether this runtime implements everything case `name` requires. */

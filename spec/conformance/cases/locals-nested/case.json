@@ -1,0 +1,41 @@
+{
+  "description": "A target through a state with parameters gives arguments to both states it enters. A transition inside that state does not leave it, so it keeps its locals and needs no arguments for it; an internal one (`-> .Changing(…)`) sees its own `set`. A transition in the machine body leaves it and drops them.",
+  "requires": [
+    "locals"
+  ],
+  "chart": "charts/locals.road",
+  "machine": "Editor",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Open",
+        "doc": "d"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Next"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Next"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Jump"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Reset"
+      }
+    }
+  ],
+  "status": "running"
+}

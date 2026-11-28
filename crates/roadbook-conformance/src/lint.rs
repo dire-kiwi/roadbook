@@ -38,6 +38,9 @@ struct Run {
     parent: Option<String>,
     /// The active states, in the order they were entered.
     stack: Vec<String>,
+    /// The states exited since the last `transition` record: a transition's effects run
+    /// after its exits, and may still assign their locals.
+    left: Vec<String>,
     /// For a restored run, the invokes and timers of its snapshot, which
     /// `invoke.started` and `timer.started` records restart with their ids.
     restarts: Vec<(&'static str, u64)>,
@@ -331,6 +334,7 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     bad(format!("{s} exited with its work still running"));
                 }
                 run.stack.retain(|a| a != s);
+                run.left.push(s.to_owned());
             }
             "event" | "dropped" | "stale" => {
                 let e = r.get("event").cloned().unwrap_or(Value::Null);
@@ -497,6 +501,7 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 }
             }
             "transition" => {
+                run.left.clear();
                 let from = str_of(r, "from");
                 if !run.stack.iter().any(|s| s == from) {
                     bad(format!("transition from {from}, which is not active"));
@@ -513,7 +518,32 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     }
                 }
             }
-            "set" | "action" => {}
+            "set" => {
+                // A state's local is named `<state id>.<name>`, and is bound and assigned only
+                // while its state is active, or by the effects of a transition that has just
+                // left it.
+                let var = str_of(r, "var");
+                if let Some((state, name)) = var.rsplit_once('.') {
+                    if !run.stack.iter().any(|a| a == state) && !run.left.iter().any(|a| a == state)
+                    {
+                        bad(format!("set {var}, whose state {state} is not active"));
+                    }
+                    if let Some(st) = machine.and_then(|m| find_state(&m.root, state))
+                        && !st.params.iter().any(|p| p.name == name)
+                        && !st.vars.iter().any(|v| v.name == name)
+                    {
+                        bad(format!("set {var}, which {state} does not declare"));
+                    }
+                } else if let Some(m) = machine
+                    && !m.vars.iter().any(|v| v.name == var)
+                {
+                    bad(format!(
+                        "set {var}, which is not a variable of {}",
+                        run.machine
+                    ));
+                }
+            }
+            "action" => {}
             "replied" => {
                 let to = str_of(r, "to").to_owned();
                 let n = u64_of(r, "invoke");

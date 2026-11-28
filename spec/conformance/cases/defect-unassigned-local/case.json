@@ -1,0 +1,20 @@
+{
+  "description": "A state variable with no initial value starts with no value each time its state is entered, so a guard that reads it is an `unassigned` defect named after the state. The chart is compiled without the definite assignment check.",
+  "requires": [
+    "locals"
+  ],
+  "chart": "charts/locals-defects.road",
+  "machine": "Unset",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    }
+  ],
+  "status": "defect"
+}

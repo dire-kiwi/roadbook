@@ -1,0 +1,88 @@
+{
+  "description": "A saved snapshot holds the locals of the active states and what the history states kept, and a run restored from it reads them and enters the history states with them. A snapshot whose locals do not fit the machine is refused as `invalid`: a variable the state does not declare, a parameter missing, a state that is not active, an active state with locals but no member, a history record holding a state it would not re-enter, or a value of the wrong type.",
+  "requires": [
+    "locals",
+    "history",
+    "snapshots"
+  ],
+  "chart": "charts/locals-history.road",
+  "machine": "Hist",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Resume"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Step"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Step"
+      }
+    },
+    {
+      "snapshot": "working"
+    },
+    {
+      "event": {
+        "_tag": "Pause"
+      }
+    },
+    {
+      "snapshot": "paused"
+    },
+    {
+      "restore": "paused",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Rewind"
+      },
+      "run": "r2"
+    },
+    {
+      "event": {
+        "_tag": "Step"
+      },
+      "run": "r2"
+    },
+    {
+      "snapshot": "rewound",
+      "run": "r2"
+    },
+    {
+      "restore": "undeclared",
+      "refused": "invalid"
+    },
+    {
+      "restore": "noparam",
+      "refused": "invalid"
+    },
+    {
+      "restore": "inactive",
+      "refused": "invalid"
+    },
+    {
+      "restore": "missing",
+      "refused": "invalid"
+    },
+    {
+      "restore": "historyextra",
+      "refused": "invalid"
+    },
+    {
+      "restore": "wrongtype",
+      "refused": "invalid"
+    }
+  ],
+  "status": "running"
+}

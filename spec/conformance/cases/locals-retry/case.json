@@ -1,0 +1,43 @@
+{
+  "description": "A retry in a state with parameters: the retrying state is not left between attempts, so its parameter is bound once and every attempt's invoke reads it. The retry's counter is still a machine variable, set by the state's entry after the parameter is bound.",
+  "requires": [
+    "locals"
+  ],
+  "chart": "charts/locals.road",
+  "machine": "Courier",
+  "input": {},
+  "stub": [],
+  "fns": {
+    "wait": [
+      {
+        "args": [
+          1
+        ],
+        "returns": 100
+      }
+    ]
+  },
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go",
+        "to": "x"
+      }
+    },
+    {
+      "task": "deliver",
+      "fail": {
+        "_tag": "Busy"
+      }
+    },
+    {
+      "advance": 100
+    },
+    {
+      "task": "deliver",
+      "done": null
+    }
+  ],
+  "status": "running"
+}

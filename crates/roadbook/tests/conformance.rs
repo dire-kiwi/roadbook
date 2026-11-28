@@ -54,6 +54,7 @@ const SUPPORTED: &[&str] = &[
     "ended",
     "task-emits",
     "raise",
+    "locals",
 ];
 
 // ---- the executor ------------------------------------------------------------------------
