@@ -1635,3 +1635,70 @@ fn tasks_that_emit() {
     }
     c.shutdown();
 }
+
+const SEVERAL: &str = r#"error Lost
+
+task heartbeat() ! Lost
+
+machine Helper() {
+  event Poke
+  event Quit
+  emits Poked
+  initial Idle
+  state Idle {
+    on Poke emit Poked
+    on Quit -> Gone
+  }
+  final state Gone {}
+}
+
+machine Watch() {
+  initial Watching
+  state Watching {
+    invoke heartbeat() as beat {
+      fail Lost -> Gone
+    }
+    invoke Helper() as left {
+      done send right.Poke
+    }
+    invoke Helper() as right
+    on left.Poked  send right.Quit
+    on right.Poked -> Gone
+  }
+  final state Gone {}
+}
+"#;
+
+/// The `as` names of a state's several invokes: each goes to its own invoke, has its own hover,
+/// and is renamed alone; two cannot be renamed to the same.
+#[test]
+fn several_invokes_in_a_state() {
+    let p = Project::new("several", &[("c.road", SEVERAL)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, SEVERAL);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+    for (from, to) in [
+        ("on ^left.Poked", "as ^left {"),
+        ("send ^right.Poke", "as ^right\n"),
+        ("on ^right.Poked", "as ^right\n"),
+        ("send ^right.Quit", "as ^right\n"),
+    ] {
+        let loc = c
+            .request("textDocument/definition", at(&uri, SEVERAL, from))
+            .unwrap();
+        assert_eq!(loc["range"]["start"], position(SEVERAL, to), "{from} -> {to}");
+    }
+    let hover = c
+        .request("textDocument/hover", at(&uri, SEVERAL, "on ^right.Poked"))
+        .unwrap();
+    let value = hover["contents"]["value"].as_str().unwrap();
+    assert!(value.contains("invoke Helper(…) as right"), "{value}");
+    let out = rename(&mut c, &uri, SEVERAL, "as ^right", "other");
+    assert!(out.contains("done send other.Poke"), "{out}");
+    assert!(out.contains("on left.Poked  send other.Quit"), "{out}");
+    assert!(out.contains("as left {"), "{out}");
+    let why = rename_error(&mut c, &uri, SEVERAL, "as ^right", "left");
+    assert!(why.contains("already the name of"), "{why}");
+    c.shutdown();
+}
