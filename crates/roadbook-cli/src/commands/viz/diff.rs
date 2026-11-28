@@ -425,7 +425,12 @@ pub fn shift_machine(m: &mut Machine, offset: u32) {
     for v in &mut m.vars {
         v.span.file += offset;
     }
-    for e in m.events.values_mut().chain(m.emits.values_mut()) {
+    for e in m
+        .events
+        .values_mut()
+        .chain(m.internal_events.values_mut())
+        .chain(m.emits.values_mut())
+    {
         e.span.file += offset;
     }
     for c in m.calls.values_mut() {
@@ -1065,6 +1070,16 @@ fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
         a.events
             .iter()
             .map(|(n, e)| (n.clone(), event("event", n, e))),
+    );
+    keyed(
+        &mut out,
+        "internal event",
+        b.internal_events
+            .iter()
+            .map(|(n, e)| (n.clone(), event("internal event", n, e))),
+        a.internal_events
+            .iter()
+            .map(|(n, e)| (n.clone(), event("internal event", n, e))),
     );
     keyed(
         &mut out,
