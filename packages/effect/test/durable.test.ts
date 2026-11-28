@@ -21,8 +21,10 @@ import {
   Crew,
   Hub,
   Nagger,
+  Lookout,
   Parent,
   Pipeline,
+  Post,
   Reached,
   Relay,
   Session,
@@ -106,6 +108,7 @@ const machines = (world: World, options: Partial<Durable.Options<any>> = {}) => 
   const AskerLive = Asker.implement({})
   const AdderLive = Adder.implement(world.handlers as never)
   const SessionLive = Session.implement(world.handlers as never)
+  const LookoutLive = Lookout.implement({})
   return {
     desk: Durable.workflow(Desk.implement(world.handlers as never), { idempotencyKey: ({ id }) => `desk-${id}`, ...options }),
     asker: Durable.workflow(AskerLive, { idempotencyKey: ({ id }) => `asker-${id}`, ...options }),
@@ -130,6 +133,10 @@ const machines = (world: World, options: Partial<Durable.Options<any>> = {}) => 
     }),
     adder: Durable.workflow(AdderLive, {
       idempotencyKey: ({ goal }) => `adder-${goal}`,
+      ...options
+    }),
+    post: Durable.workflow(Post.implement({ machines: { Lookout: LookoutLive } }), {
+      idempotencyKey: () => "post",
       ...options
     }),
     watcher: Durable.workflow(Watcher.implement(world.handlers as never), { idempotencyKey: () => "watcher", ...options }),
@@ -232,6 +239,30 @@ const untilParked = (process: Effect.Success<ReturnType<typeof startProcess>>, r
       if (Date.now() > deadline) return yield* Effect.die(new Error(`timed out waiting for ${run} to park`))
       yield* Effect.sleep(10)
     }
+  })
+
+/** The message ids of the emitted events run `run` took, as its records show them. */
+const heardBy = (world: World, run: string) =>
+  world.records.flatMap((r) =>
+    r.run === run && (r.kind === "event" || r.kind === "dropped") && r.event.kind === "emitted" ? [r.event.message] : []
+  )
+
+/** The `ended` inputs run `run` took, as its records show them. */
+const endsTakenBy = (world: World, run: string) =>
+  world.records.flatMap((r) => (r.run === run && r.kind === "event" && r.event.kind === "ended" ? [r.event] : []))
+
+/** Wait until the engine says execution `id` of `flow` has ended. */
+const untilEnded = (
+  process: Effect.Success<ReturnType<typeof startProcess>>,
+  flow: { readonly poll: (id: string) => Effect.Effect<Option.Option<unknown>, never, WorkflowEngine.WorkflowEngine> },
+  id: string
+) =>
+  Effect.gen(function*() {
+    for (let i = 0; i < 250; i++) {
+      if (Option.isSome(yield* process.run(flow.poll(id)))) return
+      yield* Effect.sleep(20)
+    }
+    return yield* Effect.die(new Error(`timed out waiting for ${id} to end`))
   })
 
 /** Wait until `condition` holds, polling; fail after `ms`. */
@@ -750,7 +781,7 @@ describe("parking a tree whose child runs are idle", () => {
         yield* process.crash
       }), { park: { after: 100 } }), 20_000)
 
-  it("a child run that hears a peer keeps its tree live, so that it misses nothing the peer emits", () =>
+  it("a child run that hears a peer lets its tree park, and what the peer emits wakes it", () =>
     scenario(({ world, flows, start }) =>
       Effect.gen(function*() {
         const process = yield* start()
@@ -758,14 +789,83 @@ describe("parking a tree whose child runs are idle", () => {
         const counter = yield* process.run(flows.counter.handle(counterId))
         const relay = yield* process.run(flows.relay.start({ counter, goal: 15 }))
         world.open(1)
-        // The Adder has sent its 10 and waits for the Counter's total to reach 15.
+        // The Adder has sent its 10 and waits for the Counter's total to reach 15: the tree parks.
         yield* until(() => world.count(1) === 1)
-        yield* Effect.sleep(400)
-        expect(yield* stateOf(process, relay)).toBe("live")
+        yield* untilParked(process, relay)
+        const before = world.attempts()
+        // The Counter's Total { n: 15 } waits in the Relay's entry and wakes the tree.
         yield* process.run(flows.counter.send(counterId, { _tag: "Add", by: 5 }))
         expect(yield* process.run(flows.relay.run({ counter, goal: 15 }))).toBe(15)
+        expect(world.attempts()).toBeGreaterThan(before)
+        expect(heardBy(world, `${relay}.1`)).toEqual([1, 2])
         yield* process.crash
       }), { park: { after: 100 } }), 20_000)
+
+  it("a child run that hears a peer is given again what the peer emitted while its tree was down", () =>
+    scenario(({ world, start }) =>
+      Effect.gen(function*() {
+        // The Relay's tree stays live, so that the engine replays it after the crash; the
+        // Counter parks, so that the Adder, recovering, wakes it to learn what it missed.
+        const flows = { ...machines(world, { park: false }), counter: machines(world, { park: { after: 100 } }).counter }
+        let process = yield* start(flows)
+        const counterId = yield* process.run(flows.counter.start({}))
+        const counter = yield* process.run(flows.counter.handle(counterId))
+        const relay = yield* process.run(flows.relay.start({ counter, goal: 15 }))
+        world.open(1)
+        yield* until(() => heardBy(world, `${relay}.1`).length === 1)
+        yield* untilParked(process, counterId)
+        yield* process.crash
+
+        // Only the Counter runs in this process: it emits Total { n: 15 } while the Relay is down.
+        process = yield* start(flows, undefined, ["counter"])
+        yield* process.run(flows.counter.send(counterId, { _tag: "Add", by: 5 }))
+        yield* untilParked(process, counterId)
+        yield* process.crash
+
+        // The Adder subscribes again from where it first did, and takes the Total it missed, once.
+        process = yield* start(flows)
+        expect(yield* process.run(flows.relay.run({ counter, goal: 15 }))).toBe(15)
+        expect(heardBy(world, `${relay}.1`)).toEqual([1, 2])
+        expect(world.count(1)).toBe(1)
+        yield* process.crash
+      })), 20_000)
+
+  it("a child run that hears its peer's end lets its tree park, and the end wakes it", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        const process = yield* start()
+        const counterId = yield* process.run(flows.counter.start({}))
+        const counter = yield* process.run(flows.counter.handle(counterId))
+        const post = yield* process.run(flows.post.start({ counter }))
+        yield* untilParked(process, post)
+        yield* process.run(flows.counter.send(counterId, { _tag: "Close" }))
+        expect(yield* process.run(flows.post.run({ counter }))).toBe(1)
+        expect(endsTakenBy(world, `${post}.1`)).toEqual([{ kind: "ended", from: counterId, status: "Done" }])
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
+
+  it("a child run whose peer ended while its tree was down is told once it recovers", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        // Without parking, so that the engine replays the Post after the crash.
+        let process = yield* start()
+        const counterId = yield* process.run(flows.counter.start({}))
+        const counter = yield* process.run(flows.counter.handle(counterId))
+        const post = yield* process.run(flows.post.start({ counter }))
+        yield* until(() => world.records.some((r) => r.run === `${post}.1`))
+        yield* process.crash
+
+        // Only the Counter runs in this process: it ends while the Post is down.
+        process = yield* start(undefined, undefined, ["counter"])
+        yield* process.run(flows.counter.send(counterId, { _tag: "Close" }))
+        yield* untilEnded(process, flows.counter, counterId)
+        yield* process.crash
+
+        process = yield* start()
+        expect(yield* process.run(flows.post.run({ counter }))).toBe(1)
+        expect(endsTakenBy(world, `${post}.1`)).toEqual([{ kind: "ended", from: counterId, status: "Done" }])
+        yield* process.crash
+      }), { park: false }), 20_000)
 })
 
 describe("durable runs, with slow storage reads", () => {

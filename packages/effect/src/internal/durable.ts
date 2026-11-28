@@ -233,6 +233,16 @@ export class Entry {
    * process, each with what it does when the answer to one of its call invokes is recorded.
    */
   readonly callers = new Map<string, (invoke: number) => void>()
+  /**
+   * The child runs of this entry's execution that hold a `ref` to a durable peer and are live in
+   * this process, each with its queue: what their peers emit, and their ends, reach them there.
+   */
+  private readonly holders = new Map<string, Queue.Queue<Item>>()
+  /**
+   * What reached a child run of the execution from its peers while it was not live here (its
+   * tree parked, recovering, or not started yet), by run id: queued when it is again (`hold`).
+   */
+  private childMail = new Map<string, Array<Core.Input>>()
   cancelRequested = false
   /** The park the run is suspended in, while `parked`. */
   parkedAt: string | undefined = undefined
@@ -254,12 +264,14 @@ export class Entry {
   emitted = 0
   readonly log: Array<{ readonly message: number; readonly value: Core.Tagged }> = []
   /**
-   * The durable runs holding a `ref` to this one, from which message id each receives, and
-   * which of the events this run emits it receives: those its machine has an `on` for.
+   * The durable runs holding a `ref` to this one, by run id, each reached through the registry
+   * entry of its execution's root run (`entry`, itself for a root holder), from which message id
+   * it receives, and which of the events this run emits it receives: those its machine has an
+   * `on` for.
    */
   readonly subscribers = new Map<
     string,
-    { readonly entry: Entry; readonly from: number; readonly heard: ReadonlySet<string> }
+    { readonly entry: Entry; readonly run: string; readonly from: number; readonly heard: ReadonlySet<string> }
   >()
   /**
    * Host listeners of the run's emitted events (`DurableMachine.emitted`), each with the message
@@ -364,8 +376,13 @@ export class Entry {
     this.fork(DurableDeferred.succeed(record, { token, value: { kind: "wake" } }))
   }
 
-  /** Give the run `input`. Returns false once it has ended. */
-  deliver(input: Core.Input): boolean {
+  /**
+   * Give the run `input`, or give it to `run`, a child run of this entry's execution: queued if
+   * the tree is live here and the child has subscribed in this attempt, else kept for it, waking
+   * the tree. Returns false once the root has ended.
+   */
+  deliver(input: Core.Input, run: string = this.info.run): boolean {
+    if (run !== this.info.run) return this.deliverToChild(run, input)
     switch (this.state) {
       case "ended":
         return false
@@ -379,6 +396,48 @@ export class Entry {
         this.mailbox.push(input)
         if (this.state === "pending") this.resume()
         return true
+    }
+  }
+
+  private deliverToChild(run: string, input: Core.Input): boolean {
+    if (this.state === "ended") return false
+    const queue = this.holders.get(run)
+    if (this.state === "live" && queue !== undefined) return Queue.offerUnsafe(queue, input)
+    const mail = this.childMail.get(run)
+    if (mail === undefined) this.childMail.set(run, [input])
+    else mail.push(input)
+    if (this.state === "parked") this.wake()
+    else if (this.state === "pending") this.resume()
+    return true
+  }
+
+  /**
+   * Child run `run` of this execution is live here, with `queue`, and subscribes to its peers:
+   * what reached it meanwhile is queued, and what they send it from now on goes there.
+   */
+  hold(run: string, queue: Queue.Queue<Item>) {
+    this.holders.set(run, queue)
+    const mail = this.childMail.get(run)
+    this.childMail.delete(run)
+    if (mail !== undefined) Queue.offerAllUnsafe(queue, mail)
+  }
+
+  /**
+   * Child run `run` stops (its tree parks, or the process stops): what its peers send it waits
+   * here again. If it has ended, nothing more is kept for it.
+   */
+  release(run: string, queue: Queue.Queue<Item>, ended: boolean) {
+    if (this.holders.get(run) === queue) this.holders.delete(run)
+    if (ended) this.childMail.delete(run)
+  }
+
+  /** Queue what reached the live child runs while the tree was parking. */
+  private drainChildren() {
+    for (const [run, queue] of this.holders) {
+      const mail = this.childMail.get(run)
+      if (mail === undefined) continue
+      this.childMail.delete(run)
+      Queue.offerAllUnsafe(queue, mail)
     }
   }
 
@@ -458,7 +517,7 @@ export class Entry {
     if (this.cancelRequested || (this.attempt !== undefined && Queue.sizeUnsafe(this.attempt.queue) > 0)) return false
     this.state = "parked"
     this.parkedAt = name
-    if (this.mailbox.length > 0) this.wake()
+    if (this.mailbox.length > 0 || this.childMail.size > 0) this.wake()
     return true
   }
 
@@ -467,6 +526,7 @@ export class Entry {
     this.state = "live"
     this.parkedAt = undefined
     this.drain()
+    this.drainChildren()
   }
 
   /**
@@ -476,6 +536,8 @@ export class Entry {
   close() {
     this.state = "ended"
     this.mailbox = []
+    this.childMail = new Map()
+    this.holders.clear()
     this.log.length = 0
   }
 
@@ -502,8 +564,8 @@ export class Entry {
   finish(status: Core.EndedStatus) {
     if (this.endedAs === undefined) {
       this.endedAs = status
-      for (const { entry, heard } of this.subscribers.values()) {
-        if (heard.has(Core.ENDED_INPUT)) entry.deliver(endedInput(this.info.run, status))
+      for (const { entry, heard, run } of this.subscribers.values()) {
+        if (heard.has(Core.ENDED_INPUT)) entry.deliver(endedInput(this.info.run, status), run)
       }
       tellEnded(this.port, status)
     }
@@ -538,26 +600,27 @@ export class Entry {
       listener.next = message + 1
       listener.emit(value)
     }
-    for (const { entry, from, heard } of this.subscribers.values()) {
+    for (const { entry, from, heard, run } of this.subscribers.values()) {
       if (message >= from && heard.has(value._tag)) {
-        entry.deliver({ kind: "emitted", from: this.info.run, invoke: null, message, value })
+        entry.deliver({ kind: "emitted", from: this.info.run, invoke: null, message, value }, run)
       }
     }
   }
 
   /**
-   * `holder` receives what this run emits from message `from` on, what it already emitted too:
-   * the events in `heard`, and its end if `heard` has `ended`. Unless the run has ended: that
-   * gives how, which the holder's own driver tells it after its start step if it hears it.
+   * Run `run` receives what this run emits from message `from` on, what it already emitted too:
+   * the events in `heard`, and its end if `heard` has `ended`, through `holder`, the registry
+   * entry of its execution's root run. Unless this run has ended: that gives how, which the
+   * holder's own driver tells it after its start step if it hears it.
    */
-  subscribe(holder: Entry, from: number, heard: ReadonlySet<string>): Core.EndedStatus | undefined {
+  subscribe(holder: Entry, run: string, from: number, heard: ReadonlySet<string>): Core.EndedStatus | undefined {
     if (this.endedAs !== undefined) return this.endedAs
-    this.subscribers.set(holder.info.run, { entry: holder, from, heard })
+    this.subscribers.set(run, { entry: holder, run, from, heard })
     // Closed and not ended yet: it is carrying out its last step, and tells its end as it ends.
     if (this.state === "ended") return undefined
     for (const { message, value } of this.log) {
       if (message >= from && heard.has(value._tag)) {
-        holder.deliver({ kind: "emitted", from: this.info.run, invoke: null, message, value })
+        holder.deliver({ kind: "emitted", from: this.info.run, invoke: null, message, value }, run)
       }
     }
     return undefined
