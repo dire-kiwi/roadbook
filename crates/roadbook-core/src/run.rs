@@ -821,9 +821,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 .filter(|&s| self.idx.is_ancestor(domain, s))
                 .collect();
         }
-        let every = targets.iter().any(|&x| {
-            self.state(x).kind.is_history() && self.idx.parents[x] == Some(domain)
-        });
+        let every = targets
+            .iter()
+            .any(|&x| self.state(x).kind.is_history() && self.idx.parents[x] == Some(domain));
         let regions: Vec<usize> = self.idx.children[domain]
             .iter()
             .copied()

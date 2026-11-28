@@ -187,10 +187,7 @@ fn outcome_targets_are_resolved_where_they_are_written() {
         .iter()
         .map(|t| t.targets.as_slice())
         .collect();
-    assert_eq!(
-        targets,
-        [["M.Backoff"], ["M.A.Backoff"], ["M.Backoff"]]
-    );
+    assert_eq!(targets, [["M.Backoff"], ["M.A.Backoff"], ["M.Backoff"]]);
 }
 
 #[test]

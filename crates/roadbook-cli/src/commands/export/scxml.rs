@@ -601,9 +601,10 @@ impl Writer<'_> {
             // (`-> .X`) does not leave its state.
             let root = &self.m.root;
             let body = s.id == root.id
-                && !root.states.iter().any(|c| {
-                    c.kind == StateKind::Final && t.targets.iter().any(|x| *x == c.id)
-                });
+                && !root
+                    .states
+                    .iter()
+                    .any(|c| c.kind == StateKind::Final && t.targets.contains(&c.id));
             if body || t.internal {
                 attrs.push(("type", "internal".into()));
             }

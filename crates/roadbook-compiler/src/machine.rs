@@ -1291,8 +1291,7 @@ impl<'p> Cx<'_, 'p> {
             // transition is written in or one around it, so it is exited when it is below the
             // domain.
             Place::Transition {
-                domain: Some(d),
-                ..
+                domain: Some(d), ..
             } if self.inside(invoking, d) => Some(format!(
                 "this transition leaves `{state}`, which stops its child before the transition's effects run"
             )),
@@ -2435,7 +2434,11 @@ impl<'p> Cx<'_, 'p> {
                     }
                 } else if self.inside(b, a) || self.inside(a, b) {
                     let (outer, inner) = if self.inside(b, a) { (a, b) } else { (b, a) };
-                    format!("`{}` is inside `{}`, which the other target enters", id(inner), id(outer))
+                    format!(
+                        "`{}` is inside `{}`, which the other target enters",
+                        id(inner),
+                        id(outer)
+                    )
                 } else {
                     let meet = self.common_ancestor(a, b);
                     if self.is_parallel(meet) {
@@ -2594,7 +2597,10 @@ impl<'p> Cx<'_, 'p> {
         let mut d = Diagnostic::error(
             codes::UNKNOWN_TARGET,
             head.span,
-            format!("unknown target state `.{}`: `{own}` has no child `{}`", head.name, head.name),
+            format!(
+                "unknown target state `.{}`: `{own}` has no child `{}`",
+                head.name, head.name
+            ),
         );
         let retried = self.nodes[from]
             .body
@@ -2611,9 +2617,11 @@ impl<'p> Cx<'_, 'p> {
             scope = self.nodes[sc].parent;
         }
         if let Some(s) = suggest(&head.name, children.iter().map(String::as_str)) {
-            d = d
-                .with_help(format!("did you mean `.{s}`?"))
-                .with_fix(format!("replace with `{s}`"), head.span, s);
+            d = d.with_help(format!("did you mean `.{s}`?")).with_fix(
+                format!("replace with `{s}`"),
+                head.span,
+                s,
+            );
         } else if retried {
             d = d.with_help(format!(
                 "`.X` names a child of `{own}`; a state with `retry` has none of its own, and the `Attempt` and `Backoff` states the retry compiles to can't be named"
@@ -2631,7 +2639,10 @@ impl<'p> Cx<'_, 'p> {
                 "`.X` names a child of the state the transition is written in, and `{own}` has no child states"
             ));
         } else {
-            d = d.with_help(format!("the children of `{own}` are {}", children.join(", ")));
+            d = d.with_help(format!(
+                "the children of `{own}` are {}",
+                children.join(", ")
+            ));
         }
         self.ck.diags.push(d);
     }

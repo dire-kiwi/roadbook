@@ -93,9 +93,21 @@ fn export_scxml_snapshots_a_peer_s_end() {
 #[test]
 fn export_scxml_snapshots_internal_transitions_and_several_targets() {
     for (chart, machine, snapshot) in [
-        ("spec/conformance/charts/internal.road", "Kept", "internal_kept_scxml"),
-        ("spec/conformance/charts/internal-parallel.road", "Sides", "internal_sides_scxml"),
-        ("spec/conformance/charts/targets.road", "Player", "targets_player_scxml"),
+        (
+            "spec/conformance/charts/internal.road",
+            "Kept",
+            "internal_kept_scxml",
+        ),
+        (
+            "spec/conformance/charts/internal-parallel.road",
+            "Sides",
+            "internal_sides_scxml",
+        ),
+        (
+            "spec/conformance/charts/targets.road",
+            "Player",
+            "targets_player_scxml",
+        ),
     ] {
         let out = roadbook(&repo(), &["export", "scxml", chart, "--machine", machine]);
         assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));

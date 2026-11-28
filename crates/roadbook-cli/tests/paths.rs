@@ -312,7 +312,10 @@ fn loops_are_taken_once_stuck_states_end_and_nested_finals_take_the_parents_done
             ("loop", "Loop.Ping"),
         ]
     );
-    assert_eq!(v["paths"][3]["steps"][0]["to"], serde_json::json!(["Loop.Work.Finished"]));
+    assert_eq!(
+        v["paths"][3]["steps"][0]["to"],
+        serde_json::json!(["Loop.Work.Finished"])
+    );
     assert_eq!(v["paths"][3]["steps"][1]["trigger"], "done");
     let out = roadbook(&dir, &["paths", "Loop", "loop.road"]);
     assert_eq!(

@@ -305,7 +305,8 @@ pub(crate) fn run(
                     }
                     let ends = t.targets.iter().any(|to| {
                         tree.parent.get(to.as_str()) == Some(&tree.root)
-                            && tree.states.get(to.as_str()).map(|s| s.kind) == Some(StateKind::Final)
+                            && tree.states.get(to.as_str()).map(|s| s.kind)
+                                == Some(StateKind::Final)
                     });
                     if ends {
                         continue;
@@ -348,7 +349,10 @@ fn regions_reset(tree: &Tree<'_>, info: &MachineInfo, diags: &mut Vec<Diagnostic
             };
             let restores_all = t.targets.iter().any(|x| {
                 tree.parent.get(x.as_str()) == Some(&p)
-                    && tree.states.get(x.as_str()).is_some_and(|h| h.kind.is_history())
+                    && tree
+                        .states
+                        .get(x.as_str())
+                        .is_some_and(|h| h.kind.is_history())
             });
             if restores_all {
                 continue;
@@ -395,7 +399,11 @@ fn regions_reset(tree: &Tree<'_>, info: &MachineInfo, diags: &mut Vec<Diagnostic
                 format!(
                     "to keep the other regions where they are, write the transition inside the region it changes, or in `{0}` with a leading dot (`-> .{1}`), or list a target in every region; to start `{0}` over on purpose, target it: `-> {0}`",
                     short(p, tree.root),
-                    t.targets.iter().map(|x| short(x, p)).collect::<Vec<_>>().join(", .")
+                    t.targets
+                        .iter()
+                        .map(|x| short(x, p))
+                        .collect::<Vec<_>>()
+                        .join(", .")
                 )
             };
             diags.push(

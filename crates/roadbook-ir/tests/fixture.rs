@@ -308,7 +308,10 @@ fn hash_writes_one_target_as_before() {
     let ir = fixture();
     let view = roadbook_ir::semantic_view(&ir, "Checkout").unwrap();
     let t = &view["machines"]["Checkout"]["root"]["states"][0]["transitions"][3];
-    assert!(t.get("targets").is_none() && t.get("internal").is_none(), "{t}");
+    assert!(
+        t.get("targets").is_none() && t.get("internal").is_none(),
+        "{t}"
+    );
     assert!(t["target"].is_string(), "{t}");
 }
 
