@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Roadbook IR 0.8",
+  "title": "Roadbook IR 0.12",
   "description": "The compiled form of a Roadbook project: one document per entry file. See spec/ir.md for what each member means. Every member listed is required; absent values are null, missing docs are \"\", and empty lists and maps are [] and {}.",
   "type": "object",
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.11" },
+    "irVersion": { "const": "0.12" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -344,8 +344,8 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "id", "name", "kind", "doc", "span", "initial", "states", "entry", "exit",
-        "invoke", "transitions", "output", "fail"
+        "id", "name", "kind", "doc", "span", "params", "vars", "initial", "states", "entry",
+        "exit", "invoke", "transitions", "output", "fail"
       ],
       "properties": {
         "id": { "$ref": "#/$defs/stateId" },
@@ -353,6 +353,15 @@
         "kind": { "enum": ["atomic", "compound", "parallel", "final", "history", "deepHistory"] },
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" },
+        "params": {
+          "description": "The state's parameters, in order: given by the transition that enters it.",
+          "$ref": "#/$defs/fields"
+        },
+        "vars": {
+          "description": "The state's variables, in order: initialised each time it is entered.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/var" }
+        },
         "initial": { "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }] },
         "states": { "type": "array", "items": { "$ref": "#/$defs/state" } },
         "entry": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
@@ -377,6 +386,8 @@
           "if": { "properties": { "kind": { "enum": ["history", "deepHistory"] } } },
           "then": {
             "properties": {
+              "params": { "maxItems": 0 },
+              "vars": { "maxItems": 0 },
               "entry": { "maxItems": 0 },
               "exit": { "maxItems": 0 },
               "invoke": { "type": "null" },
@@ -462,13 +473,26 @@
     "transition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["trigger", "group", "guard", "targets", "internal", "effects", "span"],
+      "required": ["trigger", "group", "guard", "targets", "internal", "args", "effects", "span"],
       "properties": {
         "trigger": { "$ref": "#/$defs/trigger" },
         "group": { "type": "integer", "minimum": 0 },
         "guard": { "oneOf": [{ "$ref": "#/$defs/expr" }, { "type": "null" }] },
         "targets": { "type": "array", "items": { "$ref": "#/$defs/stateId" } },
         "internal": { "type": "boolean" },
+        "args": {
+          "description": "The arguments of every state the transition enters that has parameters, in document order.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["state", "values"],
+            "properties": {
+              "state": { "$ref": "#/$defs/stateId" },
+              "values": { "type": "array", "items": { "$ref": "#/$defs/expr" } }
+            }
+          }
+        },
         "effects": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
         "span": { "$ref": "#/$defs/span" }
       }
@@ -553,10 +577,14 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "var", "value"],
+          "required": ["kind", "var", "state", "value"],
           "properties": {
             "kind": { "const": "set" },
             "var": { "$ref": "#/$defs/lowerName" },
+            "state": {
+              "description": "The state whose variable var is, or null for a machine variable.",
+              "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }]
+            },
             "value": { "$ref": "#/$defs/expr" }
           }
         },
@@ -675,7 +703,7 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "path", "type", "text"],
+          "required": ["kind", "path", "state", "type", "text"],
           "properties": {
             "kind": { "const": "ref" },
             "path": {
@@ -683,6 +711,10 @@
               "type": "array",
               "minItems": 1,
               "items": { "$ref": "#/$defs/lowerName" }
+            },
+            "state": {
+              "description": "The state whose parameter or variable path[0] is, or null for the machine's or an implicit name.",
+              "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }]
             },
             "type": { "$ref": "#/$defs/typeRef" },
             "text": { "type": "string" }

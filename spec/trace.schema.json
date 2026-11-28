@@ -91,10 +91,10 @@
       "required": ["from", "index", "to"]
     },
     {
-      "description": "A variable was assigned.",
+      "description": "A variable was assigned, or a state's parameter or variable got its value on entry. var is a machine variable's name, or <state id>.<name> for a state's.",
       "properties": {
         "kind": { "const": "set" },
-        "var": { "$ref": "#/$defs/lowerName" },
+        "var": { "$ref": "#/$defs/varName" },
         "value": { "$ref": "#/$defs/value" }
       },
       "required": ["var", "value"]
@@ -276,6 +276,11 @@
   "$defs": {
     "upperName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
     "lowerName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+    "varName": {
+      "description": "A machine variable's name, or a state's parameter or variable as <state id>.<name>.",
+      "type": "string",
+      "pattern": "^([A-Z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)*\\.)?[a-z][A-Za-z0-9]*$"
+    },
     "name": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" },
     "src": {
       "description": "An invoke's task or machine, or for a call the address and the call's name.",
@@ -447,7 +452,7 @@
         },
         {
           "description": "A variable was read before it had a value.",
-          "properties": { "kind": { "const": "unassigned" }, "var": { "$ref": "#/$defs/lowerName" } },
+          "properties": { "kind": { "const": "unassigned" }, "var": { "$ref": "#/$defs/varName" } },
           "required": ["kind", "var"],
           "additionalProperties": false
         },

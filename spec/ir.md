@@ -1,4 +1,4 @@
-# The Roadbook IR, version 0.11
+# The Roadbook IR, version 0.12
 
 The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with a call to a peer, a message to it and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
@@ -22,7 +22,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 ```jsonc
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources":   [{ "path": "examples/shop/place_order.road", "package": null },
                 { "path": "examples/shop/types.road", "package": null }],
   "types":     { /* Name: type declaration */ },
@@ -79,7 +79,7 @@ base  = builtin | Upper [ "<" type { ", " type } ">" ] | Upper "." Upper | lower
 
 **Event types.** Events are not declared types: an event's type is named after the event. Inside machine `M`, a bare name that is one of `M`'s events or emitted events is that event: the type of `event` in `on Name`, and of the value of `emit Name { … }`. The event of another machine, or of a machine reached through a `ref` or a child, is written `Machine.Name`: the type of `event` in `on upload.Progress` is `Upload.Progress`, and the value of `send upload.Pause` has type `Upload.Pause`, also when the other machine is `M` itself. An event a task emits is written `task.Name`, after the task: `upload.Progress`. It is never the type of a value a chart builds, since no chart sends to a task or emits for one. Names never collide: an event never has the name of a type, error or machine of the document, and a machine's `events`, `internalEvents` and `emits` never share a name, so a bare name is a key of `types` or of the current machine's `events`, `internalEvents` or `emits`, never two of them. An internal event is never named `Machine.Name`: no other machine can send it or receive it. A task's emitted events are named only with the task's name before them, and a task's name is lower-case and a machine's upper-case, so `upload.Progress` and `Upload.Progress` are different events.
 
-**Where a `ref` can be.** Machine parameters, variables, and the parameters of functions, actions and tasks may have a `ref` type, directly or through an alias, also inside a list, an optional or a map's values. Fields of records, errors and events, the parameters of calls, type arguments, and the results of functions, tasks and machines, never do, so a machine can only get a handle from its own signature or from `invoke … as`. A `ref` value is never a literal, never compared, never passed where `json` is expected, and a runtime passes it to host code as its own handle type. In snapshots and traces it is the id of the run it refers to ([values](execution.md#values)).
+**Where a `ref` can be.** Machine parameters, variables, and the parameters of functions, actions and tasks may have a `ref` type, directly or through an alias, also inside a list, an optional or a map's values. Fields of records, errors and events, the parameters of calls, a state's parameters and variables, type arguments, and the results of functions, tasks and machines, never do, so a machine can only get a handle from its own signature or from `invoke … as`. A `ref` value is never a literal, never compared, never passed where `json` is expected, and a runtime passes it to host code as its own handle type. In snapshots and traces it is the id of the run it refers to ([values](execution.md#values)).
 
 **Where a pending call can be.** A `call name` is the type of a machine variable of the machine that declares `name`, and of the implicit `call` in its `on name` transitions; nowhere else, not even inside an alias, an optional, a list, a map or a type argument. It is never a literal, never compared, never passed where `json` is expected, and never leaves the run: no parameter, field, result or event has the type ([calls](execution.md#calls-between-runs)).
 
@@ -108,7 +108,7 @@ Record fields, error fields, event fields and parameters have one shape:
 { "name": "sku", "type": "string", "sensitive": false, "doc": "" }
 ```
 
-`sensitive` is `true` for a field or parameter written `sensitive name: T`: trace records show its value as `"<redacted>"` ([redaction](trace.md#redaction)). On a function's parameter it changes nothing, since function calls are not traced. It is not part of the [machine hash](#the-machine-hash).
+`sensitive` is `true` for a field or parameter written `sensitive name: T` (a state's parameter among them): trace records show its value as `"<redacted>"` ([redaction](trace.md#redaction)). On a function's parameter it changes nothing, since function calls are not traced. It is not part of the [machine hash](#the-machine-hash).
 
 ### Types
 
@@ -200,7 +200,7 @@ A **call** is `{"params", "returns", "errors", "doc", "span"}`, keyed by its low
 
 A **children collection** is `{"kind", "src", "key", "doc", "span"}`, keyed by its name. `kind` is `machine` or `task`, as for an [invoke](#invoke): `src` is the machine its children run, a key of `machines`, or the task they run, a key of `tasks`. `key` is the type of its keys, a type reference that is `string`, `int` or an enum, or an alias of one of them (never optional or a list). The span covers the declaration from `children` to the end of its key type. A collection's name shares the machine's namespace with its parameters, variables, `as` names and the names of its delayed raises (`raise … as name`). What a runtime does with one is in [`execution.md`](execution.md#spawned-children).
 
-The **root** is a state with `kind` `compound` whose `id` and `name` are the machine's name. Its `doc` and `span` are the machine's. It holds the machine's top-level states, its `initial`, and the `entry`, `exit`, `on`, `after` and `always` items written directly in the machine body.
+The **root** is a state with `kind` `compound` whose `id` and `name` are the machine's name. Its `doc` and `span` are the machine's, and its `params` and `vars` are `[]`: the machine's own are the machine's `params` and `vars`. It holds the machine's top-level states, its `initial`, and the `entry`, `exit`, `on`, `after` and `always` items written directly in the machine body.
 
 ## States
 
@@ -211,6 +211,8 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
   "kind": "atomic",
   "doc": "One attempt against the payment gateway.",
   "span": { "file": 2, "line": 12, "col": 3, "endLine": 21, "endCol": 4 },
+  "params": [],
+  "vars": [],
   "initial": null,
   "states": [],
   "entry": [],
@@ -228,6 +230,8 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
 | `name` | The last segment of `id`. |
 | `kind` | `atomic` (no children), `compound` (children, one active at a time), `parallel` (children are regions, all active at once), `final`, or `history` and `deepHistory` for a [history state](#history-states). |
 | `doc`, `span` | The span runs from the state's first keyword (`state`, `final` or `parallel`) to its closing brace; for a history state, from `history` or `deep` to the end of its name. |
+| `params` | The state's parameters, fields in order: `[]` for a state written without them. See [state parameters and variables](#state-parameters-and-variables). |
+| `vars` | The state's variables, in order, with the shape of a machine's: `[]` for a state that declares none. |
 | `initial` | Id of the child entered first. Set exactly when `kind` is `compound`, otherwise `null`. Never a history state. |
 | `states` | Children, in source order, history states among them. Empty for `atomic`, `final`, `history` and `deepHistory`. |
 | `entry`, `exit` | [Effects](#effects) run on entering and leaving the state: all `set` assignments, then all `do` actions, each in the order written. |
@@ -237,7 +241,17 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
 
 ### History states
 
-`history Name` and `deep history Name` are states of kind `history` and `deepHistory` in the `states` of the state they are written in, their parent, at the position they are written. Their parent is a `compound` or `parallel` state that is not the root, and has at least one child that is not a history state. They are pseudo-states: `initial` is `null`, `states`, `entry`, `exit` and `transitions` are `[]`, and `invoke`, `output` and `fail` are `null`. Only a transition's `targets` name one. Whether a state is `atomic`, `compound` or `parallel`, which child is its `initial`, and which children are a parallel state's regions are all decided by its other children: wherever the IR or [`execution.md`](execution.md) speaks of a state's children or regions, it means those that are not history states. What entering one does is in [`execution.md`](execution.md#history-states).
+`history Name` and `deep history Name` are states of kind `history` and `deepHistory` in the `states` of the state they are written in, their parent, at the position they are written. Their parent is a `compound` or `parallel` state that is not the root, and has at least one child that is not a history state. They are pseudo-states: `initial` is `null`, `params`, `vars`, `states`, `entry`, `exit` and `transitions` are `[]`, and `invoke`, `output` and `fail` are `null`. Only a transition's `targets` name one. Whether a state is `atomic`, `compound` or `parallel`, which child is its `initial`, and which children are a parallel state's regions are all decided by its other children: wherever the IR or [`execution.md`](execution.md) speaks of a state's children or regions, it means those that are not history states. What entering one does is in [`execution.md`](execution.md#history-states).
+
+### State parameters and variables
+
+A state's `params` are its parameters, fields in the shape of [fields and parameters](#fields-and-parameters), in the order written: `state Confirming(token: ResetToken, sensitive code: string)`. Its `vars` are its variables, in the shape of a [machine's variable](#machines), in the order written; a variable's span covers it from `var` (or `sensitive`) to the end of its type or initial value. Together they are the state's **locals**: a runtime gives them values each time the state is entered and discards them when it is left ([execution](execution.md#data-local-to-a-state)). A state of any kind but `history` and `deepHistory` may have them, a `final` state among them; the root never does. The compiler guarantees:
+
+- **Default entry never enters a state with parameters.** No compound state's `initial` and no region of a parallel state has `params`. A parallel state itself may.
+- **Arguments.** A transition's `args` has one entry for each state with parameters that it enters along the paths written in its targets (from just below its [domain](execution.md#a-microstep) down to each target, the target included; for a history state, down to its parent), and no other, in document order, with one value per parameter of the parameter's type. The states a history state restores are not among them: they get their locals from its record. So every state with parameters that a runtime enters has its arguments.
+- **Names.** A local's name is lower-case and unique among the state's parameters and variables together, never one of the implicit names `event`, `result`, `error`, `call` and `key`, never the name of one of the machine's parameters, variables, `children` collections, `as` names or delayed raises' names, and never the name of a local of a state around it or inside it. So along any chain of states a name means one thing. States that are not nested may have locals of the same name.
+- **Where they are read.** A `ref` or `set` whose `state` is `s` occurs only in `s` or in a state inside it: in their `entry`, `exit`, transitions (guards, effects and `args`), `invoke`, `after` delays, `output` and `fail`, and the initial values of their variables (of `s`'s, only those declared after the one being read). A `set` never names a parameter.
+- **Types.** No local has a `ref` type or a `call` type, directly or through an alias, also inside a list, an optional or a map.
 
 ## Invoke
 
@@ -292,6 +306,7 @@ A child or a task is addressed only from its invoking state and that state's des
   "guard": { "kind": "op", "op": "<", "args": [ /* attempts, 3 */ ], "type": "bool", "text": "attempts < 3" },
   "targets": ["Checkout.Backoff"],
   "internal": false,
+  "args": [],
   "effects": [],
   "span": { "file": 2, "line": 17, "col": 9, "endLine": 17, "endCol": 41 }
 }
@@ -304,6 +319,7 @@ A child or a task is addressed only from its invoking state and that state's des
 | `guard` | Boolean expression, or `null` for an unguarded branch (including `else`). |
 | `targets` | Ids of the target states, in the order written; a history state may be among them. `[]` for a transition with no target, which leaves and enters no state. A transition with no target and no effects is an `ignore`: it takes its event and does nothing. Only an `on` transition (`event`, `emitted`, `ended` or `any`) is ever one. With more than one, no target is another's ancestor or descendant, and any two have a parallel state as their nearest common ancestor (a history state counting as a child of its parent, or as the parallel state itself when its parent is one), so they are in different regions of it. |
 | `internal` | `true` for an internal transition (`-> .X`), whose domain is its own state, which it does not leave: every target is a proper descendant of that state, which is not the root. `false` for every other, a transition with no target among them ([a microstep](execution.md#a-microstep)). |
+| `args` | `[{"state", "values"}]`: the arguments of each state with parameters that the transition enters, in the order they are entered (document order). `state` is the state's id, `values` the expressions of its arguments, one per parameter, in parameter order. `[]` for a transition that enters no such state. `-> Editing(doc).Changing` gives `[{"state": "M.Editing", "values": [doc]}]` when it enters `Editing`. See [state parameters and variables](#state-parameters-and-variables). |
 | `effects` | [Effects](#effects) run when the transition is taken: all `set` assignments, then all `do` actions, each in the order written. |
 | `span` | For a single-branch trigger, from the trigger keyword to the end of the branch. For a branch in a block, from its `if` or `else` to the end of the branch. |
 
@@ -330,7 +346,7 @@ A child or a task is addressed only from its invoking state and that state's des
 
 | `kind` | Source | Other members |
 | --- | --- | --- |
-| `set` | `set var = value` | `var`: a machine variable (not a parameter). `value`: an expression. |
+| `set` | `set var = value` | `var`: a variable (not a parameter): the machine's, or with `state`, that state's. `state`: the id of the state whose variable it is, or `null` for a machine variable. `value`: an expression. |
 | `do` | `do action(args)` | `action`: a key of `actions`. `args`: expressions, positional, in parameter order. |
 | `send` | `send name.Name [{ fields }]`, `send name[key].Name [{ fields }]`, `send name.*.Name [{ fields }]` | `to`: the receiver's [address](#addresses). `key`: for an address of kind `children`, the key expression (`send name[key].Name`), or `null` for every running child of the collection (`send name.*.Name`); `null` for the other kinds. `event`: the event's name, a key of the receiver's `events`. `value`: the event, a `record` expression of type `Machine.Name` with every field of the event. |
 | `emit` | `emit Name [{ fields }]` | `event`: the event's name, a key of the machine's own `emits`. `value`: the event, a `record` expression of type `Name` with every field of the event. |
@@ -352,7 +368,7 @@ Every expression node is an object with `kind`, the kind's own members, then two
 | `kind` | Source | Members |
 | --- | --- | --- |
 | `lit` | `3`, `1.5`, `"hi"`, `true`, `30s` | `value`, see below. `type` is the literal's built-in. |
-| `ref` | `attempts`, `error.issues`, `event.sku` | `path`: a variable, parameter, or one of the implicit names `event`, `result`, `error`, `call`, `key`, followed by the names of the fields read from it. Never empty. |
+| `ref` | `attempts`, `error.issues`, `event.sku` | `path`: a variable, parameter, or one of the implicit names `event`, `result`, `error`, `call`, `key`, followed by the names of the fields read from it. Never empty. `state`: the id of the state whose parameter or variable `path[0]` is, or `null` for the machine's and for an implicit name. |
 | `field` | `confirmation(order, receipt).status` | `of`: the expression whose field is read, when it is not a variable. `name`: the field. |
 | `call` | `retryDelay(attempts)` | `fn`: a key of `functions`. `args`: expressions, positional, in parameter order. |
 | `op` | `a + b`, `not ok`, `-n` | `op`: one of `==` `!=` `<` `<=` `>` `>=` `+` `-` `*` `and` `or` (two `args`, left then right) or `not` `neg` (one `args`). |
@@ -376,7 +392,7 @@ Every expression node is an object with `kind`, the kind's own members, then two
   "kind": "op",
   "op": "+",
   "args": [
-    { "kind": "ref", "path": ["attempts"], "type": "int", "text": "attempts" },
+    { "kind": "ref", "path": ["attempts"], "state": null, "type": "int", "text": "attempts" },
     { "kind": "lit", "value": 1, "type": "int", "text": "1" }
   ],
   "type": "int",
@@ -410,18 +426,30 @@ A machine's `hash` is `"sha256:"` followed by the 64 lowercase hexadecimal digit
 - **F**, **A** and **K** are the functions called (`call`), the actions run (`do`) and the tasks invoked or spawned (the `src` of a `children` collection whose `kind` is `task`) by the machines in M. A collection of tasks adds its task to K and nothing to M, and an address of kind `task` adds nothing of its own: its task is in K through the invoke that gave it its name.
 - **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send`, an `emitted` or `ended` trigger or a call invoke; an address that names a task names no machine), or by an event type `Machine.Name`. Only its interface, its `events`, `emits` and `calls`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts, emits or answers changes, and not when how the peer works inside does. An `ended` trigger adds nothing to it: how a peer can end is the same for every machine, and the peer's output and errors are not part of what its holders get. (A child addressed with `as` is invoked, and a collection's machine is spawned, so they are in M whole.)
 - **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`) whose base, type arguments or map key or value names it, at any depth, by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"` and `Unanswered`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, `Machine.Name`, or `task.Name`), a type parameter inside its declaration, and the machine of a `ref`, are not part of T.
-- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `calls` and `children` maps, which are kept whatever they are, and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits` and a task's `emits`, whose keys are upper-case, so no user-chosen name is ever removed: a call named `text` keeps its entry (its value is stripped), and `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that uses no `sensitive` mark, keyed spawn or generic type has the hash it had in 0.5. A transition's `internal` is left out when it is `false`, and its `targets`, when it has at most one, is written as the `target` of 0.8 (the one id, or `null` for `[]`), so a machine with neither internal transitions nor several targets has the hash it had in 0.8. A task's `emits` is left out when it is `{}`. A collection whose `kind` is `machine` is written in its 0.9 form, `{"machine": src, "key": …}`, with no `kind` and no `src`, and so is a `spawn` effect of such a collection, with `machine` in place of `src`; a collection of tasks, its `spawn` effects and the addresses that name a task are written as they are. So a machine that uses no task that emits and no collection of tasks has the hash it had in 0.9. A machine's `internalEvents` is left out when it is `{}`, so a machine that uses no internal event has the hash it had in 0.10 (the `raise` and `cancel` effects appear only where a chart writes them). `strict` and `calls` are always part of the view, `calls` even when it is empty. An interface in R never has `internalEvents`: no other machine can send them.
+- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `calls` and `children` maps, which are kept whatever they are, and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits` and a task's `emits`, whose keys are upper-case, so no user-chosen name is ever removed: a call named `text` keeps its entry (its value is stripped), and `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that uses no `sensitive` mark, keyed spawn or generic type has the hash it had in 0.5. A transition's `internal` is left out when it is `false`, and its `targets`, when it has at most one, is written as the `target` of 0.8 (the one id, or `null` for `[]`), so a machine with neither internal transitions nor several targets has the hash it had in 0.8. A task's `emits` is left out when it is `{}`. A collection whose `kind` is `machine` is written in its 0.9 form, `{"machine": src, "key": …}`, with no `kind` and no `src`, and so is a `spawn` effect of such a collection, with `machine` in place of `src`; a collection of tasks, its `spawn` effects and the addresses that name a task are written as they are. So a machine that uses no task that emits and no collection of tasks has the hash it had in 0.9. A machine's `internalEvents` is left out when it is `{}`, so a machine that uses no internal event has the hash it had in 0.10 (the `raise` and `cancel` effects appear only where a chart writes them). A state's `params` and `vars` and a transition's `args` are left out when they are `[]`, and a `ref` expression's and a `set` effect's `state` when it is `null`, so a machine that has no state locals has the hash it had in 0.11. `strict` and `calls` are always part of the view, `calls` even when it is empty. An interface in R never has `internalEvents`: no other machine can send them.
 
 So comments, formatting, source positions, file names, packages, declaration order, `sensitive` marks and unused declarations do not change a machine's hash (a run compiled without a peer's marks therefore talks to it all the same, and shows what the peer marks: build the runs that talk to each other from the same charts), and any change to what the machine does, to a type it uses, to a machine it invokes, or to the interface of a machine it talks to does. A declaration copied from another package's compiled IR therefore keeps the hash it had there. In Rust, `roadbook_ir::machine_hash(&ir, name)` computes it, `roadbook_ir::semantic_view` returns the view, and `roadbook_ir::fill_hashes(&mut ir)` sets every machine's `hash`; the compiler calls the last after type checking. Snapshots and traces record the hash, so restoring a snapshot into a changed machine is refused and the viewer can tell when a trace came from another version of a chart.
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.11`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.12`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
+
+## Changes in 0.12
+
+Version 0.12 adds data local to a state: a state's own variables and its parameters, which a transition into it passes ([data local to a state](../docs/design/language.md#data-local-to-a-state)). Every state has the new members `params` and `vars`, every transition `args`, and every `ref` expression and `set` effect `state`, so a 0.11 document is not a 0.12 document. The [machine hash](#the-machine-hash) leaves out a `params`, `vars` or `args` that is `[]` and a `state` that is `null`, so a machine that uses none of the new features has the hash it had in 0.11, and its saved snapshots still restore.
+
+- [States](#states) have `params` (fields) and `vars` (variables, with the shape of a machine's), always `[]` for the root and history states. See [state parameters and variables](#state-parameters-and-variables).
+- [Transitions](#transitions) have `args`, the arguments of the states with parameters they enter.
+- A `ref` [expression](#expressions) and a `set` [effect](#effects) have `state`: the id of the state whose parameter or variable they name, or `null` for the machine's (and for an implicit name).
+- The trace writes a `set` record for each local a state gets on entry, named `<state id>.<name>`, as is a `set` of a state's variable and an `unassigned` defect for one ([trace](trace.md#records)).
+- Snapshots have the members `locals` and `historyLocals`, which a saved snapshot writes only when they are not empty, so `snapshotVersion` stays `4` ([the saved snapshot](execution.md#the-saved-snapshot)).
+
+What a runtime does with them (when arguments are evaluated, when locals are bound and discarded, and how history states restore them) is in [`execution.md`](execution.md#data-local-to-a-state). Both runtimes implement them.
 
 ## Changes in 0.11
 
