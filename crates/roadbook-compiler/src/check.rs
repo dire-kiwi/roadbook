@@ -342,6 +342,9 @@ impl<'p> Checker<'p> {
                             );
                         }
                     }
+                    if !self.is_compiled(self.names.decls[i].file) {
+                        self.index_raise_names(id, &m.body);
+                    }
                 }
                 _ => {}
             }
@@ -349,6 +352,70 @@ impl<'p> Checker<'p> {
         for (span, id) in std::mem::take(&mut self.names.imported) {
             let symbol = self.decl_symbols[id.0];
             self.index.refer(symbol, span);
+        }
+    }
+
+    /// Indexes the names of a machine's delayed raises (`raise … after d as name`): each is
+    /// defined at its first raise and used at the other raises of it and at each
+    /// `cancel name`. Its signature lists every raise of the name.
+    fn index_raise_names(&mut self, machine: SymbolId, body: &ast::Body) {
+        let effects = body.all_effects();
+        let mut raises: Vec<(&Ident, Vec<&ast::Raise>)> = Vec::new();
+        for e in &effects {
+            if let ast::Effect::Raise(r) = e
+                && let Some(n) = &r.name
+            {
+                match raises.iter_mut().find(|(first, _)| first.name == n.name) {
+                    Some((_, rs)) => rs.push(r),
+                    None => raises.push((n, vec![r])),
+                }
+            }
+        }
+        for (n, rs) in raises {
+            // A name the machine already has (a parameter, a variable, a collection) is an
+            // error, which lowering reports.
+            if self.member_symbol(machine, &n.name).is_some() {
+                continue;
+            }
+            let signature: Vec<String> = rs
+                .iter()
+                .map(|r| {
+                    let fields = if r.message.fields.is_empty() {
+                        ""
+                    } else {
+                        " { … }"
+                    };
+                    let delay = r.delay.as_ref().map_or_else(String::new, |d| {
+                        format!(" after {}", roadbook_syntax::expr_text(d))
+                    });
+                    format!(
+                        "raise {}{fields}{delay} as {}",
+                        r.message.event.name, n.name
+                    )
+                })
+                .collect();
+            let signature = signature.join("\n");
+            let id = self.member(
+                machine,
+                SymbolKind::RaiseName,
+                n,
+                rs[0].span,
+                &None,
+                signature,
+            );
+            for r in &rs[1..] {
+                if let Some(other) = &r.name {
+                    self.index.refer(id, other.span);
+                }
+            }
+        }
+        for e in &effects {
+            if let ast::Effect::Cancel(c) = e
+                && let Some(id) = self.member_symbol(machine, &c.name.name)
+                && self.index.symbol(id).kind == SymbolKind::RaiseName
+            {
+                self.index.refer(id, c.name.span);
+            }
         }
     }
 

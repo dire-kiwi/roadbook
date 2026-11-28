@@ -335,3 +335,32 @@ fn generic_names_resolve() {
     let t = at(&out, 0, "Page<^T>");
     assert_eq!(out.index.references_to(t).count(), 1);
 }
+
+#[test]
+fn delayed_raise_names_resolve_to_their_first_raise() {
+    let src = r#"machine M() {
+  internal event Tick
+  initial A
+  entry raise Tick after 1s as tick
+  state A {
+    on Tick -> A  cancel tick  raise Tick after 2s as tick
+  }
+}
+"#;
+    let out = compile_source("m.road", src, &Options::default());
+    assert!(!out.has_errors(), "{}", out.render());
+    let first = at(&out, 0, "1s as ^tick");
+    let s = out.index.symbol(first);
+    assert_eq!(s.kind, SymbolKind::RaiseName);
+    assert_eq!(name(&out, first), "M.tick");
+    assert_eq!(
+        s.signature,
+        "raise Tick after 1s as tick\nraise Tick after 2s as tick"
+    );
+    assert_eq!(at(&out, 0, "cancel ^tick"), first);
+    assert_eq!(at(&out, 0, "2s as ^tick"), first);
+    assert_eq!(out.index.references_to(first).count(), 2);
+    let tick = at(&out, 0, "internal event ^Tick");
+    assert_eq!(out.index.symbol(tick).kind, SymbolKind::Event);
+    assert_eq!(at(&out, 0, "entry raise ^Tick"), tick);
+}

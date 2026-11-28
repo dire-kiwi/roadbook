@@ -1635,3 +1635,138 @@ fn tasks_that_emit() {
     }
     c.shutdown();
 }
+
+const REMINDER: &str = r#"action log(text: string)
+
+machine Reminder(every: duration) {
+  event Confirm
+  /// Only the machine raises it.
+  internal event Remind { attempt: int }
+  internal event Ping
+  var attempt: int = 0
+  initial Waiting
+  entry raise Remind { attempt: 1 } after every as reminder
+  on Remind -> Waiting  set attempt = event.attempt  raise Ping
+  on Ping do log("ping")
+  state Waiting {
+    on Confirm -> Confirmed  cancel reminder
+    after 1h raise Remind { attempt: attempt } after 5m as reminder
+  }
+  final state Confirmed {}
+}
+"#;
+
+#[test]
+fn raised_events_and_delayed_raises() {
+    let p = Project::new("reminder", &[("c.road", REMINDER)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, REMINDER);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // A raised event goes to its declaration; a `cancel` and a later raise of a name go to
+    // the first raise of it.
+    let definitions = [
+        ("raise ^Ping", "internal event ^Ping"),
+        ("raise ^Remind { attempt: 1 }", "internal event ^Remind"),
+        ("raise Remind { ^attempt: 1 }", "Remind { ^attempt"),
+        ("cancel ^reminder", "every as ^reminder"),
+        ("5m as ^reminder", "every as ^reminder"),
+    ];
+    for (from, to) in definitions {
+        let loc = c
+            .request("textDocument/definition", at(&uri, REMINDER, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(REMINDER, to),
+            "{from} -> {to}"
+        );
+    }
+    let mut params = at(&uri, REMINDER, "cancel ^reminder");
+    params["context"] = json!({ "includeDeclaration": true });
+    let refs = c.request("textDocument/references", params).unwrap();
+    assert_eq!(refs.as_array().unwrap().len(), 3, "{refs}");
+    let mut params = at(&uri, REMINDER, "internal event ^Remind");
+    params["context"] = json!({ "includeDeclaration": false });
+    let refs = c.request("textDocument/references", params).unwrap();
+    assert_eq!(refs.as_array().unwrap().len(), 3, "{refs}");
+
+    // Hover: an internal event, and a delayed raise's name with every raise of it.
+    let hover = |c: &mut Client, needle: &str| {
+        let h = c
+            .request("textDocument/hover", at(&uri, REMINDER, needle))
+            .unwrap();
+        h["contents"]["value"].as_str().unwrap().to_string()
+    };
+    let value = hover(&mut c, "raise ^Remind { attempt: 1 }");
+    assert!(
+        value.starts_with("```roadbook\ninternal event Remind { attempt: int }\n```"),
+        "{value}"
+    );
+    assert!(value.contains("event of `Reminder`"), "{value}");
+    assert!(value.contains("Only the machine raises it."), "{value}");
+    let raises = "```roadbook\nraise Remind { … } after every as reminder\nraise Remind { … } after 5m as reminder\n```";
+    for needle in ["cancel ^reminder", "every as ^reminder"] {
+        let value = hover(&mut c, needle);
+        assert!(value.starts_with(raises), "{needle}: {value}");
+        assert!(
+            value.contains("delayed raise of `Reminder`"),
+            "{needle}: {value}"
+        );
+    }
+
+    // The outline lists internal events with the machine's events.
+    let symbols = c
+        .request(
+            "textDocument/documentSymbol",
+            json!({ "textDocument": { "uri": uri } }),
+        )
+        .unwrap();
+    let machine = symbols
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["name"] == "Reminder")
+        .unwrap();
+    let events: Vec<(&str, &str)> = machine["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|s| s["kind"] == 24)
+        .map(|s| (s["name"].as_str().unwrap(), s["detail"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        events,
+        [
+            ("Confirm", "event"),
+            ("Remind", "internal event"),
+            ("Ping", "internal event")
+        ]
+    );
+
+    // Rename a delayed raise's name: every raise of it and its `cancel`.
+    let why = rename_error(&mut c, &uri, REMINDER, "cancel ^reminder", "attempt");
+    assert!(
+        why.contains("already the name of a variable `Reminder.attempt`"),
+        "{why}"
+    );
+    let why = rename_error(&mut c, &uri, REMINDER, "cancel ^reminder", "key");
+    assert!(why.contains("reserved"), "{why}");
+    let out = rename(&mut c, &uri, REMINDER, "5m as ^reminder", "nudge");
+    for e in ["every as nudge", "cancel nudge", "5m as nudge"] {
+        assert!(out.contains(e), "no `{e}` in\n{out}");
+    }
+    assert!(!out.contains("reminder"), "{out}");
+    // Rename an internal event: its raises and its `on`.
+    let out = rename(&mut c, &uri, REMINDER, "on ^Remind", "Nudge");
+    for e in [
+        "internal event Nudge {",
+        "entry raise Nudge {",
+        "on Nudge ->",
+        "raise Nudge { attempt: attempt }",
+    ] {
+        assert!(out.contains(e), "no `{e}` in\n{out}");
+    }
+    c.shutdown();
+}
