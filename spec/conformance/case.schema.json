@@ -11,7 +11,7 @@
       "description": "Features the case needs beyond the first version's. A runner skips a case that requires a feature it does not implement.",
       "type": "array",
       "uniqueItems": true,
-      "items": { "enum": ["messaging", "parallel", "snapshots", "calls", "history", "spawn", "ended", "task-emits"] }
+      "items": { "enum": ["messaging", "parallel", "snapshots", "calls", "history", "spawn", "ended", "task-emits", "invokes"] }
     },
     "chart": {
       "description": "The entry .road file, relative to spec/conformance. Its IR is the file next to it with .road replaced by .ir.json.",
@@ -96,13 +96,14 @@
       "properties": { "event": { "$ref": "#/$defs/tagged" }, "run": { "$ref": "#/$defs/topRunId" } }
     },
     "task": {
-      "description": "End the one running scripted invoke of this task (or stubbed machine): with done, fail or defect; or, with emit, have it emit one of its task's emits through its emitter and keep running. run picks the run when several have one, and key the spawned one by its key.",
+      "description": "End the one running scripted invoke of this task (or stubbed machine): with done, fail or defect; or, with emit, have it emit one of its task's emits through its emitter and keep running. run picks the run when several have one, key the spawned one by its key, and as the invoke by its as name when one state runs the task twice.",
       "type": "object",
       "additionalProperties": false,
       "required": ["task"],
       "properties": {
         "task": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" },
         "run": { "$ref": "#/$defs/runId" },
+        "as": { "description": "The as name of the invoke meant, when a run has several running invokes of that name.", "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "key": {
           "description": "For a spawned task or a stubbed spawned child, the key of the one meant, when its run has several of that name.",
           "oneOf": [{ "type": "string" }, { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 }]

@@ -1,4 +1,4 @@
-# The Roadbook IR, version 0.10
+# The Roadbook IR, version 0.11
 
 The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with a call to a peer, a message to it and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
@@ -213,7 +213,7 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
   "states": [],
   "entry": [],
   "exit": [],
-  "invoke": { /* invoke */ },
+  "invokes": [ /* invokes */ ],
   "transitions": [ /* transitions */ ],
   "output": null,
   "fail": null
@@ -229,13 +229,13 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
 | `initial` | Id of the child entered first. Set exactly when `kind` is `compound`, otherwise `null`. Never a history state. |
 | `states` | Children, in source order, history states among them. Empty for `atomic`, `final`, `history` and `deepHistory`. |
 | `entry`, `exit` | [Effects](#effects) run on entering and leaving the state: all `set` assignments, then all `do` actions, each in the order written. |
-| `invoke` | The task or machine run while the state is active, or `null`. At most one per state. |
-| `transitions` | The state's transitions, including its invoke's outcomes, in document order. |
+| `invokes` | The [invokes](#invoke), the tasks and machines run while the state is active, in the order written. `[]` for a state with none. When there is more than one, each has an `as`, and no two have the same. |
+| `transitions` | The state's transitions, including its invokes' outcomes, in document order. |
 | `output`, `fail` | In a final state at the top level of a machine: the machine's result or failure expression. At most one of them is set. `null` everywhere else. |
 
 ### History states
 
-`history Name` and `deep history Name` are states of kind `history` and `deepHistory` in the `states` of the state they are written in, their parent, at the position they are written. Their parent is a `compound` or `parallel` state that is not the root, and has at least one child that is not a history state. They are pseudo-states: `initial` is `null`, `states`, `entry`, `exit` and `transitions` are `[]`, and `invoke`, `output` and `fail` are `null`. Only a transition's `targets` name one. Whether a state is `atomic`, `compound` or `parallel`, which child is its `initial`, and which children are a parallel state's regions are all decided by its other children: wherever the IR or [`execution.md`](execution.md) speaks of a state's children or regions, it means those that are not history states. What entering one does is in [`execution.md`](execution.md#history-states).
+`history Name` and `deep history Name` are states of kind `history` and `deepHistory` in the `states` of the state they are written in, their parent, at the position they are written. Their parent is a `compound` or `parallel` state that is not the root, and has at least one child that is not a history state. They are pseudo-states: `initial` is `null`, `states`, `entry`, `exit`, `invokes` and `transitions` are `[]`, and `output` and `fail` are `null`. Only a transition's `targets` name one. Whether a state is `atomic`, `compound` or `parallel`, which child is its `initial`, and which children are a parallel state's regions are all decided by its other children: wherever the IR or [`execution.md`](execution.md) speaks of a state's children or regions, it means those that are not history states. What entering one does is in [`execution.md`](execution.md#history-states).
 
 ## Invoke
 
@@ -250,13 +250,13 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
 | `kind` | `task` (`src` is a key of `tasks`), `machine` (`src` is a key of `machines`) or `call` (`src` is a key of the `calls` of `to`'s machine). |
 | `src` | The task's or machine's name, or the call's. |
 | `to` | For a call, the [address](#addresses) of the callee, always of kind `ref`: `invoke inventory.reserve(…)` calls the run that `inventory` holds. `null` for a task or a machine. |
-| `as` | The name given with `invoke Machine(…) as name` or `invoke task(…) as name`, or `null`. Set for a task only when the task declares `emits`, and always `null` for a call. The state and its descendants send to the child and receive what the child or the task emits through this name ([addresses](#addresses)). |
+| `as` | The name given with `invoke Machine(…) as name` or `invoke task(…) as name`, or `null`. In a state with one invoke, set for a task only when the task declares `emits`, and always `null` for a call; in a state with several invokes, always set. The state and its descendants send to the child and receive what the child or the task emits through this name ([addresses](#addresses)), and the outcomes' triggers name their invoke by it. |
 | `args` | Argument expressions, positional, in parameter order. |
 | `span` | From `invoke` to the closing brace of its outcomes, or, for an invoke written with no outcomes, to the end of its arguments, its `as` name or its `retry` clause, whichever comes last. |
 
-The outcomes written inside `invoke { … }` are transitions of the state, with `invoke.done` and `invoke.fail` triggers. An invoke written with no block has none. A call's `invoke.fail` triggers may name `Unanswered` besides the call's errors, and its `"*"` covers `Unanswered` too.
+The outcomes written inside `invoke { … }` are transitions of the state, with `invoke.done` and `invoke.fail` triggers whose `as` is the invoke's. An invoke written with no block has none. A call's `invoke.fail` triggers may name `Unanswered` besides the call's errors, and its `"*"` covers `Unanswered` too.
 
-**`retry` is not in the IR.** `invoke … retry N [on …] [after …]` is shorthand that the compiler writes out as a compound state with the children `Attempt` and `Backoff`, a variable counting failed attempts, and guarded `invoke.fail` branches, exactly as [the language page](../docs/design/language.md#what-retry-compiles-to) gives them. A reader sees ordinary states, variables and transitions, and cannot tell a retry from the same states written by hand except by their spans, which point at the `retry` clause. The two forms have the same machine hash.
+**`retry` is not in the IR.** `invoke … retry N [on …] [after …]` is shorthand, allowed only on the one invoke of a state, that the compiler writes out as a compound state with the children `Attempt` and `Backoff`, a variable counting failed attempts, and guarded `invoke.fail` branches, exactly as [the language page](../docs/design/language.md#what-retry-compiles-to) gives them. A reader sees ordinary states, variables and transitions, and cannot tell a retry from the same states written by hand except by their spans, which point at the `retry` clause. The two forms have the same machine hash.
 
 ## Addresses
 
@@ -275,17 +275,17 @@ An address names another running machine, or a running task that emits: the rece
 | `name` | The `as` name, the parameter or variable, or the collection. |
 | `machine` | For `child`, `ref`, and `children` of a collection whose `kind` is `machine`: the machine at the other end, a key of `machines`: the invoked machine, the `ref`'s, or the collection's. Its `events` are what can be sent to it, its `emits` what can be received from it. |
 | `task` | For `task`, and `children` of a collection whose `kind` is `task`: the task at the other end, a key of `tasks`, the invoked task or the collection's. Its `emits` are what can be received from it; nothing can be sent to it. |
-| `state` | For `child` and `task`, the id of the state whose invoke has the `as` name: the innermost state with that name that contains, or is, the state the item is written in. `null` for `ref` and `children`. |
+| `state` | For `child` and `task`, the id of the state one of whose invokes has the `as` name, which picks that invoke: the innermost state with that name that contains, or is, the state the item is written in. `null` for `ref` and `children`. |
 
 An address names its other end by `machine` or by `task`, never both, and has no member for the other: `{"kind", "name", "machine", "state"}` or `{"kind", "name", "task", "state"}`. An address that names a task (kind `task`, or `children` of a collection of tasks) appears only in `emitted` triggers, since a task takes no events, has no calls, and ends with its invoke's outcome.
 
-A child or a task is addressed only from its invoking state and that state's descendants, which is while it runs: the compiler rejects a `send` to it from the invoking state's own `entry`, `exit` or invoke outcomes, and from a transition that leaves the invoking state (that would reach it after it was stopped). A send the compiler cannot rule out, made while the state has no running invoke, is undelivered at run time ([execution](execution.md#exiting-and-entering-a-state)). A `ref` variable addresses whichever machine it holds when the item runs. The address of an `ended` trigger is always of kind `ref`, and its `machine` is the machine of the run the parameter or variable holds, or of the runs a list of them holds.
+A child or a task is addressed only from its invoking state and that state's descendants, which is while it runs: the compiler rejects a `send` to it from the invoking state's own `entry`, `exit` or the invoke's own outcomes, and from a transition that leaves the invoking state (that would reach it after it was stopped). A send the compiler cannot rule out, made while the invoke it names is not running, is undelivered at run time ([execution](execution.md#exiting-and-entering-a-state)). A `ref` variable addresses whichever machine it holds when the item runs. The address of an `ended` trigger is always of kind `ref`, and its `machine` is the machine of the run the parameter or variable holds, or of the runs a list of them holds.
 
 ## Transitions
 
 ```jsonc
 {
-  "trigger": { "kind": "invoke.fail", "error": "GatewayUnavailable" },
+  "trigger": { "kind": "invoke.fail", "as": null, "error": "GatewayUnavailable" },
   "group": 2,
   "guard": { "kind": "op", "op": "<", "args": [ /* attempts, 3 */ ], "type": "bool", "text": "attempts < 3" },
   "targets": ["Checkout.Backoff"],
@@ -317,8 +317,8 @@ A child or a task is addressed only from its invoking state and that state's des
 | `after` | `after delay` | `delay`: a `duration` expression, evaluated when the state's work starts, after the step that entered it has settled ([execution](execution.md#starting-work)). |
 | `always` | `always` | none. |
 | `done` | `done` in a state | none. The compound state reached a final child, or every region of the parallel state did. |
-| `invoke.done` | `done` inside `invoke { }` | none. The invoked task or machine succeeded. `result` is in scope. |
-| `invoke.fail` | `fail E` inside `invoke { }` | `error`: the error's name, or `"*"` for every declared error not listed (for a call, `Unanswered` among them). `error` is in scope. |
+| `invoke.done` | `done` inside `invoke { }` | `as`: the invoke's `as`, which names one of the state's `invokes`, or `null` for a state's one invoke when it has none. That invoke succeeded. `result` is in scope. |
+| `invoke.fail` | `fail E` inside `invoke { }` | `as`, as for `invoke.done`. `error`: the error's name, or `"*"` for every declared error of that invoke that its outcomes do not list (for a call, `Unanswered` among them). `error` is in scope. |
 | `call` | `on name` | `call`: a key of the machine's own `calls`. Taken for a call of it from another run. `event` is in scope, a record of the call's parameters read through its fields (`event.items`), and so is `call`, of type `call name`. |
 | `spawn.done` | `on name.done` | `children`: the collection. A spawned child of it, a machine or a task, ended `done`. `result` and `key` are in scope. |
 | `spawn.fail` | `on name.fail E` | `children`: the collection. `error`: the error's name, a declared error of the collection's machine or task, or `"*"` for every declared error the state has no `on name.fail` for. A spawned child of it ended `failed`. `error` and `key` are in scope. |
@@ -406,18 +406,28 @@ A machine's `hash` is `"sha256:"` followed by the 64 lowercase hexadecimal digit
 - **F**, **A** and **K** are the functions called (`call`), the actions run (`do`) and the tasks invoked or spawned (the `src` of a `children` collection whose `kind` is `task`) by the machines in M. A collection of tasks adds its task to K and nothing to M, and an address of kind `task` adds nothing of its own: its task is in K through the invoke that gave it its name.
 - **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send`, an `emitted` or `ended` trigger or a call invoke; an address that names a task names no machine), or by an event type `Machine.Name`. Only its interface, its `events`, `emits` and `calls`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts, emits or answers changes, and not when how the peer works inside does. An `ended` trigger adds nothing to it: how a peer can end is the same for every machine, and the peer's output and errors are not part of what its holders get. (A child addressed with `as` is invoked, and a collection's machine is spawned, so they are in M whole.)
 - **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`) whose base, type arguments or map key or value names it, at any depth, by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"` and `Unanswered`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, `Machine.Name`, or `task.Name`), a type parameter inside its declaration, and the machine of a `ref`, are not part of T.
-- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `calls` and `children` maps, which are kept whatever they are, and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits` and a task's `emits`, whose keys are upper-case, so no user-chosen name is ever removed: a call named `text` keeps its entry (its value is stripped), and `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that uses no `sensitive` mark, keyed spawn or generic type has the hash it had in 0.5. A transition's `internal` is left out when it is `false`, and its `targets`, when it has at most one, is written as the `target` of 0.8 (the one id, or `null` for `[]`), so a machine with neither internal transitions nor several targets has the hash it had in 0.8. A task's `emits` is left out when it is `{}`. A collection whose `kind` is `machine` is written in its 0.9 form, `{"machine": src, "key": …}`, with no `kind` and no `src`, and so is a `spawn` effect of such a collection, with `machine` in place of `src`; a collection of tasks, its `spawn` effects and the addresses that name a task are written as they are. So a machine that uses no task that emits and no collection of tasks has the hash it had in 0.9. `strict` and `calls` are always part of the view, `calls` even when it is empty.
+- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `calls` and `children` maps, which are kept whatever they are, and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits` and a task's `emits`, whose keys are upper-case, so no user-chosen name is ever removed: a call named `text` keeps its entry (its value is stripped), and `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that uses no `sensitive` mark, keyed spawn or generic type has the hash it had in 0.5. A transition's `internal` is left out when it is `false`, and its `targets`, when it has at most one, is written as the `target` of 0.8 (the one id, or `null` for `[]`), so a machine with neither internal transitions nor several targets has the hash it had in 0.8. A task's `emits` is left out when it is `{}`. A collection whose `kind` is `machine` is written in its 0.9 form, `{"machine": src, "key": …}`, with no `kind` and no `src`, and so is a `spawn` effect of such a collection, with `machine` in place of `src`; a collection of tasks, its `spawn` effects and the addresses that name a task are written as they are. So a machine that uses no task that emits and no collection of tasks has the hash it had in 0.9. A state whose `invokes` has at most one entry is written in its 0.10 form: `invoke`, the one invoke or `null`, in place of `invokes`, and its transitions' `invoke.done` and `invoke.fail` triggers without `as`. So a machine with no state of several invokes has the hash it had in 0.10. `strict` and `calls` are always part of the view, `calls` even when it is empty.
 
 So comments, formatting, source positions, file names, packages, declaration order, `sensitive` marks and unused declarations do not change a machine's hash (a run compiled without a peer's marks therefore talks to it all the same, and shows what the peer marks: build the runs that talk to each other from the same charts), and any change to what the machine does, to a type it uses, to a machine it invokes, or to the interface of a machine it talks to does. A declaration copied from another package's compiled IR therefore keeps the hash it had there. In Rust, `roadbook_ir::machine_hash(&ir, name)` computes it, `roadbook_ir::semantic_view` returns the view, and `roadbook_ir::fill_hashes(&mut ir)` sets every machine's `hash`; the compiler calls the last after type checking. Snapshots and traces record the hash, so restoring a snapshot into a changed machine is refused and the viewer can tell when a trace came from another version of a chart.
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.10`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.11`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
+
+## Changes in 0.11
+
+Version 0.11 lets a state have several invokes, each named with `as` ([several invokes](../docs/design/language.md#several-invokes)). Every state has `invokes` in place of `invoke`, and every `invoke.done` and `invoke.fail` trigger has `as`, so a 0.10 document is not a 0.11 document. The [machine hash](#the-machine-hash) writes a state with at most one invoke in its 0.10 form, so a machine that has no state with several invokes has the hash it had in 0.10, and its saved snapshots still restore.
+
+- [States](#states) have `invokes`, a list, in place of `invoke`. When it has several entries, each has an `as`, unique in the state, and it may then name a call or a task that declares no `emits`.
+- The [triggers](#triggers) `invoke.done` and `invoke.fail` have `as`, which names the invoke they belong to.
+- A snapshot's `invokes` entries, and the trace's `invoke.started` record, have `as` when their state has several invokes ([snapshot](execution.md#snapshot), [records](trace.md#records)).
+
+What a runtime does with several invokes (starting them in order, cancelling them all on exit, offering each outcome only to its own invoke's transitions) is in [`execution.md`](execution.md#starting-work). Both runtimes implement it.
 
 ## Changes in 0.10
 

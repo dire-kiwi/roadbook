@@ -140,12 +140,13 @@
       "required": ["message", "to", "value"]
     },
     {
-      "description": "A task or child machine was started, or a call was made (src is the address and the call, inventory.reserve).",
+      "description": "A task or child machine was started, or a call was made (src is the address and the call, inventory.reserve). as is the invoke's as name, present exactly when its state has several invokes.",
       "properties": {
         "kind": { "const": "invoke.started" },
         "invoke": { "$ref": "#/$defs/id" },
         "state": { "$ref": "#/$defs/stateId" },
         "src": { "$ref": "#/$defs/src" },
+        "as": { "$ref": "#/$defs/lowerName" },
         "args": { "$ref": "#/$defs/args" }
       },
       "required": ["invoke", "state", "src", "args"]
