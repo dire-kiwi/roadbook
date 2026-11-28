@@ -1076,6 +1076,18 @@ fn export_mermaid_snapshots_tasks_that_emit() {
     }
 }
 
+/// Raises and cancels in edge labels and state descriptions: `raise Ping { n: 1 }`,
+/// `raise Remind { … } after 1s as reminder`, `cancel reminder`.
+#[test]
+fn export_mermaid_snapshots_raises() {
+    let out = roadbook(
+        &repo(),
+        &["export", "mermaid", "spec/conformance/charts/raise.road"],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    insta::assert_snapshot!("raise_mermaid", text(&out.stdout));
+}
+
 /// A peer's end: `x.ended` on an edge with its guard (from the machine, for one in its body),
 /// and `on x.ended` in a state's description when it has no target, `ignore` included.
 #[test]

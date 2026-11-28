@@ -36,6 +36,12 @@
 //!   `reply x fail e` the same with the event `error.E`, `E` the error's type; `do f(…)` the
 //!   extension element `<rb:do>`. Event fields, a record reply's fields and arguments are
 //!   `<param>`s; any other value is the `<content>`.
+//! - **Raised events**: `raise E` is `<raise>`, or a `<send target="#_internal">` when the event
+//!   has fields; a delayed `raise E after d as n` is a `<send>` with no target, which SCXML
+//!   queues on the session's own external queue once `delay` has passed, with `id="n"` and,
+//!   before it, a `<cancel sendid="n">`, since a raise replaces the pending one of its name;
+//!   `cancel n` is `<cancel sendid="n">`. SCXML has no internal events: an `internal event` is
+//!   an event like the others there.
 //! - **Spawned children**, which SCXML has no word for: a `children` collection is a `<data>`
 //!   with `rb:children` (its machine) and `rb:key`; `spawn c[k] = M(…)` the element `<rb:spawn>`
 //!   and `stop c[k]` `<rb:stop>`, each with `children` and `key`; `send c[k].E` and
@@ -752,8 +758,13 @@ impl Writer<'_> {
                     delay: Some(delay),
                     name,
                 } => {
-                    let mut attrs =
-                        vec![("event", event.clone()), ("delayexpr", delay.text.clone())];
+                    let mut attrs = vec![("event", event.clone())];
+                    match delay.kind {
+                        ExprKind::Lit(Literal::Duration(ms)) => {
+                            attrs.push(("delay", format!("{ms}ms")))
+                        }
+                        _ => attrs.push(("delayexpr", delay.text.clone())),
+                    }
                     if let Some(n) = name {
                         self.open(depth, "cancel", &[("sendid", n.clone())], true);
                         attrs.push(("id", n.clone()));

@@ -116,6 +116,23 @@ fn export_scxml_snapshots_tasks_that_emit() {
     }
 }
 
+/// An immediate raise is `<raise>`, or a `<send target="#_internal">` with the event's fields; a
+/// delayed one is a `<send>` with no target and a `delayexpr`, preceded, when it is named, by a
+/// `<cancel sendid>` and carrying that `id`; `cancel` is `<cancel sendid>`.
+#[test]
+fn export_scxml_snapshots_raises() {
+    for (machine, snapshot) in [
+        ("Order", "raise_order_scxml"),
+        ("Reminder", "raise_reminder_scxml"),
+        ("Ending", "raise_ending_scxml"),
+    ] {
+        let chart = "spec/conformance/charts/raise.road";
+        let out = roadbook(&repo(), &["export", "scxml", chart, "--machine", machine]);
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        insta::assert_snapshot!(snapshot, text(&out.stdout));
+    }
+}
+
 /// An internal transition (`-> .X`) is `type="internal"`, with a comment where the source is a
 /// parallel state, and several targets are one `target` attribute.
 #[test]
