@@ -357,6 +357,80 @@ fn hash_leaves_out_empty_internal_events() {
     assert_ne!(machine_hash(&changed, "Checkout").unwrap(), with_ping);
 }
 
+/// IR 0.12's state `params` and `vars`, a transition's `args`, and the `state` of a `ref`
+/// expression and a `set` effect are left out of the view when they are empty or `null`, so a
+/// machine with no state parameters or variables keeps its 0.11 hash (the stored hashes of
+/// both fixtures were written by the 0.11 compiler, and `bless_or_check_hashes` checks them).
+/// A state parameter, a state variable, arguments or a scoped name change it.
+#[test]
+fn hash_leaves_out_empty_locals() {
+    let ir = fixture();
+    let checkout = machine_hash(&ir, "Checkout").unwrap();
+    let view = roadbook_ir::semantic_view(&ir, "Checkout").unwrap();
+    let charging = &view["machines"]["Checkout"]["root"]["states"][0];
+    assert!(charging.get("params").is_none() && charging.get("vars").is_none());
+    assert!(charging["transitions"][0].get("args").is_none());
+    assert!(view["machines"]["Checkout"].get("params").is_some());
+
+    let int: roadbook_ir::TypeRef = "int".parse().unwrap();
+    let span = ir.machines["Checkout"].span;
+    let field = roadbook_ir::Field {
+        name: "tries".into(),
+        ty: int.clone(),
+        sensitive: false,
+        doc: String::new(),
+    };
+    let mut param = ir.clone();
+    param.machines["Checkout"].root.states[0]
+        .params
+        .push(field.clone());
+    assert_ne!(machine_hash(&param, "Checkout").unwrap(), checkout);
+
+    let mut var = ir.clone();
+    var.machines["Checkout"].root.states[0]
+        .vars
+        .push(roadbook_ir::Var {
+            name: "tries".into(),
+            ty: int.clone(),
+            sensitive: false,
+            init: None,
+            doc: String::new(),
+            span,
+        });
+    assert_ne!(machine_hash(&var, "Checkout").unwrap(), checkout);
+
+    let one = Expr {
+        ty: int.clone(),
+        kind: ExprKind::Lit(Literal::Int(1)),
+        text: "1".into(),
+    };
+    let mut args = ir.clone();
+    args.machines["Checkout"].root.states[0].transitions[0]
+        .args
+        .push(roadbook_ir::StateArgs {
+            state: "Checkout.Charging".into(),
+            values: vec![one.clone()],
+        });
+    assert_ne!(machine_hash(&args, "Checkout").unwrap(), checkout);
+
+    let mut scoped = ir.clone();
+    let mut found = false;
+    states_mut(&mut scoped.machines["Checkout"].root, &mut |s| {
+        for t in &mut s.transitions {
+            for e in &mut t.effects {
+                if let Effect::Set { state, .. } = e
+                    && !found
+                {
+                    *state = Some(s.id.clone());
+                    found = true;
+                }
+            }
+        }
+    });
+    assert!(found, "the fixture has a `set` in a transition");
+    assert_ne!(machine_hash(&scoped, "Checkout").unwrap(), checkout);
+}
+
 /// The hash of a machine that uses none of IR 0.10's additions (task emits, task addresses,
 /// collections of tasks) is its 0.9 hash. The stored hashes of both fixtures were written by
 /// the 0.9 compiler, and `bless_or_check_hashes` checks them; this checks the view's shape.
@@ -456,6 +530,7 @@ fn hash_sees_task_emits_task_addresses_and_task_collections() {
         ty: "chargeCard.Progress".parse().unwrap(),
         kind: ExprKind::Ref {
             path: vec!["event".into()],
+            state: None,
         },
         text: "event".into(),
     };

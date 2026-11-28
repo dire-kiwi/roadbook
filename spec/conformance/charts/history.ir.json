@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/history.road",
@@ -165,6 +165,8 @@
           "endLine": 63,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Editor.Work",
         "states": [
           {
@@ -179,6 +181,8 @@
               "endLine": 57,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Editor.Work.Draft",
             "states": [
               {
@@ -193,6 +197,8 @@
                   "endLine": 27,
                   "endCol": 20
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -214,6 +220,8 @@
                   "endLine": 28,
                   "endCol": 22
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -235,6 +243,8 @@
                   "endLine": 35,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -278,6 +288,7 @@
                       "Editor.Work.Review"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -298,6 +309,7 @@
                       "Editor.Work.Shallow"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -323,6 +335,8 @@
                   "endLine": 53,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Editor.Work.Review.Read",
                 "states": [
                   {
@@ -337,6 +351,8 @@
                       "endLine": 43,
                       "endCol": 42
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -354,6 +370,7 @@
                           "Editor.Work.Review.Comment"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -379,6 +396,8 @@
                       "endLine": 50,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -408,6 +427,7 @@
                           "Editor.Work.Review.Read"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -433,6 +453,7 @@
                           "Editor.Work.Review.Read"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -488,6 +509,7 @@
                       "Editor.Work.Draft"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -543,6 +565,7 @@
                   "Editor.Help"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -563,6 +586,7 @@
                   "Editor.Work.Deep"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -588,6 +612,8 @@
               "endLine": 62,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -605,6 +631,7 @@
                   "Editor.Work.Shallow"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -625,6 +652,7 @@
                   "Editor.Work.Deep"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -744,6 +772,8 @@
           "endLine": 93,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Steps.Flow",
         "states": [
           {
@@ -758,6 +788,8 @@
               "endLine": 85,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Steps.Flow.S1",
             "states": [
               {
@@ -772,6 +804,8 @@
                   "endLine": 78,
                   "endCol": 19
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -793,6 +827,8 @@
                   "endLine": 80,
                   "endCol": 39
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -810,6 +846,7 @@
                       "Steps.Flow.S2"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -835,6 +872,8 @@
                   "endLine": 81,
                   "endCol": 22
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -859,6 +898,7 @@
                   "path": [
                     "ready"
                   ],
+                  "state": null,
                   "type": "bool",
                   "text": "ready"
                 },
@@ -866,6 +906,7 @@
                   "Steps.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -886,6 +927,7 @@
                   "Steps.Paused"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -911,6 +953,8 @@
               "endLine": 90,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -926,10 +970,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "ready",
+                    "state": null,
                     "value": {
                       "kind": "lit",
                       "value": true,
@@ -957,6 +1003,7 @@
                   "Steps.Flow.H"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -982,6 +1029,8 @@
               "endLine": 92,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1064,6 +1113,8 @@
           "endLine": 112,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Bounce.P",
         "states": [
           {
@@ -1078,6 +1129,8 @@
               "endLine": 109,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Bounce.P.A",
             "states": [
               {
@@ -1092,6 +1145,8 @@
                   "endLine": 105,
                   "endCol": 14
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1113,6 +1168,8 @@
                   "endLine": 107,
                   "endCol": 27
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1130,6 +1187,7 @@
                       "Bounce.P.B"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1155,6 +1213,8 @@
                   "endLine": 108,
                   "endCol": 49
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1175,6 +1235,7 @@
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         },
@@ -1192,10 +1253,12 @@
                       "Bounce.Q"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "n",
+                        "state": null,
                         "value": {
                           "kind": "lit",
                           "value": 1,
@@ -1236,6 +1299,8 @@
               "endLine": 111,
               "endCol": 44
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1252,6 +1317,7 @@
                   "Bounce.P.H"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",

@@ -62,7 +62,7 @@ export interface ImportJobDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/import-job/import.road",
@@ -536,6 +536,8 @@ const ir: unknown = {
           "endLine": 73,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "ImportJob.Validating",
         "states": [
           {
@@ -550,6 +552,8 @@ const ir: unknown = {
               "endLine": 34,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -565,6 +569,7 @@ const ir: unknown = {
                   "path": [
                     "upload"
                   ],
+                  "state": null,
                   "type": "Upload",
                   "text": "upload"
                 }
@@ -588,15 +593,18 @@ const ir: unknown = {
                   "ImportJob.Importing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "plan",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "ImportPlan",
                       "text": "result"
                     }
@@ -621,15 +629,18 @@ const ir: unknown = {
                   "ImportJob.Rejected"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "invalid",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "InvalidFile",
                       "text": "error"
                     }
@@ -659,6 +670,8 @@ const ir: unknown = {
               "endLine": 67,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "ImportJob.Importing.RunningBatch",
             "states": [
               {
@@ -673,6 +686,8 @@ const ir: unknown = {
                   "endLine": 56,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -688,6 +703,7 @@ const ir: unknown = {
                       "path": [
                         "upload"
                       ],
+                      "state": null,
                       "type": "Upload",
                       "text": "upload"
                     },
@@ -696,6 +712,7 @@ const ir: unknown = {
                       "path": [
                         "plan"
                       ],
+                      "state": null,
                       "type": "ImportPlan",
                       "text": "plan"
                     },
@@ -704,6 +721,7 @@ const ir: unknown = {
                       "path": [
                         "batch"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "batch"
                     }
@@ -731,6 +749,7 @@ const ir: unknown = {
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "result"
                         },
@@ -748,10 +767,12 @@ const ir: unknown = {
                       "ImportJob.Completed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "batch",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -761,6 +782,7 @@ const ir: unknown = {
                               "path": [
                                 "batch"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "batch"
                             },
@@ -778,6 +800,7 @@ const ir: unknown = {
                       {
                         "kind": "set",
                         "var": "retries",
+                        "state": null,
                         "value": {
                           "kind": "lit",
                           "value": 0,
@@ -804,6 +827,7 @@ const ir: unknown = {
                       "path": [
                         "pauseRequested"
                       ],
+                      "state": null,
                       "type": "bool",
                       "text": "pauseRequested"
                     },
@@ -811,10 +835,12 @@ const ir: unknown = {
                       "ImportJob.Importing.Paused"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "batch",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -824,6 +850,7 @@ const ir: unknown = {
                               "path": [
                                 "batch"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "batch"
                             },
@@ -841,6 +868,7 @@ const ir: unknown = {
                       {
                         "kind": "set",
                         "var": "retries",
+                        "state": null,
                         "value": {
                           "kind": "lit",
                           "value": 0,
@@ -867,10 +895,12 @@ const ir: unknown = {
                       "ImportJob.Importing.RunningBatch"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "batch",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -880,6 +910,7 @@ const ir: unknown = {
                               "path": [
                                 "batch"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "batch"
                             },
@@ -897,6 +928,7 @@ const ir: unknown = {
                       {
                         "kind": "set",
                         "var": "retries",
+                        "state": null,
                         "value": {
                           "kind": "lit",
                           "value": 0,
@@ -928,6 +960,7 @@ const ir: unknown = {
                           "path": [
                             "retries"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "retries"
                         },
@@ -945,10 +978,12 @@ const ir: unknown = {
                       "ImportJob.Importing.WaitingToRetry"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "retries",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -958,6 +993,7 @@ const ir: unknown = {
                               "path": [
                                 "retries"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "retries"
                             },
@@ -975,6 +1011,7 @@ const ir: unknown = {
                       {
                         "kind": "set",
                         "var": "totalRetries",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -984,6 +1021,7 @@ const ir: unknown = {
                               "path": [
                                 "totalRetries"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "totalRetries"
                             },
@@ -1001,12 +1039,14 @@ const ir: unknown = {
                       {
                         "kind": "set",
                         "var": "lastReason",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "error",
                             "reason"
                           ],
+                          "state": null,
                           "type": "string",
                           "text": "error.reason"
                         }
@@ -1031,16 +1071,19 @@ const ir: unknown = {
                       "ImportJob.Failed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "lastReason",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "error",
                             "reason"
                           ],
+                          "state": null,
                           "type": "string",
                           "text": "error.reason"
                         }
@@ -1070,6 +1113,8 @@ const ir: unknown = {
                   "endLine": 64,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1092,6 +1137,7 @@ const ir: unknown = {
                       "path": [
                         "pauseRequested"
                       ],
+                      "state": null,
                       "type": "bool",
                       "text": "pauseRequested"
                     },
@@ -1099,6 +1145,7 @@ const ir: unknown = {
                       "ImportJob.Importing.Paused"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1124,6 +1171,7 @@ const ir: unknown = {
                       "ImportJob.Importing.RunningBatch"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1149,6 +1197,8 @@ const ir: unknown = {
                   "endLine": 66,
                   "endCol": 75
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1166,10 +1216,12 @@ const ir: unknown = {
                       "ImportJob.Importing.RunningBatch"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "pauseRequested",
+                        "state": null,
                         "value": {
                           "kind": "lit",
                           "value": false,
@@ -1204,10 +1256,12 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "pauseRequested",
+                    "state": null,
                     "value": {
                       "kind": "lit",
                       "value": true,
@@ -1233,10 +1287,12 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "pauseRequested",
+                    "state": null,
                     "value": {
                       "kind": "lit",
                       "value": false,
@@ -1269,6 +1325,8 @@ const ir: unknown = {
               "endLine": 69,
               "endCol": 139
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1286,6 +1344,7 @@ const ir: unknown = {
                       "upload",
                       "jobId"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "upload.jobId"
                   }
@@ -1298,6 +1357,7 @@ const ir: unknown = {
                       "plan",
                       "totalRows"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "plan.totalRows"
                   }
@@ -1309,6 +1369,7 @@ const ir: unknown = {
                     "path": [
                       "batch"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "batch"
                   }
@@ -1320,6 +1381,7 @@ const ir: unknown = {
                     "path": [
                       "totalRetries"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "totalRetries"
                   }
@@ -1342,6 +1404,8 @@ const ir: unknown = {
               "endLine": 70,
               "endCol": 41
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1354,6 +1418,7 @@ const ir: unknown = {
               "path": [
                 "invalid"
               ],
+              "state": null,
               "type": "InvalidFile",
               "text": "invalid"
             }
@@ -1370,6 +1435,8 @@ const ir: unknown = {
               "endLine": 71,
               "endCol": 82
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1387,6 +1454,7 @@ const ir: unknown = {
                     "path": [
                       "batch"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "batch"
                   }
@@ -1398,6 +1466,7 @@ const ir: unknown = {
                     "path": [
                       "lastReason"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "lastReason"
                   }
@@ -1419,6 +1488,8 @@ const ir: unknown = {
               "endLine": 72,
               "endCol": 72
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1436,6 +1507,7 @@ const ir: unknown = {
                     "path": [
                       "batch"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "batch"
                   }
@@ -1461,6 +1533,7 @@ const ir: unknown = {
               "ImportJob.Cancelled"
             ],
             "internal": false,
+            "args": [],
             "effects": [],
             "span": {
               "file": 0,

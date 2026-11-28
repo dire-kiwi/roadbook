@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/root.road",
@@ -104,6 +104,8 @@
           "endLine": 31,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Top.A",
         "states": [
           {
@@ -118,6 +120,8 @@
               "endLine": 21,
               "endCol": 27
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -135,6 +139,7 @@
                   "Top.B"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -160,6 +165,8 @@
               "endLine": 26,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -182,6 +189,7 @@
                   "Top.C"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -202,6 +210,7 @@
                   "Top.C"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -227,6 +236,8 @@
               "endLine": 28,
               "endCol": 13
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -248,6 +259,8 @@
               "endLine": 30,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -259,6 +272,7 @@
               "path": [
                 "pings"
               ],
+              "state": null,
               "type": "int",
               "text": "pings"
             },
@@ -304,10 +318,12 @@
             "guard": null,
             "targets": [],
             "internal": false,
+            "args": [],
             "effects": [
               {
                 "kind": "set",
                 "var": "pings",
+                "state": null,
                 "value": {
                   "kind": "op",
                   "op": "+",
@@ -317,6 +333,7 @@
                       "path": [
                         "pings"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "pings"
                     },
@@ -356,6 +373,7 @@
               "Top.Late"
             ],
             "internal": false,
+            "args": [],
             "effects": [],
             "span": {
               "file": 0,

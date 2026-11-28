@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/fetch.road",
@@ -189,6 +189,8 @@
           "endLine": 34,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Fetch.Loading",
         "states": [
           {
@@ -203,6 +205,8 @@
               "endLine": 28,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -218,6 +222,7 @@
                   "path": [
                     "id"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "id"
                 }
@@ -241,15 +246,18 @@
                   "Fetch.Loaded"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "body",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "result"
                     }
@@ -274,6 +282,7 @@
                   "Fetch.Missing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -294,6 +303,7 @@
                   "Fetch.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -325,6 +335,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -355,6 +366,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -393,6 +405,8 @@
               "endLine": 30,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -410,6 +424,7 @@
                   "Fetch.Loading"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -435,6 +450,8 @@
               "endLine": 32,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -446,6 +463,7 @@
               "path": [
                 "body"
               ],
+              "state": null,
               "type": "string",
               "text": "body"
             },
@@ -463,6 +481,8 @@
               "endLine": 33,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

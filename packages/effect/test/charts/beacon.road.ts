@@ -41,7 +41,7 @@ export interface BeaconDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "packages/effect/test/charts/beacon.road",
@@ -223,6 +223,8 @@ const ir: unknown = {
           "endLine": 33,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Beacon.Up",
         "states": [
           {
@@ -237,6 +239,8 @@ const ir: unknown = {
               "endLine": 30,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -284,10 +288,12 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -297,6 +303,7 @@ const ir: unknown = {
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         },
@@ -324,6 +331,7 @@ const ir: unknown = {
                             "path": [
                               "n"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "n"
                           }
@@ -351,6 +359,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -410,6 +419,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "emit",
@@ -425,6 +435,7 @@ const ir: unknown = {
                               "event",
                               "word"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.word"
                           }
@@ -454,6 +465,7 @@ const ir: unknown = {
                   "Beacon.Over"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -479,6 +491,8 @@ const ir: unknown = {
               "endLine": 32,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

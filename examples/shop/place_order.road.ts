@@ -90,7 +90,7 @@ export interface PlaceOrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/shop/place_order.road",
@@ -711,6 +711,8 @@ const ir: unknown = {
           "endLine": 78,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "PlaceOrder.Authenticating",
         "states": [
           {
@@ -725,6 +727,8 @@ const ir: unknown = {
               "endLine": 28,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -740,6 +744,7 @@ const ir: unknown = {
                   "path": [
                     "token"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "token"
                 }
@@ -763,15 +768,18 @@ const ir: unknown = {
                   "PlaceOrder.Processing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "user",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "User",
                       "text": "result"
                     }
@@ -796,6 +804,7 @@ const ir: unknown = {
                   "PlaceOrder.Unauthorized"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -821,6 +830,8 @@ const ir: unknown = {
               "endLine": 65,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "PlaceOrder.Processing.Validating",
             "states": [
               {
@@ -835,6 +846,8 @@ const ir: unknown = {
                   "endLine": 43,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -850,6 +863,7 @@ const ir: unknown = {
                       "path": [
                         "draft"
                       ],
+                      "state": null,
                       "type": "OrderDraft",
                       "text": "draft"
                     }
@@ -873,15 +887,18 @@ const ir: unknown = {
                       "PlaceOrder.Processing.Pricing"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "order",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "Order",
                           "text": "result"
                         }
@@ -906,16 +923,19 @@ const ir: unknown = {
                       "PlaceOrder.Invalid"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "issues",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "error",
                             "issues"
                           ],
+                          "state": null,
                           "type": "string[]",
                           "text": "error.issues"
                         }
@@ -945,6 +965,8 @@ const ir: unknown = {
                   "endLine": 50,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -960,6 +982,7 @@ const ir: unknown = {
                       "path": [
                         "order"
                       ],
+                      "state": null,
                       "type": "Order",
                       "text": "order"
                     },
@@ -968,6 +991,7 @@ const ir: unknown = {
                       "path": [
                         "user"
                       ],
+                      "state": null,
                       "type": "User",
                       "text": "user"
                     }
@@ -991,15 +1015,18 @@ const ir: unknown = {
                       "PlaceOrder.Processing.Paying"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "order",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "Order",
                           "text": "result"
                         }
@@ -1029,6 +1056,8 @@ const ir: unknown = {
                   "endLine": 59,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1044,6 +1073,7 @@ const ir: unknown = {
                       "path": [
                         "order"
                       ],
+                      "state": null,
                       "type": "Order",
                       "text": "order"
                     },
@@ -1052,6 +1082,7 @@ const ir: unknown = {
                       "path": [
                         "user"
                       ],
+                      "state": null,
                       "type": "User",
                       "text": "user"
                     }
@@ -1075,15 +1106,18 @@ const ir: unknown = {
                       "PlaceOrder.Processing.Confirming"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "receipt",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "Receipt",
                           "text": "result"
                         }
@@ -1108,6 +1142,7 @@ const ir: unknown = {
                       "PlaceOrder.PaymentFailed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -1124,6 +1159,7 @@ const ir: unknown = {
                             "path": [
                               "order"
                             ],
+                            "state": null,
                             "type": "Order",
                             "text": "order"
                           }
@@ -1149,6 +1185,7 @@ const ir: unknown = {
                       "PlaceOrder.PaymentFailed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -1165,6 +1202,7 @@ const ir: unknown = {
                             "path": [
                               "order"
                             ],
+                            "state": null,
                             "type": "Order",
                             "text": "order"
                           }
@@ -1195,6 +1233,8 @@ const ir: unknown = {
                   "endLine": 64,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -1207,6 +1247,7 @@ const ir: unknown = {
                         "path": [
                           "user"
                         ],
+                        "state": null,
                         "type": "User",
                         "text": "user"
                       },
@@ -1215,6 +1256,7 @@ const ir: unknown = {
                         "path": [
                           "order"
                         ],
+                        "state": null,
                         "type": "Order",
                         "text": "order"
                       },
@@ -1223,6 +1265,7 @@ const ir: unknown = {
                         "path": [
                           "receipt"
                         ],
+                        "state": null,
                         "type": "Receipt",
                         "text": "receipt"
                       }
@@ -1242,6 +1285,7 @@ const ir: unknown = {
                       "PlaceOrder.Confirmed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1271,6 +1315,7 @@ const ir: unknown = {
                   "PlaceOrder.Cancelled"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1296,6 +1341,7 @@ const ir: unknown = {
                   "PlaceOrder.TimedOut"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1321,6 +1367,8 @@ const ir: unknown = {
               "endLine": 67,
               "endCol": 68
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1336,6 +1384,7 @@ const ir: unknown = {
                   "path": [
                     "order"
                   ],
+                  "state": null,
                   "type": "Order",
                   "text": "order"
                 },
@@ -1344,6 +1393,7 @@ const ir: unknown = {
                   "path": [
                     "receipt"
                   ],
+                  "state": null,
                   "type": "Receipt",
                   "text": "receipt"
                 }
@@ -1365,6 +1415,8 @@ const ir: unknown = {
               "endLine": 68,
               "endCol": 71
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1405,6 +1457,8 @@ const ir: unknown = {
               "endLine": 69,
               "endCol": 55
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1420,6 +1474,7 @@ const ir: unknown = {
                   "path": [
                     "issues"
                   ],
+                  "state": null,
                   "type": "string[]",
                   "text": "issues"
                 }
@@ -1441,6 +1496,8 @@ const ir: unknown = {
               "endLine": 70,
               "endCol": 70
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1481,6 +1538,8 @@ const ir: unknown = {
               "endLine": 71,
               "endCol": 65
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1521,6 +1580,8 @@ const ir: unknown = {
               "endLine": 72,
               "endCol": 63
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1654,6 +1715,8 @@ const ir: unknown = {
           "endLine": 32,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Checkout.Charging",
         "states": [
           {
@@ -1668,6 +1731,8 @@ const ir: unknown = {
               "endLine": 21,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1683,6 +1748,7 @@ const ir: unknown = {
                   "path": [
                     "order"
                   ],
+                  "state": null,
                   "type": "Order",
                   "text": "order"
                 },
@@ -1691,6 +1757,7 @@ const ir: unknown = {
                   "path": [
                     "user"
                   ],
+                  "state": null,
                   "type": "User",
                   "text": "user"
                 }
@@ -1714,15 +1781,18 @@ const ir: unknown = {
                   "Checkout.Charged"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "receipt",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Receipt",
                       "text": "result"
                     }
@@ -1747,15 +1817,18 @@ const ir: unknown = {
                   "Checkout.Declined"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "declined",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "CardDeclined",
                       "text": "error"
                     }
@@ -1784,6 +1857,7 @@ const ir: unknown = {
                       "path": [
                         "attempts"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "attempts"
                     },
@@ -1801,6 +1875,7 @@ const ir: unknown = {
                   "Checkout.Backoff"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -1821,6 +1896,7 @@ const ir: unknown = {
                   "Checkout.GaveUp"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -1846,12 +1922,15 @@ const ir: unknown = {
               "endLine": 27,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
               {
                 "kind": "set",
                 "var": "attempts",
+                "state": null,
                 "value": {
                   "kind": "op",
                   "op": "+",
@@ -1861,6 +1940,7 @@ const ir: unknown = {
                       "path": [
                         "attempts"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "attempts"
                     },
@@ -1891,6 +1971,7 @@ const ir: unknown = {
                         "path": [
                           "attempts"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "attempts"
                       }
@@ -1905,6 +1986,7 @@ const ir: unknown = {
                   "Checkout.Charging"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -1930,6 +2012,8 @@ const ir: unknown = {
               "endLine": 29,
               "endCol": 42
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1941,6 +2025,7 @@ const ir: unknown = {
               "path": [
                 "receipt"
               ],
+              "state": null,
               "type": "Receipt",
               "text": "receipt"
             },
@@ -1958,6 +2043,8 @@ const ir: unknown = {
               "endLine": 30,
               "endCol": 41
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1970,6 +2057,7 @@ const ir: unknown = {
               "path": [
                 "declined"
               ],
+              "state": null,
               "type": "CardDeclined",
               "text": "declined"
             }
@@ -1986,6 +2074,8 @@ const ir: unknown = {
               "endLine": 31,
               "endCol": 51
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

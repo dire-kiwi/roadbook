@@ -386,6 +386,7 @@ impl<'p> Cx<'_, 'p> {
         let counter = || ir::Expr {
             kind: ir::ExprKind::Ref {
                 path: vec![var.clone()],
+                state: None,
             },
             ty: INT.to_ir(),
             text: var.clone(),
@@ -428,8 +429,10 @@ impl<'p> Cx<'_, 'p> {
                         )),
                         targets: vec![retry_target.clone()],
                         internal: false,
+                        args: Vec::new(),
                         effects: vec![ir::Effect::Set {
                             var: var.clone(),
+                            state: None,
                             value: binary(Op::Add, "+", INT, counter(), int(1)),
                         }],
                         span: ir_span(span),
@@ -468,6 +471,8 @@ impl<'p> Cx<'_, 'p> {
             kind: ir::StateKind::Atomic,
             doc: String::new(),
             span: ir_span(plan.inv.span),
+            params: Vec::new(),
+            vars: Vec::new(),
             initial: None,
             states: Vec::new(),
             entry: Vec::new(),
@@ -500,6 +505,8 @@ impl<'p> Cx<'_, 'p> {
                 kind: ir::StateKind::Atomic,
                 doc: String::new(),
                 span: ir_span(span),
+                params: Vec::new(),
+                vars: Vec::new(),
                 initial: None,
                 states: Vec::new(),
                 entry: Vec::new(),
@@ -511,6 +518,7 @@ impl<'p> Cx<'_, 'p> {
                     guard: None,
                     targets: vec![attempt_id.clone()],
                     internal: false,
+                    args: Vec::new(),
                     effects: Vec::new(),
                     span: ir_span(span),
                 }],
@@ -548,6 +556,7 @@ impl<'p> Cx<'_, 'p> {
             0,
             ir::Effect::Set {
                 var: var.clone(),
+                state: None,
                 value: int(0),
             },
         );

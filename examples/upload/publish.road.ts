@@ -54,7 +54,7 @@ export interface PublishDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -456,6 +456,8 @@ const ir: unknown = {
           "endLine": 47,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Publish.Uploading",
         "states": [
           {
@@ -470,6 +472,8 @@ const ir: unknown = {
               "endLine": 37,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -486,6 +490,7 @@ const ir: unknown = {
                     "draft",
                     "file"
                   ],
+                  "state": null,
                   "type": "File",
                   "text": "draft.file"
                 }
@@ -509,15 +514,18 @@ const ir: unknown = {
                   "Publish.Publishing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "url",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Url",
                       "text": "result"
                     }
@@ -542,15 +550,18 @@ const ir: unknown = {
                   "Publish.Failed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "failure",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "UploadFailed",
                       "text": "error"
                     }
@@ -573,6 +584,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -609,6 +621,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -651,16 +664,19 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "percent",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.percent"
                     }
@@ -675,6 +691,7 @@ const ir: unknown = {
                           "event",
                           "percent"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "event.percent"
                       }
@@ -705,6 +722,8 @@ const ir: unknown = {
               "endLine": 43,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -721,6 +740,7 @@ const ir: unknown = {
                     "draft",
                     "title"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "draft.title"
                 },
@@ -729,6 +749,7 @@ const ir: unknown = {
                   "path": [
                     "url"
                   ],
+                  "state": null,
                   "type": "Url",
                   "text": "url"
                 }
@@ -752,15 +773,18 @@ const ir: unknown = {
                   "Publish.Published"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "post",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Post",
                       "text": "result"
                     }
@@ -790,6 +814,8 @@ const ir: unknown = {
               "endLine": 45,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -801,6 +827,7 @@ const ir: unknown = {
               "path": [
                 "post"
               ],
+              "state": null,
               "type": "Post",
               "text": "post"
             },
@@ -818,6 +845,8 @@ const ir: unknown = {
               "endLine": 46,
               "endCol": 41
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -830,6 +859,7 @@ const ir: unknown = {
               "path": [
                 "failure"
               ],
+              "state": null,
               "type": "UploadFailed",
               "text": "failure"
             }
@@ -974,6 +1004,8 @@ const ir: unknown = {
           "endLine": 56,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Upload.Sending",
         "states": [
           {
@@ -988,6 +1020,8 @@ const ir: unknown = {
               "endLine": 42,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1003,6 +1037,7 @@ const ir: unknown = {
                   "path": [
                     "file"
                   ],
+                  "state": null,
                   "type": "File",
                   "text": "file"
                 },
@@ -1011,6 +1046,7 @@ const ir: unknown = {
                   "path": [
                     "offset"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "offset"
                 }
@@ -1038,6 +1074,7 @@ const ir: unknown = {
                       "path": [
                         "file"
                       ],
+                      "state": null,
                       "type": "File",
                       "text": "file"
                     },
@@ -1046,6 +1083,7 @@ const ir: unknown = {
                       "path": [
                         "offset"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "offset"
                     }
@@ -1057,6 +1095,7 @@ const ir: unknown = {
                   "Upload.Finishing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 1,
@@ -1076,15 +1115,18 @@ const ir: unknown = {
                   "Upload.Sending"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "offset",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -1106,6 +1148,7 @@ const ir: unknown = {
                                 "path": [
                                   "file"
                                 ],
+                                "state": null,
                                 "type": "File",
                                 "text": "file"
                               },
@@ -1114,6 +1157,7 @@ const ir: unknown = {
                                 "path": [
                                   "result"
                                 ],
+                                "state": null,
                                 "type": "int",
                                 "text": "result"
                               }
@@ -1147,15 +1191,18 @@ const ir: unknown = {
                   "Upload.Failed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "failure",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "UploadFailed",
                       "text": "error"
                     }
@@ -1180,6 +1227,7 @@ const ir: unknown = {
                   "Upload.Paused"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 1,
@@ -1205,6 +1253,8 @@ const ir: unknown = {
               "endLine": 45,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1222,6 +1272,7 @@ const ir: unknown = {
                   "Upload.Sending"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 1,
@@ -1247,6 +1298,8 @@ const ir: unknown = {
               "endLine": 52,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1262,6 +1315,7 @@ const ir: unknown = {
                   "path": [
                     "file"
                   ],
+                  "state": null,
                   "type": "File",
                   "text": "file"
                 }
@@ -1285,15 +1339,18 @@ const ir: unknown = {
                   "Upload.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "url",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Url",
                       "text": "result"
                     }
@@ -1318,15 +1375,18 @@ const ir: unknown = {
                   "Upload.Failed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "failure",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "UploadFailed",
                       "text": "error"
                     }
@@ -1356,6 +1416,8 @@ const ir: unknown = {
               "endLine": 54,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1367,6 +1429,7 @@ const ir: unknown = {
               "path": [
                 "url"
               ],
+              "state": null,
               "type": "Url",
               "text": "url"
             },
@@ -1384,6 +1447,8 @@ const ir: unknown = {
               "endLine": 55,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1396,6 +1461,7 @@ const ir: unknown = {
               "path": [
                 "failure"
               ],
+              "state": null,
               "type": "UploadFailed",
               "text": "failure"
             }

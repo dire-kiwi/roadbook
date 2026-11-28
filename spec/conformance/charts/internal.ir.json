@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/internal.road",
@@ -121,6 +121,8 @@
           "endLine": 46,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Kept.Session",
         "states": [
           {
@@ -135,6 +137,8 @@
               "endLine": 43,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Kept.Session.Browsing",
             "states": [
               {
@@ -149,6 +153,8 @@
                   "endLine": 34,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -192,6 +198,7 @@
                       "Kept.Session.Cart"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -217,6 +224,8 @@
                   "endLine": 42,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Kept.Session.Cart.Editing",
                 "states": [
                   {
@@ -231,6 +240,8 @@
                       "endLine": 40,
                       "endCol": 25
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -252,6 +263,8 @@
                       "endLine": 41,
                       "endCol": 25
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -349,6 +362,7 @@
                   "Kept.TimedOut"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -374,6 +388,7 @@
                   "Kept.TimedOut"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -394,6 +409,7 @@
                   "Kept.Session.Browsing"
                 ],
                 "internal": true,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -414,6 +430,7 @@
                   "Kept.Session.Cart.Reviewing"
                 ],
                 "internal": true,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -434,6 +451,7 @@
                   "Kept.Session"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -459,6 +477,8 @@
               "endLine": 45,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -541,6 +561,8 @@
           "endLine": 69,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Again.S",
         "states": [
           {
@@ -555,6 +577,8 @@
               "endLine": 66,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Again.S.Work",
             "states": [
               {
@@ -569,6 +593,8 @@
                   "endLine": 63,
                   "endCol": 60
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -586,10 +612,12 @@
                       "Again.S.Done"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "tries",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -599,6 +627,7 @@
                               "path": [
                                 "tries"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "tries"
                             },
@@ -638,6 +667,8 @@
                   "endLine": 65,
                   "endCol": 46
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -679,6 +710,7 @@
                       "path": [
                         "tries"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "tries"
                     },
@@ -696,10 +728,12 @@
                   "Again.S.Work"
                 ],
                 "internal": true,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "tries",
+                    "state": null,
                     "value": {
                       "kind": "lit",
                       "value": 2,
@@ -726,6 +760,7 @@
                   "Again.Out"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -751,6 +786,8 @@
               "endLine": 68,
               "endCol": 21
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

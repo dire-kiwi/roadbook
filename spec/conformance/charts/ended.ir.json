@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/ended.road",
@@ -164,6 +164,8 @@
           "endLine": 34,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Inventory.Open",
         "states": [
           {
@@ -178,6 +180,8 @@
               "endLine": 30,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -195,6 +199,7 @@
                   "Inventory.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -215,6 +220,7 @@
                   "Inventory.Broken"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -233,6 +239,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -264,6 +271,8 @@
               "endLine": 32,
               "endCol": 42
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -275,6 +284,7 @@
               "path": [
                 "warehouse"
               ],
+              "state": null,
               "type": "string",
               "text": "warehouse"
             },
@@ -292,6 +302,8 @@
               "endLine": 33,
               "endCol": 35
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -320,6 +332,7 @@
             "guard": null,
             "targets": [],
             "internal": false,
+            "args": [],
             "effects": [],
             "span": {
               "file": 0,
@@ -379,6 +392,8 @@
           "endLine": 55,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Order.Waiting",
         "states": [
           {
@@ -393,6 +408,8 @@
               "endLine": 49,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -416,6 +433,7 @@
                         "path": [
                           "id"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "id"
                       }
@@ -450,6 +468,7 @@
                         "event",
                         "status"
                       ],
+                      "state": null,
                       "type": "Ended",
                       "text": "event.status"
                     },
@@ -467,6 +486,7 @@
                   "Order.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -497,6 +517,7 @@
                         "event",
                         "status"
                       ],
+                      "state": null,
                       "type": "Ended",
                       "text": "event.status"
                     },
@@ -514,6 +535,7 @@
                   "Order.Alarm"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -525,6 +547,7 @@
                           "event",
                           "status"
                         ],
+                        "state": null,
                         "type": "Ended",
                         "text": "event.status"
                       }
@@ -555,6 +578,7 @@
                   "Order.Gone"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -566,6 +590,7 @@
                           "event",
                           "status"
                         ],
+                        "state": null,
                         "type": "Ended",
                         "text": "event.status"
                       }
@@ -596,6 +621,7 @@
                   "Order.TimedOut"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -621,6 +647,8 @@
               "endLine": 51,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -642,6 +670,8 @@
               "endLine": 52,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -663,6 +693,8 @@
               "endLine": 53,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -684,6 +716,8 @@
               "endLine": 54,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -753,6 +787,8 @@
           "endLine": 67,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Clerk.Open",
         "states": [
           {
@@ -767,6 +803,8 @@
               "endLine": 64,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -784,6 +822,7 @@
                   "Clerk.Stopped"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -809,6 +848,8 @@
               "endLine": 66,
               "endCol": 25
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -878,6 +919,8 @@
           "endLine": 81,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Picker.Idle",
         "states": [
           {
@@ -892,6 +935,8 @@
               "endLine": 76,
               "endCol": 35
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -909,6 +954,7 @@
                   "Picker.Watching"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -934,6 +980,8 @@
               "endLine": 78,
               "endCol": 48
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -956,6 +1004,7 @@
                   "Picker.Gone"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -981,6 +1030,8 @@
               "endLine": 80,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1050,6 +1101,8 @@
           "endLine": 95,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Guard.Idle",
         "states": [
           {
@@ -1064,6 +1117,8 @@
               "endLine": 90,
               "endCol": 35
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1081,6 +1136,7 @@
                   "Guard.Watching"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1106,6 +1162,8 @@
               "endLine": 92,
               "endCol": 48
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1128,6 +1186,7 @@
                   "Guard.Gone"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1153,6 +1212,8 @@
               "endLine": 94,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1208,6 +1269,7 @@
             "path": [
               "a"
             ],
+            "state": null,
             "type": "ref Inventory",
             "text": "a"
           },
@@ -1250,6 +1312,8 @@
           "endLine": 112,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Switcher.Watching",
         "states": [
           {
@@ -1264,6 +1328,8 @@
               "endLine": 109,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1279,15 +1345,18 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "current",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "b"
                       ],
+                      "state": null,
                       "type": "ref Inventory",
                       "text": "b"
                     }
@@ -1317,6 +1386,7 @@
                   "Switcher.Gone"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1328,6 +1398,7 @@
                           "event",
                           "status"
                         ],
+                        "state": null,
                         "type": "Ended",
                         "text": "event.status"
                       }
@@ -1358,6 +1429,8 @@
               "endLine": 111,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

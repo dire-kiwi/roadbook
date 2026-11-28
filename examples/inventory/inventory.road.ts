@@ -53,7 +53,7 @@ export interface InventoryDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/inventory/inventory.road",
@@ -366,6 +366,8 @@ const ir: unknown = {
           "endLine": 51,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Inventory.Ready",
         "states": [
           {
@@ -380,6 +382,8 @@ const ir: unknown = {
               "endLine": 39,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -397,15 +401,18 @@ const ir: unknown = {
                   "Inventory.Reserving"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "pending",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "call"
                       ],
+                      "state": null,
                       "type": "call reserve",
                       "text": "call"
                     }
@@ -413,12 +420,14 @@ const ir: unknown = {
                   {
                     "kind": "set",
                     "var": "orderId",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "orderId"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.orderId"
                     }
@@ -426,12 +435,14 @@ const ir: unknown = {
                   {
                     "kind": "set",
                     "var": "items",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "items"
                       ],
+                      "state": null,
                       "type": "Item[]",
                       "text": "event.items"
                     }
@@ -456,6 +467,7 @@ const ir: unknown = {
                   "Inventory.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -481,6 +493,8 @@ const ir: unknown = {
               "endLine": 48,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -496,6 +510,7 @@ const ir: unknown = {
                   "path": [
                     "warehouse"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "warehouse"
                 },
@@ -504,6 +519,7 @@ const ir: unknown = {
                   "path": [
                     "orderId"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "orderId"
                 },
@@ -512,6 +528,7 @@ const ir: unknown = {
                   "path": [
                     "items"
                   ],
+                  "state": null,
                   "type": "Item[]",
                   "text": "items"
                 }
@@ -535,6 +552,7 @@ const ir: unknown = {
                   "Inventory.Ready"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "reply",
@@ -543,6 +561,7 @@ const ir: unknown = {
                       "path": [
                         "pending"
                       ],
+                      "state": null,
                       "type": "call reserve",
                       "text": "pending"
                     },
@@ -569,6 +588,7 @@ const ir: unknown = {
                   "Inventory.Ready"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "reply",
@@ -577,6 +597,7 @@ const ir: unknown = {
                       "path": [
                         "pending"
                       ],
+                      "state": null,
                       "type": "call reserve",
                       "text": "pending"
                     },
@@ -586,6 +607,7 @@ const ir: unknown = {
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "OutOfStock",
                       "text": "error"
                     }
@@ -608,6 +630,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "reply",
@@ -616,6 +639,7 @@ const ir: unknown = {
                       "path": [
                         "call"
                       ],
+                      "state": null,
                       "type": "call reserve",
                       "text": "call"
                     },
@@ -662,6 +686,8 @@ const ir: unknown = {
               "endLine": 50,
               "endCol": 24
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -685,6 +711,7 @@ const ir: unknown = {
             "guard": null,
             "targets": [],
             "internal": false,
+            "args": [],
             "effects": [
               {
                 "kind": "do",
@@ -695,6 +722,7 @@ const ir: unknown = {
                     "path": [
                       "warehouse"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "warehouse"
                   },
@@ -704,6 +732,7 @@ const ir: unknown = {
                       "event",
                       "orderId"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "event.orderId"
                   }
@@ -727,6 +756,7 @@ const ir: unknown = {
             "guard": null,
             "targets": [],
             "internal": false,
+            "args": [],
             "effects": [
               {
                 "kind": "do",
@@ -737,6 +767,7 @@ const ir: unknown = {
                     "path": [
                       "warehouse"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "warehouse"
                   },
@@ -746,6 +777,7 @@ const ir: unknown = {
                       "event",
                       "sku"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "event.sku"
                   },
@@ -755,6 +787,7 @@ const ir: unknown = {
                       "event",
                       "qty"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "event.qty"
                   }

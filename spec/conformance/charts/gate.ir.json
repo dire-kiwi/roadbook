@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/gate.road",
@@ -163,6 +163,8 @@
           "endLine": 39,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Gate.Open",
         "states": [
           {
@@ -177,6 +179,8 @@
               "endLine": 36,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Gate.Open.Waiting",
             "states": [
               {
@@ -191,6 +195,8 @@
                   "endLine": 35,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -213,6 +219,7 @@
                             "event",
                             "amount"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "event.amount"
                         },
@@ -228,6 +235,7 @@
                     },
                     "targets": [],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -269,6 +277,7 @@
                               "path": [
                                 "count"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "count"
                             },
@@ -296,6 +305,7 @@
                                     "event",
                                     "amount"
                                   ],
+                                  "state": null,
                                   "type": "int",
                                   "text": "event.amount"
                                 },
@@ -319,10 +329,12 @@
                     },
                     "targets": [],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "count",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -332,6 +344,7 @@
                               "path": [
                                 "count"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "count"
                             },
@@ -387,6 +400,7 @@
                                 "event",
                                 "amount"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "event.amount"
                             },
@@ -409,6 +423,7 @@
                               "path": [
                                 "who"
                               ],
+                              "state": null,
                               "type": "string",
                               "text": "who"
                             },
@@ -418,6 +433,7 @@
                                 "event",
                                 "amount"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "event.amount"
                             }
@@ -431,6 +447,7 @@
                     },
                     "targets": [],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -478,6 +495,7 @@
                         "event",
                         "amount"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.amount"
                     }
@@ -487,10 +505,12 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "count",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -500,6 +520,7 @@
                           "path": [
                             "count"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "count"
                         },
@@ -544,6 +565,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -577,6 +599,7 @@
                   "Gate.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -602,6 +625,8 @@
               "endLine": 38,
               "endCol": 24
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

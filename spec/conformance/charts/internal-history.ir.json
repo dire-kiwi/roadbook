@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/internal-history.road",
@@ -117,6 +117,8 @@
           "endLine": 31,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Restore.C",
         "states": [
           {
@@ -131,6 +133,8 @@
               "endLine": 28,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Restore.C.A",
             "states": [
               {
@@ -145,6 +149,8 @@
                   "endLine": 22,
                   "endCol": 14
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -166,6 +172,8 @@
                   "endLine": 26,
                   "endCol": 29
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -183,6 +191,7 @@
                       "Restore.C.B"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -208,6 +217,8 @@
                   "endLine": 27,
                   "endCol": 29
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -225,6 +236,7 @@
                       "Restore.C.A"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -280,6 +292,7 @@
                   "Restore.Out"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -300,6 +313,7 @@
                   "Restore.C.H"
                 ],
                 "internal": true,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -325,6 +339,8 @@
               "endLine": 30,
               "endCol": 31
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -342,6 +358,7 @@
                   "Restore.C.H"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/targets.road",
@@ -128,6 +128,8 @@
           "endLine": 50,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Player.Idle",
         "states": [
           {
@@ -142,6 +144,8 @@
               "endLine": 22,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -160,6 +164,7 @@
                   "Player.On.Volume.Muted"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -181,6 +186,7 @@
                   "Player.On.Volume.Loud"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -206,6 +212,8 @@
               "endLine": 49,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -220,6 +228,8 @@
                   "endLine": 35,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Player.On.Playback.Playing",
                 "states": [
                   {
@@ -234,6 +244,8 @@
                       "endLine": 31,
                       "endCol": 19
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -255,6 +267,8 @@
                       "endLine": 33,
                       "endCol": 23
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -276,6 +290,8 @@
                       "endLine": 34,
                       "endCol": 43
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -293,6 +309,7 @@
                           "Player.On.Playback.Playing"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -326,6 +343,8 @@
                   "endLine": 42,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Player.On.Volume.Normal",
                 "states": [
                   {
@@ -340,6 +359,8 @@
                       "endLine": 39,
                       "endCol": 22
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -361,6 +382,8 @@
                       "endLine": 40,
                       "endCol": 43
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -378,6 +401,7 @@
                           "Player.On.Volume.Normal"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -403,6 +427,8 @@
                       "endLine": 41,
                       "endCol": 22
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -432,6 +458,8 @@
                   "endLine": 48,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -478,6 +506,7 @@
                     "guard": null,
                     "targets": [],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -547,6 +576,7 @@
                   "Player.On.Volume.Muted"
                 ],
                 "internal": true,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -567,6 +597,7 @@
                   "Player.Idle"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,

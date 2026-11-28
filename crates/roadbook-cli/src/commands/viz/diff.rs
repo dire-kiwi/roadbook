@@ -802,7 +802,7 @@ pub fn trigger_text(t: &Trigger) -> String {
 /// `effectText` in `packages/viewer/src/model.ts`.
 pub fn effect_text(e: &Effect) -> String {
     match e {
-        Effect::Set { var, value } => format!("set {var} = {}", value.text),
+        Effect::Set { var, value, .. } => format!("set {var} = {}", value.text),
         Effect::Do { action, args } => format!(
             "do {action}({})",
             args.iter()

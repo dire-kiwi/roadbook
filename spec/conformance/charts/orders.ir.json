@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/orders.road",
@@ -429,6 +429,8 @@
           "endLine": 66,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Inventory.Ready",
         "states": [
           {
@@ -443,6 +445,8 @@
               "endLine": 54,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -460,16 +464,19 @@
                   "Inventory.Reserving"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "orderId",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "orderId"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.orderId"
                     }
@@ -477,12 +484,14 @@
                   {
                     "kind": "set",
                     "var": "items",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "items"
                       ],
+                      "state": null,
                       "type": "Item[]",
                       "text": "event.items"
                     }
@@ -507,6 +516,7 @@
                   "Inventory.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -532,6 +542,8 @@
               "endLine": 63,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -547,6 +559,7 @@
                   "path": [
                     "warehouse"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "warehouse"
                 },
@@ -555,6 +568,7 @@
                   "path": [
                     "orderId"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "orderId"
                 },
@@ -563,6 +577,7 @@
                   "path": [
                     "items"
                   ],
+                  "state": null,
                   "type": "Item[]",
                   "text": "items"
                 }
@@ -586,6 +601,7 @@
                   "Inventory.Ready"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "emit",
@@ -600,6 +616,7 @@
                             "path": [
                               "orderId"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "orderId"
                           }
@@ -629,6 +646,7 @@
                   "Inventory.Ready"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "emit",
@@ -643,6 +661,7 @@
                             "path": [
                               "orderId"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "orderId"
                           }
@@ -655,6 +674,7 @@
                               "error",
                               "reason"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "error.reason"
                           }
@@ -682,6 +702,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "emit",
@@ -697,6 +718,7 @@
                               "event",
                               "orderId"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.orderId"
                           }
@@ -740,6 +762,8 @@
               "endLine": 65,
               "endCol": 24
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -763,6 +787,7 @@
             "guard": null,
             "targets": [],
             "internal": false,
+            "args": [],
             "effects": [
               {
                 "kind": "do",
@@ -773,6 +798,7 @@
                     "path": [
                       "warehouse"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "warehouse"
                   },
@@ -782,6 +808,7 @@
                       "event",
                       "orderId"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "event.orderId"
                   }
@@ -805,6 +832,7 @@
             "guard": null,
             "targets": [],
             "internal": false,
+            "args": [],
             "effects": [
               {
                 "kind": "do",
@@ -815,6 +843,7 @@
                     "path": [
                       "warehouse"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "warehouse"
                   },
@@ -824,6 +853,7 @@
                       "event",
                       "sku"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "event.sku"
                   },
@@ -833,6 +863,7 @@
                       "event",
                       "qty"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "event.qty"
                   }
@@ -935,6 +966,8 @@
           "endLine": 92,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Order.Reserving",
         "states": [
           {
@@ -949,6 +982,8 @@
               "endLine": 80,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -972,6 +1007,7 @@
                         "path": [
                           "id"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "id"
                       }
@@ -984,6 +1020,7 @@
                           "draft",
                           "items"
                         ],
+                        "state": null,
                         "type": "Item[]",
                         "text": "draft.items"
                       }
@@ -1019,6 +1056,7 @@
                         "event",
                         "orderId"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.orderId"
                     },
@@ -1027,6 +1065,7 @@
                       "path": [
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "id"
                     }
@@ -1038,6 +1077,7 @@
                   "Order.Paying"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1069,6 +1109,7 @@
                         "event",
                         "orderId"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.orderId"
                     },
@@ -1077,6 +1118,7 @@
                       "path": [
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "id"
                     }
@@ -1088,10 +1130,12 @@
                   "Order.Unavailable"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "problem",
+                    "state": null,
                     "value": {
                       "kind": "record",
                       "fields": [
@@ -1103,6 +1147,7 @@
                               "event",
                               "reason"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.reason"
                           }
@@ -1137,10 +1182,12 @@
                   "Order.Unavailable"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "problem",
+                    "state": null,
                     "value": {
                       "kind": "record",
                       "fields": [
@@ -1183,6 +1230,8 @@
               "endLine": 87,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1198,6 +1247,7 @@
                   "path": [
                     "id"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "id"
                 },
@@ -1206,6 +1256,7 @@
                   "path": [
                     "draft"
                   ],
+                  "state": null,
                   "type": "OrderDraft",
                   "text": "draft"
                 }
@@ -1229,15 +1280,18 @@
                   "Order.Paid"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "receipt",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Receipt",
                       "text": "result"
                     }
@@ -1262,6 +1316,7 @@
                   "Order.Declined"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1283,6 +1338,7 @@
                             "path": [
                               "id"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "id"
                           }
@@ -1317,6 +1373,8 @@
               "endLine": 89,
               "endCol": 45
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1328,6 +1386,7 @@
               "path": [
                 "receipt"
               ],
+              "state": null,
               "type": "Receipt",
               "text": "receipt"
             },
@@ -1345,6 +1404,8 @@
               "endLine": 90,
               "endCol": 43
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1357,6 +1418,7 @@
               "path": [
                 "problem"
               ],
+              "state": null,
               "type": "OutOfStock",
               "text": "problem"
             }
@@ -1373,6 +1435,8 @@
               "endLine": 91,
               "endCol": 51
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1471,6 +1535,8 @@
           "endLine": 108,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Supplier.Open",
         "states": [
           {
@@ -1485,6 +1551,8 @@
               "endLine": 105,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1500,6 +1568,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1522,6 +1591,7 @@
                               "event",
                               "sku"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.sku"
                           }
@@ -1534,6 +1604,7 @@
                               "event",
                               "qty"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "event.qty"
                           }
@@ -1563,6 +1634,7 @@
                   "Supplier.Stopped"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1588,6 +1660,8 @@
               "endLine": 107,
               "endCol": 25
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

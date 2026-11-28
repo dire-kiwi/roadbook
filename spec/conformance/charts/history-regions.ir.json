@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/history-regions.road",
@@ -98,6 +98,8 @@
           "endLine": 40,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Panels.Both",
         "states": [
           {
@@ -112,6 +114,8 @@
               "endLine": 34,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -126,6 +130,8 @@
                   "endLine": 15,
                   "endCol": 22
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -147,6 +153,8 @@
                   "endLine": 16,
                   "endCol": 20
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -168,6 +176,8 @@
                   "endLine": 22,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Panels.Both.L.L1",
                 "states": [
                   {
@@ -182,6 +192,8 @@
                       "endLine": 20,
                       "endCol": 33
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -199,6 +211,7 @@
                           "Panels.Both.L.L2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -224,6 +237,8 @@
                       "endLine": 21,
                       "endCol": 18
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -253,6 +268,8 @@
                   "endLine": 31,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Panels.Both.R.R1",
                 "states": [
                   {
@@ -267,6 +284,8 @@
                       "endLine": 26,
                       "endCol": 34
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -284,6 +303,7 @@
                           "Panels.Both.R.R2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -309,6 +329,8 @@
                       "endLine": 30,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": "Panels.Both.R.R2.R3",
                     "states": [
                       {
@@ -323,6 +345,8 @@
                           "endLine": 29,
                           "endCol": 20
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -364,6 +388,7 @@
                   "Panels.Out"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -389,6 +414,8 @@
               "endLine": 39,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -406,6 +433,7 @@
                   "Panels.Both.Deep"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -426,6 +454,7 @@
                   "Panels.Both.Shallow"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -514,6 +543,8 @@
           "endLine": 68,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Region.P",
         "states": [
           {
@@ -528,6 +559,8 @@
               "endLine": 65,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -542,6 +575,8 @@
                   "endLine": 56,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Region.P.A.A1",
                 "states": [
                   {
@@ -556,6 +591,8 @@
                       "endLine": 53,
                       "endCol": 21
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -577,6 +614,8 @@
                       "endLine": 54,
                       "endCol": 31
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -594,6 +633,7 @@
                           "Region.P.A.A2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -619,6 +659,8 @@
                       "endLine": 55,
                       "endCol": 18
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -648,6 +690,8 @@
                   "endLine": 62,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Region.P.B.B1",
                 "states": [
                   {
@@ -662,6 +706,8 @@
                       "endLine": 60,
                       "endCol": 31
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -679,6 +725,7 @@
                           "Region.P.B.B2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -704,6 +751,8 @@
                       "endLine": 61,
                       "endCol": 18
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -737,6 +786,7 @@
                   "Region.Away"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -762,6 +812,8 @@
               "endLine": 67,
               "endCol": 34
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -779,6 +831,7 @@
                   "Region.P.A.H"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,

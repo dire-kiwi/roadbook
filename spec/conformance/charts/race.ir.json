@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/race.road",
@@ -103,6 +103,8 @@
           "endLine": 28,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Race.Slow",
         "states": [
           {
@@ -117,6 +119,8 @@
               "endLine": 19,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -146,15 +150,18 @@
                   "Race.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "v",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -179,6 +186,7 @@
                   "Race.Quick"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -204,6 +212,8 @@
               "endLine": 25,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -233,15 +243,18 @@
                   "Race.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "v",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -271,6 +284,8 @@
               "endLine": 27,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -282,6 +297,7 @@
               "path": [
                 "v"
               ],
+              "state": null,
               "type": "int",
               "text": "v"
             },

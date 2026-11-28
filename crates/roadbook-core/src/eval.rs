@@ -31,7 +31,7 @@ pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, 
             Literal::Bool(b) => Value::from(*b),
             Literal::Duration(ms) => Value::from(*ms),
         },
-        ExprKind::Ref { path } => {
+        ExprKind::Ref { path, .. } => {
             let (first, rest) = path.split_first().expect("a ref path is never empty");
             let mut v = lookup(first, s)?;
             for f in rest {

@@ -570,6 +570,13 @@ pub struct State {
     pub doc: String,
     /// The whole state, from its first keyword to the closing brace.
     pub span: Span,
+    /// The state's parameters, in order: `[]` for a state written without
+    /// them. A transition that enters the state passes their values.
+    pub params: Vec<Field>,
+    /// The state's variables, in order: `[]` for a state that declares none.
+    /// Together with `params` they are the state's locals, which exist while
+    /// it is active.
+    pub vars: Vec<Var>,
     /// Id of the child entered first; set exactly when `kind` is `compound`.
     pub initial: Option<String>,
     /// Child states, in source order.
@@ -748,12 +755,26 @@ pub struct Transition {
     /// Whether the transition is internal (`-> .X`): its domain is its own
     /// state, which it does not leave. `false` for one with no target.
     pub internal: bool,
+    /// The arguments of each state with parameters the transition enters, in
+    /// the order they are entered: `[]` if it enters none.
+    pub args: Vec<StateArgs>,
     /// Effects: every `set` assignment, then the `do`, `send`, `emit` and
     /// `reply` effects in the order written.
     pub effects: Vec<Effect>,
     /// The branch: the whole line for a single-branch trigger, from `if` or
     /// `else` for a branch in a block.
     pub span: Span,
+}
+
+/// The arguments a transition passes to one state with parameters that it
+/// enters: `{"state", "values"}`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StateArgs {
+    /// The state's id.
+    pub state: String,
+    /// One expression per parameter, in parameter order.
+    pub values: Vec<Expr>,
 }
 
 /// What enables a transition. In JSON the kind is the `kind` member.
@@ -839,8 +860,11 @@ pub enum Trigger {
 pub enum Effect {
     /// `set var = value`.
     Set {
-        /// A machine variable (not a parameter).
+        /// A variable (not a parameter): the machine's, or a state's.
         var: String,
+        /// The id of the state whose variable `var` is, or `None` for a
+        /// machine variable.
+        state: Option<String>,
         /// Its new value.
         value: Expr,
     },

@@ -646,7 +646,7 @@ impl Writer<'_> {
     fn effects(&mut self, effects: &[Effect], depth: usize) {
         for e in effects {
             match e {
-                Effect::Set { var, value } => {
+                Effect::Set { var, value, .. } => {
                     let attrs = [("location", var.clone()), ("expr", value.text.clone())];
                     self.open(depth, "assign", &attrs, true);
                 }

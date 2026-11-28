@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/redact-call.road",
@@ -119,6 +119,8 @@
           "endLine": 27,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Issuer.Open",
         "states": [
           {
@@ -133,6 +135,8 @@
               "endLine": 23,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -148,6 +152,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "reply",
@@ -156,6 +161,7 @@
                       "path": [
                         "call"
                       ],
+                      "state": null,
                       "type": "call issue",
                       "text": "call"
                     },
@@ -171,6 +177,7 @@
                               "event",
                               "user"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.user"
                           }
@@ -183,6 +190,7 @@
                               "event",
                               "pin"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.pin"
                           }
@@ -212,6 +220,7 @@
                   "Issuer.Shut"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -237,6 +246,8 @@
               "endLine": 26,
               "endCol": 35
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -254,6 +265,7 @@
                   "Issuer.Open"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -342,6 +354,8 @@
           "endLine": 44,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Client.Asking",
         "states": [
           {
@@ -356,6 +370,8 @@
               "endLine": 40,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -376,6 +392,7 @@
                   "path": [
                     "user"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "user"
                 },
@@ -384,6 +401,7 @@
                   "path": [
                     "pin"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "pin"
                 }
@@ -407,15 +425,18 @@
                   "Client.Got"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "token",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Token",
                       "text": "result"
                     }
@@ -440,6 +461,7 @@
                   "Client.Gave"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -465,6 +487,8 @@
               "endLine": 42,
               "endCol": 35
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -476,6 +500,7 @@
               "path": [
                 "user"
               ],
+              "state": null,
               "type": "string",
               "text": "user"
             },
@@ -493,6 +518,8 @@
               "endLine": 43,
               "endCol": 33
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

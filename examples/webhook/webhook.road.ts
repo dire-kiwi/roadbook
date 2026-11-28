@@ -84,7 +84,7 @@ export interface PaymentWebhookDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/webhook/webhook.road",
@@ -567,6 +567,8 @@ const ir: unknown = {
           "endLine": 103,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "PaymentWebhook.Verifying",
         "states": [
           {
@@ -581,6 +583,8 @@ const ir: unknown = {
               "endLine": 23,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -601,6 +605,7 @@ const ir: unknown = {
                       "path": [
                         "body"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "body"
                     },
@@ -609,6 +614,7 @@ const ir: unknown = {
                       "path": [
                         "signature"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "signature"
                     },
@@ -617,6 +623,7 @@ const ir: unknown = {
                       "path": [
                         "secret"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "secret"
                     }
@@ -628,6 +635,7 @@ const ir: unknown = {
                   "PaymentWebhook.Parsing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -647,6 +655,7 @@ const ir: unknown = {
                   "PaymentWebhook.BadSignature"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -672,6 +681,8 @@ const ir: unknown = {
               "endLine": 30,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -687,6 +698,7 @@ const ir: unknown = {
                   "path": [
                     "body"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "body"
                 }
@@ -710,15 +722,18 @@ const ir: unknown = {
                   "PaymentWebhook.CheckingDuplicate"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "payment",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "PaymentEvent",
                       "text": "result"
                     }
@@ -743,6 +758,7 @@ const ir: unknown = {
                   "PaymentWebhook.Malformed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -768,6 +784,8 @@ const ir: unknown = {
               "endLine": 40,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -784,6 +802,7 @@ const ir: unknown = {
                     "payment",
                     "id"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "payment.id"
                 }
@@ -807,6 +826,7 @@ const ir: unknown = {
                   "path": [
                     "result"
                   ],
+                  "state": null,
                   "type": "bool",
                   "text": "result"
                 },
@@ -814,6 +834,7 @@ const ir: unknown = {
                   "PaymentWebhook.Acknowledged"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -833,6 +854,7 @@ const ir: unknown = {
                   "PaymentWebhook.Applying"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -858,6 +880,8 @@ const ir: unknown = {
               "endLine": 84,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "PaymentWebhook.Applying.Routing",
             "states": [
               {
@@ -872,6 +896,8 @@ const ir: unknown = {
                   "endLine": 54,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -893,6 +919,7 @@ const ir: unknown = {
                             "payment",
                             "kind"
                           ],
+                          "state": null,
                           "type": "PaymentEventKind",
                           "text": "payment.kind"
                         },
@@ -910,6 +937,7 @@ const ir: unknown = {
                       "PaymentWebhook.Applying.MarkingPaid"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -934,6 +962,7 @@ const ir: unknown = {
                             "payment",
                             "kind"
                           ],
+                          "state": null,
                           "type": "PaymentEventKind",
                           "text": "payment.kind"
                         },
@@ -951,6 +980,7 @@ const ir: unknown = {
                       "PaymentWebhook.Applying.NotifyingFailure"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -970,6 +1000,7 @@ const ir: unknown = {
                       "PaymentWebhook.Applying.RecordingRefund"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -995,6 +1026,8 @@ const ir: unknown = {
                   "endLine": 64,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1011,6 +1044,7 @@ const ir: unknown = {
                         "payment",
                         "orderId"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "payment.orderId"
                     },
@@ -1020,6 +1054,7 @@ const ir: unknown = {
                         "payment",
                         "amountCents"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "payment.amountCents"
                     }
@@ -1043,6 +1078,7 @@ const ir: unknown = {
                       "PaymentWebhook.Applying.Applied"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1067,6 +1103,7 @@ const ir: unknown = {
                           "path": [
                             "attempts"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "attempts"
                         },
@@ -1084,6 +1121,7 @@ const ir: unknown = {
                       "PaymentWebhook.Applying.Backoff"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1104,6 +1142,7 @@ const ir: unknown = {
                       "PaymentWebhook.Unavailable"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1129,12 +1168,15 @@ const ir: unknown = {
                   "endLine": 70,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
                   {
                     "kind": "set",
                     "var": "attempts",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -1144,6 +1186,7 @@ const ir: unknown = {
                           "path": [
                             "attempts"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "attempts"
                         },
@@ -1174,6 +1217,7 @@ const ir: unknown = {
                             "path": [
                               "attempts"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "attempts"
                           }
@@ -1188,6 +1232,7 @@ const ir: unknown = {
                       "PaymentWebhook.Applying.MarkingPaid"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1213,6 +1258,8 @@ const ir: unknown = {
                   "endLine": 75,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -1226,6 +1273,7 @@ const ir: unknown = {
                           "payment",
                           "customerId"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "payment.customerId"
                       },
@@ -1235,6 +1283,7 @@ const ir: unknown = {
                           "payment",
                           "orderId"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "payment.orderId"
                       }
@@ -1254,6 +1303,7 @@ const ir: unknown = {
                       "PaymentWebhook.Applying.Applied"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1279,6 +1329,8 @@ const ir: unknown = {
                   "endLine": 81,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1295,6 +1347,7 @@ const ir: unknown = {
                         "payment",
                         "orderId"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "payment.orderId"
                     },
@@ -1304,6 +1357,7 @@ const ir: unknown = {
                         "payment",
                         "amountCents"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "payment.amountCents"
                     }
@@ -1327,6 +1381,7 @@ const ir: unknown = {
                       "PaymentWebhook.Applying.Applied"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -1338,6 +1393,7 @@ const ir: unknown = {
                               "payment",
                               "customerId"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "payment.customerId"
                           },
@@ -1347,6 +1403,7 @@ const ir: unknown = {
                               "payment",
                               "orderId"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "payment.orderId"
                           },
@@ -1356,6 +1413,7 @@ const ir: unknown = {
                               "payment",
                               "amountCents"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "payment.amountCents"
                           }
@@ -1386,6 +1444,8 @@ const ir: unknown = {
                   "endLine": 83,
                   "endCol": 27
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1410,6 +1470,7 @@ const ir: unknown = {
                   "PaymentWebhook.MarkingProcessed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1435,6 +1496,8 @@ const ir: unknown = {
               "endLine": 90,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1451,6 +1514,7 @@ const ir: unknown = {
                     "payment",
                     "id"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "payment.id"
                 }
@@ -1474,6 +1538,7 @@ const ir: unknown = {
                   "PaymentWebhook.Acknowledged"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1499,6 +1564,8 @@ const ir: unknown = {
               "endLine": 92,
               "endCol": 43
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1526,6 +1593,8 @@ const ir: unknown = {
               "endLine": 93,
               "endCol": 68
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1566,6 +1635,8 @@ const ir: unknown = {
               "endLine": 94,
               "endCol": 72
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1606,6 +1677,8 @@ const ir: unknown = {
               "endLine": 95,
               "endCol": 68
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

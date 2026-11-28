@@ -979,6 +979,8 @@ impl<'p> Cx<'_, 'p> {
             },
             doc: doc(&h.doc),
             span: ir_span(h.span),
+            params: Vec::new(),
+            vars: Vec::new(),
             initial: None,
             states: Vec::new(),
             entry: Vec::new(),
@@ -2005,6 +2007,8 @@ impl<'p> Cx<'_, 'p> {
             span: state
                 .map(|s| ir_span(s.span))
                 .unwrap_or_else(|| ir_span(name_span)),
+            params: Vec::new(),
+            vars: Vec::new(),
             initial,
             states,
             entry,
@@ -2497,6 +2501,7 @@ impl<'p> Cx<'_, 'p> {
                 guard,
                 targets,
                 internal,
+                args: Vec::new(),
                 effects,
                 span: ir_span(span),
             });
@@ -2924,6 +2929,7 @@ impl<'p> Cx<'_, 'p> {
                     );
                     out.push(ir::Effect::Set {
                         var: a.var.name.clone(),
+                        state: None,
                         value,
                     });
                 }

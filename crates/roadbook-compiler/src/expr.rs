@@ -212,7 +212,7 @@ impl Cx<'_, '_> {
                     },
                 };
                 let path = vec![n.name.clone()];
-                (node(K::Ref { path }, &ty, e), ty)
+                (node(K::Ref { path, state: None }, &ty, e), ty)
             }
             ExprKind::Field(base, f)
                 if matches!(&base.kind, ExprKind::Var(n) if n.name == "event")
@@ -227,7 +227,7 @@ impl Cx<'_, '_> {
                     .sensitive
                     .is(&Sensitive::call(&self.machine, c), &f.name);
                 let path = vec!["event".to_string(), f.name.clone()];
-                (node(K::Ref { path }, &ty, e), ty)
+                (node(K::Ref { path, state: None }, &ty, e), ty)
             }
             ExprKind::Field(base, f)
                 if matches!(&base.kind, ExprKind::Var(n) if n.name == "event")
@@ -258,7 +258,7 @@ impl Cx<'_, '_> {
                     Ty::Unknown
                 };
                 let path = vec!["event".to_string(), f.name.clone()];
-                (node(K::Ref { path }, &ty, e), ty)
+                (node(K::Ref { path, state: None }, &ty, e), ty)
             }
             ExprKind::Field(base, f) => {
                 let (be, bt) = self.expr(base, scope);
@@ -266,9 +266,9 @@ impl Cx<'_, '_> {
                 let ty = self.field(&bt, f);
                 self.sens = sens;
                 let kind = match be.kind {
-                    K::Ref { mut path } => {
+                    K::Ref { mut path, state } => {
                         path.push(f.name.clone());
-                        K::Ref { path }
+                        K::Ref { path, state }
                     }
                     other => K::Field {
                         of: Box::new(ir::Expr {

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "packages/viewer/test/charts/tasks.road",
@@ -319,6 +319,8 @@
           "endLine": 62,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Uploads.Single",
         "states": [
           {
@@ -333,6 +335,8 @@
               "endLine": 44,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -348,6 +352,7 @@
                   "path": [
                     "file"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "file"
                 }
@@ -371,15 +376,18 @@
                   "Uploads.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "stored",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -404,6 +412,7 @@
                   "Uploads.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -435,6 +444,7 @@
                         "event",
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.percent"
                     },
@@ -452,10 +462,12 @@
                   "Uploads.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "percent",
+                    "state": null,
                     "value": {
                       "kind": "lit",
                       "value": 100,
@@ -487,16 +499,19 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "percent",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.percent"
                     }
@@ -525,6 +540,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -536,6 +552,7 @@
                           "event",
                           "name"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.name"
                       },
@@ -544,6 +561,7 @@
                         "path": [
                           "percent"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "percent"
                       }
@@ -574,6 +592,8 @@
               "endLine": 50,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -615,10 +635,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "seconds",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -628,6 +650,7 @@
                           "path": [
                             "seconds"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "seconds"
                         },
@@ -662,6 +685,7 @@
                   "Uploads.Many"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -687,6 +711,8 @@
               "endLine": 59,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -702,6 +728,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -713,6 +740,7 @@
                         "event",
                         "name"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.name"
                     },
@@ -723,6 +751,7 @@
                           "event",
                           "name"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.name"
                       }
@@ -746,6 +775,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "stop",
@@ -756,6 +786,7 @@
                         "event",
                         "name"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.name"
                     }
@@ -784,6 +815,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -794,6 +826,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "key"
                       },
@@ -803,6 +836,7 @@
                           "event",
                           "percent"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "event.percent"
                       }
@@ -826,10 +860,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "stored",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -839,6 +875,7 @@
                           "path": [
                             "stored"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "stored"
                         },
@@ -847,6 +884,7 @@
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "result"
                         }
@@ -874,6 +912,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -884,6 +923,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "key"
                       },
@@ -915,6 +955,7 @@
                   "Uploads.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -940,6 +981,8 @@
               "endLine": 61,
               "endCol": 39
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -951,6 +994,7 @@
               "path": [
                 "stored"
               ],
+              "state": null,
               "type": "int",
               "text": "stored"
             },

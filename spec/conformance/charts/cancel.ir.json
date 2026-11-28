@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/cancel.road",
@@ -73,6 +73,8 @@
           "endLine": 24,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Parent.Running",
         "states": [
           {
@@ -87,6 +89,8 @@
               "endLine": 21,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -129,6 +133,7 @@
                   "Parent.Over"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -149,6 +154,7 @@
                   "Parent.Over"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -187,6 +193,8 @@
               "endLine": 23,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -250,6 +258,8 @@
           "endLine": 45,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Child.Outer",
         "states": [
           {
@@ -264,6 +274,8 @@
               "endLine": 42,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Child.Outer.Inner",
             "states": [
               {
@@ -278,6 +290,8 @@
                   "endLine": 41,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -313,6 +327,7 @@
                       "Child.Finished"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -359,6 +374,8 @@
               "endLine": 44,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

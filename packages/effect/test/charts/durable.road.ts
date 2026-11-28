@@ -41,7 +41,7 @@ export interface PipelineDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable.road",
@@ -254,6 +254,8 @@ const ir: unknown = {
           "endLine": 50,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Pipeline.One",
         "states": [
           {
@@ -268,6 +270,8 @@ const ir: unknown = {
               "endLine": 29,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -317,10 +321,12 @@ const ir: unknown = {
                   "Pipeline.Two"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "total",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -330,6 +336,7 @@ const ir: unknown = {
                           "path": [
                             "total"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "total"
                         },
@@ -338,6 +345,7 @@ const ir: unknown = {
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "result"
                         }
@@ -371,6 +379,8 @@ const ir: unknown = {
               "endLine": 35,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -407,10 +417,12 @@ const ir: unknown = {
                   "Pipeline.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "total",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -420,6 +432,7 @@ const ir: unknown = {
                           "path": [
                             "total"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "total"
                         },
@@ -428,6 +441,7 @@ const ir: unknown = {
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "result"
                         }
@@ -461,6 +475,8 @@ const ir: unknown = {
               "endLine": 41,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -478,10 +494,12 @@ const ir: unknown = {
                   "Pipeline.Three"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "total",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -491,6 +509,7 @@ const ir: unknown = {
                           "path": [
                             "total"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "total"
                         },
@@ -500,6 +519,7 @@ const ir: unknown = {
                             "event",
                             "by"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "event.by"
                         }
@@ -534,6 +554,7 @@ const ir: unknown = {
                   "Pipeline.Three"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -559,6 +580,8 @@ const ir: unknown = {
               "endLine": 47,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -595,10 +618,12 @@ const ir: unknown = {
                   "Pipeline.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "total",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -608,6 +633,7 @@ const ir: unknown = {
                           "path": [
                             "total"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "total"
                         },
@@ -616,6 +642,7 @@ const ir: unknown = {
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "result"
                         }
@@ -649,6 +676,8 @@ const ir: unknown = {
               "endLine": 49,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -660,6 +689,7 @@ const ir: unknown = {
               "path": [
                 "total"
               ],
+              "state": null,
               "type": "int",
               "text": "total"
             },
@@ -765,6 +795,8 @@ const ir: unknown = {
           "endLine": 77,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Parent.Running",
         "states": [
           {
@@ -779,6 +811,8 @@ const ir: unknown = {
               "endLine": 67,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -794,6 +828,7 @@ const ir: unknown = {
                   "path": [
                     "id"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "id"
                 }
@@ -817,15 +852,18 @@ const ir: unknown = {
                   "Parent.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "total",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -848,6 +886,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -870,6 +909,7 @@ const ir: unknown = {
                               "event",
                               "by"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "event.by"
                           }
@@ -905,6 +945,7 @@ const ir: unknown = {
                   "Parent.Fallback"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -930,6 +971,8 @@ const ir: unknown = {
               "endLine": 73,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -966,6 +1009,7 @@ const ir: unknown = {
                   "Parent.GaveUp"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -991,6 +1035,8 @@ const ir: unknown = {
               "endLine": 75,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1002,6 +1048,7 @@ const ir: unknown = {
               "path": [
                 "total"
               ],
+              "state": null,
               "type": "int",
               "text": "total"
             },
@@ -1019,6 +1066,8 @@ const ir: unknown = {
               "endLine": 76,
               "endCol": 35
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1151,6 +1200,8 @@ const ir: unknown = {
           "endLine": 95,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Counter.Counting",
         "states": [
           {
@@ -1165,6 +1216,8 @@ const ir: unknown = {
               "endLine": 92,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1180,10 +1233,12 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -1193,6 +1248,7 @@ const ir: unknown = {
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         },
@@ -1202,6 +1258,7 @@ const ir: unknown = {
                             "event",
                             "by"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "event.by"
                         }
@@ -1223,6 +1280,7 @@ const ir: unknown = {
                             "path": [
                               "n"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "n"
                           }
@@ -1252,6 +1310,7 @@ const ir: unknown = {
                   "Counter.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1277,6 +1336,8 @@ const ir: unknown = {
               "endLine": 94,
               "endCol": 24
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1340,6 +1401,8 @@ const ir: unknown = {
           "endLine": 110,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Adder.Working",
         "states": [
           {
@@ -1354,6 +1417,8 @@ const ir: unknown = {
               "endLine": 105,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1390,6 +1455,7 @@ const ir: unknown = {
                   "Adder.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1411,6 +1477,7 @@ const ir: unknown = {
                             "path": [
                               "result"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "result"
                           }
@@ -1445,6 +1512,8 @@ const ir: unknown = {
               "endLine": 107,
               "endCol": 67
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1473,6 +1542,7 @@ const ir: unknown = {
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     },
@@ -1481,6 +1551,7 @@ const ir: unknown = {
                       "path": [
                         "goal"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "goal"
                     }
@@ -1492,6 +1563,7 @@ const ir: unknown = {
                   "Adder.Reached"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1517,6 +1589,8 @@ const ir: unknown = {
               "endLine": 109,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1528,6 +1602,7 @@ const ir: unknown = {
               "path": [
                 "goal"
               ],
+              "state": null,
               "type": "int",
               "text": "goal"
             },
@@ -1601,6 +1676,8 @@ const ir: unknown = {
           "endLine": 128,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Watcher.Working",
         "states": [
           {
@@ -1615,6 +1692,8 @@ const ir: unknown = {
               "endLine": 125,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1651,6 +1730,7 @@ const ir: unknown = {
                   "Watcher.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1676,6 +1756,8 @@ const ir: unknown = {
               "endLine": 127,
               "endCol": 35
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1687,6 +1769,7 @@ const ir: unknown = {
               "path": [
                 "seen"
               ],
+              "state": null,
               "type": "int",
               "text": "seen"
             },
@@ -1711,10 +1794,12 @@ const ir: unknown = {
             "guard": null,
             "targets": [],
             "internal": false,
+            "args": [],
             "effects": [
               {
                 "kind": "set",
                 "var": "seen",
+                "state": null,
                 "value": {
                   "kind": "op",
                   "op": "+",
@@ -1724,6 +1809,7 @@ const ir: unknown = {
                       "path": [
                         "seen"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "seen"
                     },
@@ -1878,6 +1964,8 @@ const ir: unknown = {
           "endLine": 157,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Session.Waiting",
         "states": [
           {
@@ -1892,6 +1980,8 @@ const ir: unknown = {
               "endLine": 147,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1907,10 +1997,12 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "total",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -1920,6 +2012,7 @@ const ir: unknown = {
                           "path": [
                             "total"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "total"
                         },
@@ -1929,6 +2022,7 @@ const ir: unknown = {
                             "event",
                             "by"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "event.by"
                         }
@@ -1957,16 +2051,19 @@ const ir: unknown = {
                   "Session.Working"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "work",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     }
@@ -1991,6 +2088,7 @@ const ir: unknown = {
                   "Session.Left"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2017,6 +2115,7 @@ const ir: unknown = {
                   "Session.Expired"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2042,6 +2141,8 @@ const ir: unknown = {
               "endLine": 153,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2057,6 +2158,7 @@ const ir: unknown = {
                   "path": [
                     "work"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "work"
                 }
@@ -2080,10 +2182,12 @@ const ir: unknown = {
                   "Session.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "total",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -2093,6 +2197,7 @@ const ir: unknown = {
                           "path": [
                             "total"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "total"
                         },
@@ -2101,6 +2206,7 @@ const ir: unknown = {
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "result"
                         }
@@ -2134,6 +2240,8 @@ const ir: unknown = {
               "endLine": 155,
               "endCol": 39
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2145,6 +2253,7 @@ const ir: unknown = {
               "path": [
                 "total"
               ],
+              "state": null,
               "type": "int",
               "text": "total"
             },
@@ -2162,6 +2271,8 @@ const ir: unknown = {
               "endLine": 156,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2362,6 +2473,8 @@ const ir: unknown = {
           "endLine": 184,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Hub.Serving",
         "states": [
           {
@@ -2376,6 +2489,8 @@ const ir: unknown = {
               "endLine": 181,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2391,6 +2506,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -2402,6 +2518,7 @@ const ir: unknown = {
                         "event",
                         "key"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.key"
                     },
@@ -2412,6 +2529,7 @@ const ir: unknown = {
                           "event",
                           "key"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.key"
                       }
@@ -2435,6 +2553,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -2450,6 +2569,7 @@ const ir: unknown = {
                         "event",
                         "key"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.key"
                     },
@@ -2465,6 +2585,7 @@ const ir: unknown = {
                               "event",
                               "by"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "event.by"
                           }
@@ -2492,6 +2613,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -2507,6 +2629,7 @@ const ir: unknown = {
                         "event",
                         "key"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.key"
                     },
@@ -2522,6 +2645,7 @@ const ir: unknown = {
                               "event",
                               "n"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "event.n"
                           }
@@ -2549,6 +2673,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -2564,6 +2689,7 @@ const ir: unknown = {
                         "event",
                         "key"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.key"
                     },
@@ -2593,10 +2719,12 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "total",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -2606,6 +2734,7 @@ const ir: unknown = {
                           "path": [
                             "total"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "total"
                         },
@@ -2614,6 +2743,7 @@ const ir: unknown = {
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "result"
                         }
@@ -2631,6 +2761,7 @@ const ir: unknown = {
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "key"
                       }
@@ -2656,6 +2787,7 @@ const ir: unknown = {
                   "Hub.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2681,6 +2813,8 @@ const ir: unknown = {
               "endLine": 183,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2692,6 +2826,7 @@ const ir: unknown = {
               "path": [
                 "total"
               ],
+              "state": null,
               "type": "int",
               "text": "total"
             },
@@ -2771,6 +2906,8 @@ const ir: unknown = {
           "endLine": 199,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Relay.Running",
         "states": [
           {
@@ -2785,6 +2922,8 @@ const ir: unknown = {
               "endLine": 196,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2800,6 +2939,7 @@ const ir: unknown = {
                   "path": [
                     "counter"
                   ],
+                  "state": null,
                   "type": "ref Counter",
                   "text": "counter"
                 },
@@ -2808,6 +2948,7 @@ const ir: unknown = {
                   "path": [
                     "goal"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "goal"
                 }
@@ -2831,15 +2972,18 @@ const ir: unknown = {
                   "Relay.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "got",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -2869,6 +3013,8 @@ const ir: unknown = {
               "endLine": 198,
               "endCol": 34
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2880,6 +3026,7 @@ const ir: unknown = {
               "path": [
                 "got"
               ],
+              "state": null,
               "type": "int",
               "text": "got"
             },
@@ -2953,6 +3100,8 @@ const ir: unknown = {
           "endLine": 221,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Tracker.Working",
         "states": [
           {
@@ -2967,6 +3116,8 @@ const ir: unknown = {
               "endLine": 218,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -3003,6 +3154,7 @@ const ir: unknown = {
                   "Tracker.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -3027,10 +3179,12 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "seen",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -3040,6 +3194,7 @@ const ir: unknown = {
                           "path": [
                             "seen"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "seen"
                         },
@@ -3064,6 +3219,7 @@ const ir: unknown = {
                           "event",
                           "percent"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "event.percent"
                       }
@@ -3094,6 +3250,8 @@ const ir: unknown = {
               "endLine": 220,
               "endCol": 35
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -3105,6 +3263,7 @@ const ir: unknown = {
               "path": [
                 "seen"
               ],
+              "state": null,
               "type": "int",
               "text": "seen"
             },
@@ -3228,6 +3387,8 @@ const ir: unknown = {
           "endLine": 242,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Crew.Working",
         "states": [
           {
@@ -3242,6 +3403,8 @@ const ir: unknown = {
               "endLine": 239,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -3257,6 +3420,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -3268,6 +3432,7 @@ const ir: unknown = {
                         "event",
                         "key"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.key"
                     },
@@ -3278,6 +3443,7 @@ const ir: unknown = {
                           "event",
                           "n"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "event.n"
                       }
@@ -3307,6 +3473,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -3318,6 +3485,7 @@ const ir: unknown = {
                           "event",
                           "percent"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "event.percent"
                       }
@@ -3341,10 +3509,12 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "total",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -3354,6 +3524,7 @@ const ir: unknown = {
                           "path": [
                             "total"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "total"
                         },
@@ -3362,6 +3533,7 @@ const ir: unknown = {
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "result"
                         }
@@ -3390,6 +3562,7 @@ const ir: unknown = {
                   "Crew.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -3415,6 +3588,8 @@ const ir: unknown = {
               "endLine": 241,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -3426,6 +3601,7 @@ const ir: unknown = {
               "path": [
                 "total"
               ],
+              "state": null,
               "type": "int",
               "text": "total"
             },
@@ -3523,6 +3699,8 @@ const ir: unknown = {
           "endLine": 262,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Nagger.Asleep",
         "states": [
           {
@@ -3537,6 +3715,8 @@ const ir: unknown = {
               "endLine": 257,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -3573,6 +3753,7 @@ const ir: unknown = {
                   "Nagger.Awake"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -3598,6 +3779,8 @@ const ir: unknown = {
               "endLine": 259,
               "endCol": 69
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -3615,10 +3798,12 @@ const ir: unknown = {
                   "Nagger.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "nags",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -3628,6 +3813,7 @@ const ir: unknown = {
                           "path": [
                             "nags"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "nags"
                         },
@@ -3679,6 +3865,8 @@ const ir: unknown = {
               "endLine": 261,
               "endCol": 35
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -3690,6 +3878,7 @@ const ir: unknown = {
               "path": [
                 "nags"
               ],
+              "state": null,
               "type": "int",
               "text": "nags"
             },

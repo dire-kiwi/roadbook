@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/saved.road",
@@ -172,6 +172,7 @@
             "path": [
               "start"
             ],
+            "state": null,
             "type": "int",
             "text": "start"
           },
@@ -232,6 +233,8 @@
           "endLine": 27,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Counter.Counting",
         "states": [
           {
@@ -246,6 +249,8 @@
               "endLine": 24,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -261,10 +266,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -274,6 +281,7 @@
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         },
@@ -283,6 +291,7 @@
                             "event",
                             "by"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "event.by"
                         }
@@ -306,6 +315,7 @@
                         "path": [
                           "n"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "n"
                       }
@@ -331,6 +341,7 @@
                   "Counter.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -356,6 +367,8 @@
               "endLine": 26,
               "endCol": 32
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -367,6 +380,7 @@
               "path": [
                 "n"
               ],
+              "state": null,
               "type": "int",
               "text": "n"
             },
@@ -440,6 +454,8 @@
           "endLine": 42,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Shop.Paying",
         "states": [
           {
@@ -454,6 +470,8 @@
               "endLine": 39,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -469,6 +487,7 @@
                   "path": [
                     "amount"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "amount"
                 }
@@ -492,15 +511,18 @@
                   "Shop.Paid"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "receipt",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "result"
                     }
@@ -530,6 +552,8 @@
               "endLine": 41,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -541,6 +565,7 @@
               "path": [
                 "receipt"
               ],
+              "state": null,
               "type": "string",
               "text": "receipt"
             },
@@ -633,6 +658,8 @@
           "endLine": 64,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Pay.Quoting",
         "states": [
           {
@@ -647,6 +674,8 @@
               "endLine": 55,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -662,6 +691,7 @@
                   "path": [
                     "amount"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "amount"
                 }
@@ -685,15 +715,18 @@
                   "Pay.Charging"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "price",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -723,6 +756,8 @@
               "endLine": 61,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -738,6 +773,7 @@
                   "path": [
                     "price"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "price"
                 }
@@ -761,15 +797,18 @@
                   "Pay.Charged"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "receipt",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "result"
                     }
@@ -799,6 +838,8 @@
               "endLine": 63,
               "endCol": 41
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -810,6 +851,7 @@
               "path": [
                 "receipt"
               ],
+              "state": null,
               "type": "string",
               "text": "receipt"
             },
@@ -868,6 +910,8 @@
           "endLine": 79,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Reminder.Waiting",
         "states": [
           {
@@ -882,6 +926,8 @@
               "endLine": 72,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -904,6 +950,7 @@
                   "Reminder.Ringing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -929,6 +976,8 @@
               "endLine": 78,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -959,6 +1008,7 @@
                   "Reminder.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1089,6 +1139,8 @@
           "endLine": 109,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Order.AwaitingPayment",
         "states": [
           {
@@ -1103,6 +1155,8 @@
               "endLine": 96,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1125,6 +1179,7 @@
                   "Order.Expired"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1145,16 +1200,19 @@
                   "Order.Shipping"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "paid",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "amount"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.amount"
                     }
@@ -1184,6 +1242,8 @@
               "endLine": 102,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1199,6 +1259,7 @@
                   "path": [
                     "id"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "id"
                 }
@@ -1222,15 +1283,18 @@
                   "Order.AwaitingDelivery"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "tracking",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "result"
                     }
@@ -1260,6 +1324,8 @@
               "endLine": 104,
               "endCol": 54
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1277,6 +1343,7 @@
                   "Order.Complete"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1302,6 +1369,8 @@
               "endLine": 106,
               "endCol": 67
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1317,6 +1386,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1327,6 +1397,7 @@
                         "path": [
                           "id"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "id"
                       },
@@ -1336,6 +1407,7 @@
                           "event",
                           "amount"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "event.amount"
                       }
@@ -1366,6 +1438,8 @@
               "endLine": 108,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

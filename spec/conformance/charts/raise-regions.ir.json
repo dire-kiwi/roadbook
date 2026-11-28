@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/raise-regions.road",
@@ -85,6 +85,8 @@
           "endLine": 29,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Regions.P",
         "states": [
           {
@@ -99,6 +101,8 @@
               "endLine": 28,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -113,6 +117,8 @@
                   "endLine": 19,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Regions.P.Left.L1",
                 "states": [
                   {
@@ -127,6 +133,8 @@
                       "endLine": 16,
                       "endCol": 45
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -144,6 +152,7 @@
                           "Regions.P.Left.L2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "raise",
@@ -182,6 +191,8 @@
                       "endLine": 18,
                       "endCol": 44
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -197,6 +208,7 @@
                         "guard": null,
                         "targets": [],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -243,6 +255,8 @@
                   "endLine": 27,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Regions.P.Right.R1",
                 "states": [
                   {
@@ -257,6 +271,8 @@
                       "endLine": 24,
                       "endCol": 35
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -274,6 +290,7 @@
                           "Regions.P.Right.R2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -299,6 +316,8 @@
                       "endLine": 26,
                       "endCol": 18
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],

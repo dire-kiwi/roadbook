@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/generic.road",
@@ -315,6 +315,8 @@
           "endLine": 47,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Gather.Waiting",
         "states": [
           {
@@ -329,12 +331,15 @@
               "endLine": 38,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
               {
                 "kind": "set",
                 "var": "best",
+                "state": null,
                 "value": {
                   "kind": "call",
                   "fn": "longest",
@@ -344,6 +349,7 @@
                       "path": [
                         "waits"
                       ],
+                      "state": null,
                       "type": "map<string, duration>",
                       "text": "waits"
                     }
@@ -367,10 +373,12 @@
                   "Gather.Fetching"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "total",
+                    "state": null,
                     "value": {
                       "kind": "call",
                       "fn": "merge",
@@ -380,6 +388,7 @@
                           "path": [
                             "counts"
                           ],
+                          "state": null,
                           "type": "Dict<int>",
                           "text": "counts"
                         },
@@ -389,6 +398,7 @@
                             "event",
                             "more"
                           ],
+                          "state": null,
                           "type": "map<string, int>",
                           "text": "event.more"
                         }
@@ -400,6 +410,7 @@
                   {
                     "kind": "set",
                     "var": "adds",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -409,6 +420,7 @@
                           "path": [
                             "adds"
                           ],
+                          "state": null,
                           "type": "First<int>",
                           "text": "adds"
                         },
@@ -441,6 +453,7 @@
                       "best",
                       "wait"
                     ],
+                    "state": null,
                     "type": "duration",
                     "text": "best.wait"
                   }
@@ -451,15 +464,18 @@
                   "Gather.Fetching"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "total",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "counts"
                       ],
+                      "state": null,
                       "type": "Dict<int>",
                       "text": "counts"
                     }
@@ -489,6 +505,8 @@
               "endLine": 44,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -505,6 +523,7 @@
                     "best",
                     "value"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "best.value"
                 }
@@ -528,15 +547,18 @@
                   "Gather.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "page",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Page<Timed<int>>",
                       "text": "result"
                     }
@@ -550,6 +572,7 @@
                         "path": [
                           "total"
                         ],
+                        "state": null,
                         "type": "map<string, int>",
                         "text": "total"
                       },
@@ -558,6 +581,7 @@
                         "path": [
                           "result"
                         ],
+                        "state": null,
                         "type": "Page<Timed<int>>",
                         "text": "result"
                       }
@@ -588,6 +612,8 @@
               "endLine": 46,
               "endCol": 75
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -605,6 +631,7 @@
                       "page",
                       "items"
                     ],
+                    "state": null,
                     "type": "Timed<int>[]",
                     "text": "page.items"
                   }
@@ -617,6 +644,7 @@
                       "best",
                       "value"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "best.value"
                   }

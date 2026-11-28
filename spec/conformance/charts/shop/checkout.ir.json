@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/shop/checkout.road",
@@ -598,6 +598,8 @@
           "endLine": 32,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Checkout.Charging",
         "states": [
           {
@@ -612,6 +614,8 @@
               "endLine": 21,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -627,6 +631,7 @@
                   "path": [
                     "order"
                   ],
+                  "state": null,
                   "type": "Order",
                   "text": "order"
                 },
@@ -635,6 +640,7 @@
                   "path": [
                     "user"
                   ],
+                  "state": null,
                   "type": "User",
                   "text": "user"
                 }
@@ -658,15 +664,18 @@
                   "Checkout.Charged"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "receipt",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Receipt",
                       "text": "result"
                     }
@@ -691,15 +700,18 @@
                   "Checkout.Declined"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "declined",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "CardDeclined",
                       "text": "error"
                     }
@@ -728,6 +740,7 @@
                       "path": [
                         "attempts"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "attempts"
                     },
@@ -745,6 +758,7 @@
                   "Checkout.Backoff"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -765,6 +779,7 @@
                   "Checkout.GaveUp"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -790,12 +805,15 @@
               "endLine": 27,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
               {
                 "kind": "set",
                 "var": "attempts",
+                "state": null,
                 "value": {
                   "kind": "op",
                   "op": "+",
@@ -805,6 +823,7 @@
                       "path": [
                         "attempts"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "attempts"
                     },
@@ -835,6 +854,7 @@
                         "path": [
                           "attempts"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "attempts"
                       }
@@ -849,6 +869,7 @@
                   "Checkout.Charging"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -874,6 +895,8 @@
               "endLine": 29,
               "endCol": 42
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -885,6 +908,7 @@
               "path": [
                 "receipt"
               ],
+              "state": null,
               "type": "Receipt",
               "text": "receipt"
             },
@@ -902,6 +926,8 @@
               "endLine": 30,
               "endCol": 41
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -914,6 +940,7 @@
               "path": [
                 "declined"
               ],
+              "state": null,
               "type": "CardDeclined",
               "text": "declined"
             }
@@ -930,6 +957,8 @@
               "endLine": 31,
               "endCol": 51
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

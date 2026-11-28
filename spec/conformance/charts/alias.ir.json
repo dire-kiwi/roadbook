@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/alias.road",
@@ -332,6 +332,8 @@
           "endLine": 52,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Aliases.Counting",
         "states": [
           {
@@ -346,6 +348,8 @@
               "endLine": 49,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -358,6 +362,7 @@
                     "path": [
                       "note"
                     ],
+                    "state": null,
                     "type": "Note",
                     "text": "note"
                   }
@@ -382,6 +387,7 @@
                       "path": [
                         "limit"
                       ],
+                      "state": null,
                       "type": "Money",
                       "text": "limit"
                     },
@@ -394,6 +400,7 @@
                           "path": [
                             "m"
                           ],
+                          "state": null,
                           "type": "Cash",
                           "text": "m"
                         },
@@ -403,6 +410,7 @@
                             "event",
                             "by"
                           ],
+                          "state": null,
                           "type": "Money",
                           "text": "event.by"
                         }
@@ -418,10 +426,12 @@
                   "Aliases.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "m",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -431,6 +441,7 @@
                           "path": [
                             "m"
                           ],
+                          "state": null,
                           "type": "Cash",
                           "text": "m"
                         },
@@ -440,6 +451,7 @@
                             "event",
                             "by"
                           ],
+                          "state": null,
                           "type": "Money",
                           "text": "event.by"
                         }
@@ -472,6 +484,7 @@
                       "path": [
                         "limit"
                       ],
+                      "state": null,
                       "type": "Money",
                       "text": "limit"
                     },
@@ -484,6 +497,7 @@
                           "path": [
                             "m"
                           ],
+                          "state": null,
                           "type": "Cash",
                           "text": "m"
                         },
@@ -493,6 +507,7 @@
                             "event",
                             "by"
                           ],
+                          "state": null,
                           "type": "Money",
                           "text": "event.by"
                         }
@@ -506,10 +521,12 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "m",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "*",
@@ -519,6 +536,7 @@
                           "path": [
                             "m"
                           ],
+                          "state": null,
                           "type": "Cash",
                           "text": "m"
                         },
@@ -573,6 +591,7 @@
                           "path": [
                             "m"
                           ],
+                          "state": null,
                           "type": "Cash",
                           "text": "m"
                         },
@@ -581,6 +600,7 @@
                           "path": [
                             "limit"
                           ],
+                          "state": null,
                           "type": "Money",
                           "text": "limit"
                         }
@@ -597,6 +617,7 @@
                           "path": [
                             "m"
                           ],
+                          "state": null,
                           "type": "Cash",
                           "text": "m"
                         },
@@ -605,6 +626,7 @@
                           "path": [
                             "limit"
                           ],
+                          "state": null,
                           "type": "Money",
                           "text": "limit"
                         }
@@ -618,10 +640,12 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "m",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -631,6 +655,7 @@
                           "path": [
                             "m"
                           ],
+                          "state": null,
                           "type": "Cash",
                           "text": "m"
                         },
@@ -640,6 +665,7 @@
                             "event",
                             "by"
                           ],
+                          "state": null,
                           "type": "Money",
                           "text": "event.by"
                         }
@@ -689,6 +715,7 @@
                             "event",
                             "ratio"
                           ],
+                          "state": null,
                           "type": "Ratio",
                           "text": "event.ratio"
                         },
@@ -697,6 +724,7 @@
                           "path": [
                             "r"
                           ],
+                          "state": null,
                           "type": "Ratio",
                           "text": "r"
                         }
@@ -714,6 +742,7 @@
                             "event",
                             "wait"
                           ],
+                          "state": null,
                           "type": "Wait",
                           "text": "event.wait"
                         },
@@ -722,6 +751,7 @@
                           "path": [
                             "w"
                           ],
+                          "state": null,
                           "type": "Wait",
                           "text": "w"
                         }
@@ -735,6 +765,7 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -777,6 +808,7 @@
                             "event",
                             "ratio"
                           ],
+                          "state": null,
                           "type": "Ratio",
                           "text": "event.ratio"
                         },
@@ -785,6 +817,7 @@
                           "path": [
                             "r"
                           ],
+                          "state": null,
                           "type": "Ratio",
                           "text": "r"
                         }
@@ -802,6 +835,7 @@
                             "event",
                             "wait"
                           ],
+                          "state": null,
                           "type": "Wait",
                           "text": "event.wait"
                         },
@@ -810,6 +844,7 @@
                           "path": [
                             "w"
                           ],
+                          "state": null,
                           "type": "Wait",
                           "text": "w"
                         }
@@ -823,6 +858,7 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -865,6 +901,7 @@
                             "event",
                             "ratio"
                           ],
+                          "state": null,
                           "type": "Ratio",
                           "text": "event.ratio"
                         },
@@ -873,6 +910,7 @@
                           "path": [
                             "r"
                           ],
+                          "state": null,
                           "type": "Ratio",
                           "text": "r"
                         }
@@ -890,6 +928,7 @@
                             "event",
                             "wait"
                           ],
+                          "state": null,
                           "type": "Wait",
                           "text": "event.wait"
                         },
@@ -898,6 +937,7 @@
                           "path": [
                             "w"
                           ],
+                          "state": null,
                           "type": "Wait",
                           "text": "w"
                         }
@@ -911,10 +951,12 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "r",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "*",
@@ -924,6 +966,7 @@
                           "path": [
                             "r"
                           ],
+                          "state": null,
                           "type": "Ratio",
                           "text": "r"
                         },
@@ -933,6 +976,7 @@
                             "event",
                             "ratio"
                           ],
+                          "state": null,
                           "type": "Ratio",
                           "text": "event.ratio"
                         }
@@ -982,6 +1026,7 @@
                             "event",
                             "tier"
                           ],
+                          "state": null,
                           "type": "Tier",
                           "text": "event.tier"
                         },
@@ -990,6 +1035,7 @@
                           "path": [
                             "t"
                           ],
+                          "state": null,
                           "type": "Tier",
                           "text": "t"
                         }
@@ -1010,6 +1056,7 @@
                               "path": [
                                 "r"
                               ],
+                              "state": null,
                               "type": "Ratio",
                               "text": "r"
                             }
@@ -1041,6 +1088,7 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1083,6 +1131,7 @@
                             "event",
                             "tier"
                           ],
+                          "state": null,
                           "type": "Tier",
                           "text": "event.tier"
                         },
@@ -1091,6 +1140,7 @@
                           "path": [
                             "t"
                           ],
+                          "state": null,
                           "type": "Tier",
                           "text": "t"
                         }
@@ -1107,6 +1157,7 @@
                           "path": [
                             "m"
                           ],
+                          "state": null,
                           "type": "Cash",
                           "text": "m"
                         },
@@ -1126,16 +1177,19 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "t",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "tier"
                       ],
+                      "state": null,
                       "type": "Tier",
                       "text": "event.tier"
                     }
@@ -1177,6 +1231,8 @@
               "endLine": 51,
               "endCol": 32
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1188,6 +1244,7 @@
               "path": [
                 "m"
               ],
+              "state": null,
               "type": "Cash",
               "text": "m"
             },

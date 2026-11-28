@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/strict-calls.road",
@@ -137,6 +137,8 @@
           "endLine": 34,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Desk.Staffed",
         "states": [
           {
@@ -151,6 +153,8 @@
               "endLine": 30,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Desk.Staffed.Free",
             "states": [
               {
@@ -165,6 +169,8 @@
                   "endLine": 28,
                   "endCol": 55
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -182,15 +188,18 @@
                       "Desk.Staffed.Held"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "pending",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "call"
                           ],
+                          "state": null,
                           "type": "call hold",
                           "text": "call"
                         }
@@ -220,6 +229,8 @@
                   "endLine": 29,
                   "endCol": 67
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -237,6 +248,7 @@
                       "Desk.Staffed.Free"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "reply",
@@ -245,6 +257,7 @@
                           "path": [
                             "pending"
                           ],
+                          "state": null,
                           "type": "call hold",
                           "text": "pending"
                         },
@@ -254,6 +267,7 @@
                           "path": [
                             "answered"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "answered"
                         }
@@ -285,10 +299,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "answered",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -298,6 +314,7 @@
                           "path": [
                             "answered"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "answered"
                         },
@@ -319,6 +336,7 @@
                       "path": [
                         "call"
                       ],
+                      "state": null,
                       "type": "call ask",
                       "text": "call"
                     },
@@ -328,6 +346,7 @@
                       "path": [
                         "answered"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "answered"
                     }
@@ -352,6 +371,7 @@
                   "Desk.Shut"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -377,6 +397,8 @@
               "endLine": 33,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -394,6 +416,7 @@
                   "Desk.Staffed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -470,6 +493,8 @@
           "endLine": 51,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Asker.Asking",
         "states": [
           {
@@ -484,6 +509,8 @@
               "endLine": 47,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -518,15 +545,18 @@
                   "Asker.Got"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -551,6 +581,7 @@
                   "Asker.Gave"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -576,6 +607,8 @@
               "endLine": 49,
               "endCol": 32
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -587,6 +620,7 @@
               "path": [
                 "n"
               ],
+              "state": null,
               "type": "int",
               "text": "n"
             },
@@ -604,6 +638,8 @@
               "endLine": 50,
               "endCol": 32
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -681,6 +717,8 @@
           "endLine": 68,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Holder.Holding",
         "states": [
           {
@@ -695,6 +733,8 @@
               "endLine": 64,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -729,15 +769,18 @@
                   "Holder.Got"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -762,6 +805,7 @@
                   "Holder.Gave"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -787,6 +831,8 @@
               "endLine": 66,
               "endCol": 32
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -798,6 +844,7 @@
               "path": [
                 "n"
               ],
+              "state": null,
               "type": "int",
               "text": "n"
             },
@@ -815,6 +862,8 @@
               "endLine": 67,
               "endCol": 32
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

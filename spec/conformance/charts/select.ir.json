@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/select.road",
@@ -198,6 +198,8 @@
           "endLine": 67,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Select.Picking",
         "states": [
           {
@@ -212,6 +214,8 @@
               "endLine": 31,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -234,6 +238,7 @@
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     },
@@ -249,6 +254,7 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -279,6 +285,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -312,6 +319,7 @@
                   "Select.Loading"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -337,6 +345,8 @@
               "endLine": 42,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -366,6 +376,7 @@
                   "Select.Form"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -386,6 +397,7 @@
                   "path": [
                     "ready"
                   ],
+                  "state": null,
                   "type": "bool",
                   "text": "ready"
                 },
@@ -393,6 +405,7 @@
                   "Select.Form"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -413,6 +426,7 @@
                   "Select.Form"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -433,6 +447,7 @@
                   "Select.Form"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -458,6 +473,8 @@
               "endLine": 55,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Select.Form.Name",
             "states": [
               {
@@ -472,6 +489,8 @@
                   "endLine": 52,
                   "endCol": 39
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -489,6 +508,7 @@
                       "Select.Form.Complete"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -514,12 +534,15 @@
                   "endLine": 54,
                   "endCol": 55
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
                   {
                     "kind": "set",
                     "var": "laps",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -529,6 +552,7 @@
                           "path": [
                             "laps"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "laps"
                         },
@@ -569,6 +593,7 @@
                       "path": [
                         "laps"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "laps"
                     },
@@ -586,10 +611,12 @@
                   "Select.Form"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "laps",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -599,6 +626,7 @@
                           "path": [
                             "laps"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "laps"
                         },
@@ -644,6 +672,7 @@
                   "Select.Passing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -682,6 +711,8 @@
               "endLine": 64,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -711,6 +742,7 @@
                   "Select.Ended"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -736,6 +768,7 @@
                   "Select.Ended"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -755,6 +788,7 @@
                   "Select.Ended"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -793,6 +827,8 @@
               "endLine": 66,
               "endCol": 23
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -816,6 +852,7 @@
             "guard": null,
             "targets": [],
             "internal": false,
+            "args": [],
             "effects": [
               {
                 "kind": "do",

@@ -1273,7 +1273,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
 
     fn run_effects(&mut self, effects: &[Effect], implicit: Implicit<'_>) -> R {
         for e in effects {
-            if let Effect::Set { var, value } = e {
+            if let Effect::Set { var, value, .. } = e {
                 let v = self.eval(value, implicit)?;
                 self.snap.vars.insert(var.clone(), v.clone());
                 self.trace(Record::Set {

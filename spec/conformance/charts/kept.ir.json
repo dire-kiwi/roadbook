@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/kept.road",
@@ -82,6 +82,7 @@
             "path": [
               "start"
             ],
+            "state": null,
             "type": "int",
             "text": "start"
           },
@@ -161,6 +162,8 @@
           "endLine": 33,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Tally.Counting",
         "states": [
           {
@@ -175,6 +178,8 @@
               "endLine": 23,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -197,6 +202,7 @@
                   "Tally.Napping"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -215,10 +221,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -228,6 +236,7 @@
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         },
@@ -237,6 +246,7 @@
                             "event",
                             "by"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "event.by"
                         }
@@ -258,6 +268,7 @@
                             "path": [
                               "n"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "n"
                           }
@@ -287,6 +298,7 @@
                   "Tally.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -312,6 +324,8 @@
               "endLine": 30,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -342,10 +356,12 @@
                   "Tally.Counting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -355,6 +371,7 @@
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         },
@@ -364,6 +381,7 @@
                             "event",
                             "by"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "event.by"
                         }
@@ -385,6 +403,7 @@
                             "path": [
                               "n"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "n"
                           }
@@ -414,6 +433,7 @@
                   "Tally.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -439,6 +459,8 @@
               "endLine": 32,
               "endCol": 32
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -450,6 +472,7 @@
               "path": [
                 "n"
               ],
+              "state": null,
               "type": "int",
               "text": "n"
             },
@@ -553,6 +576,8 @@
           "endLine": 55,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Desk.Open",
         "states": [
           {
@@ -567,6 +592,8 @@
               "endLine": 52,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -582,6 +609,7 @@
                   "path": [
                     "start"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "start"
                 }
@@ -605,15 +633,18 @@
                   "Desk.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "heard",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -636,6 +667,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -658,6 +690,7 @@
                               "event",
                               "by"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "event.by"
                           }
@@ -685,6 +718,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -727,16 +761,19 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "heard",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     }
@@ -766,6 +803,8 @@
               "endLine": 54,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -777,6 +816,7 @@
               "path": [
                 "heard"
               ],
+              "state": null,
               "type": "int",
               "text": "heard"
             },
@@ -853,6 +893,8 @@
           "endLine": 74,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Office.Working",
         "states": [
           {
@@ -867,6 +909,8 @@
               "endLine": 71,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -903,6 +947,7 @@
                   "Office.Shut"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -934,6 +979,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -956,6 +1002,7 @@
                               "event",
                               "by"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "event.by"
                           }
@@ -983,6 +1030,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1026,6 +1074,8 @@
               "endLine": 73,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1115,6 +1165,8 @@
           "endLine": 93,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Fetcher.Fetching",
         "states": [
           {
@@ -1129,6 +1181,8 @@
               "endLine": 88,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1144,6 +1198,7 @@
                   "path": [
                     "n"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "n"
                 }
@@ -1167,15 +1222,18 @@
                   "Fetcher.Holding"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "got",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -1205,6 +1263,8 @@
               "endLine": 90,
               "endCol": 39
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1222,6 +1282,7 @@
                   "Fetcher.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1247,6 +1308,8 @@
               "endLine": 92,
               "endCol": 34
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1258,6 +1321,7 @@
               "path": [
                 "got"
               ],
+              "state": null,
               "type": "int",
               "text": "got"
             },
@@ -1316,6 +1380,8 @@
           "endLine": 110,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Errand.Waiting",
         "states": [
           {
@@ -1330,6 +1396,8 @@
               "endLine": 107,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1366,6 +1434,7 @@
                   "Errand.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1384,6 +1453,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1427,6 +1497,8 @@
               "endLine": 109,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1534,6 +1606,8 @@
           "endLine": 127,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Safe.Locked",
         "states": [
           {
@@ -1548,6 +1622,8 @@
               "endLine": 124,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1563,16 +1639,19 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "last",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "note"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.note"
                     }
@@ -1597,6 +1676,7 @@
                   "Safe.Gone"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1622,6 +1702,8 @@
               "endLine": 126,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1709,6 +1791,8 @@
           "endLine": 146,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Vault.Holding",
         "states": [
           {
@@ -1723,6 +1807,8 @@
               "endLine": 143,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1738,6 +1824,7 @@
                   "path": [
                     "code"
                   ],
+                  "state": null,
                   "type": "string",
                   "text": "code"
                 }
@@ -1761,6 +1848,7 @@
                   "Vault.Empty"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1779,6 +1867,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1801,6 +1890,7 @@
                               "event",
                               "note"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.note"
                           }
@@ -1828,6 +1918,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1871,6 +1962,8 @@
               "endLine": 145,
               "endCol": 23
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

@@ -338,7 +338,7 @@ fn meeting<'a>(source: &'a str, target: &str) -> &'a str {
 
 fn effect(e: &Effect) -> String {
     match e {
-        Effect::Set { var, value } => format!("set {var} = {}", value.text),
+        Effect::Set { var, value, .. } => format!("set {var} = {}", value.text),
         Effect::Do { action, args } => {
             let args: Vec<&str> = args.iter().map(|a| a.text.as_str()).collect();
             format!("do {action}({})", args.join(", "))

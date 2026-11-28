@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "packages/viewer/test/charts/stress.road",
@@ -118,6 +118,8 @@
           "endLine": 19,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Ticker.Ticking",
         "states": [
           {
@@ -132,6 +134,8 @@
               "endLine": 16,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -154,6 +158,7 @@
                   "Ticker.Ticking"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -192,6 +197,7 @@
                   "Ticker.Stopping"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -217,6 +223,8 @@
               "endLine": 17,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -233,6 +241,7 @@
                   "Ticker.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -258,6 +267,8 @@
               "endLine": 18,
               "endCol": 32
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -269,6 +280,7 @@
               "path": [
                 "n"
               ],
+              "state": null,
               "type": "int",
               "text": "n"
             },
@@ -380,6 +392,8 @@
           "endLine": 111,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Stress.Start",
         "states": [
           {
@@ -394,6 +408,8 @@
               "endLine": 40,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -411,6 +427,7 @@
                   "Stress.Running"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -431,10 +448,12 @@
                   "Stress.Start"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -444,6 +463,7 @@
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         },
@@ -478,6 +498,7 @@
                   "Stress.Exits"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -495,6 +516,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -533,6 +555,8 @@
               "endLine": 91,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -547,6 +571,8 @@
                   "endLine": 64,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Stress.Running.Left.A",
                 "states": [
                   {
@@ -561,6 +587,8 @@
                       "endLine": 51,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -578,6 +606,7 @@
                           "Stress.Running.Left.A"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -616,6 +645,7 @@
                           "Stress.Running.Left.B"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -641,6 +671,8 @@
                       "endLine": 61,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -656,6 +688,7 @@
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         }
@@ -679,15 +712,18 @@
                           "Stress.Running.Left.C"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "set",
                             "var": "n",
+                            "state": null,
                             "value": {
                               "kind": "ref",
                               "path": [
                                 "result"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "result"
                             }
@@ -716,6 +752,7 @@
                               "path": [
                                 "n"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "n"
                             },
@@ -733,10 +770,12 @@
                           "Stress.Running.Left.B"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "set",
                             "var": "n",
+                            "state": null,
                             "value": {
                               "kind": "op",
                               "op": "+",
@@ -746,6 +785,7 @@
                                   "path": [
                                     "n"
                                   ],
+                                  "state": null,
                                   "type": "int",
                                   "text": "n"
                                 },
@@ -780,6 +820,7 @@
                           "Stress.Running.Left.A"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -800,6 +841,7 @@
                           "Stress.Failed"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -825,6 +867,8 @@
                       "endLine": 62,
                       "endCol": 50
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -841,6 +885,7 @@
                           "Stress.Running.Left.LeftDone"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -866,6 +911,8 @@
                       "endLine": 63,
                       "endCol": 30
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -895,6 +942,8 @@
                   "endLine": 90,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Stress.Running.Right.X",
                 "states": [
                   {
@@ -909,6 +958,8 @@
                       "endLine": 83,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": "Stress.Running.Right.X.X1",
                     "states": [
                       {
@@ -923,6 +974,8 @@
                           "endLine": 73,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -940,6 +993,7 @@
                               "Stress.Running.Right.X.X1"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -960,6 +1014,7 @@
                               "Stress.Running.Right.X.X2"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -985,6 +1040,8 @@
                           "endLine": 81,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": "Stress.Running.Right.X.X2.Deep",
                         "states": [
                           {
@@ -999,6 +1056,8 @@
                               "endLine": 79,
                               "endCol": 12
                             },
+                            "params": [],
+                            "vars": [],
                             "initial": "Stress.Running.Right.X.X2.Deep.Deeper",
                             "states": [
                               {
@@ -1013,6 +1072,8 @@
                                   "endLine": 78,
                                   "endCol": 53
                                 },
+                                "params": [],
+                                "vars": [],
                                 "initial": null,
                                 "states": [],
                                 "entry": [],
@@ -1030,6 +1091,7 @@
                                       "Stress.Running.Left.C"
                                     ],
                                     "internal": false,
+                                    "args": [],
                                     "effects": [],
                                     "span": {
                                       "file": 0,
@@ -1067,6 +1129,7 @@
                               "Stress.Running.Right.X.X1"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -1096,6 +1159,7 @@
                           "Stress.Running.Right.Y"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -1121,6 +1185,8 @@
                       "endLine": 88,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -1136,6 +1202,7 @@
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         }
@@ -1159,15 +1226,18 @@
                           "Stress.Running.Right.RightDone"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "set",
                             "var": "n",
+                            "state": null,
                             "value": {
                               "kind": "ref",
                               "path": [
                                 "result"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "result"
                             }
@@ -1197,6 +1267,8 @@
                       "endLine": 89,
                       "endCol": 31
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -1230,6 +1302,7 @@
                   "Stress.Stopped"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1249,6 +1322,7 @@
                   "Stress.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1274,6 +1348,8 @@
               "endLine": 93,
               "endCol": 48
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1291,6 +1367,7 @@
                   "Stress.Running.Right.X.X2"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1316,6 +1393,8 @@
               "endLine": 95,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1327,6 +1406,7 @@
               "path": [
                 "n"
               ],
+              "state": null,
               "type": "int",
               "text": "n"
             },
@@ -1344,6 +1424,8 @@
               "endLine": 96,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1384,6 +1466,8 @@
               "endLine": 97,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1424,6 +1508,8 @@
               "endLine": 98,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1450,6 +1536,8 @@
               "endLine": 99,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1476,6 +1564,8 @@
               "endLine": 100,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1502,6 +1592,8 @@
               "endLine": 101,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1528,6 +1620,8 @@
               "endLine": 102,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1554,6 +1648,8 @@
               "endLine": 110,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1571,6 +1667,7 @@
                   "Stress.Quit1"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1591,6 +1688,7 @@
                   "Stress.Quit2"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1611,6 +1709,7 @@
                   "Stress.Quit3"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1636,6 +1735,7 @@
                   "Stress.Quit4"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1655,6 +1755,7 @@
                   "Stress.Quit5"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1684,6 +1785,7 @@
               "Stress.Start"
             ],
             "internal": false,
+            "args": [],
             "effects": [],
             "span": {
               "file": 0,
@@ -1709,6 +1811,7 @@
               "Stress.Expired"
             ],
             "internal": false,
+            "args": [],
             "effects": [],
             "span": {
               "file": 0,

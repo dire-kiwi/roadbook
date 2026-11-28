@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/sealed.road",
@@ -236,6 +236,8 @@
           "endLine": 29,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Keep.Fetching",
         "states": [
           {
@@ -250,6 +252,8 @@
               "endLine": 26,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -265,6 +269,7 @@
                   "path": [
                     "users"
                   ],
+                  "state": null,
                   "type": "Logins",
                   "text": "users"
                 }
@@ -288,15 +293,18 @@
                   "Keep.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "page",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Page<Pair<string, Login>>",
                       "text": "result"
                     }
@@ -310,6 +318,7 @@
                         "path": [
                           "result"
                         ],
+                        "state": null,
                         "type": "Page<Pair<string, Login>>",
                         "text": "result"
                       }
@@ -340,6 +349,8 @@
               "endLine": 28,
               "endCol": 35
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -351,6 +362,7 @@
               "path": [
                 "page"
               ],
+              "state": null,
               "type": "Page<Pair<string, Login>>",
               "text": "page"
             },
