@@ -6,7 +6,7 @@ import { aliasCycle } from "./typeref.ts"
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.10"
+export const IR_VERSION = "0.11"
 
 export interface Span {
   readonly file: number
@@ -157,7 +157,8 @@ export interface State {
   readonly states: ReadonlyArray<State>
   readonly entry: ReadonlyArray<Effect>
   readonly exit: ReadonlyArray<Effect>
-  readonly invoke: Invoke | null
+  /** The invokes, in the order written. With several, each has an `as`, and no two the same. */
+  readonly invokes: ReadonlyArray<Invoke>
   readonly transitions: ReadonlyArray<Transition>
   readonly output: Expr | null
   readonly fail: Expr | null
@@ -213,8 +214,9 @@ export type Trigger =
   | { readonly kind: "after"; readonly delay: Expr }
   | { readonly kind: "always" }
   | { readonly kind: "done" }
-  | { readonly kind: "invoke.done" }
-  | { readonly kind: "invoke.fail"; readonly error: string }
+  /** `as` names the invoke of the state it belongs to; null for a state's one invoke without `as`. */
+  | { readonly kind: "invoke.done"; readonly as: string | null }
+  | { readonly kind: "invoke.fail"; readonly as: string | null; readonly error: string }
   | { readonly kind: "call"; readonly call: string }
   | { readonly kind: "spawn.done"; readonly children: string }
   | { readonly kind: "spawn.fail"; readonly children: string; readonly error: string }

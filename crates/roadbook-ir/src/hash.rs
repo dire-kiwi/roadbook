@@ -282,7 +282,7 @@ impl Walker<'_> {
     fn state(&mut self, s: &State) -> Result<(), HashError> {
         self.effects(&s.entry)?;
         self.effects(&s.exit)?;
-        if let Some(inv) = &s.invoke {
+        for inv in &s.invokes {
             match inv.kind {
                 InvokeKind::Task => self.task(&inv.src)?,
                 InvokeKind::Machine => {
@@ -311,7 +311,7 @@ impl Walker<'_> {
         for t in &s.transitions {
             match &t.trigger {
                 Trigger::After { delay } => self.expr(delay)?,
-                Trigger::InvokeFail { error } | Trigger::SpawnFail { error, .. }
+                Trigger::InvokeFail { error, .. } | Trigger::SpawnFail { error, .. }
                     if error != "*" =>
                 {
                     self.type_name(error)?
@@ -504,6 +504,9 @@ fn strip(v: &mut Value) {
             if m.contains_key("root") {
                 machine_as_before(m);
             }
+            if m.contains_key("invokes") && m.contains_key("transitions") {
+                state_as_before(m);
+            }
             for (key, value) in m.iter_mut() {
                 match value {
                     Value::Object(named) if key == "calls" || key == "children" => {
@@ -530,6 +533,33 @@ fn transition_as_before(m: &mut Map<String, Value>) {
             let target = targets.first().cloned().unwrap_or(Value::Null);
             m.remove("targets");
             m.insert("target".into(), target);
+        }
+    }
+}
+
+/// Writes a state with at most one invoke as IR 0.10 did: `invoke`, the one invoke or `null`,
+/// in place of `invokes`, and its `invoke.done` and `invoke.fail` triggers without `as`. A
+/// machine with no state of several invokes keeps its 0.10 hash.
+fn state_as_before(m: &mut Map<String, Value>) {
+    let Some(Value::Array(invokes)) = m.get("invokes") else {
+        return;
+    };
+    if invokes.len() > 1 {
+        return;
+    }
+    let invoke = invokes.first().cloned().unwrap_or(Value::Null);
+    m.remove("invokes");
+    m.insert("invoke".into(), invoke);
+    if let Some(Value::Array(transitions)) = m.get_mut("transitions") {
+        for t in transitions {
+            if let Some(Value::Object(trigger)) = t.get_mut("trigger")
+                && matches!(
+                    trigger.get("kind").and_then(Value::as_str),
+                    Some("invoke.done" | "invoke.fail")
+                )
+            {
+                trigger.remove("as");
+            }
         }
     }
 }

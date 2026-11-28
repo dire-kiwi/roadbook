@@ -387,6 +387,21 @@
           "then": { "properties": { "states": { "minItems": 1 } } }
         },
         {
+          "description": "With several invokes, each has an as. With one, a call has none.",
+          "if": { "properties": { "invokes": { "minItems": 2 } } },
+          "then": { "properties": { "invokes": { "items": { "properties": { "as": { "type": "string" } } } } } },
+          "else": {
+            "properties": {
+              "invokes": {
+                "items": {
+                  "if": { "properties": { "kind": { "const": "call" } } },
+                  "then": { "properties": { "as": { "type": "null" } } }
+                }
+              }
+            }
+          }
+        },
+        {
           "if": { "properties": { "kind": { "not": { "const": "final" } } } },
           "then": { "properties": { "output": { "type": "null" }, "fail": { "type": "null" } } }
         }
@@ -423,8 +438,7 @@
           "then": {
             "properties": {
               "src": { "$ref": "#/$defs/lowerName" },
-              "to": { "$ref": "#/$defs/address", "properties": { "kind": { "const": "ref" } } },
-              "as": { "type": "null" }
+              "to": { "$ref": "#/$defs/address", "properties": { "kind": { "const": "ref" } } }
             }
           }
         }
