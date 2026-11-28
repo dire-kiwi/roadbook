@@ -206,6 +206,31 @@
       "required": ["timer", "state", "index", "delay"]
     },
     {
+      "description": "A raise effect without a delay put an event on the internal queue.",
+      "properties": { "kind": { "const": "raised" }, "value": { "$ref": "#/$defs/tagged" } },
+      "required": ["value"]
+    },
+    {
+      "description": "A delayed raise was started (or restarted on restoring, with the time that remains as delay). Its expiry is an after input with this timer.",
+      "properties": {
+        "kind": { "const": "raise.scheduled" },
+        "timer": { "$ref": "#/$defs/id" },
+        "name": { "oneOf": [{ "$ref": "#/$defs/lowerName" }, { "type": "null" }] },
+        "delay": { "$ref": "#/$defs/safeNatural" },
+        "value": { "$ref": "#/$defs/tagged" }
+      },
+      "required": ["timer", "name", "delay", "value"]
+    },
+    {
+      "description": "A pending delayed raise was cancelled: by cancel, by a delayed raise with the same name, or because the run finished or was cancelled.",
+      "properties": {
+        "kind": { "const": "raise.cancelled" },
+        "timer": { "$ref": "#/$defs/id" },
+        "name": { "oneOf": [{ "$ref": "#/$defs/lowerName" }, { "type": "null" }] }
+      },
+      "required": ["timer", "name"]
+    },
+    {
       "description": "A running timer was cancelled because its state was left.",
       "properties": {
         "kind": { "const": "timer.cancelled" },
@@ -394,6 +419,12 @@
           "additionalProperties": false
         },
         {
+          "description": "An event the run raised itself, taken from its internal queue.",
+          "properties": { "kind": { "const": "raised" }, "value": { "$ref": "#/$defs/tagged" } },
+          "required": ["kind", "value"],
+          "additionalProperties": false
+        },
+        {
           "description": "A peer's end: run `from`, which this run holds a ref to, closed, and `status` says how.",
           "properties": {
             "kind": { "const": "ended" },
@@ -439,13 +470,13 @@
           "additionalProperties": false
         },
         {
-          "description": "A strict machine was given one of its own events, a message or a call that enabled no transition. event is the input, of kind event, message or call.",
+          "description": "A strict machine was given one of its own events, a message, a call or a delayed raise's expiry, or raised an event, that enabled no transition. event is the input, of kind event, message, call, after or raised.",
           "properties": {
             "kind": { "const": "unhandled" },
             "event": {
               "allOf": [
                 { "$ref": "#/$defs/event" },
-                { "properties": { "kind": { "enum": ["event", "message", "call"] } } }
+                { "properties": { "kind": { "enum": ["event", "message", "call", "after", "raised"] } } }
               ]
             }
           },

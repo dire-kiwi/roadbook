@@ -1,4 +1,4 @@
-# The Roadbook IR, version 0.10
+# The Roadbook IR, version 0.11
 
 The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with a call to a peer, a message to it and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
@@ -6,7 +6,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 **Every member is always present.** Nothing is ever omitted. An absent value is `null`, a missing doc comment is `""`, and an empty list or map is `[]` or `{}`. This gives each input exactly one output, which matters because compiled IR is committed and hashed, and it means readers never need to tell a missing member from a null one. Readers reject members this page does not list.
 
-**Order is source order.** Maps keyed by name (`types`, `functions`, `actions`, `tasks`, `machines`, a machine's `events`, `emits` and `children`, a task's `emits`) keep declaration order: the entry file's declarations first, then each imported file's in the order the files were first loaded (depth first: a file's imports, in the order written, are loaded before the next import of the file that imports it). Lists (fields, parameters, variables, states, transitions, effects, arguments) are in the order written, except that a list of effects puts every `set` before the other effects (see [effects](#effects)). A JSON parser that does not keep member order loses nothing a runtime needs, since order in the maps is for readability and diffs only.
+**Order is source order.** Maps keyed by name (`types`, `functions`, `actions`, `tasks`, `machines`, a machine's `events`, `internalEvents`, `emits` and `children`, a task's `emits`) keep declaration order: the entry file's declarations first, then each imported file's in the order the files were first loaded (depth first: a file's imports, in the order written, are loaded before the next import of the file that imports it). Lists (fields, parameters, variables, states, transitions, effects, arguments) are in the order written, except that a list of effects puts every `set` before the other effects (see [effects](#effects)). A JSON parser that does not keep member order loses nothing a runtime needs, since order in the maps is for readability and diffs only.
 
 **Names.** Upper-case names (`[A-Z][A-Za-z0-9]*`) are types, errors, events, states and machines. Lower-case names (`[a-z][A-Za-z0-9]*`) are variables, parameters, fields, functions, actions and tasks. Declaration names are unique among the files of a compilation (the entry file and everything it imports), so a name in `types`, `functions`, `actions`, `tasks` or `machines` identifies a declaration on its own.
 
@@ -22,7 +22,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 ```jsonc
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources":   [{ "path": "examples/shop/place_order.road", "package": null },
                 { "path": "examples/shop/types.road", "package": null }],
   "types":     { /* Name: type declaration */ },
@@ -61,7 +61,7 @@ Wherever the IR names a type it uses a string in canonical source form: a base f
 | Base | Meaning |
 | --- | --- |
 | `string`, `int`, `float`, `bool`, `duration`, `json` | A built-in. |
-| `Name` | A key of `types` (the built-in `Ended` among them); inside a generic declaration, one of its `params`; or, inside a machine, one of that machine's own events, a key of its `events` or `emits` (see below). |
+| `Name` | A key of `types` (the built-in `Ended` among them); inside a generic declaration, one of its `params`; or, inside a machine, one of that machine's own events, a key of its `events`, `internalEvents` or `emits` (see below). |
 | `Name<A, B>` | An instance of the generic record or alias `Name`, a key of `types` with as many `params` as there are arguments, each a type reference. See [generic types](#generic-types). |
 | `map<K, V>` | A map from keys of type `K` to values of type `V`. `K` is `string` once aliases are expanded: `string`, `UserId` after `type UserId = string`. |
 | `Machine.Name` | Event `Name` of machine `Machine`: a key of `machines`, then of that machine's `events` or `emits`. |
@@ -77,7 +77,7 @@ base  = builtin | Upper [ "<" type { ", " type } ">" ] | Upper "." Upper | lower
       | "map<" type ", " type ">"
 ```
 
-**Event types.** Events are not declared types: an event's type is named after the event. Inside machine `M`, a bare name that is one of `M`'s events or emitted events is that event: the type of `event` in `on Name`, and of the value of `emit Name { … }`. The event of another machine, or of a machine reached through a `ref` or a child, is written `Machine.Name`: the type of `event` in `on upload.Progress` is `Upload.Progress`, and the value of `send upload.Pause` has type `Upload.Pause`, also when the other machine is `M` itself. An event a task emits is written `task.Name`, after the task: `upload.Progress`. It is never the type of a value a chart builds, since no chart sends to a task or emits for one. Names never collide: an event never has the name of a type, error or machine of the document, and a machine's `events` and `emits` never share a name, so a bare name is a key of `types` or of the current machine's `events` or `emits`, never two of them. A task's emitted events are named only with the task's name before them, and a task's name is lower-case and a machine's upper-case, so `upload.Progress` and `Upload.Progress` are different events.
+**Event types.** Events are not declared types: an event's type is named after the event. Inside machine `M`, a bare name that is one of `M`'s events or emitted events is that event: the type of `event` in `on Name`, and of the value of `emit Name { … }`. The event of another machine, or of a machine reached through a `ref` or a child, is written `Machine.Name`: the type of `event` in `on upload.Progress` is `Upload.Progress`, and the value of `send upload.Pause` has type `Upload.Pause`, also when the other machine is `M` itself. An event a task emits is written `task.Name`, after the task: `upload.Progress`. It is never the type of a value a chart builds, since no chart sends to a task or emits for one. Names never collide: an event never has the name of a type, error or machine of the document, and a machine's `events`, `internalEvents` and `emits` never share a name, so a bare name is a key of `types` or of the current machine's `events`, `internalEvents` or `emits`, never two of them. An internal event is never named `Machine.Name`: no other machine can send it or receive it. A task's emitted events are named only with the task's name before them, and a task's name is lower-case and a machine's upper-case, so `upload.Progress` and `Upload.Progress` are different events.
 
 **Where a `ref` can be.** Machine parameters, variables, and the parameters of functions, actions and tasks may have a `ref` type, directly or through an alias, also inside a list, an optional or a map's values. Fields of records, errors and events, the parameters of calls, type arguments, and the results of functions, tasks and machines, never do, so a machine can only get a handle from its own signature or from `invoke … as`. A `ref` value is never a literal, never compared, never passed where `json` is expected, and a runtime passes it to host code as its own handle type. In snapshots and traces it is the id of the run it refers to ([values](execution.md#values)).
 
@@ -167,6 +167,7 @@ Spans cover the whole declaration, its `emits` clauses included. The span of an 
   "errors": ["CardDeclined", "GatewayUnavailable"],
   "vars": [ /* variables */ ],
   "events": {},
+  "internalEvents": {},
   "emits": {},
   "calls": {},
   "children": {},
@@ -178,13 +179,14 @@ Spans cover the whole declaration, its `emits` clauses included. The span of an 
 | Member | Meaning |
 | --- | --- |
 | `doc`, `span` | The span runs from `machine` (or `strict`) to the closing brace. |
-| `strict` | `true` for a `strict machine`: an external event, a message or a call that enables no transition is an `unhandled` defect instead of being dropped ([execution](execution.md#taking-an-input)). |
+| `strict` | `true` for a `strict machine`: an external event, a message, a call or a raised event that enables no transition is an `unhandled` defect instead of being dropped ([execution](execution.md#taking-an-input)). |
 | `params` | Parameters, in order. They are read-only variables. |
 | `returns` | Result type, or `null` if the machine returns nothing. |
 | `errors` | Declared errors, in source order. |
 | `vars` | Variables, in source order. |
 | `events` | Events the machine accepts, keyed by name, in source order. |
-| `emits` | Events the machine emits (`emits Name { fields }`), keyed by name, in source order, with the shape of `events`. A name is in at most one of `events` and `emits`. |
+| `internalEvents` | Events only the machine itself raises (`internal event Name { fields }`), keyed by name, in source order, with the shape of `events`. Host code and other runs cannot send them, and they are not part of the machine's interface. |
+| `emits` | Events the machine emits (`emits Name { fields }`), keyed by name, in source order, with the shape of `events`. A name is in at most one of `events`, `internalEvents` and `emits`. |
 | `calls` | Calls the machine answers (`call name(params) -> T ! E`), keyed by name, in source order. See below. |
 | `children` | The machine's collections of spawned children (`children name: Machine by Key`) and spawned tasks (`children name: task by Key`), keyed by name, in source order. See below. |
 | `root` | The machine body as a state. See below. |
@@ -192,11 +194,11 @@ Spans cover the whole declaration, its `emits` clauses included. The span of an 
 
 A **variable** is `{"name", "type", "sensitive", "init", "doc", "span"}`. `sensitive` is `true` for `sensitive var`, as for a [field](#fields-and-parameters). `init` is the initial value expression, or `null` if there is none. With no initialiser, a variable of optional type starts as `null` and any other variable starts unassigned (see `spec/execution.md`). The span covers the declaration from `var` to the end of its type or initial value.
 
-An **event** is `{"fields", "doc", "span"}`, keyed by its name, in `events` and in `emits` alike. The span covers the declaration from `event` or `emits` to its end.
+An **event** is `{"fields", "doc", "span"}`, keyed by its name, in `events`, `internalEvents` and `emits` alike. The span covers the declaration from `event`, `internal` or `emits` to its end.
 
 A **call** is `{"params", "returns", "errors", "doc", "span"}`, keyed by its lower-case name, with the members of a task: `params` the fields of the arguments, `returns` a type reference or `null`, `errors` error names in source order (never `Unanswered`). The span covers the declaration from `call` to its end. A caller holding a `ref` to the machine makes a call with an invoke of kind `call`; the machine takes it with an `on name` transition (trigger kind `call`) and answers it with a `reply` effect.
 
-A **children collection** is `{"kind", "src", "key", "doc", "span"}`, keyed by its name. `kind` is `machine` or `task`, as for an [invoke](#invoke): `src` is the machine its children run, a key of `machines`, or the task they run, a key of `tasks`. `key` is the type of its keys, a type reference that is `string`, `int` or an enum, or an alias of one of them (never optional or a list). The span covers the declaration from `children` to the end of its key type. A collection's name shares the machine's namespace with its parameters, variables and `as` names. What a runtime does with one is in [`execution.md`](execution.md#spawned-children).
+A **children collection** is `{"kind", "src", "key", "doc", "span"}`, keyed by its name. `kind` is `machine` or `task`, as for an [invoke](#invoke): `src` is the machine its children run, a key of `machines`, or the task they run, a key of `tasks`. `key` is the type of its keys, a type reference that is `string`, `int` or an enum, or an alias of one of them (never optional or a list). The span covers the declaration from `children` to the end of its key type. A collection's name shares the machine's namespace with its parameters, variables, `as` names and the names of its delayed raises (`raise … as name`). What a runtime does with one is in [`execution.md`](execution.md#spawned-children).
 
 The **root** is a state with `kind` `compound` whose `id` and `name` are the machine's name. Its `doc` and `span` are the machine's. It holds the machine's top-level states, its `initial`, and the `entry`, `exit`, `on`, `after` and `always` items written directly in the machine body.
 
@@ -311,9 +313,9 @@ A child or a task is addressed only from its invoking state and that state's des
 
 | `kind` | Source | Other members |
 | --- | --- | --- |
-| `event` | `on Name` | `event`: the event's name, a key of the machine's `events`. |
+| `event` | `on Name` | `event`: the event's name, a key of the machine's `events` or `internalEvents`. Taken for an external event, a message, or a raised event. |
 | `emitted` | `on name.Name` | `from`: the [address](#addresses) of the sender. `event`: the event's name, a key of the sender's `emits`, the machine's or the task's. Taken for an event the addressed machine emitted, or that the addressed task emitted while it ran. `event` is in scope, of type `Machine.Name`, or `task.Name` for an address that names a task, and for an address of kind `children`, `key` too. |
-| `any` | `on *` | none. Matches any of the machine's own events (its `events`) for which the state has no `on`. Never an emitted event. |
+| `any` | `on *` | none. Matches any of the machine's own events (its `events` and `internalEvents`) for which the state has no `on`. Never an emitted event. |
 | `after` | `after delay` | `delay`: a `duration` expression, evaluated when the state's work starts, after the step that entered it has settled ([execution](execution.md#starting-work)). |
 | `always` | `always` | none. |
 | `done` | `done` in a state | none. The compound state reached a final child, or every region of the parallel state did. |
@@ -335,8 +337,10 @@ A child or a task is addressed only from its invoking state and that state's des
 | `reply` | `reply name done [value]`, `reply name fail error` | `call`: a `ref` expression of type `call c`, the implicit `call` or a variable. `outcome`: `"done"` or `"fail"`. `value`: for `done`, an expression of `c`'s `returns` type, or `null` when `c` returns nothing; for `fail`, an expression of one of `c`'s `errors`. |
 | `spawn` | `spawn name[key] = Machine(args)`, `spawn name[key] = task(args)` | `children`: the collection. `src`: its machine or task, the one the source names; which of the two it is, is the collection's `kind`. `key`: the key expression, of the collection's key type. `args`: expressions, positional, in parameter order. |
 | `stop` | `stop name[key]` | `children`: the collection. `key`: the key expression. |
+| `raise` | `raise Name [{ fields }]`, `raise Name [{ fields }] after delay [as name]` | `event`: the event's name, a key of the machine's own `events` or `internalEvents`. `value`: the event, a `record` expression of type `Name` with every field of the event. `delay`: a `duration` expression, or `null` for a raise on the internal queue. `name`: the delayed raise's lower-case name, or `null` (always `null` when `delay` is). |
+| `cancel` | `cancel name` | `name`: the name of a delayed raise of the machine, the `name` of one of its `raise` effects. |
 
-`set a = 1, b = 2` is two `set` effects. Every list of effects (a transition's, an `entry`'s, an `exit`'s) holds all its `set` effects, in the order written, then all its other effects (`do`, `send`, `emit`, `reply`, `spawn` and `stop`), in the order written among themselves, because that is the order they run in: `do f(a)  set a = 1` and `set a = 1  do f(a)` give the same list, and the same hash, and so do `send x.E { v: a }  set a = 1` and `set a = 1  send x.E { v: a }`. A runtime runs the list in order. A `send` or `emit` value is evaluated when its effect runs, so it sees every `set` of the list.
+`set a = 1, b = 2` is two `set` effects. Every list of effects (a transition's, an `entry`'s, an `exit`'s) holds all its `set` effects, in the order written, then all its other effects (`do`, `send`, `emit`, `reply`, `spawn`, `stop`, `raise` and `cancel`), in the order written among themselves, because that is the order they run in: `do f(a)  set a = 1` and `set a = 1  do f(a)` give the same list, and the same hash, and so do `send x.E { v: a }  set a = 1` and `set a = 1  send x.E { v: a }`. A runtime runs the list in order. A `send`, `emit` or `raise` value is evaluated when its effect runs, so it sees every `set` of the list.
 
 ## Expressions
 
@@ -406,18 +410,30 @@ A machine's `hash` is `"sha256:"` followed by the 64 lowercase hexadecimal digit
 - **F**, **A** and **K** are the functions called (`call`), the actions run (`do`) and the tasks invoked or spawned (the `src` of a `children` collection whose `kind` is `task`) by the machines in M. A collection of tasks adds its task to K and nothing to M, and an address of kind `task` adds nothing of its own: its task is in K through the invoke that gave it its name.
 - **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send`, an `emitted` or `ended` trigger or a call invoke; an address that names a task names no machine), or by an event type `Machine.Name`. Only its interface, its `events`, `emits` and `calls`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts, emits or answers changes, and not when how the peer works inside does. An `ended` trigger adds nothing to it: how a peer can end is the same for every machine, and the peer's output and errors are not part of what its holders get. (A child addressed with `as` is invoked, and a collection's machine is spawned, so they are in M whole.)
 - **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`) whose base, type arguments or map key or value names it, at any depth, by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"` and `Unanswered`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, `Machine.Name`, or `task.Name`), a type parameter inside its declaration, and the machine of a `ref`, are not part of T.
-- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `calls` and `children` maps, which are kept whatever they are, and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits` and a task's `emits`, whose keys are upper-case, so no user-chosen name is ever removed: a call named `text` keeps its entry (its value is stripped), and `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that uses no `sensitive` mark, keyed spawn or generic type has the hash it had in 0.5. A transition's `internal` is left out when it is `false`, and its `targets`, when it has at most one, is written as the `target` of 0.8 (the one id, or `null` for `[]`), so a machine with neither internal transitions nor several targets has the hash it had in 0.8. A task's `emits` is left out when it is `{}`. A collection whose `kind` is `machine` is written in its 0.9 form, `{"machine": src, "key": …}`, with no `kind` and no `src`, and so is a `spawn` effect of such a collection, with `machine` in place of `src`; a collection of tasks, its `spawn` effects and the addresses that name a task are written as they are. So a machine that uses no task that emits and no collection of tasks has the hash it had in 0.9. `strict` and `calls` are always part of the view, `calls` even when it is empty.
+- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `calls` and `children` maps, which are kept whatever they are, and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits` and a task's `emits`, whose keys are upper-case, so no user-chosen name is ever removed: a call named `text` keeps its entry (its value is stripped), and `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that uses no `sensitive` mark, keyed spawn or generic type has the hash it had in 0.5. A transition's `internal` is left out when it is `false`, and its `targets`, when it has at most one, is written as the `target` of 0.8 (the one id, or `null` for `[]`), so a machine with neither internal transitions nor several targets has the hash it had in 0.8. A task's `emits` is left out when it is `{}`. A collection whose `kind` is `machine` is written in its 0.9 form, `{"machine": src, "key": …}`, with no `kind` and no `src`, and so is a `spawn` effect of such a collection, with `machine` in place of `src`; a collection of tasks, its `spawn` effects and the addresses that name a task are written as they are. So a machine that uses no task that emits and no collection of tasks has the hash it had in 0.9. A machine's `internalEvents` is left out when it is `{}`, so a machine that uses no internal event has the hash it had in 0.10 (the `raise` and `cancel` effects appear only where a chart writes them). `strict` and `calls` are always part of the view, `calls` even when it is empty. An interface in R never has `internalEvents`: no other machine can send them.
 
 So comments, formatting, source positions, file names, packages, declaration order, `sensitive` marks and unused declarations do not change a machine's hash (a run compiled without a peer's marks therefore talks to it all the same, and shows what the peer marks: build the runs that talk to each other from the same charts), and any change to what the machine does, to a type it uses, to a machine it invokes, or to the interface of a machine it talks to does. A declaration copied from another package's compiled IR therefore keeps the hash it had there. In Rust, `roadbook_ir::machine_hash(&ir, name)` computes it, `roadbook_ir::semantic_view` returns the view, and `roadbook_ir::fill_hashes(&mut ir)` sets every machine's `hash`; the compiler calls the last after type checking. Snapshots and traces record the hash, so restoring a snapshot into a changed machine is refused and the viewer can tell when a trace came from another version of a chart.
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.10`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.11`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
+
+## Changes in 0.11
+
+Version 0.11 adds events a machine raises itself, delayed raises and internal events ([events a machine raises](../docs/design/language.md#events-a-machine-raises)). Every machine has the new member `internalEvents`, so a 0.10 document is not a 0.11 document. The [machine hash](#the-machine-hash) leaves out an `internalEvents` that is `{}`, so a machine that uses none of the new features has the hash it had in 0.10, and its saved snapshots still restore.
+
+- [Machines](#machines) have `internalEvents`, with the shape of `events`. An `event` trigger and `on *` take them as well as `events`.
+- The [effects](#effects) `raise`, immediate or delayed, and `cancel`.
+- Type references to a bare event name may name an internal event.
+- The trace has three new records, `raised`, `raise.scheduled` and `raise.cancelled`, and the `event`, `dropped` and `unhandled` input `raised` ([inputs in records](trace.md#inputs-in-records)). A delayed raise's expiry is an `after` input.
+- Snapshots have the member `scheduled`, and a saved snapshot writes it, with each entry's `due`, only when it is not empty, so `snapshotVersion` stays `4` ([the saved snapshot](execution.md#the-saved-snapshot)).
+
+What a runtime does with them (the internal queue, the order it is taken in, delayed raises as timers of the run, strict machines, and how a delayed raise is saved and restored) is in [`execution.md`](execution.md#raised-events). Both runtimes implement them.
 
 ## Changes in 0.10
 
