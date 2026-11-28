@@ -1,0 +1,8 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0301]: mismatched types: expected `int`, found `string`
+ --> RB0301-state-argument-type.road:6:16
+  |
+6 |     on Go -> A("one")
+  |                ^^^^^ argument `n` of `M.A` must be `int`

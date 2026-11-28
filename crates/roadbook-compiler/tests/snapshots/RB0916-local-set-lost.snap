@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0916]: this assigns `tries`, a variable of `M.Trying`, in a transition that leaves `M.Trying`, so the value is discarded with it
+ --> RB0916-local-set-lost.road:8:29
+  |
+8 |     on Retry -> Trying  set tries = tries + 1
+  |                             ^^^^^
+  |
+  = help: a state's variables get their initial values again each time it is entered; to keep the value, assign it in a transition with no target, pass it as an argument of a parameter (`-> Trying(…)`), or use a machine variable

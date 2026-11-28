@@ -1,0 +1,21 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0223]: `M.A` takes parameters, so it cannot be the `initial` of `M`
+ --> RB0223-parameters-on-default-entry.road:4:11
+  |
+4 |   initial A
+  |           ^
+5 |   state A(n: int) {
+  |           - a parameter
+  |
+  = help: a state's `initial` and the regions of a parallel state are entered with no transition to pass arguments; make the parameters variables of the state, or enter it from another state with a transition that passes them
+
+error[RB0223]: `M.B.Left` takes parameters, so it cannot be a region of the parallel state `M.B`
+ --> RB0223-parameters-on-default-entry.road:9:11
+  |
+9 |     state Left(label: string) {}
+  |           ^^^^
+  |                ----- a parameter
+  |
+  = help: a state's `initial` and the regions of a parallel state are entered with no transition to pass arguments; make the parameters variables of the state, or enter it from another state with a transition that passes them

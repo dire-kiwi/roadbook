@@ -1,0 +1,27 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0225]: `M.Idle` takes no parameters
+ --> RB0225-unexpected-state-arguments.road:8:20
+  |
+8 |     on Go   -> Idle(1)
+  |                    ^^^
+  |
+  = help: remove the arguments
+
+error[RB0225]: the arguments of `M.P` are already given
+ --> RB0225-unexpected-state-arguments.road:9:27
+  |
+9 |     on Both -> P(1).A.X, P(2).B.Y
+  |                           ^^^
+  |                 --- given here
+  |
+  = help: a state on the paths of several targets gets its arguments once, on one of them
+
+error[RB0225]: this transition does not enter `M.Editing`, so it takes no arguments
+  --> RB0225-unexpected-state-arguments.road:14:25
+   |
+14 |       on Edit -> Editing(n).Changing
+   |                         ^^^
+   |
+   = help: `M.Editing` stays active and keeps its locals; remove the arguments, or leave and enter it again with a target written from outside it

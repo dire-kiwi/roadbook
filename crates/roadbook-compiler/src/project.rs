@@ -549,6 +549,9 @@ fn remap_machine(m: &mut ir::Machine, f: &impl Fn(&mut ir::Span)) {
 
 fn remap_state(s: &mut ir::State, f: &impl Fn(&mut ir::Span)) {
     f(&mut s.span);
+    for v in &mut s.vars {
+        f(&mut v.span);
+    }
     if let Some(inv) = &mut s.invoke {
         f(&mut inv.span);
     }

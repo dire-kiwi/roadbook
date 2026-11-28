@@ -1,0 +1,68 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0127]: `id` is already a parameter of machine `M`
+  --> RB0127-local-shadows.road:19:9
+   |
+ 8 | machine M(id: string) {
+   |           -- declared here
+...
+19 |     var id: string = ""
+   |         ^^
+   |
+   = help: a state's locals cannot have the name of anything else in scope in the state, or of a local of a state inside it; choose another name
+
+error[RB0127]: `jobs` is already a children collection of `M`
+  --> RB0127-local-shadows.road:20:9
+   |
+10 |   children jobs: Job by string
+   |            ---- declared here
+...
+20 |     var jobs: int = 0
+   |         ^^^^
+   |
+   = help: a state's locals cannot have the name of anything else in scope in the state, or of a local of a state inside it; choose another name
+
+error[RB0127]: `later` is already the name of a delayed raise of `M`
+  --> RB0127-local-shadows.road:21:9
+   |
+16 |     on Go raise Go after 1s as later
+   |                                ----- declared here
+...
+21 |     var later: int = 0
+   |         ^^^^^
+   |
+   = help: a state's locals cannot have the name of anything else in scope in the state, or of a local of a state inside it; choose another name
+
+error[RB0127]: `up` is already the `as` name of the invoke of `M.A.B`
+  --> RB0127-local-shadows.road:22:9
+   |
+22 |     var up: int = 0
+   |         ^^
+...
+26 |       invoke fetch() as up
+   |                         -- declared here
+   |
+   = help: a state's locals cannot have the name of anything else in scope in the state, or of a local of a state inside it; choose another name
+
+error[RB0127]: `n` is already a local of `M.A`, which contains `M.A.B`
+  --> RB0127-local-shadows.road:25:11
+   |
+18 |   state A(n: int) {
+   |           - declared here
+...
+25 |       var n: int = 1
+   |           ^
+   |
+   = help: a state's locals cannot have the name of anything else in scope in the state, or of a local of a state inside it; choose another name
+
+error[RB0127]: `count` is already a variable of machine `M`
+  --> RB0127-local-shadows.road:30:11
+   |
+ 9 |   var count: int = 0
+   |       ----- declared here
+...
+30 |       var count: int = 0
+   |           ^^^^^
+   |
+   = help: a state's locals cannot have the name of anything else in scope in the state, or of a local of a state inside it; choose another name

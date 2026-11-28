@@ -1,0 +1,11 @@
+machine M() {
+  event Go
+
+  initial Idle
+  state Idle {
+    on Go -> A(1, 2)
+  }
+  final state A(n: int) {}
+}
+
+// expect: RB0302 at 6:15

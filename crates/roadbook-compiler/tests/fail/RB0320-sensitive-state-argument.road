@@ -1,0 +1,11 @@
+machine M(sensitive pin: int) {
+  event Go
+
+  initial Idle
+  state Idle {
+    on Go -> A(pin)
+  }
+  final state A(n: int) {}
+}
+
+// expect: RB0320 at 6:16

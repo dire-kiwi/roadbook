@@ -1,0 +1,94 @@
+// State variables and state parameters: data that belongs to a state.
+
+type Token { id: string, user: string }
+
+error Busy
+
+action log(text: string)
+fn matches(token: Token, code: string) -> bool
+fn backoff(attempt: int) -> duration
+task request(email: string) -> Token
+task reset(token: Token, sensitive password: string) ! Busy
+
+/// A password reset whose token lives only in the states that need it.
+machine Reset(email: string, sensitive password: string) -> string {
+  event Submit { code: string }
+  event Edit
+  event Help
+  event Back
+  event Skip
+
+  initial Requesting
+
+  state Requesting {
+    invoke request(email) {
+      done -> Confirming(result)
+    }
+  }
+
+  /// The token is only needed while the code is being confirmed.
+  state Confirming(token: Token) {
+    var tries: int = 0
+    var last: string?
+    var shown: string = token.id
+    on Submit {
+      if matches(token, event.code) -> Resetting(token, password)
+      if tries < 2                                                 set tries = tries + 1, last = event.code
+      else                          -> Rejected("too many tries")
+    }
+    on Skip -> Confirming(token)
+  }
+
+  /// A retry inside a state with parameters: the token lives through every attempt.
+  state Resetting(token: Token, sensitive secret: string) {
+    entry do log(token.user)
+    invoke reset(token, secret) retry 2 after backoff(attempt) {
+      done      -> Editing(token.user).Changing(1)
+      fail Busy -> Rejected("busy")
+    }
+  }
+
+  state Editing(user: string) {
+    var note: string
+    entry set note = user
+    initial Viewing
+    deep history Previous
+    on Help -> Helping(user)
+    on Skip -> .Changing(5)
+    state Viewing {
+      on Edit -> Changing(0)
+    }
+    state Changing(count: int) {
+      var total: int = count + 1
+      entry do log(note)
+      on Edit -> Changing(total)
+      on Submit -> Done(note)
+    }
+  }
+
+  state Helping(user: string) {
+    on Back -> Editing(user).Previous
+    on Edit -> Both(user)
+  }
+
+  parallel state Both(label: string) {
+    state Left {
+      var n: int = 0
+      initial A
+      state A { on Edit -> B }
+      final state B {}
+    }
+    state Right {
+      var n: int = 1
+      initial C
+      state C { on Edit -> D }
+      final state D {}
+    }
+    done -> Done(label)
+  }
+
+  on Back -> Both("both").Left.B, Both.Right.D
+
+  final state Done(value: string)      { output value }
+  final state Rejected(reason: string) { output reason }
+}

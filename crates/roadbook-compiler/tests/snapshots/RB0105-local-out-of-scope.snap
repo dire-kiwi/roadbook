@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0105]: `tries` is a local of `M.A`, which is not in scope in `M.B`
+  --> RB0105-local-out-of-scope.road:12:18
+   |
+12 |     entry do log(tries)
+   |                  ^^^^^
+   |
+   = help: a state's parameters and variables exist only in that state and the states inside it; pass the value on as an argument, or declare `tries` in a state around both, or in the machine

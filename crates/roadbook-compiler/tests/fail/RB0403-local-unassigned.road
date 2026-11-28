@@ -1,0 +1,20 @@
+action log(text: string)
+
+machine M() {
+  event Go
+  event Name { text: string }
+
+  initial A
+  state A {
+    var name: string
+    var first: string = later
+    var later: string = ""
+    on Name set name = event.text
+    on Go -> A  do log(name)
+    entry do log(name)
+  }
+}
+
+// expect: RB0403 at 10:25
+// expect: RB0403 at 13:24
+// expect: RB0403 at 14:18

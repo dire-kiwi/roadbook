@@ -1,0 +1,8 @@
+machine M() {
+  initial A
+  final state A {
+    var key: string = ""
+  }
+}
+
+// expect: RB0122 at 4:9

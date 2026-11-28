@@ -1,0 +1,34 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0403]: `later` has no value yet when the initial value of `first` is computed
+  --> RB0403-local-unassigned.road:10:25
+   |
+10 |     var first: string = later
+   |                         ^^^^^
+11 |     var later: string = ""
+   |         ----- declared here, after the variable whose initial value reads it
+   |
+   = help: initial values are computed in the order the variables are declared; declare it first, or assign this variable in an `entry` instead
+
+error[RB0403]: `name` might not be assigned yet when this is evaluated
+  --> RB0403-local-unassigned.road:13:24
+   |
+ 7 |   initial A
+   |           - `M.A` is entered when `M` starts, and nothing before it assigns `name`
+...
+13 |     on Go -> A  do log(name)
+   |                        ^^^^
+   |
+   = help: assign `name` on every way into `M.A`, give it an initial value, or make its type optional
+
+error[RB0403]: `name` might not be assigned yet when this is evaluated
+  --> RB0403-local-unassigned.road:14:18
+   |
+ 7 |   initial A
+   |           - `M.A` is entered when `M` starts, and nothing before it assigns `name`
+...
+14 |     entry do log(name)
+   |                  ^^^^
+   |
+   = help: assign `name` on every way into `M.A` (a `set` in the transition, or in an `entry` that runs first), give it an initial value, or make its type optional
