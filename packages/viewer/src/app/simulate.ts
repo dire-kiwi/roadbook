@@ -129,7 +129,7 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
         })
         .join('')}</ul>`
     }
-    h += `<h3>Variables</h3>${variablesHtml(m, f.snapshot.input, f.snapshot.vars, false)}`
+    h += `<h3>Variables</h3>${variablesHtml(m, f.snapshot.input, f.snapshot.vars, false, f.snapshot.active, f.snapshot.locals)}`
     if (s.answers.size) {
       h += `<h3>Function results given</h3><ul class="rb-list">${[...s.answers.entries()]
         .map(([k, a]) => `<li>${esc(k)} → ${esc('value' in a.answer ? JSON.stringify(a.answer.value) : `defect "${a.answer.defect}"`)} ${button(`forget:${k}`, 'forget', () => s.forget(k))}</li>`)

@@ -125,7 +125,7 @@ export function replayMode(host: Host, el: HTMLElement, embedded: { name: string
       if (children.length)
         h += `<h3>Child runs</h3><ul class="rb-list">${children.map((c) => `<li><button class="rb-link rb-mono" type="button" data-m-record="${c.first}">${esc(c.id)} ${esc(c.machine)}</button></li>`).join('')}</ul>`
       if (r!.parent) h += `<p><button class="rb-link" type="button" data-m-parent="${esc(r!.parent)}">← back to the parent run ${esc(r!.parent)}</button></p>`
-      h += `<h3>Variables of ${esc(run)}</h3>${variablesHtml(m, view.input, view.vars, true)}`
+      h += `<h3>Variables of ${esc(run)}</h3>${variablesHtml(m, view.input, view.vars, true, view.active, view.locals)}`
       if (view.status !== 'running') h += `<h3>Result</h3><pre class="rb-code">${esc(view.status)} ${esc(pretty(view.result))}</pre>`
     }
     state.innerHTML = h

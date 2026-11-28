@@ -85,6 +85,8 @@ export interface RunView {
   input: { [param: string]: Json }
   /** The variables set so far, by name. */
   vars: { [name: string]: Json }
+  /** The locals of the active states that declare them, by state id, then name: set when the state is entered, gone when it is left. */
+  locals: { [state: string]: { [name: string]: Json } }
   /** `running`, or how the run ended. A suspended run is still `running`. */
   status: string
   /** Whether the run was suspended: stopped and saved, to go on as another run. */
@@ -280,9 +282,17 @@ export class Replay {
             else if (JSON.stringify(t.targets) !== JSON.stringify(r.to)) out.push(`${at}: the transition goes to ${t.targets.join(', ') || 'no state'}, not ${JSON.stringify(r.to)}`)
             break
           }
-          case 'set':
-            if (!m.vars.some((v) => v.name === r.var)) out.push(`${at}: ${view.machine} has no variable ${str(r.var)}`)
+          case 'set': {
+            const local = localOf(str(r.var))
+            if (!local) {
+              if (!m.vars.some((v) => v.name === r.var)) out.push(`${at}: ${view.machine} has no variable ${str(r.var)}`)
+            } else {
+              const s = state(local.state)
+              if (!s) out.push(`${at}: ${view.machine} has no state ${local.state}`)
+              else if (![...s.params, ...s.vars].some((v) => v.name === local.name)) out.push(`${at}: ${local.state} has no parameter or variable ${local.name}`)
+            }
             break
+          }
           case 'invoke.started': {
             const s = state(r.state)
             // A call's src names its address too: `inventory.reserve`.
@@ -364,6 +374,7 @@ const emptyView = (run: string, machine: string): RunView => ({
   active: [],
   input: {},
   vars: {},
+  locals: {},
   status: 'running',
   suspended: false,
   result: null,
@@ -375,11 +386,21 @@ const emptyView = (run: string, machine: string): RunView => ({
   taken: null,
 })
 
+/**
+ * The state and name of a local a `set` record names, `Reset.Confirming.tries`, or null for a
+ * machine variable, whose name has no dot.
+ */
+export function localOf(name: string): { state: string; name: string } | null {
+  const dot = name.lastIndexOf('.')
+  return dot < 0 ? null : { state: name.slice(0, dot), name: name.slice(dot + 1) }
+}
+
 /** The parts of a saved snapshot (spec/snapshot.schema.json) a `restored` record gives the view. */
 interface SavedView {
   active?: string[]
   input?: { [param: string]: Json }
   vars?: { [name: string]: Json }
+  locals?: { [state: string]: { [name: string]: Json } }
   timers?: { id: number; state: string; index: number; delay: number }[]
   scheduled?: { id: number; name: string | null; delay: number; value: Json }[]
   calls?: { from: string; invoke: number; call: string }[]
@@ -401,6 +422,7 @@ function apply(view: RunView, r: Rec) {
       view.active = [...(saved.active ?? [])]
       view.input = saved.input ?? {}
       view.vars = saved.vars ?? {}
+      view.locals = Object.fromEntries(Object.entries(saved.locals ?? {}).map(([id, l]) => [id, { ...l }]))
       view.timers = (saved.timers ?? []).map(({ id, state, index, delay }) => ({ id, state, index, delay }))
       view.scheduled = (saved.scheduled ?? []).map(({ id, name, delay, value }) => ({ id, name, delay, value }))
       view.calls = (saved.calls ?? []).map(({ from, invoke, call }) => ({ from, invoke, call }))
@@ -412,15 +434,23 @@ function apply(view: RunView, r: Rec) {
     case 'entered':
       if (!view.active.includes(str(r.state))) view.active.push(str(r.state))
       break
-    case 'exited':
+    case 'exited': {
       view.active = view.active.filter((s) => s !== r.state)
+      const { [str(r.state)]: _gone, ...kept } = view.locals
+      view.locals = kept
       break
+    }
     case 'transition':
       view.taken = { state: str(r.from), index: num(r.index) }
       break
-    case 'set':
-      view.vars = { ...view.vars, [str(r.var)]: (r.value ?? null) as Json }
+    case 'set': {
+      const local = localOf(str(r.var))
+      if (!local) view.vars = { ...view.vars, [str(r.var)]: (r.value ?? null) as Json }
+      // A local of a state that is no longer active (a transition that left it set it) is lost.
+      else if (view.active.includes(local.state))
+        view.locals = { ...view.locals, [local.state]: { ...view.locals[local.state], [local.name]: (r.value ?? null) as Json } }
       break
+    }
     case 'invoke.started':
       view.invokes = [...view.invokes, { id: num(r.invoke), state: str(r.state), src: str(r.src) }]
       break
@@ -611,8 +641,12 @@ export function recordText(r: { kind: string; [member: string]: unknown }): stri
     }
     case 'transition':
       return `transition ${stateName(r.from)} #${String(r.index)} → ${Array.isArray(r.to) && r.to.length ? r.to.map(stateName).join(', ') : '(no target)'}`
-    case 'set':
-      return `set ${str(r.var)} = ${jsonText(r.value, 100)}`
+    case 'set': {
+      // A local is named by its state, below the machine: `set Confirming.tries = 1`.
+      const v = str(r.var)
+      const name = localOf(v) ? v.slice(v.indexOf('.') + 1) : v
+      return `set ${name} = ${jsonText(r.value, 100)}`
+    }
     case 'action':
       return `action ${str(r.action)}(${args(r.args)})`
     case 'sent':

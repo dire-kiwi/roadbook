@@ -1,0 +1,583 @@
+{
+  "irVersion": "0.12",
+  "sources": [
+    {
+      "path": "packages/viewer/test/charts/locals.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Token": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "user",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 40
+      }
+    }
+  },
+  "functions": {
+    "matches": {
+      "params": [
+        {
+          "name": "token",
+          "type": "Token",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "bool",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 47
+      }
+    }
+  },
+  "actions": {},
+  "tasks": {
+    "request": {
+      "params": [
+        {
+          "name": "email",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Token",
+      "errors": [],
+      "emits": {},
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 48
+      }
+    }
+  },
+  "machines": {
+    "Confirm": {
+      "doc": "A token that lives only in the states that need it.",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 35,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "email",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Submit": {
+          "fields": [
+            {
+              "name": "code",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 32
+          }
+        },
+        "Again": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 14
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Confirm",
+        "name": "Confirm",
+        "kind": "compound",
+        "doc": "A token that lives only in the states that need it.",
+        "span": {
+          "file": 0,
+          "line": 10,
+          "col": 1,
+          "endLine": 35,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Confirm.Requesting",
+        "states": [
+          {
+            "id": "Confirm.Requesting",
+            "name": "Requesting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 16,
+              "col": 3,
+              "endLine": 20,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "request",
+              "to": null,
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "email"
+                  ],
+                  "state": null,
+                  "type": "string",
+                  "text": "email"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 17,
+                "col": 5,
+                "endLine": 19,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Confirm.Confirming"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Confirm.Confirming",
+                    "values": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "result"
+                        ],
+                        "state": null,
+                        "type": "Token",
+                        "text": "result"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 7,
+                  "endLine": 18,
+                  "endCol": 33
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Confirm.Confirming",
+            "name": "Confirming",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 22,
+              "col": 3,
+              "endLine": 31,
+              "endCol": 4
+            },
+            "params": [
+              {
+                "name": "token",
+                "type": "Token",
+                "sensitive": false,
+                "doc": ""
+              }
+            ],
+            "vars": [
+              {
+                "name": "tries",
+                "type": "int",
+                "sensitive": false,
+                "init": {
+                  "kind": "lit",
+                  "value": 0,
+                  "type": "int",
+                  "text": "0"
+                },
+                "doc": "Wrong codes so far.",
+                "span": {
+                  "file": 0,
+                  "line": 24,
+                  "col": 5,
+                  "endLine": 24,
+                  "endCol": 23
+                }
+              }
+            ],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Submit"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "call",
+                  "fn": "matches",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "token"
+                      ],
+                      "state": "Confirm.Confirming",
+                      "type": "Token",
+                      "text": "token"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "code"
+                      ],
+                      "state": null,
+                      "type": "string",
+                      "text": "event.code"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "matches(token, event.code)"
+                },
+                "targets": [
+                  "Confirm.Accepted"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Confirm.Accepted",
+                    "values": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "token",
+                          "user"
+                        ],
+                        "state": "Confirm.Confirming",
+                        "type": "string",
+                        "text": "token.user"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 7,
+                  "endLine": 26,
+                  "endCol": 60
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Submit"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "<",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "tries"
+                      ],
+                      "state": "Confirm.Confirming",
+                      "type": "int",
+                      "text": "tries"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 2,
+                      "type": "int",
+                      "text": "2"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "tries < 2"
+                },
+                "targets": [],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "tries",
+                    "state": "Confirm.Confirming",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "tries"
+                          ],
+                          "state": "Confirm.Confirming",
+                          "type": "int",
+                          "text": "tries"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "tries + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 7,
+                  "endLine": 27,
+                  "endCol": 89
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Submit"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Confirm.Rejected"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Confirm.Rejected",
+                    "values": [
+                      {
+                        "kind": "lit",
+                        "value": "too many tries",
+                        "type": "string",
+                        "text": "\"too many tries\""
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 7,
+                  "endLine": 28,
+                  "endCol": 66
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Again"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Confirm.Confirming"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Confirm.Confirming",
+                    "values": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "token"
+                        ],
+                        "state": "Confirm.Confirming",
+                        "type": "Token",
+                        "text": "token"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 30,
+                  "endCol": 57
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Confirm.Accepted",
+            "name": "Accepted",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 33,
+              "col": 3,
+              "endLine": 33,
+              "endCol": 55
+            },
+            "params": [
+              {
+                "name": "user",
+                "type": "string",
+                "sensitive": false,
+                "doc": ""
+              }
+            ],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "user"
+              ],
+              "state": "Confirm.Accepted",
+              "type": "string",
+              "text": "user"
+            },
+            "fail": null
+          },
+          {
+            "id": "Confirm.Rejected",
+            "name": "Rejected",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 34,
+              "col": 3,
+              "endLine": 34,
+              "endCol": 57
+            },
+            "params": [
+              {
+                "name": "reason",
+                "type": "string",
+                "sensitive": false,
+                "doc": ""
+              }
+            ],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "reason"
+              ],
+              "state": "Confirm.Rejected",
+              "type": "string",
+              "text": "reason"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:fd8e5fa6f597a73af435b6c905d7c3adc2ec496f6e95a0d558f01b32692bb8ee"
+    }
+  }
+}

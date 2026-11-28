@@ -3,7 +3,7 @@
 // two always agree on what goes where.
 
 import { expandType, parseTypeRef, type TypeRef, typeNames } from '@dire-kiwi/roadbook-core'
-import type { Address, CallDecl, Effect, EventDecl, Field, Invoke, Ir, Machine, Span, State, Transition, Trigger, TypeDecl } from './ir.ts'
+import type { Address, CallDecl, Effect, EventDecl, Field, Invoke, Ir, Machine, Span, State, StateArgs, Transition, Trigger, TypeDecl } from './ir.ts'
 import { own } from './ir.ts'
 
 export const METRICS = {
@@ -318,7 +318,14 @@ export function transitionLines(state: State, index: number): LabelLine[] {
     const link = effectLink(machine, e)
     for (const l of wrapCode(effectText(e), METRICS.labelWrapAt + 8)) lines.push({ cls: 'effect', text: l, guard: '', ...link })
   }
+  // The arguments last, as they are evaluated after the effects.
+  for (const a of t.args) for (const l of wrapCode(`-> ${argsText(a)}`, METRICS.labelWrapAt + 8)) lines.push({ cls: 'effect', text: l, guard: '' })
   return lines
+}
+
+/** The arguments a transition passes to a state it enters, as written after its name: `Confirming(result)`. */
+export function argsText(a: StateArgs): string {
+  return `${a.state.slice(a.state.lastIndexOf('.') + 1)}(${a.values.map((v) => v.text).join(', ')})`
 }
 
 /** What the lines of an effect link to: the event of a `send`, `emit` or `raise`, the machine of a `spawn` (a task's has none). */
@@ -410,6 +417,10 @@ export function stateRows(state: State, collapsed = false): Row[] {
     })
   }
   const effectExtra = (e: Effect): Partial<Row> => effectLink(machine, e)
+  // The state's own data first: its parameters, given by the transitions that enter it, and its
+  // variables, which start again each time it is entered.
+  for (const p of state.params) add('param', `${p.sensitive ? 'sensitive ' : ''}${p.name}: ${p.type}`)
+  for (const v of state.vars) add('var', `${v.sensitive ? 'sensitive ' : ''}${v.name}: ${v.type}${v.init ? ` = ${v.init.text}` : ''}`)
   if (state.invoke) {
     const inv = state.invoke
     if (inv.kind === 'machine') {
