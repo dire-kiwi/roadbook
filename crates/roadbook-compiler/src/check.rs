@@ -12,7 +12,7 @@ use crate::checks::Check;
 use crate::codes;
 use crate::index::{self, Symbol, SymbolId, SymbolIndex, SymbolKind};
 use crate::machine::MachineInfo;
-use crate::names::{Found, Names, is_type};
+use crate::names::{Found, Names, is_type, kind_phrase};
 use crate::project::Project;
 use crate::sensitive::Sensitive;
 use crate::types::{Ty, TypeDef, TypeEnv, builtin, ir_type};
@@ -263,6 +263,15 @@ impl<'p> Checker<'p> {
                         self.member(id, SymbolKind::Variant, v, v.span, &None, signature);
                     }
                 }
+                DeclKind::Task { emits, .. } => {
+                    for e in emits {
+                        let signature =
+                            format!("emits {}{}", e.name.name, index::braces(&e.fields));
+                        let kind = SymbolKind::EmittedEvent;
+                        let ev = self.member(id, kind, &e.name, e.span, &e.doc, signature);
+                        self.index_fields(ev, &e.fields);
+                    }
+                }
                 DeclKind::Machine(m) => {
                     for p in &m.params {
                         let signature = index::field_text(p);
@@ -283,7 +292,7 @@ impl<'p> Checker<'p> {
                         let signature = format!(
                             "children {}: {} by {}",
                             c.name.name,
-                            c.machine.name,
+                            c.src.name,
                             index::type_text(&c.key)
                         );
                         self.member(id, SymbolKind::Children, &c.name, c.span, &c.doc, signature);
@@ -466,6 +475,11 @@ impl<'p> Checker<'p> {
     /// name declared twice is reported with the machine and keeps its first declaration.
     fn resolve_interfaces(&mut self) {
         for (file, d) in self.decls() {
+            if let DeclKind::Task { emits, .. } = &d.kind {
+                let iface = self.task_interface(file, &d.name, emits);
+                self.interfaces.insert(d.name.name.clone(), iface);
+                continue;
+            }
             let DeclKind::Machine(m) = &d.kind else {
                 continue;
             };
@@ -511,6 +525,65 @@ impl<'p> Checker<'p> {
             }
             self.interfaces.insert(d.name.name.clone(), iface);
         }
+    }
+
+    /// What a machine that invokes or spawns task `name` sees of it: the events it emits, with
+    /// their fields' types, under `emits`. A task and a machine never share a name (one is
+    /// lower-case, the other upper-case), so tasks are kept with the machines' interfaces.
+    /// Reports an event the task emits twice (`RB0108`) or one with the name of a type, error
+    /// or machine (`RB0107`), as for a machine's `emits`.
+    fn task_interface(&mut self, file: usize, name: &Ident, emits: &[ast::EventDecl]) -> Interface {
+        let mut iface = Interface::default();
+        let mut first: HashMap<&str, Span> = HashMap::new();
+        let report = !self.is_compiled(file);
+        for e in emits {
+            if let Some(span) = first.get(e.name.name.as_str()) {
+                if report {
+                    self.diags.push(
+                        Diagnostic::error(
+                            codes::DUPLICATE_NAME,
+                            e.name.span,
+                            format!(
+                                "task `{}` emits the event `{}` twice",
+                                name.name, e.name.name
+                            ),
+                        )
+                        .with_secondary(*span, "first declared here")
+                        .with_help("rename one of them, or remove the second"),
+                    );
+                }
+                continue;
+            }
+            first.insert(&e.name.name, e.name.span);
+            if report && let Some(&id) = self.names.global.get(e.name.name.as_str()) {
+                let other = self.names.decl(id);
+                if is_type(&other.kind) || matches!(other.kind, DeclKind::Machine(_)) {
+                    let path = &self.names.project.files[self.names.decls[id.0].file].path;
+                    let d = Diagnostic::error(
+                        codes::DUPLICATE_DECLARATION,
+                        e.name.span,
+                        format!(
+                            "emitted event `{}` has the name of {} declared in `{path}`",
+                            e.name.name,
+                            kind_phrase(&other.kind)
+                        ),
+                    )
+                    .with_secondary(other.name.span, "declared here")
+                    .with_help("an event is named by its name in the IR, so it must not be the name of a type, error or machine; rename one of them");
+                    self.diags.push(d);
+                }
+            }
+            self.unique(e.fields.iter().map(|f| &f.name), "field");
+            let mut fields = Vec::new();
+            for f in &e.fields {
+                let t = self.resolve(file, &f.ty);
+                let what = format!("field `{}` of event `{}`", f.name.name, e.name.name);
+                self.no_ref(file, &f.ty, &t, &what);
+                fields.push((f.name.name.clone(), t));
+            }
+            iface.emits.insert(e.name.name.clone(), fields);
+        }
+        iface
     }
 
     /// The non-duplicate declarations, in load order, with their file.
@@ -1213,6 +1286,7 @@ impl<'p> Checker<'p> {
                     params,
                     returns,
                     errors,
+                    ..
                 } => (params, returns.as_ref(), errors),
                 DeclKind::Machine(m) => (&m.params, m.returns.as_ref(), &m.errors),
                 _ => continue,
@@ -1339,13 +1413,23 @@ impl<'p> Checker<'p> {
                     params,
                     returns,
                     errors,
+                    emits,
                 } => {
+                    let mut events = IndexMap::new();
+                    for e in emits {
+                        events.entry(e.name.name.clone()).or_insert(ir::EventDecl {
+                            fields: ir_fields(&e.fields),
+                            doc: self::doc(&e.doc),
+                            span: ir_span(e.span),
+                        });
+                    }
                     out.tasks.insert(
                         name,
                         ir::TaskDecl {
                             params: ir_fields(params),
                             returns: returns.as_ref().map(ir_type),
                             errors: errors.iter().map(|e| e.name.clone()).collect(),
+                            emits: events,
                             doc,
                             span,
                         },

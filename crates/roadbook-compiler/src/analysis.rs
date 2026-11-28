@@ -598,14 +598,16 @@ fn cycles<'a>(nodes: &[&'a str], graph: &HashMap<&'a str, Vec<&'a str>>) -> Vec<
     out
 }
 
-/// The machines the `spawn` effects of a list start.
+/// The machines the `spawn` effects of a list start (a collection of tasks starts none).
 fn spawned<'m>(m: &'m ir::Machine, effects: &'m [ir::Effect]) -> Vec<&'m str> {
     effects
         .iter()
         .filter_map(|e| match e {
-            ir::Effect::Spawn { children, .. } => {
-                m.children.get(children).map(|c| c.machine.as_str())
-            }
+            ir::Effect::Spawn { children, .. } => m
+                .children
+                .get(children)
+                .filter(|c| c.kind == ir::ChildrenKind::Machine)
+                .map(|c| c.src.as_str()),
             _ => None,
         })
         .collect()
@@ -875,7 +877,7 @@ fn message_warnings(
 }
 
 /// A function, action or task, by the project path of its file and its name; or an emitted
-/// event, by the file of its machine and `Machine.Event`.
+/// event, by the file of its machine or task and `Machine.Event` or `task.Event`.
 pub(crate) type DeclKey = (String, String);
 
 /// A declaration an "unused" warning may be given for, if no checked file uses it.
@@ -902,7 +904,17 @@ pub(crate) fn uses(
         let what = match &e.decl.kind {
             DeclKind::Fn { .. } => "function",
             DeclKind::Action { .. } => "action",
-            DeclKind::Task { .. } => "task",
+            DeclKind::Task { emits, .. } => {
+                for x in emits {
+                    let name = format!("{}.{}", e.decl.name.name, x.name.name);
+                    candidates.push(UnusedCandidate {
+                        key: key(e.file, &name),
+                        what: "emitted event",
+                        span: x.name.span,
+                    });
+                }
+                "task"
+            }
             DeclKind::Machine(m) => {
                 for x in m.body.emits() {
                     let name = format!("{}.{}", e.decl.name.name, x.name.name);
@@ -949,6 +961,17 @@ pub(crate) fn uses(
 pub(crate) fn unused_warning(c: &UnusedCandidate) -> Diagnostic {
     if c.what == "emitted event" {
         let (machine, event) = c.key.1.split_once('.').unwrap_or(("", &c.key.1));
+        if machine.starts_with(|c: char| c.is_ascii_lowercase()) {
+            // A task's: only the run that invokes or spawns it can receive it.
+            return Diagnostic::warning(
+                codes::NEVER_RECEIVED,
+                c.span,
+                format!("nothing receives the event `{event}` that the task `{machine}` emits"),
+            )
+            .with_help(format!(
+                "no checked chart receives it with `on <name>.{event}` through an `invoke {machine}(…) as name` or a collection of `{machine}`, so the host's emits of it are never delivered; receive it, or remove the declaration"
+            ));
+        }
         return Diagnostic::warning(
             codes::NEVER_RECEIVED,
             c.span,

@@ -56,11 +56,12 @@ pub enum SymbolKind {
     Variable,
     /// An `event` a machine accepts.
     Event,
-    /// An event a machine `emits`.
+    /// An event a machine or a task `emits`; its parent is the machine or the task.
     EmittedEvent,
     /// A state; its parent is the state containing it, or the machine.
     State,
-    /// The name of `invoke Machine(…) as name`; its parent is the invoking state.
+    /// The name of `invoke Machine(…) as name` or `invoke task(…) as name`; its parent is the
+    /// invoking state.
     InvokeName,
     /// A `call` a machine answers; its parent is the machine, and its parameters are its
     /// members.
@@ -68,7 +69,7 @@ pub enum SymbolKind {
     /// A type parameter of a generic record or alias (`T` in `type Page<T>`); its parent is
     /// the declaration.
     TypeParameter,
-    /// A `children` collection of a machine; its parent is the machine.
+    /// A `children` collection of a machine, of machines or tasks; its parent is the machine.
     Children,
 }
 
@@ -128,7 +129,7 @@ impl SymbolKind {
             SymbolKind::Event => "event",
             SymbolKind::EmittedEvent => "emitted event",
             SymbolKind::State => "state",
-            SymbolKind::InvokeName => "invoked machine's name",
+            SymbolKind::InvokeName => "invoke's `as` name",
             SymbolKind::Call => "call",
             SymbolKind::TypeParameter => "type parameter",
             SymbolKind::Children => "children collection",
@@ -384,14 +385,28 @@ pub fn declaration(d: &Decl) -> (SymbolKind, String) {
             params,
             returns,
             errors,
-        } => (
-            SymbolKind::Task,
-            format!(
-                "task {n}({}){}",
-                list(params),
-                result_text(returns.as_ref(), errors)
-            ),
-        ),
+            emits,
+        } => {
+            // As the formatter writes it: one `emits` on the signature's line, several on
+            // lines of their own.
+            let emits: Vec<String> = emits
+                .iter()
+                .map(|e| format!("emits {}{}", e.name.name, braces(&e.fields)))
+                .collect();
+            let emits = match emits.as_slice() {
+                [] => String::new(),
+                [one] => format!(" {one}"),
+                several => several.iter().map(|e| format!("\n  {e}")).collect(),
+            };
+            (
+                SymbolKind::Task,
+                format!(
+                    "task {n}({}){}{emits}",
+                    list(params),
+                    result_text(returns.as_ref(), errors)
+                ),
+            )
+        }
         DeclKind::Machine(m) => (
             SymbolKind::Machine,
             format!(

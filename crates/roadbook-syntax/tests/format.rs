@@ -7,6 +7,17 @@ use roadbook_syntax::{FileId, format, parse_file};
 
 /// `(input, canonical output)`
 const LAYOUTS: &[(&str, &str)] = &[
+    // A task with one `emits` keeps it on its signature's line, aligned as a column; one with
+    // several, or whose only `emits` has a doc comment, writes each on a line of its own.
+    (
+        "task ticks(every:duration)\n  emits Tick\ntask fetch(u:string)->int!E emits Got{n:int}\ntask up(f:string)->string emits Progress{percent:int} emits Stage{\n  name:string,\n}\ntask doc(f:string)\n  /// Why.\n  emits Done\n",
+        "task ticks(every: duration)               emits Tick\ntask fetch(u: string)       -> int    ! E emits Got { n: int }\ntask up(f: string)          -> string\n  emits Progress { percent: int }\n  emits Stage {\n    name: string\n  }\ntask doc(f: string)\n  /// Why.\n  emits Done\n",
+    ),
+    // An invoke with no outcomes has no braces; `children` and `spawn` of a task.
+    (
+        "machine M() {\n  children ups : upload  by string\n  state A {\n    invoke ticks( 1s )  as  clock\n    on Go spawn ups[\"a\"]=upload(\"x\")\n  }\n}\n",
+        "machine M() {\n  children ups: upload by string\n  state A {\n    invoke ticks(1s) as clock\n    on Go spawn ups[\"a\"] = upload(\"x\")\n  }\n}\n",
+    ),
     // `sensitive` comes first, on fields, parameters and variables.
     (
         "type T {sensitive   a:int,b:int}\nmachine M( sensitive  k :string) {\n  sensitive   var t:int=1\n  var u: int\n}\n",

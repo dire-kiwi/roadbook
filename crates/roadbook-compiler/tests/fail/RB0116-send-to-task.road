@@ -1,0 +1,24 @@
+task upload(file: string) emits Progress { percent: int }
+
+machine M() {
+  event Add { name: string }
+  event Pause
+  children uploads: upload by string
+  var percent: int = 0
+  initial A
+  state A {
+    on Add spawn uploads[event.name] = upload(event.name)
+    on Pause send uploads["a"].Pause  send uploads.*.Pause
+    on uploads.Progress set percent = event.percent
+    state B {
+      invoke upload("f") as up
+      on up.Progress set percent = event.percent
+      on Pause send up.Pause
+    }
+    initial B
+  }
+}
+
+// expect: RB0116 at 11:32
+// expect: RB0116 at 11:54
+// expect: RB0116 at 16:24

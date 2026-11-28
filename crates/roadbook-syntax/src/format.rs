@@ -487,12 +487,29 @@ impl Formatter<'_> {
                 params,
                 returns,
                 errors,
+                emits,
             } => {
-                let head = self.params(&d.name, params, head, whole, 0);
+                // A single `emits` stays on the signature's line, unless it has a doc comment,
+                // which must stay right above it; several go on lines of their own.
+                let inline = emits.len() == 1 && !self.has_doc(emits[0].span.start.offset);
+                let signature = match emits.first() {
+                    Some(e) if !inline => (start, self.end_before(e.span.start.offset)),
+                    _ => whole,
+                };
+                let head = self.params(&d.name, params, head, signature, 0);
                 let returns = returns
                     .as_ref()
                     .map_or(String::new(), |t| format!("-> {}", ty(t)));
-                self.decl_row(whole, vec![head, returns, error_list(errors)]);
+                let mut cells = vec![head, returns, error_list(errors)];
+                if inline {
+                    cells.push(emits_text(&emits[0]));
+                }
+                self.decl_row(signature, cells);
+                if !inline {
+                    for e in emits {
+                        self.emits_line(e, INDENT);
+                    }
+                }
             }
             DeclKind::Machine(m) => {
                 let header = (start, m.body.span.start.offset + 1);
@@ -511,6 +528,44 @@ impl Formatter<'_> {
                 self.body(&m.body, header, head, 0);
             }
         }
+    }
+
+    /// An `event` or `emits` line, or the lines of one whose fields are on lines of their own.
+    fn event_line(&mut self, kw: &str, e: &EventDecl, indent: usize) {
+        let whole = off(e.span);
+        let head = format!("{kw} {}", e.name.name);
+        if e.fields.is_empty() {
+            self.row(whole, indent, vec![head], "", Some(Group::Event));
+        } else if let Some(text) = self.brace_list(
+            e.name.span.end.offset,
+            &head,
+            &Self::fields(&e.fields),
+            whole.0,
+            indent,
+        ) {
+            self.row(whole, indent, vec![head, text], "", Some(Group::Event));
+        }
+    }
+
+    fn emits_line(&mut self, e: &EventDecl, indent: usize) {
+        self.event_line("emits", e, indent);
+    }
+
+    /// Whether a doc comment ends between the previous token and `offset`.
+    fn has_doc(&self, offset: u32) -> bool {
+        let lo = self.end_before(offset);
+        self.comments.iter().any(|c| {
+            c.text.starts_with("///") && c.span.start.offset >= lo && c.span.end.offset <= offset
+        })
+    }
+
+    /// The end of the last token before `offset`.
+    fn end_before(&self, offset: u32) -> u32 {
+        let i = self
+            .tokens
+            .partition_point(|t| t.span.start.offset < offset);
+        i.checked_sub(1)
+            .map_or(0, |i| self.tokens[i].span.end.offset)
     }
 
     // ───────────── bodies ─────────────
@@ -564,31 +619,14 @@ impl Formatter<'_> {
                 indent,
                 vec![
                     format!("children {}:", c.name.name),
-                    c.machine.name.clone(),
+                    c.src.name.clone(),
                     format!("by {}", ty(&c.key)),
                 ],
                 "",
                 Some(Group::Children),
             ),
-            Item::Event(e) | Item::Emits(e) => {
-                let kw = if let Item::Emits(_) = item {
-                    "emits"
-                } else {
-                    "event"
-                };
-                let head = format!("{kw} {}", e.name.name);
-                if e.fields.is_empty() {
-                    self.row(whole, indent, vec![head], "", Some(Group::Event));
-                } else if let Some(text) = self.brace_list(
-                    e.name.span.end.offset,
-                    &head,
-                    &Self::fields(&e.fields),
-                    whole.0,
-                    indent,
-                ) {
-                    self.row(whole, indent, vec![head, text], "", Some(Group::Event));
-                }
-            }
+            Item::Event(e) => self.event_line("event", e, indent),
+            Item::Emits(e) => self.emits_line(e, indent),
             Item::Call(c) => {
                 let head = format!("call {}", c.name.name);
                 let head = self.params(&c.name, &c.params, head, whole, indent);
@@ -616,7 +654,6 @@ impl Formatter<'_> {
                     .retry
                     .as_ref()
                     .map_or(rparen.span.end.offset, |r| r.span.end.offset);
-                let open = self.find(head_end, Punct::LBrace);
                 let to = inv
                     .to
                     .as_ref()
@@ -628,6 +665,12 @@ impl Formatter<'_> {
                 if let Some(r) = &inv.retry {
                     head += &retry_text(r);
                 }
+                if inv.outcomes.is_empty() {
+                    // No block: `invoke ticks(1s) as clock`.
+                    self.row(whole, indent, vec![head], "", None);
+                    return;
+                }
+                let open = self.find(head_end, Punct::LBrace);
                 self.row(
                     (whole.0, open.span.end.offset),
                     indent,
@@ -917,7 +960,7 @@ fn effects(effects: &[Effect]) -> String {
                 "{}[{}] = {}({})",
                 sp.children.name,
                 expr(&sp.key),
-                sp.machine.name,
+                sp.src.name,
                 exprs(&sp.args)
             )),
             Effect::Stop(st) => out.push_str(&format!("{}[{}]", st.children.name, expr(&st.key))),
@@ -925,6 +968,18 @@ fn effects(effects: &[Effect]) -> String {
         last = Some(kw);
     }
     out
+}
+
+/// `emits Name { fields }` on one line, as a task's single `emits` is written.
+fn emits_text(e: &EventDecl) -> String {
+    if e.fields.is_empty() {
+        return format!("emits {}", e.name.name);
+    }
+    let fields: Vec<_> = Formatter::fields(&e.fields)
+        .into_iter()
+        .map(|f| f.1)
+        .collect();
+    format!("emits {} {{ {} }}", e.name.name, fields.join(", "))
 }
 
 /// `to.Event { field: value, … }`, or `Event` with no fields.

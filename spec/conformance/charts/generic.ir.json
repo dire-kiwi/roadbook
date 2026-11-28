@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "spec/conformance/charts/generic.road",
@@ -178,6 +178,7 @@
       ],
       "returns": "Page<Timed<int>>",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 0,

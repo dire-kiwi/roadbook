@@ -299,7 +299,7 @@ impl Redactor<'_> {
     fn collection(&self, m: &Machine, children: &str) -> Option<&Machine> {
         m.children
             .get(children)
-            .and_then(|c| self.ir.machines.get(&c.machine))
+            .and_then(|c| self.ir.machines.get(&c.src))
     }
 
     /// The result type of what an invoke of a run of `m` runs: task or machine `src`, or the

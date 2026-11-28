@@ -1,0 +1,16 @@
+error Lost
+
+task ticks(every: duration) ! Lost emits Tick
+
+machine M() {
+  var n: int = 0
+  initial A
+  state A {
+    invoke ticks(1s) as clock
+    on clock.Tick set n = n + 1
+    after 5s -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0204 at 9:5

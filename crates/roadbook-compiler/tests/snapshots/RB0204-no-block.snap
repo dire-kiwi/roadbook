@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0204]: `invoke ticks` does not handle `Lost`
+ --> RB0204-no-block.road:9:5
+  |
+9 |     invoke ticks(1s) as clock
+  |     ^^^^^^^^^^^^ declared as `! Lost`
+  |
+  = help: add `fail Lost -> <State>` or `fail * -> <State>`

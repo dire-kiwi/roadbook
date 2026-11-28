@@ -1,0 +1,13 @@
+task ticks(every: duration) emits Tick
+
+machine M() {
+  var n: int = 0
+  initial A
+  state A {
+    invoke ticks(1s) as key
+    after 5s -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0122 at 7:25

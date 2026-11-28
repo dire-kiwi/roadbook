@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0122]: `key` cannot name an invoked task
+ --> RB0122-task-alias-key.road:7:25
+  |
+7 |     invoke ticks(1s) as key
+  |                         ^^^
+  |
+  = help: `key` is the implicit name of a spawned child's key, like `event`; choose another name

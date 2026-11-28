@@ -370,8 +370,8 @@ state Uploading {
 ```
 state Waiting {
   invoke ticks(1s) as clock
-  on clock.Tick  set seconds = seconds + 1
-  on Stop -> Idle
+  on clock.Tick          set seconds = seconds + 1
+  on Stop       -> Idle
 }
 ```
 

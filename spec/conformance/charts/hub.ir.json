@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "spec/conformance/charts/hub.road",
@@ -752,7 +752,8 @@
       "calls": {},
       "children": {
         "sessions": {
-          "machine": "Session",
+          "kind": "machine",
+          "src": "Session",
           "key": "string",
           "doc": "",
           "span": {
@@ -809,7 +810,7 @@
                   {
                     "kind": "spawn",
                     "children": "sessions",
-                    "machine": "Session",
+                    "src": "Session",
                     "key": {
                       "kind": "ref",
                       "path": [
@@ -853,7 +854,7 @@
                   {
                     "kind": "spawn",
                     "children": "sessions",
-                    "machine": "Session",
+                    "src": "Session",
                     "key": {
                       "kind": "ref",
                       "path": [
@@ -935,7 +936,7 @@
                   {
                     "kind": "spawn",
                     "children": "sessions",
-                    "machine": "Session",
+                    "src": "Session",
                     "key": {
                       "kind": "ref",
                       "path": [
@@ -957,7 +958,7 @@
                   {
                     "kind": "spawn",
                     "children": "sessions",
-                    "machine": "Session",
+                    "src": "Session",
                     "key": {
                       "kind": "ref",
                       "path": [
@@ -1423,7 +1424,7 @@
                   {
                     "kind": "spawn",
                     "children": "sessions",
-                    "machine": "Session",
+                    "src": "Session",
                     "key": {
                       "kind": "ref",
                       "path": [
@@ -1615,7 +1616,8 @@
       "calls": {},
       "children": {
         "slots": {
-          "machine": "Session",
+          "kind": "machine",
+          "src": "Session",
           "key": "int",
           "doc": "",
           "span": {
@@ -1672,7 +1674,7 @@
                   {
                     "kind": "spawn",
                     "children": "slots",
-                    "machine": "Session",
+                    "src": "Session",
                     "key": {
                       "kind": "ref",
                       "path": [

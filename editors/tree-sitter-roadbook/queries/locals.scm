@@ -1,6 +1,6 @@
 ; Roadbook locals: a machine's parameters, variables and `children` collections, and the
-; names `invoke … as` gives the machines it runs, which are in scope in the invoking state
-; and the states inside it.
+; names `invoke … as` gives the machines and tasks it runs, which are in scope in the invoking
+; state and the states inside it.
 
 (machine_declaration) @local.scope
 

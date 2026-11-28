@@ -1,0 +1,19 @@
+task upload(file: string)
+  emits Progress { percent: int }
+  emits Stage { name: string }
+
+machine M() {
+  var percent: int = 0
+  initial A
+  state A {
+    invoke upload("f") as up {
+      done -> Done
+    }
+    on up.Progress set percent = event.percent
+    on up.Stage set percent = 0
+    on up.Progres set percent = 1
+  }
+  final state Done {}
+}
+
+// expect: RB0117 at 14:11

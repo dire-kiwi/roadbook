@@ -198,7 +198,7 @@ impl Program {
         for ch in entries("spawned") {
             let decl = collections.and_then(|c| c.get(ch["children"].as_str().unwrap_or_default()));
             if let (Some(child), Some(decl)) = (ch.get("child"), decl) {
-                out.push((child, decl.machine.as_str()));
+                out.push((child, decl.src.as_str()));
             }
         }
         out
@@ -249,13 +249,13 @@ impl Program {
     fn fits_tree(&self, s: &Saved) -> Result<(), String> {
         self.fits(s)?;
         let m = &self.ir().machines[&s.machine];
-        let nested = s
-            .invokes
-            .iter()
-            .filter_map(|i| Some((i.id, &i.src, i.child.as_deref()?)))
-            .chain(s.spawned.iter().flatten().filter_map(|c| {
-                Some((c.id, &m.children[&c.children].machine, c.child.as_deref()?))
-            }));
+        let nested =
+            s.invokes
+                .iter()
+                .filter_map(|i| Some((i.id, &i.src, i.child.as_deref()?)))
+                .chain(s.spawned.iter().flatten().filter_map(|c| {
+                    Some((c.id, &m.children[&c.children].src, c.child.as_deref()?))
+                }));
         for (id, of, child) in nested {
             if !self.ir().machines.contains_key(of) {
                 return Err(format!(
@@ -427,19 +427,19 @@ impl Program {
             let child = self
                 .ir()
                 .machines
-                .get(&decl.machine)
-                .ok_or_else(|| format!("no machine `{}`", decl.machine))?;
+                .get(&decl.src)
+                .ok_or_else(|| format!("no machine `{}`", decl.src))?;
             if ch.args.len() != child.params.len() {
                 return Err(format!(
                     "the arguments of spawned child {} are not exactly `{}`'s parameters",
-                    ch.id, decl.machine
+                    ch.id, decl.src
                 ));
             }
             for p in &child.params {
                 let v = ch.args.get(&p.name).ok_or_else(|| {
                     format!("spawned child {} lacks the argument `{}`", ch.id, p.name)
                 })?;
-                if !self.value_fits(&decl.machine, &p.ty, v) {
+                if !self.value_fits(&decl.src, &p.ty, v) {
                     return Err(format!(
                         "the argument `{}` of spawned child {} is not a {}",
                         p.name, ch.id, p.ty

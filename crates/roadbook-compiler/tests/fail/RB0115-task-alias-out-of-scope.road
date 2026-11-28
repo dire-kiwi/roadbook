@@ -1,0 +1,17 @@
+task ticks(every: duration) emits Tick
+
+machine M() {
+  event Stop
+  var seconds: int = 0
+  initial Waiting
+  state Waiting {
+    invoke ticks(1s) as clock
+    on clock.Tick set seconds = seconds + 1
+    on Stop -> Idle
+  }
+  state Idle {
+    on clock.Tick set seconds = 0
+  }
+}
+
+// expect: RB0115 at 13:8

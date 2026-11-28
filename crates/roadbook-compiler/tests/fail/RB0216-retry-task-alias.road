@@ -1,0 +1,18 @@
+error Busy
+
+task upload(file: string) ! Busy emits Progress { percent: int }
+
+machine M() {
+  var percent: int = 0
+  initial A
+  state A {
+    invoke upload("f") as up retry 2 on Busy {
+      done      -> Done
+      fail Busy -> Done
+    }
+    on up.Progress set percent = event.percent
+  }
+  final state Done {}
+}
+
+// expect: RB0216 at 9:30

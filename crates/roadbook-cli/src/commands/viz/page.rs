@@ -409,7 +409,7 @@ fn talks(ir: &Ir, m: &Machine) -> Talks {
         ends: Vec::new(),
     };
     for (name, c) in &m.children {
-        group(&mut t.spawns, &c.machine, name);
+        group(&mut t.spawns, &c.src, name);
     }
     for (name, ty) in m
         .params
@@ -445,7 +445,7 @@ fn messages(s: &State, t: &mut Talks) {
     fn effects(list: &[Effect], t: &mut Talks) {
         for e in list {
             if let Effect::Send { to, event, .. } = e {
-                group(&mut t.sends, &to.machine, event);
+                group(&mut t.sends, to.peer(), event);
             }
         }
     }
@@ -453,14 +453,14 @@ fn messages(s: &State, t: &mut Talks) {
         && inv.kind == InvokeKind::Call
         && let Some(to) = &inv.to
     {
-        group(&mut t.calls, &to.machine, &inv.src);
+        group(&mut t.calls, to.peer(), &inv.src);
     }
     effects(&s.entry, t);
     effects(&s.exit, t);
     for tr in &s.transitions {
         match &tr.trigger {
-            Trigger::Emitted { from, event } => group(&mut t.receives, &from.machine, event),
-            Trigger::Ended { from } => group(&mut t.ends, &from.machine, &from.name),
+            Trigger::Emitted { from, event } => group(&mut t.receives, from.peer(), event),
+            Trigger::Ended { from } => group(&mut t.ends, from.peer(), &from.name),
             _ => {}
         }
         effects(&tr.effects, t);

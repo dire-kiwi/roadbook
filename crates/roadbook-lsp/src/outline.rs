@@ -1,11 +1,11 @@
-//! The outline of a file: its declarations, and in a machine its parameters, variables,
-//! events, `children` collections and states (history states among them), nested as they
-//! are written. Built from the syntax tree alone, so it is there even when the file does not
+//! The outline of a file: its declarations, the events a task emits, and in a machine its
+//! parameters, variables, events, `children` collections and states (history states among
+//! them), nested as they are written. Built from the syntax tree alone, so it is there even when the file does not
 //! compile.
 
 use lsp_types::{DocumentSymbol, SymbolKind as Kind};
 use roadbook_compiler::index::{declaration, type_text};
-use roadbook_syntax::ast::{Body, DeclKind, Field, Item, State, StateKind};
+use roadbook_syntax::ast::{Body, DeclKind, EventDecl, Field, Item, State, StateKind};
 use roadbook_syntax::{FileId, Span, parse_file};
 
 use crate::text::{Encoding, Lines};
@@ -31,7 +31,12 @@ pub fn outline(text: &str, enc: Encoding) -> Vec<DocumentSymbol> {
                         .collect(),
                 ),
                 DeclKind::Extern => (Kind::INTERFACE, Vec::new()),
-                DeclKind::Fn { .. } | DeclKind::Task { .. } => (Kind::FUNCTION, Vec::new()),
+                DeclKind::Fn { .. } => (Kind::FUNCTION, Vec::new()),
+                // A task's emitted events are its children, as a machine's are.
+                DeclKind::Task { emits, .. } => (
+                    Kind::FUNCTION,
+                    emits.iter().map(|e| o.event("emits", e)).collect(),
+                ),
                 DeclKind::Action { .. } => (Kind::METHOD, Vec::new()),
                 DeclKind::Machine(m) => {
                     let mut children = o.fields(&m.params);
@@ -116,21 +121,8 @@ impl Outline<'_> {
                     v.name.span,
                     vec![],
                 )),
-                Item::Event(e) | Item::Emits(e) => {
-                    let word = if matches!(item, Item::Event(_)) {
-                        "event"
-                    } else {
-                        "emits"
-                    };
-                    out.push(self.symbol(
-                        &e.name.name,
-                        Kind::EVENT,
-                        Some(word.into()),
-                        e.span,
-                        e.name.span,
-                        self.fields(&e.fields),
-                    ));
-                }
+                Item::Event(e) => out.push(self.event("event", e)),
+                Item::Emits(e) => out.push(self.event("emits", e)),
                 Item::Call(c) => out.push(self.symbol(
                     &c.name.name,
                     Kind::METHOD,
@@ -142,7 +134,7 @@ impl Outline<'_> {
                 Item::Children(c) => out.push(self.symbol(
                     &c.name.name,
                     Kind::ARRAY,
-                    Some(format!("{} by {}", c.machine.name, type_text(&c.key))),
+                    Some(format!("{} by {}", c.src.name, type_text(&c.key))),
                     c.span,
                     c.name.span,
                     vec![],
@@ -161,6 +153,17 @@ impl Outline<'_> {
             }
         }
         out
+    }
+
+    fn event(&self, word: &str, e: &EventDecl) -> DocumentSymbol {
+        self.symbol(
+            &e.name.name,
+            Kind::EVENT,
+            Some(word.into()),
+            e.span,
+            e.name.span,
+            self.fields(&e.fields),
+        )
     }
 
     fn state(&self, s: &State) -> DocumentSymbol {

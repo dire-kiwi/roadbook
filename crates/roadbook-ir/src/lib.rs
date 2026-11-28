@@ -17,7 +17,9 @@
 //!
 //! # Optional fields
 //!
-//! Every member the reference lists is always present. An absent value is
+//! Every member the reference lists is always present, except that an
+//! [`Address`] has exactly one of `machine` and `task`, by its kind, and no
+//! member for the other. An absent value is
 //! `null` (`returns`, `init`, `initial`, `invoke`, `guard`,
 //! `output`, `fail`), a missing doc comment is `""`, and an empty list or
 //! map is `[]` or `{}`. Nothing is ever omitted, so the output for a given
@@ -36,14 +38,14 @@ use serde::Deserialize;
 pub use expr::{Expr, ExprKind, FieldValue, Literal, MAX_SAFE_INTEGER, Op};
 pub use hash::{HASH_PREFIX, HashError, fill_hashes, machine_hash, semantic_view};
 pub use model::{
-    ActionDecl, Address, AddressKind, Call, ChildrenDecl, ENDED, ENDED_VARIANTS, Effect, EventDecl,
-    Field, FunctionDecl, Invoke, InvokeKind, Ir, Machine, ReplyOutcome, Source, Span, State,
-    StateKind, TaskDecl, Transition, Trigger, TypeDecl, TypeDef, UNANSWERED, Var,
+    ActionDecl, Address, AddressKind, Call, ChildrenDecl, ChildrenKind, ENDED, ENDED_VARIANTS,
+    Effect, EventDecl, Field, FunctionDecl, Invoke, InvokeKind, Ir, Machine, ReplyOutcome, Source,
+    Span, State, StateKind, TaskDecl, Transition, Trigger, TypeDecl, TypeDef, UNANSWERED, Var,
 };
 pub use types::{Builtin, TypeRef, TypeRefError};
 
 /// The IR version this crate reads and writes.
-pub const IR_VERSION: &str = "0.9";
+pub const IR_VERSION: &str = "0.10";
 
 /// An `irVersion` this crate cannot read.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -83,7 +85,7 @@ fn parse_version(v: &str) -> Option<(u32, u32)> {
 /// crate.
 ///
 /// Versions are `"MAJOR.MINOR"`. While the major version is 0 every change
-/// is breaking, so only `"0.9"` is accepted. From `1.0` on, a reader accepts
+/// is breaking, so only `"0.10"` is accepted. From `1.0` on, a reader accepts
 /// its own major version with any minor version up to its own: a minor
 /// version only adds to the IR, and an older reader must not silently ignore
 /// what it does not know.
@@ -212,10 +214,10 @@ mod tests {
 
     #[test]
     fn versions() {
-        assert!(check_version("0.9").is_ok());
+        assert!(check_version("0.10").is_ok());
         for v in [
-            "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.10", "0.0", "1.0", "0.09",
-            "00.9", "0.9.0", "0", "", "v0.9", "0.9 ",
+            "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.0", "1.0", "0.010",
+            "00.10", "0.10.0", "0", "", "v0.10", "0.10 ",
         ] {
             assert!(check_version(v).is_err(), "{v:?}");
         }
@@ -228,7 +230,7 @@ mod tests {
             Err(ReadError::Version(VersionError { found: None }))
         ));
         assert!(matches!(
-            Ir::from_json(r#"{"irVersion":"0.9"}"#),
+            Ir::from_json(r#"{"irVersion":"0.10"}"#),
             Err(ReadError::Json(_))
         ));
     }
@@ -237,7 +239,7 @@ mod tests {
     fn depth_is_bounded_without_recursing() {
         assert_eq!(json_depth(r#"{"a": "[[{", "b": [[1], {"c": "\"]"}]}"#), 3);
         let deep = format!(
-            r#"{{"irVersion":"0.9","x":{}{}}}"#,
+            r#"{{"irVersion":"0.10","x":{}{}}}"#,
             "[".repeat(MAX_JSON_DEPTH),
             "]".repeat(MAX_JSON_DEPTH)
         );

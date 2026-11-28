@@ -1051,7 +1051,7 @@ impl<'a> Gen<'a> {
         }
         // A collection's children run its machine through the same handler as an invoke of it.
         uses.invokes
-            .extend(m.children.values().map(|c| c.machine.clone()));
+            .extend(m.children.values().map(|c| c.src.clone()));
         uses.state(&m.root);
         let ir = self.ir;
         let mut methods = Vec::new();

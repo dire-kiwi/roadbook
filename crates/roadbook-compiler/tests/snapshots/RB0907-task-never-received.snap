@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0907]: nothing receives the event `Stage` that the task `upload` emits
+ --> RB0907-task-never-received.road:3:9
+  |
+3 |   emits Stage { name: string }
+  |         ^^^^^
+  |
+  = help: no checked chart receives it with `on <name>.Stage` through an `invoke upload(…) as name` or a collection of `upload`, so the host's emits of it are never delivered; receive it, or remove the declaration

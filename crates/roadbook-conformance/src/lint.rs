@@ -584,7 +584,7 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 }
                 if let Some(m) = machine {
                     match m.children.get(&children) {
-                        Some(c) if c.machine == src => {}
+                        Some(c) if c.src == src => {}
                         _ => bad(format!(
                             "{} has no collection {children} of {src}",
                             run.machine

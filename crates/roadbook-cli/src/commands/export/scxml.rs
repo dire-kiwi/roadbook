@@ -232,7 +232,7 @@ pub fn document(ir: &Ir, name: &str, m: &Machine) -> String {
             w.comment(2, &c.doc);
             let attrs = [
                 ("id", name.clone()),
-                ("rb:children", c.machine.clone()),
+                ("rb:children", c.src.clone()),
                 ("rb:key", c.key.to_string()),
             ];
             w.open(2, "data", &attrs, true);
@@ -389,7 +389,7 @@ impl Writer<'_> {
                     inv.callee(),
                     inv.to
                         .as_ref()
-                        .and_then(|to| self.ir.machines.get(&to.machine))
+                        .and_then(|to| self.ir.machines.get(to.peer()))
                         .and_then(|m| m.calls.get(&inv.src))
                         .map(|c| &c.params),
                 ),
@@ -513,7 +513,7 @@ impl Writer<'_> {
                     self.m
                         .children
                         .get(children)
-                        .and_then(|c| self.ir.machines.get(&c.machine))
+                        .and_then(|c| self.ir.machines.get(&c.src))
                         .map(|m| m.errors.as_slice())
                         .unwrap_or_default()
                         .iter()
@@ -552,7 +552,7 @@ impl Writer<'_> {
                         InvokeKind::Call => inv
                             .to
                             .as_ref()
-                            .and_then(|to| self.ir.machines.get(&to.machine))
+                            .and_then(|to| self.ir.machines.get(to.peer()))
                             .and_then(|m| m.calls.get(&inv.src))
                             .map(|c| &c.errors),
                     });
@@ -686,7 +686,7 @@ impl Writer<'_> {
                 }
                 Effect::Spawn {
                     children,
-                    machine,
+                    src: machine,
                     key,
                     args,
                 } => {

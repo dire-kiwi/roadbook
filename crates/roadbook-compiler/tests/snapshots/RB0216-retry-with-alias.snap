@@ -8,4 +8,4 @@ error[RB0216]: `invoke Child as child` cannot `retry`
    |                             ^^^^^^^
    |                       ----- named here
    |
-   = help: each attempt is a new child, so the name would address nothing while the retry waits; drop `as`, or write the retry out as explicit states
+   = help: each attempt starts it anew, so the name would address nothing while the retry waits; drop `as`, or write the retry out as explicit states

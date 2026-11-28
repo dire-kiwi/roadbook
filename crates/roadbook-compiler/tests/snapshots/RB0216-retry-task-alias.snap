@@ -1,0 +1,11 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0216]: `invoke upload as up` cannot `retry`
+ --> RB0216-retry-task-alias.road:9:30
+  |
+9 |     invoke upload("f") as up retry 2 on Busy {
+  |                              ^^^^^^^^^^^^^^^
+  |                           -- named here
+  |
+  = help: each attempt starts it anew, so the name would address nothing while the retry waits; drop `as`, or write the retry out as explicit states

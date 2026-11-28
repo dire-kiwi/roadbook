@@ -904,7 +904,7 @@ impl<'a> Uses<'a> {
         // A collection's children run its machine, through the same implementation as an
         // invoke of it.
         for c in m.children.values() {
-            self.machines.insert(&c.machine);
+            self.machines.insert(&c.src);
         }
         self.state(&m.root);
     }

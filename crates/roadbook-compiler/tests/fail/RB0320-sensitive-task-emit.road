@@ -1,0 +1,17 @@
+task login(user: string) emits Challenge { sensitive code: string, attempt: int }
+
+machine M() {
+  var code: string = ""
+  sensitive var kept: string = ""
+  var attempt: int = 0
+  initial A
+  state A {
+    invoke login("u") as auth {
+      done -> Done
+    }
+    on auth.Challenge set kept = event.code, attempt = event.attempt, code = event.code
+  }
+  final state Done {}
+}
+
+// expect: RB0320 at 12:78

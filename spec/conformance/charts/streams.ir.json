@@ -1,0 +1,348 @@
+{
+  "irVersion": "0.10",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/streams.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {
+    "ticks": {
+      "params": [
+        {
+          "name": "every",
+          "type": "duration",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "emits": {
+        "Tick": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 5,
+            "col": 29,
+            "endLine": 5,
+            "endCol": 39
+          }
+        }
+      },
+      "doc": "Emits a `Tick` every `every`, until it is cancelled.",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 39
+      }
+    }
+  },
+  "machines": {
+    "Clock": {
+      "doc": "Counts ticks while it waits. Can stop the clock and start it again.",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 29,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "seconds",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 23
+          }
+        }
+      ],
+      "events": {
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 13
+          }
+        },
+        "Start": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 14
+          }
+        },
+        "Finish": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Clock",
+        "name": "Clock",
+        "kind": "compound",
+        "doc": "Counts ticks while it waits. Can stop the clock and start it again.",
+        "span": {
+          "file": 0,
+          "line": 8,
+          "col": 1,
+          "endLine": 29,
+          "endCol": 2
+        },
+        "initial": "Clock.Waiting",
+        "states": [
+          {
+            "id": "Clock.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 17,
+              "col": 3,
+              "endLine": 21,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "ticks",
+              "to": null,
+              "as": "clock",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": 1000,
+                  "type": "duration",
+                  "text": "1s"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 18,
+                "col": 5,
+                "endLine": 18,
+                "endCol": 30
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "task",
+                    "name": "clock",
+                    "task": "ticks",
+                    "state": "Clock.Waiting"
+                  },
+                  "event": "Tick"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "seconds",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "seconds"
+                          ],
+                          "type": "int",
+                          "text": "seconds"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "seconds + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 19,
+                  "col": 5,
+                  "endLine": 19,
+                  "endCol": 53
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Clock.Idle"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 20,
+                  "col": 5,
+                  "endLine": 20,
+                  "endCol": 26
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Clock.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 23,
+              "col": 3,
+              "endLine": 26,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Start"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Clock.Waiting"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 24,
+                  "col": 5,
+                  "endLine": 24,
+                  "endCol": 25
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Finish"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Clock.Over"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 5,
+                  "endLine": 25,
+                  "endCol": 22
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Clock.Over",
+            "name": "Over",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 28,
+              "col": 3,
+              "endLine": 28,
+              "endCol": 38
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "seconds"
+              ],
+              "type": "int",
+              "text": "seconds"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:e602b4979ab632a552bb1a39c9bb0c861162005c84b932ca4bd66763b639a395"
+    }
+  }
+}

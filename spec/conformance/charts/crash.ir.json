@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "spec/conformance/charts/crash.road",
@@ -33,6 +33,7 @@
       "params": [],
       "returns": null,
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 0,

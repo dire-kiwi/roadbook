@@ -1,0 +1,14 @@
+task ticks(every: duration) emits Tick
+
+machine M() {
+  var n: int = 0
+  initial A
+  state A {
+    invoke ticks(1s) as clock
+    on clock.Tick set n = n + 1
+    on clock.ended -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0124 at 9:8

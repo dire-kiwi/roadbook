@@ -620,7 +620,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         self.m
             .children
             .get(children)
-            .map(|c| c.machine.as_str())
+            .map(|c| c.src.as_str())
             .unwrap_or_default()
     }
 
@@ -634,7 +634,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             let call = inv
                 .to
                 .as_ref()
-                .and_then(|to| ir.machines.get(&to.machine))
+                .and_then(|to| ir.machines.get(to.peer()))
                 .and_then(|m| m.calls.get(&inv.src));
             return tag == UNANSWERED || call.is_some_and(|c| c.errors.iter().any(|e| e == tag));
         }
@@ -924,6 +924,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                         .and_then(Value::as_str)
                         == Some(from)
             }
+            // Task emits are not implemented by this core yet (SM-26).
+            AddressKind::Task => false,
         }
     }
 
@@ -1211,7 +1213,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 }
                 Effect::Send { to, key, value, .. } => {
                     let message = self.next_message();
-                    let receiver = to.machine.as_str();
+                    let receiver = to.peer();
                     let (to, invoke, value) = match to.kind {
                         AddressKind::Children => {
                             let key = match key {
@@ -1260,6 +1262,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                             let to = to.as_str().unwrap_or_default().to_owned();
                             (to, None, self.eval(value, implicit)?)
                         }
+                        // The compiler rejects a `send` to a task (RB0116).
+                        AddressKind::Task => unreachable!("a send to a task"),
                     };
                     let mut shown = value.clone();
                     self.program.redactor().sent(receiver, &mut shown);
@@ -1311,7 +1315,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 }
                 Effect::Spawn {
                     children,
-                    machine,
+                    src: machine,
                     key,
                     args,
                 } => {
@@ -1516,7 +1520,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         let (to, params) = match (inv.kind, &inv.to) {
             (InvokeKind::Call, Some(to)) => {
                 let id = self.read(&to.name, &[])?;
-                let call = &ir.machines[to.machine.as_str()].calls[inv.src.as_str()];
+                let call = &ir.machines[to.peer()].calls[inv.src.as_str()];
                 (
                     Some(id.as_str().unwrap_or_default().to_owned()),
                     &call.params,

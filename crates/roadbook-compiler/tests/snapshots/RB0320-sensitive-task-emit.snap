@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0320]: `event.code` is sensitive, and the value assigned to `code` is not
+  --> RB0320-sensitive-task-emit.road:12:78
+   |
+12 |     on auth.Challenge set kept = event.code, attempt = event.attempt, code = event.code
+   |                                                                              ^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark `code` `sensitive` too, or derive what may be shown with a `fn`

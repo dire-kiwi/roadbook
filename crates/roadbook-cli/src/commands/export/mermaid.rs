@@ -368,7 +368,7 @@ fn effect(e: &Effect) -> String {
         }
         Effect::Spawn {
             children,
-            machine,
+            src: machine,
             key,
             args,
         } => {

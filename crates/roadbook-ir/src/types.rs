@@ -58,7 +58,7 @@ impl Builtin {
 /// is a list of `LineItem`; `string[]?` is an optional list of strings;
 /// `string?[]` is a list of optional strings. The base is a built-in keyword,
 /// a declared upper-case name with optional type arguments (`Page<Order>`),
-/// an event type `Machine.Event`, a handle `ref Machine`, a pending call
+/// an event type `Machine.Event` or `task.Event`, a handle `ref Machine`, a pending call
 /// `call name`, or a map
 /// `map<string, Order>`. Type arguments are separated by `, `; there is no
 /// other whitespace, except the one space after `ref` and after `call`.
@@ -81,7 +81,10 @@ pub enum TypeRef {
     /// event: the type of `event` in `on Cancel`, of the value of
     /// `emit Progress { … }`. A dotted name `Machine.Event` (`Upload.Pause`)
     /// is an event of another machine: the type of `event` in
-    /// `on upload.Progress`, of the value of `send upload.Pause`.
+    /// `on upload.Progress`, of the value of `send upload.Pause`. A dotted name
+    /// with a lower-case first part, `task.Event` (`upload.Progress`), is an
+    /// event a task emits: the type of `event` in `on up.Progress` through the
+    /// task's `as` name or collection.
     Named(String),
     /// `Name<A, B>`: a generic declared type with its type arguments, at
     /// least one.
@@ -242,7 +245,7 @@ impl fmt::Display for TypeRefError {
         write!(
             f,
             "`{}` is not a type: expected a built-in (string, int, float, bool, duration, json), \
-             an upper-case name with optional type arguments (`Page<Order>`), `Machine.Event`, \
+             an upper-case name with optional type arguments (`Page<Order>`), `Machine.Event`, `task.Event`, \
              `ref Machine`, `call name` or `map<K, V>`, followed by any number of `[]` and `?`",
             self.input
         )
@@ -340,7 +343,7 @@ impl TypeReader<'_> {
                     TypeRef::Named(base)
                 }
             } else if let Some((m, e)) = base.split_once('.')
-                && is_upper_name(m)
+                && (is_upper_name(m) || is_lower_name(m))
                 && is_upper_name(e)
             {
                 TypeRef::Named(base)
@@ -412,6 +415,8 @@ mod tests {
             "ref Inventory",
             "ref Inventory[]?",
             "Upload.Progress",
+            "upload.Progress",
+            "upload.Progress[]?",
             "call reserve",
             "map<string, int>",
             "map<UserId, Order[]>?",
@@ -489,6 +494,11 @@ mod tests {
             "page<Order>",
             "ref Page<Order>",
             "Upload.Progress<int>",
+            "upload.progress",
+            "upload.Progress<int>",
+            "ref upload.Progress",
+            "up_load.Progress",
+            "a.b.C",
         ] {
             assert!(s.parse::<TypeRef>().is_err(), "{s:?} should be rejected");
         }

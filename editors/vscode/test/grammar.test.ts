@@ -172,6 +172,21 @@ describe('scopes', () => {
     expect(await scopesAt('emit E { k: event.key }', 'key')).toContain('variable.other.property.roadbook')
   })
 
+  it('marks the events a task emits, and collections of tasks', async () => {
+    const task = 'task ticks(every: duration) ! Lost emits Tick { n: int }'
+    expect(await scopesAt(task, 'ticks')).toContain('entity.name.function.roadbook')
+    expect(await scopesAt(task, 'emits')).toContain('storage.type.emits.roadbook')
+    expect(await scopesAt(task, 'Tick')).toContain('entity.name.type.event.roadbook')
+    expect(await scopesAt('  emits Progress { percent: int }', 'Progress')).toContain('entity.name.type.event.roadbook')
+    const decl = '  children uploads: upload by string'
+    expect(await scopesAt(decl, 'uploads')).toContain('variable.other.definition.roadbook')
+    expect(await scopesAt(decl, 'upload ')).toContain('entity.name.function.call.roadbook')
+    expect(await scopesAt(decl, 'by')).toContain('keyword.other.by.roadbook')
+    expect(await scopesAt('on up.Progress set p = event.percent', 'up')).toContain('variable.other.roadbook')
+    expect(await scopesAt('on up.Progress set p = event.percent', 'Progress')).toContain('entity.name.type.event.roadbook')
+    expect(await scopesAt('invoke ticks(1s) as clock', 'clock')).toContain('variable.other.definition.roadbook')
+  })
+
   it('marks literals', async () => {
     expect(await scopesAt('after 30s -> A', '30s')).toContain('constant.numeric.duration.roadbook')
     expect(await scopesAt('set r = 1.5', '1.5')).toContain('constant.numeric.float.roadbook')

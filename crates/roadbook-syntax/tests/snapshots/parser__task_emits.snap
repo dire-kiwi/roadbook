@@ -1,0 +1,166 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: upload
+      kind:
+        task:
+          params:
+            - name: file
+              ty:
+                builtin: string
+          returns:
+            builtin: string
+          errors:
+            - Failed
+          emits:
+            - doc: How far.
+              name: Progress
+              fields:
+                - name: percent
+                  ty:
+                    builtin: int
+            - name: Stage
+              fields:
+                - sensitive: true
+                  name: name
+                  ty:
+                    builtin: string
+  - decl:
+      name: ticks
+      kind:
+        task:
+          params:
+            - name: every
+              ty:
+                builtin: duration
+          returns: ~
+          errors: []
+          emits:
+            - name: Tick
+              fields: []
+  - decl:
+      name: M
+      kind:
+        machine:
+          strict: false
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - children:
+                name: uploads
+                machine: upload
+                key:
+                  builtin: string
+            - transition:
+                trigger:
+                  "on":
+                    name: Add
+                branches:
+                  single:
+                    guard: ~
+                    targets: []
+                    effects:
+                      - spawn:
+                          children: uploads
+                          key:
+                            field:
+                              - var: event
+                              - name
+                          machine: upload
+                          args:
+                            - field:
+                                - var: event
+                                - name
+                    ignore: false
+            - transition:
+                trigger:
+                  receive:
+                    from: uploads
+                    event: Progress
+                branches:
+                  single:
+                    guard: ~
+                    targets: []
+                    effects:
+                      - do:
+                          name: show
+                          args:
+                            - var: key
+                            - field:
+                                - var: event
+                                - percent
+                    ignore: false
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - invoke:
+                      callee: upload
+                      args:
+                        - string: x
+                      alias: up
+                      outcomes:
+                        - trigger: done
+                          branches:
+                            single:
+                              guard: ~
+                              targets:
+                                - dot: false
+                                  path:
+                                    - A
+                              effects: []
+                              ignore: false
+                  - transition:
+                      trigger:
+                        receive:
+                          from: up
+                          event: Progress
+                      branches:
+                        single:
+                          guard: ~
+                          targets: []
+                          effects:
+                            - set:
+                                var: p
+                                value:
+                                  field:
+                                    - var: event
+                                    - percent
+                          ignore: false
+            - state:
+                kind: normal
+                name: B
+                body:
+                  - invoke:
+                      callee: ticks
+                      args:
+                        - duration:
+                            value: 1
+                            unit: s
+                      alias: clock
+                      outcomes: []
+                  - transition:
+                      trigger:
+                        receive:
+                          from: clock
+                          event: Tick
+                      branches:
+                        single:
+                          guard: ~
+                          targets: []
+                          effects:
+                            - set:
+                                var: n
+                                value:
+                                  binary:
+                                    - +
+                                    - var: n
+                                    - int: 1
+                          ignore: false
+comments:
+  - kind: doc
+    text: /// How far.

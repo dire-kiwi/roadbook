@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "examples/shop/place_order.road",
@@ -415,6 +415,7 @@
       "errors": [
         "Unauthenticated"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -437,6 +438,7 @@
       "errors": [
         "ValidationFailed"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -463,6 +465,7 @@
       ],
       "returns": "Order",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -492,6 +495,7 @@
         "CardDeclined",
         "GatewayUnavailable"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,

@@ -1,0 +1,13 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0107]: emitted event `Progress` has the name of a record type declared in `RB0107-task-emits-named-like-a-type.road`
+ --> RB0107-task-emits-named-like-a-type.road:4:9
+  |
+1 | type Progress { percent: int }
+  |      -------- declared here
+...
+4 |   emits Progress { percent: int }
+  |         ^^^^^^^^
+  |
+  = help: an event is named by its name in the IR, so it must not be the name of a type, error or machine; rename one of them
