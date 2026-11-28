@@ -1,0 +1,41 @@
+{
+  "description": "Internal transitions written in `Session` change only the states below it: `Review -> .Cart.Reviewing` exits and enters `Cart`, `Home -> .Browsing` exits `Cart` and, taken again in `Browsing`, restarts `Browsing` alone. `Session`'s exit and entry effects do not run, and its invoke and its `after 30m` keep going. The external `Restart -> Session` exits and enters `Session`, cancelling and restarting both; the restarted timer then expires.",
+  "requires": [],
+  "chart": "charts/internal.road",
+  "machine": "Kept",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Open"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Review"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Home"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Home"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Restart"
+      }
+    },
+    {
+      "advance": 1800000
+    }
+  ],
+  "status": "done"
+}

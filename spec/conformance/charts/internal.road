@@ -1,0 +1,69 @@
+// Conformance chart: internal transitions (`-> .X`), which keep the state they are written
+// in, and a completion such a transition takes back.
+
+action log(what: string)
+task keepAlive()
+
+/// `Session` keeps its timer and its invoke when an internal transition changes the states
+/// below it; an external one restarts both.
+machine Kept() {
+  event Open
+  event Home
+  event Review
+  event Restart
+
+  initial Session
+
+  state Session {
+    entry do log("enter Session")
+    exit do log("exit Session")
+    invoke keepAlive() {
+      done -> TimedOut
+    }
+    after 30m  -> TimedOut
+    on Home    -> .Browsing
+    on Review  -> .Cart.Reviewing
+    on Restart -> Session
+
+    initial Browsing
+
+    state Browsing {
+      entry do log("enter Browsing")
+      exit do log("exit Browsing")
+      on Open -> Cart
+    }
+
+    state Cart {
+      entry do log("enter Cart")
+      exit do log("exit Cart")
+      initial Editing
+      state Editing   {}
+      state Reviewing {}
+    }
+  }
+
+  final state TimedOut {}
+}
+
+/// An internal transition that exits a final state takes back its parent's completion: the
+/// first time `Work` ends, `S`'s `always` goes back into it before `S`'s `done` is tried.
+machine Again() {
+  var tries: int = 0
+
+  event Finish
+
+  initial S
+
+  state S {
+    always if tries == 1 -> .Work  set tries = 2
+    done                 -> Out
+
+    initial Work
+
+    state Work { on Finish -> Done  set tries = tries + 1 }
+
+    final state Done { entry do log("done") }
+  }
+
+  final state Out {}
+}

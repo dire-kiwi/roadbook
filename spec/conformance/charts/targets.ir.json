@@ -1,0 +1,593 @@
+{
+  "irVersion": "0.9",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/targets.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Player": {
+      "doc": "Several targets enter several regions of a parallel state at once, the other regions by\ndefault entry; written with dots in the parallel state, they exit and enter only those\nregions.",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 50,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Wake": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 13
+          }
+        },
+        "Resume": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 15
+          }
+        },
+        "Off": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 12
+          }
+        },
+        "Sleep": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 14
+          }
+        },
+        "Play": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 13
+          }
+        },
+        "Unmute": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Player",
+        "name": "Player",
+        "kind": "compound",
+        "doc": "Several targets enter several regions of a parallel state at once, the other regions by\ndefault entry; written with dots in the parallel state, they exit and enter only those\nregions.",
+        "span": {
+          "file": 0,
+          "line": 9,
+          "col": 1,
+          "endLine": 50,
+          "endCol": 2
+        },
+        "initial": "Player.Idle",
+        "states": [
+          {
+            "id": "Player.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 19,
+              "col": 3,
+              "endLine": 22,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Wake"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Player.On.Playback.Paused",
+                  "Player.On.Volume.Muted"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 20,
+                  "col": 5,
+                  "endLine": 20,
+                  "endCol": 53
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Resume"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Player.On.Playback.Last",
+                  "Player.On.Volume.Loud"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 5,
+                  "endLine": 21,
+                  "endCol": 50
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Player.On",
+            "name": "On",
+            "kind": "parallel",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 24,
+              "col": 3,
+              "endLine": 49,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [
+              {
+                "id": "Player.On.Playback",
+                "name": "Playback",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 35,
+                  "endCol": 6
+                },
+                "initial": "Player.On.Playback.Playing",
+                "states": [
+                  {
+                    "id": "Player.On.Playback.Last",
+                    "name": "Last",
+                    "kind": "history",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 31,
+                      "col": 7,
+                      "endLine": 31,
+                      "endCol": 19
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Player.On.Playback.Playing",
+                    "name": "Playing",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 33,
+                      "col": 7,
+                      "endLine": 33,
+                      "endCol": 23
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Player.On.Playback.Paused",
+                    "name": "Paused",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 34,
+                      "col": 7,
+                      "endLine": 34,
+                      "endCol": 43
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Play"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [
+                          "Player.On.Playback.Playing"
+                        ],
+                        "internal": false,
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 34,
+                          "col": 23,
+                          "endLine": 34,
+                          "endCol": 41
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Player.On.Volume",
+                "name": "Volume",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 42,
+                  "endCol": 6
+                },
+                "initial": "Player.On.Volume.Normal",
+                "states": [
+                  {
+                    "id": "Player.On.Volume.Normal",
+                    "name": "Normal",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 39,
+                      "col": 7,
+                      "endLine": 39,
+                      "endCol": 22
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Player.On.Volume.Muted",
+                    "name": "Muted",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 40,
+                      "col": 7,
+                      "endLine": 40,
+                      "endCol": 43
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Unmute"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [
+                          "Player.On.Volume.Normal"
+                        ],
+                        "internal": false,
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 40,
+                          "col": 22,
+                          "endLine": 40,
+                          "endCol": 41
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Player.On.Volume.Loud",
+                    "name": "Loud",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 41,
+                      "col": 7,
+                      "endLine": 41,
+                      "endCol": 22
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Player.On.Light",
+                "name": "Light",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 48,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "enter Light",
+                        "type": "string",
+                        "text": "\"enter Light\""
+                      }
+                    ]
+                  }
+                ],
+                "exit": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "exit Light",
+                        "type": "string",
+                        "text": "\"exit Light\""
+                      }
+                    ]
+                  }
+                ],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "after",
+                      "delay": {
+                        "kind": "lit",
+                        "value": 1000,
+                        "type": "duration",
+                        "text": "1s"
+                      }
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "targets": [],
+                    "internal": false,
+                    "effects": [
+                      {
+                        "kind": "do",
+                        "action": "log",
+                        "args": [
+                          {
+                            "kind": "lit",
+                            "value": "tick",
+                            "type": "string",
+                            "text": "\"tick\""
+                          }
+                        ]
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 47,
+                      "col": 7,
+                      "endLine": 47,
+                      "endCol": 30
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "enter On",
+                    "type": "string",
+                    "text": "\"enter On\""
+                  }
+                ]
+              }
+            ],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "exit On",
+                    "type": "string",
+                    "text": "\"exit On\""
+                  }
+                ]
+              }
+            ],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Sleep"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Player.On.Playback.Paused",
+                  "Player.On.Volume.Muted"
+                ],
+                "internal": true,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 5,
+                  "endLine": 27,
+                  "endCol": 48
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Off"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Player.Idle"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:ebafc0a7abf5536a14abf2d7e5239c9d79d953dfc1bfbb05cfcc63e5066f3797"
+    }
+  }
+}

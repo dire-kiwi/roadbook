@@ -1,0 +1,33 @@
+{"input":{},"ir":"sha256:28ea2e5b8f4cc3fc4f6b43faadb40c2a4bb1f092bd81ff7aae720771ca0402a9","kind":"started","machine":"Sides","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Sides","t":0}
+{"kind":"entered","run":"r1","state":"Sides.P","t":0}
+{"action":"log","args":{"what":"enter P"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Sides.P.A","t":0}
+{"action":"log","args":{"what":"enter A"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Sides.P.A.A1","t":0}
+{"kind":"entered","run":"r1","state":"Sides.P.B","t":0}
+{"action":"log","args":{"what":"enter B"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Sides.P.B.B1","t":0}
+{"event":{"kind":"event","value":{"_tag":"T"}},"kind":"event","run":"r1","t":0}
+{"from":"Sides.P.A","index":0,"kind":"transition","run":"r1","t":0,"to":["Sides.P.A.A1"]}
+{"from":"Sides.P.B.B1","index":0,"kind":"transition","run":"r1","t":0,"to":["Sides.P.B.B2"]}
+{"kind":"exited","run":"r1","state":"Sides.P.B.B1","t":0}
+{"kind":"exited","run":"r1","state":"Sides.P.A.A1","t":0}
+{"kind":"entered","run":"r1","state":"Sides.P.A.A1","t":0}
+{"kind":"entered","run":"r1","state":"Sides.P.B.B2","t":0}
+{"event":{"kind":"event","value":{"_tag":"Redo"}},"kind":"event","run":"r1","t":0}
+{"from":"Sides.P","index":0,"kind":"transition","run":"r1","t":0,"to":["Sides.P.A.A2"]}
+{"kind":"exited","run":"r1","state":"Sides.P.A.A1","t":0}
+{"action":"log","args":{"what":"exit A"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Sides.P.A","t":0}
+{"kind":"entered","run":"r1","state":"Sides.P.A","t":0}
+{"action":"log","args":{"what":"enter A"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Sides.P.A.A2","t":0}
+{"event":{"kind":"event","value":{"_tag":"Reset"}},"kind":"event","run":"r1","t":0}
+{"from":"Sides.P","index":1,"kind":"transition","run":"r1","t":0,"to":["Sides.P.B"]}
+{"kind":"exited","run":"r1","state":"Sides.P.B.B2","t":0}
+{"action":"log","args":{"what":"exit B"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Sides.P.B","t":0}
+{"kind":"entered","run":"r1","state":"Sides.P.B","t":0}
+{"action":"log","args":{"what":"enter B"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Sides.P.B.B1","t":0}

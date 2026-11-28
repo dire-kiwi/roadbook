@@ -1,0 +1,31 @@
+{
+  "description": "Several targets with a history state among them: `Resume -> On.Playback.Last, On.Volume.Loud` enters `Playback` as its history state `Last` recorded it (`Paused`, from when `On` was left), `Volume` at `Loud`, and `Light` by default entry.",
+  "requires": [
+    "parallel",
+    "history"
+  ],
+  "chart": "charts/targets.road",
+  "machine": "Player",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Wake"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Off"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Resume"
+      }
+    }
+  ],
+  "status": "running"
+}

@@ -1,0 +1,39 @@
+{
+  "description": "`Sleep -> .Playback.Paused, .Volume.Muted`, written in parallel `On`, exits and enters only the regions it targets: `Playback` and `Volume` are left and entered down to `Paused` and `Muted`, while `On` and its region `Light` are kept, and `Light`'s timer, started when `On` was entered, then expires.",
+  "requires": [
+    "parallel",
+    "history"
+  ],
+  "chart": "charts/targets.road",
+  "machine": "Player",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Wake"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Play"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Unmute"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Sleep"
+      }
+    },
+    {
+      "advance": 1000
+    }
+  ],
+  "status": "running"
+}

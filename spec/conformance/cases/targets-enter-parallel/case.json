@@ -1,0 +1,26 @@
+{
+  "description": "A transition with two targets, `Wake -> On.Playback.Paused, On.Volume.Muted`, enters parallel `On` from outside with `Paused` and `Muted`, and its third region `Light` by default entry, in document order; the `transition` record lists both targets.",
+  "requires": [
+    "parallel",
+    "history"
+  ],
+  "chart": "charts/targets.road",
+  "machine": "Player",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Wake"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Off"
+      }
+    }
+  ],
+  "status": "running"
+}

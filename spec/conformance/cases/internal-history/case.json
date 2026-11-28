@@ -1,0 +1,45 @@
+{
+  "description": "`Undo -> .H`, written in `C`, targets `C`'s own history state without leaving `C`: with no record it enters `C`'s default entry, `A`; after `C` was left in `B` and entered again through `H`, and moved back to `A`, it returns to `B`, what `C` recorded when it was last left. `C` is neither exited nor recorded by it.",
+  "requires": [
+    "history"
+  ],
+  "chart": "charts/internal-history.road",
+  "machine": "Restore",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Undo"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Next"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Leave"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Back"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Prev"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Undo"
+      }
+    }
+  ],
+  "status": "running"
+}

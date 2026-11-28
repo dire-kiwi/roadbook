@@ -1305,7 +1305,7 @@ impl<'p> Cx<'_, 'p> {
                     name.span,
                     format!("`{}` is not running here: {why}", name.name),
                 )
-                .with_help("send to an invoked child from a transition that stays inside the invoking state, or from the states inside it"),
+                .with_help("send to an invoked child from a transition that stays inside the invoking state (an internal one, `-> .X`, written in it among them), or from the states inside it"),
             );
         }
     }

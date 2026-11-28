@@ -1,0 +1,51 @@
+machine Child() {
+  event Poke
+  initial A
+  state A { on Poke -> A }
+}
+
+/// Internal transitions and several targets, as `roadbook check` accepts them.
+machine Internal() {
+  event Go
+  event Home
+  event Both
+  event Undo
+  event Wake
+
+  initial Running
+
+  // The machine body's `.Running` is `Running`: the machine is never left.
+  on Home -> .Running
+
+  state Running {
+    invoke Child() as child { done -> Done }
+    // Internal, in the invoking state: the child keeps running, and can be sent to.
+    on Go -> .Inner  send child.Poke
+    on Undo -> .Last
+
+    history Last
+    initial Inner
+
+    state Inner { on Wake -> Other }
+    state Other { on Wake -> Running.Both.L.L2, Running.Both.R.R2 }
+
+    parallel state Both {
+      on Both -> .L.L1, .R.R1  send child.Poke
+      state L {
+        initial L1
+        state L1 {}
+        state L2 {}
+      }
+      state R {
+        initial R1
+        state R1 {}
+        state R2 {}
+      }
+    }
+  }
+
+  final state Done {}
+
+  check reachable Running.Both.L.L2
+  check never Running.Both.L.L2 and Running.Both.R.R1
+}

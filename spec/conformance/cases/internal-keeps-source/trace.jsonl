@@ -1,0 +1,61 @@
+{"input":{},"ir":"sha256:85a6de18517f5021fbffd6f93b3f86ca357626321ee360785c9bba37e78932a1","kind":"started","machine":"Kept","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Kept","t":0}
+{"kind":"entered","run":"r1","state":"Kept.Session","t":0}
+{"action":"log","args":{"what":"enter Session"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Kept.Session.Browsing","t":0}
+{"action":"log","args":{"what":"enter Browsing"},"kind":"action","run":"r1","t":0}
+{"args":{},"invoke":1,"kind":"invoke.started","run":"r1","src":"keepAlive","state":"Kept.Session","t":0}
+{"delay":1800000,"index":1,"kind":"timer.started","run":"r1","state":"Kept.Session","t":0,"timer":1}
+{"event":{"kind":"event","value":{"_tag":"Open"}},"kind":"event","run":"r1","t":0}
+{"from":"Kept.Session.Browsing","index":0,"kind":"transition","run":"r1","t":0,"to":["Kept.Session.Cart"]}
+{"action":"log","args":{"what":"exit Browsing"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Kept.Session.Browsing","t":0}
+{"kind":"entered","run":"r1","state":"Kept.Session.Cart","t":0}
+{"action":"log","args":{"what":"enter Cart"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Kept.Session.Cart.Editing","t":0}
+{"event":{"kind":"event","value":{"_tag":"Review"}},"kind":"event","run":"r1","t":0}
+{"from":"Kept.Session","index":3,"kind":"transition","run":"r1","t":0,"to":["Kept.Session.Cart.Reviewing"]}
+{"kind":"exited","run":"r1","state":"Kept.Session.Cart.Editing","t":0}
+{"action":"log","args":{"what":"exit Cart"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Kept.Session.Cart","t":0}
+{"kind":"entered","run":"r1","state":"Kept.Session.Cart","t":0}
+{"action":"log","args":{"what":"enter Cart"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Kept.Session.Cart.Reviewing","t":0}
+{"event":{"kind":"event","value":{"_tag":"Home"}},"kind":"event","run":"r1","t":0}
+{"from":"Kept.Session","index":2,"kind":"transition","run":"r1","t":0,"to":["Kept.Session.Browsing"]}
+{"kind":"exited","run":"r1","state":"Kept.Session.Cart.Reviewing","t":0}
+{"action":"log","args":{"what":"exit Cart"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Kept.Session.Cart","t":0}
+{"kind":"entered","run":"r1","state":"Kept.Session.Browsing","t":0}
+{"action":"log","args":{"what":"enter Browsing"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Home"}},"kind":"event","run":"r1","t":0}
+{"from":"Kept.Session","index":2,"kind":"transition","run":"r1","t":0,"to":["Kept.Session.Browsing"]}
+{"action":"log","args":{"what":"exit Browsing"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Kept.Session.Browsing","t":0}
+{"kind":"entered","run":"r1","state":"Kept.Session.Browsing","t":0}
+{"action":"log","args":{"what":"enter Browsing"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Restart"}},"kind":"event","run":"r1","t":0}
+{"from":"Kept.Session","index":4,"kind":"transition","run":"r1","t":0,"to":["Kept.Session"]}
+{"action":"log","args":{"what":"exit Browsing"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Kept.Session.Browsing","t":0}
+{"invoke":1,"kind":"invoke.cancelled","run":"r1","src":"keepAlive","state":"Kept.Session","t":0}
+{"index":1,"kind":"timer.cancelled","run":"r1","state":"Kept.Session","t":0,"timer":1}
+{"action":"log","args":{"what":"exit Session"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Kept.Session","t":0}
+{"kind":"entered","run":"r1","state":"Kept.Session","t":0}
+{"action":"log","args":{"what":"enter Session"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Kept.Session.Browsing","t":0}
+{"action":"log","args":{"what":"enter Browsing"},"kind":"action","run":"r1","t":0}
+{"args":{},"invoke":2,"kind":"invoke.started","run":"r1","src":"keepAlive","state":"Kept.Session","t":0}
+{"delay":1800000,"index":1,"kind":"timer.started","run":"r1","state":"Kept.Session","t":0,"timer":2}
+{"event":{"kind":"after","timer":2},"kind":"event","run":"r1","t":1800000}
+{"from":"Kept.Session","index":1,"kind":"transition","run":"r1","t":1800000,"to":["Kept.TimedOut"]}
+{"action":"log","args":{"what":"exit Browsing"},"kind":"action","run":"r1","t":1800000}
+{"kind":"exited","run":"r1","state":"Kept.Session.Browsing","t":1800000}
+{"invoke":2,"kind":"invoke.cancelled","run":"r1","src":"keepAlive","state":"Kept.Session","t":1800000}
+{"action":"log","args":{"what":"exit Session"},"kind":"action","run":"r1","t":1800000}
+{"kind":"exited","run":"r1","state":"Kept.Session","t":1800000}
+{"kind":"entered","run":"r1","state":"Kept.TimedOut","t":1800000}
+{"kind":"exited","run":"r1","state":"Kept.TimedOut","t":1800000}
+{"kind":"exited","run":"r1","state":"Kept","t":1800000}
+{"kind":"done","output":null,"run":"r1","state":"Kept.TimedOut","t":1800000}

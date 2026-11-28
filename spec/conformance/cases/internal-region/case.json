@@ -1,0 +1,30 @@
+{
+  "description": "An internal transition written in region `A` of parallel `P` (`T -> .A1`) stays inside `A`, so it does not conflict with `B1`'s `T -> B2`: both are taken in one microstep. `Redo -> .A.A2`, written in `P`, exits and enters only region `A`; `Reset -> .B` resets region `B` alone. `P` is never exited, and the region a transition does not target keeps its state.",
+  "requires": [
+    "parallel"
+  ],
+  "chart": "charts/internal-parallel.road",
+  "machine": "Sides",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "T"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Redo"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Reset"
+      }
+    }
+  ],
+  "status": "running"
+}
