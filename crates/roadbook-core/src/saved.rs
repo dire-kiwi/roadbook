@@ -574,16 +574,22 @@ impl Program {
         let want: Vec<usize> = active.iter().copied().filter(|&i| with_locals(i)).collect();
         self.locals_fit(m, idx, &s.machine, &want, &s.locals, "locals")?;
         // History locals: for a history state with a record, those of the states with locals
-        // the record re-enters.
-        for (h, locals) in &s.history_locals {
-            let record = s.history.as_ref().and_then(|r| r.get(h)).ok_or_else(|| {
-                format!("`historyLocals` has `{h}`, which has no member in `history`")
-            })?;
+        // the record re-enters. A record that re-enters such a state needs its member, or
+        // entering the history state would leave their parameters unbound.
+        for h in s.history_locals.keys() {
+            if !s.history.as_ref().is_some_and(|r| r.contains_key(h)) {
+                return Err(format!(
+                    "`historyLocals` has `{h}`, which has no member in `history`"
+                ));
+            }
+        }
+        let empty = crate::Locals::new();
+        for (h, record) in s.history.iter().flatten() {
             let hi = idx.by_id[h];
             let p = idx.parents[hi].ok_or("a history state has no parent")?;
-            let recorded: Vec<usize> = record.iter().map(|id| idx.by_id[id]).collect();
             let mut kept: Vec<usize> = Vec::new();
-            for &r in &recorded {
+            for id in record {
+                let r = idx.by_id[id];
                 if idx.state(m, hi).kind == StateKind::History {
                     kept.push(r);
                     continue;
@@ -597,6 +603,16 @@ impl Program {
             kept.sort_unstable();
             kept.dedup();
             kept.retain(|&i| with_locals(i));
+            let locals = match s.history_locals.get(h) {
+                Some(l) => l,
+                None if kept.is_empty() => &empty,
+                None => {
+                    return Err(format!(
+                        "`historyLocals` lacks `{h}`, whose record re-enters `{}`, which has parameters or variables",
+                        idx.state(m, kept[0]).id
+                    ));
+                }
+            };
             self.locals_fit(
                 m,
                 idx,

@@ -1,5 +1,5 @@
 {
-  "description": "A saved snapshot holds the locals of the active states and what the history states kept, and a run restored from it reads them and enters the history states with them. A snapshot whose locals do not fit the machine is refused as `invalid`: a variable the state does not declare, a parameter missing, a state that is not active, an active state with locals but no member, a history record holding a state it would not re-enter, or a value of the wrong type.",
+  "description": "A saved snapshot holds the locals of the active states and what the history states kept, and a run restored from it reads them and enters the history states with them. A snapshot whose locals do not fit the machine is refused as `invalid`: a variable the state does not declare, a parameter missing, a state that is not active, an active state with locals but no member, a history record holding a state it would not re-enter, a history record that re-enters states with locals but has no `historyLocals` member, or a value of the wrong type.",
   "requires": [
     "locals",
     "history",
@@ -81,6 +81,10 @@
     },
     {
       "restore": "wrongtype",
+      "refused": "invalid"
+    },
+    {
+      "restore": "nohistorylocals",
       "refused": "invalid"
     }
   ],

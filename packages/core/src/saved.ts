@@ -587,13 +587,18 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
     const issue = ownLocalsIssue(ir, state, locals[id]!, `locals.${id}`)
     if (issue !== undefined) return issue
   }
-  // The locals the history states kept, of the states their records re-enter.
-  for (const [id, kept] of Object.entries(saved.historyLocals ?? {})) {
+  // The locals the history states kept, of the states their records re-enter. A record that
+  // re-enters such a state needs its member, or entering the history state would leave their
+  // parameters unbound.
+  const historyLocals = saved.historyLocals ?? {}
+  for (const id of Object.keys(historyLocals)) {
     const entry = states.get(id)
-    const record = saved.history?.[id]
-    if (entry === undefined || !isHistory(entry.state) || record === undefined) {
+    if (entry === undefined || !isHistory(entry.state) || saved.history?.[id] === undefined) {
       return `historyLocals has ${id}, which is not a history state with a record`
     }
+  }
+  for (const [id, record] of Object.entries(saved.history ?? {})) {
+    const entry = states.get(id)!
     const parent = entry.parent!
     const reentered = new Set<string>()
     for (const r of record) {
@@ -605,6 +610,11 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
       }
     }
     const expected = [...reentered].filter((s) => declaresLocals(states.get(s)!.state))
+    const kept = historyLocals[id]
+    if (kept === undefined) {
+      if (expected.length > 0) return `historyLocals has no ${id}, whose record re-enters ${expected[0]}, which has locals`
+      continue
+    }
     const absent = expected.find((s) => !Object.hasOwn(kept, s))
     if (absent !== undefined) return `historyLocals.${id} has no ${absent}, which its record re-enters`
     for (const s of Object.keys(kept)) {
