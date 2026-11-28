@@ -1,0 +1,34 @@
+{
+  "description": "Choice states are entered and left like any state, in the microstep after the one that enters them, by the first branch whose guard holds. The machine starts in the choice `Start`, which takes its `else`. Each order enters `Desk`, whose initial state is the choice `Route`, whose guards read the `amount` the entering transition just set: 5 takes the `else` to `Standard`; 500 takes the third branch, running its effect between `Route`'s exit and `Review`'s entry and passing `Review` its argument; 7 is a VIP; 2000 takes a branch that leaves `Desk` for `Idle`, so `Desk`'s deep history records `Route`, and restoring it with `Resume` enters `Route` again (not the history's default, `Standard`), which decides again on the new amount. Last, `Auditing`'s guard reads a variable never assigned: a defect in the choice's microstep, so the step that entered it is discarded and only the `defect` record is left.",
+  "requires": [
+    "history",
+    "locals"
+  ],
+  "chart": "charts/choice.road",
+  "machine": "Router",
+  "input": {},
+  "stub": [],
+  "fns": {
+    "vip": [
+      { "args": [5], "returns": false },
+      { "args": [500], "returns": false },
+      { "args": [7], "returns": true },
+      { "args": [2000], "returns": false },
+      { "args": [50], "returns": false }
+    ]
+  },
+  "actions": {},
+  "script": [
+    { "event": { "_tag": "Order", "amount": 5 } },
+    { "event": { "_tag": "Leave" } },
+    { "event": { "_tag": "Order", "amount": 500 } },
+    { "event": { "_tag": "Leave" } },
+    { "event": { "_tag": "Order", "amount": 7 } },
+    { "event": { "_tag": "Leave" } },
+    { "event": { "_tag": "Order", "amount": 2000 } },
+    { "event": { "_tag": "Resume", "amount": 50 } },
+    { "event": { "_tag": "Leave" } },
+    { "event": { "_tag": "Audit" } }
+  ],
+  "status": "defect"
+}

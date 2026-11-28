@@ -690,16 +690,20 @@ impl<'c, 'a> Flow<'c, 'a> {
         match self.chart.kind(s) {
             StateKind::Final => self.entered[s].clone(),
             StateKind::Compound | StateKind::Parallel => self.done[s].clone(),
-            StateKind::Atomic | StateKind::History | StateKind::DeepHistory => self.at[s].clone(),
+            StateKind::Atomic | StateKind::Choice | StateKind::History | StateKind::DeepHistory => {
+                self.at[s].clone()
+            }
         }
     }
 
     /// Recomputes `at(s)` and `done(s)`; whether either changed.
     fn recompute(&mut self, s: usize) -> bool {
         let (at, done) = match self.chart.kind(s) {
-            StateKind::Atomic | StateKind::Final | StateKind::History | StateKind::DeepHistory => {
-                (self.entered[s].clone(), self.done[s].clone())
-            }
+            StateKind::Atomic
+            | StateKind::Choice
+            | StateKind::Final
+            | StateKind::History
+            | StateKind::DeepHistory => (self.entered[s].clone(), self.done[s].clone()),
             StateKind::Compound => (
                 self.entered[s].with(&self.children_at[s]),
                 self.entered[s].with(&self.finals[s]),
@@ -755,7 +759,7 @@ impl<'c, 'a> Flow<'c, 'a> {
                         kids.iter().find(|&&k| lacks(k, &self.fin(k))).map(|&k| {
                             match self.chart.kind(k) {
                                 StateKind::Final => Ctx::Entered(k),
-                                StateKind::Atomic => Ctx::At(k),
+                                StateKind::Atomic | StateKind::Choice => Ctx::At(k),
                                 _ => Ctx::Done(k),
                             }
                         })

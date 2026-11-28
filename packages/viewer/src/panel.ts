@@ -26,6 +26,7 @@ import {
   invokeNamed,
   invokeText,
   isCopy,
+  isChoice,
   isHistory,
   isOutcomeOf,
   isTaskEvent,
@@ -482,6 +483,12 @@ export function statePanel(ctx: PanelContext, state: State): string {
     `<p class="rb-path">${esc(state.id)} · ${esc(sourceText(ir, state.span))}</p>` +
     docHtml(state.doc) +
     toggle +
+    section(
+      'What it does',
+      isChoice(state)
+        ? '<p>Picks where to go: it is entered and left at once, by the first branch whose guard holds, so the run never rests in it.</p>'
+        : '',
+    ) +
     section('Parameters', params && params + localsNote('Given by each transition that enters the state.')) +
     section('Variables', vars && vars + localsNote('Set again each time the state is entered.')) +
     section(state.output ? 'Machine returns' : 'Machine fails with', result) +
@@ -491,7 +498,7 @@ export function statePanel(ctx: PanelContext, state: State): string {
     section('History states', histories) +
     section('On entry', list(state.entry.map((e) => effectHtml(ctx, e)))) +
     section('On exit', list(state.exit.map((e) => effectHtml(ctx, e)))) +
-    section('Transitions out', out || (state.kind === 'final' ? '<p class="rb-empty">None: this state ends its parent.</p>' : '<p class="rb-empty">None.</p>')) +
+    section(isChoice(state) ? 'Branches' : 'Transitions out', out || (state.kind === 'final' ? '<p class="rb-empty">None: this state ends its parent.</p>' : '<p class="rb-empty">None.</p>')) +
     section('Also applies here', inherited) +
     section('Transitions in', incoming || (isInitial ? '<p class="rb-empty">Entered first (initial state).</p>' : ''))
   )

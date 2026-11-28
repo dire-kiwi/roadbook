@@ -22,6 +22,7 @@ gen-exclude = [
 # assigned on purpose, so they are compiled without the definite assignment check (RB0403).
 allow-unassigned = [
   "packages/effect/test/charts/runtime.road",
+  "spec/conformance/charts/choice.road",
   "spec/conformance/charts/defects.road",
   "spec/conformance/charts/locals-defects.road",
 ]

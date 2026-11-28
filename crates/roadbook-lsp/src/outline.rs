@@ -172,6 +172,7 @@ impl Outline<'_> {
             StateKind::Normal => "state",
             StateKind::Final => "final state",
             StateKind::Parallel => "parallel state",
+            StateKind::Choice => "choice",
         };
         // A state's parameters come first, as a machine's do.
         let mut children = self.fields(&s.params);

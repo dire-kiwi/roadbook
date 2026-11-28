@@ -154,3 +154,12 @@ machine Defaults() {
     state B {}
   }
 }
+
+// Choice states, and `choice` as a name.
+machine Choices() {
+  var choice: int = 0
+  choice Pick {
+    if choice > 1 -> A  do log()
+    else          -> B
+  }
+}

@@ -1,0 +1,848 @@
+{
+  "irVersion": "0.14",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/choice.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {
+    "vip": {
+      "params": [
+        {
+          "name": "amount",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "bool",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 34
+      }
+    }
+  },
+  "actions": {
+    "flag": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 26
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Router": {
+      "doc": "Routes each order by its amount.",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 57,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "amount",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 22
+          }
+        },
+        {
+          "name": "ceiling",
+          "type": "int",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 19
+          }
+        }
+      ],
+      "events": {
+        "Order": {
+          "fields": [
+            {
+              "name": "amount",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 31
+          }
+        },
+        "Resume": {
+          "fields": [
+            {
+              "name": "amount",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 31
+          }
+        },
+        "Audit": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 14
+          }
+        },
+        "Leave": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 14
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Router",
+        "name": "Router",
+        "kind": "compound",
+        "doc": "Routes each order by its amount.",
+        "span": {
+          "file": 0,
+          "line": 8,
+          "col": 1,
+          "endLine": 57,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Router.Start",
+        "default": [],
+        "states": [
+          {
+            "id": "Router.Start",
+            "name": "Start",
+            "kind": "choice",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 22,
+              "col": 3,
+              "endLine": 25,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": ">",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "amount"
+                      ],
+                      "state": null,
+                      "type": "int",
+                      "text": "amount"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 0,
+                      "type": "int",
+                      "text": "0"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "amount > 0"
+                },
+                "targets": [
+                  "Router.Desk"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 5,
+                  "endLine": 23,
+                  "endCol": 26
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Router.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 24,
+                  "col": 5,
+                  "endLine": 24,
+                  "endCol": 26
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Router.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 27,
+              "col": 3,
+              "endLine": 31,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Order"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Router.Desk"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "amount",
+                    "state": null,
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "amount"
+                      ],
+                      "state": null,
+                      "type": "int",
+                      "text": "event.amount"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 54
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Resume"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Router.Desk.Last"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "amount",
+                    "state": null,
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "amount"
+                      ],
+                      "state": null,
+                      "type": "int",
+                      "text": "event.amount"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 29,
+                  "col": 5,
+                  "endLine": 29,
+                  "endCol": 54
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Audit"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [
+                  "Router.Auditing"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 30,
+                  "endCol": 26
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Router.Desk",
+            "name": "Desk",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 33,
+              "col": 3,
+              "endLine": 51,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": "Router.Desk.Route",
+            "default": [],
+            "states": [
+              {
+                "id": "Router.Desk.Last",
+                "name": "Last",
+                "kind": "deepHistory",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 37,
+                  "endCol": 34
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [
+                  "Router.Desk.Standard"
+                ],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Router.Desk.Route",
+                "name": "Route",
+                "kind": "choice",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 39,
+                  "col": 5,
+                  "endLine": 44,
+                  "endCol": 6
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "call",
+                      "fn": "vip",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "amount"
+                          ],
+                          "state": null,
+                          "type": "int",
+                          "text": "amount"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "vip(amount)"
+                    },
+                    "targets": [
+                      "Router.Desk.Vip"
+                    ],
+                    "internal": false,
+                    "args": [],
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 40,
+                      "col": 7,
+                      "endLine": 40,
+                      "endCol": 30
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "op",
+                      "op": ">",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "amount"
+                          ],
+                          "state": null,
+                          "type": "int",
+                          "text": "amount"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1000,
+                          "type": "int",
+                          "text": "1000"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "amount > 1000"
+                    },
+                    "targets": [
+                      "Router.Idle"
+                    ],
+                    "internal": false,
+                    "args": [],
+                    "effects": [
+                      {
+                        "kind": "do",
+                        "action": "flag",
+                        "args": [
+                          {
+                            "kind": "lit",
+                            "value": "big",
+                            "type": "string",
+                            "text": "\"big\""
+                          }
+                        ]
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 41,
+                      "col": 7,
+                      "endLine": 41,
+                      "endCol": 57
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "op",
+                      "op": ">",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "amount"
+                          ],
+                          "state": null,
+                          "type": "int",
+                          "text": "amount"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 100,
+                          "type": "int",
+                          "text": "100"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "amount > 100"
+                    },
+                    "targets": [
+                      "Router.Desk.Review"
+                    ],
+                    "internal": false,
+                    "args": [
+                      {
+                        "state": "Router.Desk.Review",
+                        "values": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "amount"
+                            ],
+                            "state": null,
+                            "type": "int",
+                            "text": "amount"
+                          }
+                        ]
+                      }
+                    ],
+                    "effects": [
+                      {
+                        "kind": "do",
+                        "action": "flag",
+                        "args": [
+                          {
+                            "kind": "lit",
+                            "value": "review",
+                            "type": "string",
+                            "text": "\"review\""
+                          }
+                        ]
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 42,
+                      "col": 7,
+                      "endLine": 42,
+                      "endCol": 60
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "targets": [
+                      "Router.Desk.Standard"
+                    ],
+                    "internal": false,
+                    "args": [],
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 43,
+                      "col": 7,
+                      "endLine": 43,
+                      "endCol": 35
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Router.Desk.Vip",
+                "name": "Vip",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 46,
+                  "col": 5,
+                  "endLine": 46,
+                  "endCol": 31
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Router.Desk.Review",
+                "name": "Review",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 47,
+                  "col": 5,
+                  "endLine": 47,
+                  "endCol": 31
+                },
+                "params": [
+                  {
+                    "name": "owed",
+                    "type": "int",
+                    "sensitive": false,
+                    "doc": ""
+                  }
+                ],
+                "vars": [],
+                "initial": null,
+                "default": [],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Router.Desk.Standard",
+                "name": "Standard",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 48,
+                  "col": 5,
+                  "endLine": 48,
+                  "endCol": 31
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Leave"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Router.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 50,
+                  "col": 5,
+                  "endLine": 50,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Router.Auditing",
+            "name": "Auditing",
+            "kind": "choice",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 53,
+              "col": 3,
+              "endLine": 56,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": ">",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "amount"
+                      ],
+                      "state": null,
+                      "type": "int",
+                      "text": "amount"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "ceiling"
+                      ],
+                      "state": null,
+                      "type": "int",
+                      "text": "ceiling"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "amount > ceiling"
+                },
+                "targets": [
+                  "Router.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 54,
+                  "col": 5,
+                  "endLine": 54,
+                  "endCol": 32
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Router.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 55,
+                  "col": 5,
+                  "endLine": 55,
+                  "endCol": 32
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:cf37d3f1dbf656b8945cd87f79357370d47902a76b4e241f1ada530c2674a806"
+    }
+  }
+}

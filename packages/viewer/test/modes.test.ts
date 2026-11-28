@@ -126,6 +126,8 @@ describe('simulate', () => {
     for (const name of ['parallel-entry-exit', 'parallel-two-regions', 'parallel-work']) expect(played).toContain(name)
     // History states: a deep one restoring a final state, one in a region, one while settling.
     for (const name of ['history-final', 'history-region', 'history-settle']) expect(played).toContain(name)
+    // Choice states: entered and left while settling, a guard's defect discarding the step.
+    expect(played).toContain('choice')
     // Tasks that emit: taken, dropped, unheard (no record), heard in child states, spawned by key; a stream task.
     for (const name of ['task-emit-progress', 'task-emit-dropped', 'task-emit-unheard', 'task-emit-nested', 'spawn-task', 'stream-task', 'redact-task-emit']) expect(played).toContain(name)
     // Raised events: taken while starting, delayed raises fired as timers, replaced, dropped, unhandled in a strict machine.

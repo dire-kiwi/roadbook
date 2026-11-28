@@ -1,0 +1,35 @@
+## Router
+
+`spec/conformance/charts/choice.road:8`
+
+```text
+Routes each order by its amount.
+```
+
+```mermaid
+stateDiagram-v2
+  state Start <<choice>>
+  state Desk {
+    state "H*" as Desk_Last
+    state Desk_Route <<choice>>
+    state "Vip" as Desk_Vip
+    state "Review(owed#58; int)" as Desk_Review
+    state "Standard" as Desk_Standard
+    [*] --> Desk_Route
+    Desk_Last --> Desk_Standard
+    Desk_Route --> Desk_Vip: [vip(amount)]
+    Desk_Route --> Desk_Review: [amount > 100] / do flag("review") -> Review(amount)
+    Desk_Route --> Desk_Standard: [else]
+  }
+  state Auditing <<choice>>
+  [*] --> Start
+  Start --> Desk: [amount > 0]
+  Start --> Idle: [else]
+  Idle --> Desk: Order / set amount = event.amount
+  Idle --> Desk_Last: Resume / set amount = event.amount
+  Idle --> Auditing: Audit
+  Desk --> Idle: Leave
+  Desk_Route --> Idle: [amount > 1000] / do flag("big")
+  Auditing --> Idle: [amount > ceiling]
+  Auditing --> Idle: [else]
+```

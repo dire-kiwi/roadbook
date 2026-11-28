@@ -1,0 +1,14 @@
+action log()
+
+machine M() {
+  var n: int = 0
+
+  initial Pick
+  choice Pick {
+    if n > 1 do log()
+    else     set n = 1
+  }
+}
+
+// expect: RB0228 at 8:5
+// expect: RB0228 at 9:5

@@ -305,6 +305,12 @@ impl Writer<'_> {
             self.line(depth, &line);
             return;
         }
+        if s.kind == StateKind::Choice {
+            // Mermaid's diamond, which shows no name.
+            let line = format!("state {id} <<choice>>");
+            self.line(depth, &line);
+            return;
+        }
         if !s.params.is_empty() {
             let params: Vec<String> = s.params.iter().map(param).collect();
             let label = format!("{}({})", s.name, params.join(", "));
@@ -432,7 +438,12 @@ fn trigger(s: &State, i: usize) -> String {
 /// unguarded branch of a block.
 fn label(s: &State, i: usize) -> String {
     let t = &s.transitions[i];
-    let mut text = trigger(s, i);
+    // A choice's branches are its only transitions, all `always`: the guard says it all.
+    let mut text = if s.kind == StateKind::Choice {
+        String::new()
+    } else {
+        trigger(s, i)
+    };
     match &t.guard {
         Some(g) => text.push_str(&format!(" [{}]", g.text)),
         None if s.is_else(i) => text.push_str(" [else]"),
@@ -452,7 +463,7 @@ fn label(s: &State, i: usize) -> String {
             .collect();
         text.push_str(&format!(" -> {}", targets.join(", ")));
     }
-    text
+    text.trim_start().to_string()
 }
 
 /// A target with its arguments: below the source for an internal transition

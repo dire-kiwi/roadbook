@@ -343,7 +343,11 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     self.default_entry_into(c, out);
                 }
             }
-            StateKind::Atomic | StateKind::Final | StateKind::History | StateKind::DeepHistory => {}
+            StateKind::Atomic
+            | StateKind::Choice
+            | StateKind::Final
+            | StateKind::History
+            | StateKind::DeepHistory => {}
         }
     }
 
@@ -1424,7 +1428,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         let children = &self.idx.children[s];
         match self.state(s).kind {
             StateKind::Final => true,
-            StateKind::Atomic | StateKind::History | StateKind::DeepHistory => false,
+            StateKind::Atomic | StateKind::Choice | StateKind::History | StateKind::DeepHistory => {
+                false
+            }
             StateKind::Compound => children
                 .iter()
                 .any(|&c| self.is_active(c) && self.state(c).kind == StateKind::Final),

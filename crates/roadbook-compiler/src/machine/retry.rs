@@ -127,7 +127,8 @@ impl<'p> Cx<'_, 'p> {
                 );
                 ok = false;
             }
-            ir::StateKind::Atomic => {}
+            // A choice has no invoke.
+            ir::StateKind::Atomic | ir::StateKind::Choice => {}
         }
         // `as` on a call, or on a task that emits nothing, is reported as such (`RB0214`).
         let named = plan.inv.is_machine()

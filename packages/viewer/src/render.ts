@@ -6,7 +6,7 @@ import type { Ir, State } from './ir.ts'
 import { own } from './ir.ts'
 import type { Layout, Point, Box } from './layout.ts'
 import { machineView, stateBox } from './layout.ts'
-import { METRICS, eventKey, estimateWidth, historyDefaultEdgeId, historyMark, historyText, isCopy, isHistory, refMachine, targetEdgeId, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
+import { METRICS, eventKey, estimateWidth, historyDefaultEdgeId, historyMark, historyText, isChoice, isCopy, isHistory, refMachine, targetEdgeId, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
 import type { EdgeKind, EventRef, Measure, Row } from './model.ts'
 import { DARK, DIAGRAM_CSS, FONTS, LIGHT } from './style.ts'
 
@@ -171,21 +171,62 @@ function renderHistory(state: State, parent: State | null, g: Box, annotate?: An
 }
 
 /**
- * Moves the end of a route that stops on the square around a history state's circle onto the
- * circle. ELK spreads the arrows into a node along its side, so an arrow may come in beside the
- * circle: its last segment, and the end of the one before, are first moved towards the centre
- * (keeping the route orthogonal) so that it meets the circle well inside its edge.
+ * A history state's circle or a choice state's diamond, which the arrows into and out of it
+ * end on rather than on its box: its centre and its radius (half its diagonal for a diamond).
  */
-function clipToCircle(points: Point[], box: Box): Point[] {
+interface Outline {
+  c: Point
+  r: number
+  diamond: boolean
+}
+
+/** The outline of a state drawn as a circle or a diamond in `box`, or `undefined` for a box. */
+function outlineOf(state: State, box: Box | undefined): Outline | undefined {
+  if (!box) return undefined
+  if (isHistory(state)) {
+    const r = Math.min(box.width, box.height) / 2
+    return { c: { x: box.x + box.width / 2, y: box.y + box.height / 2 }, r, diamond: false }
+  }
+  if (isChoice(state)) {
+    // The diamond is at the left of the box, its name to its right.
+    const r = METRICS.choiceD / 2
+    return { c: { x: box.x + r, y: box.y + box.height / 2 }, r, diamond: true }
+  }
+  return undefined
+}
+
+/**
+ * Moves the end of a route that stops on the box around a history state's circle or a choice
+ * state's diamond onto that outline. ELK spreads the arrows into a node along its side, so an
+ * arrow may come in beside it: its last segment, and the end of the one before, are first moved
+ * towards the centre (keeping the route orthogonal) so that it meets the outline well inside
+ * its edge.
+ */
+function clipToOutline(points: Point[], o: Outline): Point[] {
   if (points.length < 2) return points
   const pts = points.map((p) => ({ ...p }))
   const end = pts[pts.length - 1]!
   const from = pts[pts.length - 2]!
-  const r = Math.min(box.width, box.height) / 2
-  const c = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  const { c, r } = o
   const max = r * 0.6
   if (Math.abs(end.x - from.x) < 0.01 && Math.abs(end.x - c.x) > max) end.x = from.x = c.x + Math.sign(end.x - c.x) * max
   else if (Math.abs(end.y - from.y) < 0.01 && Math.abs(end.y - c.y) > max) end.y = from.y = c.y + Math.sign(end.y - c.y) * max
+  if (o.diamond) {
+    // |x - cx| + |y - cy| = r: on a vertical or horizontal last segment, the point of the
+    // diamond on the side `from` comes from.
+    if (Math.abs(end.x - from.x) < 0.01) {
+      const dy = r - Math.abs(end.x - c.x)
+      if (Math.abs(from.y - c.y) <= dy) return pts
+      pts[pts.length - 1] = { x: end.x, y: c.y + Math.sign(from.y - c.y) * dy }
+      return pts
+    }
+    if (Math.abs(end.y - from.y) < 0.01) {
+      const dx = r - Math.abs(end.y - c.y)
+      if (Math.abs(from.x - c.x) <= dx) return pts
+      pts[pts.length - 1] = { x: c.x + Math.sign(from.x - c.x) * dx, y: end.y }
+      return pts
+    }
+  }
   // The first point of the line from `from` through `end` at distance r from the centre: the
   // end moves on along it into the square, or back, onto the circle.
   const dx = end.x - from.x
@@ -203,9 +244,29 @@ function clipToCircle(points: Point[], box: Box): Point[] {
   return pts
 }
 
+/**
+ * A choice state: a diamond with its name to its right. Its outline is a `rb-box` polygon, so
+ * the modes' rings and marks fit it as any box.
+ */
+function renderChoice(state: State, g: Box, annotate?: Annotations): string {
+  const M = METRICS
+  const mark = annotate?.state?.(state.id)
+  const cls = ['rb-state', `rb-kind-${state.kind}`, 'rb-leaf', 'rb-choice', mark?.cls ?? ''].filter(Boolean).join(' ')
+  const d = M.choiceD
+  const r = d / 2
+  const y = (g.height - d) / 2
+  let s = `<g class="${cls}" data-state="${esc(state.id)}" transform="translate(${n(g.x)},${n(g.y)})">`
+  s += `<title>${esc(state.id)} (choice)${state.doc ? ' - ' + esc(state.doc) : ''}\nEntered and left at once, by the first branch whose guard holds.${mark?.title ? '\n' + esc(mark.title) : ''}</title>`
+  s += `<polygon class="rb-box" points="${n(r)},${n(y)} ${n(d)},${n(y + r)} ${n(r)},${n(y + d)} 0,${n(y + r)}"/>`
+  s += `<text class="rb-choice-name" x="${n(d + M.choiceGap)}" y="${baseline(0, g.height, M.fontRow)}">${esc(state.name)}</text>`
+  if (mark?.badge) s += badge(mark.badge, d, y)
+  return s + '</g>'
+}
+
 function renderState(state: State, parent: State | null, collapsed: boolean, g: Box, measure: Measure, interactive: boolean, annotate?: Annotations): string {
   const M = METRICS
   if (isHistory(state)) return renderHistory(state, parent, g, annotate)
+  if (isChoice(state)) return renderChoice(state, g, annotate)
   const box = stateBox(state, measure, collapsed)
   const isContainer = state.states.length > 0 && !collapsed
   const inset = state.kind === 'final' ? M.finalInset : 0
@@ -332,11 +393,11 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
     else leaves += svg
   }
 
-  const edge = (id: string, kind: EdgeKind, attrs: string, port: boolean, inner: boolean, mk?: Mark | null, toHistory?: Box, fromHistory?: Box) => {
+  const edge = (id: string, kind: EdgeKind, attrs: string, port: boolean, inner: boolean, mk?: Mark | null, to?: Outline, from?: Outline) => {
     const e = layout.edges[id]
     if (!e || e.points.length < 2) return ''
-    let points = toHistory ? clipToCircle(e.points, toHistory) : e.points
-    if (fromHistory) points = clipToCircle([...points].reverse(), fromHistory).reverse()
+    let points = to ? clipToOutline(e.points, to) : e.points
+    if (from) points = clipToOutline([...points].reverse(), from).reverse()
     const d = roundedPath(points)
     // A transition written on a compound state leaves from a dot on the container's border;
     // one from a state hidden inside a collapsed one from a hollow square.
@@ -364,7 +425,7 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
       }
     }
     // A history state's defaults: dashed arrows from its circle, which select the history state.
-    const circle = isHistory(state) && view.visible(state.id) === state.id ? layout.nodes[state.id] : undefined
+    const circle = isHistory(state) && view.visible(state.id) === state.id ? outlineOf(state, layout.nodes[state.id]) : undefined
     if (circle) {
       const parent = state.id.slice(0, state.id.lastIndexOf('.'))
       state.default.forEach((target, k) => {
@@ -372,6 +433,8 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
         edgePaths += edge(historyDefaultEdgeId(state.id, k), 'initial', ` data-state="${esc(state.id)}"`, false, false, { cls: 'rb-history-default', title }, undefined, circle)
       })
     }
+    // A choice drawn as itself: its branches leave from its diamond.
+    const diamond = isChoice(state) && view.visible(state.id) === state.id ? outlineOf(state, layout.nodes[state.id]) : undefined
     state.transitions.forEach((t, index) => {
       // The copies of an `on A | B` are one edge, the first's.
       if (!t.targets.length || isCopy(state, index)) return
@@ -384,10 +447,10 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
       // select together; an internal transition's are marked as such.
       const attrs = ` data-state="${esc(state.id)}" data-transition="${index}"${t.internal ? ' data-internal="true"' : ''}`
       t.targets.forEach((target, k) => {
-        // An arrow to a history state drawn as itself ends on its circle.
+        // An arrow to a history state or a choice drawn as itself ends on its circle or diamond.
         const to = drawn.get(target)
-        const circle = to && isHistory(to.state) && view.visible(target) === target ? layout.nodes[target] : undefined
-        edgePaths += edge(targetEdgeId(state.id, index, k), kind, attrs, isContainer, inner, mark, circle)
+        const outline = to && view.visible(target) === target ? outlineOf(to.state, layout.nodes[target]) : undefined
+        edgePaths += edge(targetEdgeId(state.id, index, k), kind, attrs, isContainer, inner, mark, outline, diamond)
       })
       const e = layout.edges[id]
       if (e && e.label) labels += renderLabel(state, index, kind, e.label, mark)
@@ -456,6 +519,11 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
       shape('<g class="rb-state rb-history"><rect class="rb-box" x="14" y="0.5" width="17" height="17" rx="8.5"/><text class="rb-history-mark" x="22.5" y="13" text-anchor="middle">H</text></g>'),
       { text: 'H' },
       'history state: back to where its parent was when last left (H* deep: every state inside it); a dashed arrow from it goes to where it starts before then',
+    ) +
+    item(
+      shape('<g class="rb-state rb-choice"><polygon class="rb-box" points="22.5,0.5 31,9 22.5,17.5 14,9"/></g>'),
+      { text: 'choice' },
+      'state left at once by its first branch whose guard holds ([else] last)',
     ) +
     item(
       shape('<g class="rb-label"><rect class="rb-label-bg" x="2" y="2" width="42" height="14" rx="4"/><text class="rb-label-effect rb-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="rb-msg"><tspan class="rb-msg-kw">send</tspan></tspan></text></g>'),

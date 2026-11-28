@@ -254,12 +254,43 @@ impl Drop for Closer {
 }
 
 /// The state a run of `machine` is in once started: down its initial chain to a leaf or a
-/// parallel state.
+/// parallel state. A run never rests in a choice, which has no `State` variant, so one on the
+/// way stands for where its `else` goes, and a history state there (which has recorded
+/// nothing yet) for its default or its parent's default entry. The run's first step
+/// publishes the state it is really in.
 fn initial_leaf(program: &Program, machine: &str) -> Option<String> {
+    use roadbook_ir::{State, StateKind};
+    /// The state `id` under `s`, with its parent.
+    fn find<'a>(s: &'a State, id: &str) -> Option<(&'a State, &'a State)> {
+        s.states.iter().find_map(|c| {
+            if c.id == id {
+                Some((c, s))
+            } else {
+                find(c, id)
+            }
+        })
+    }
     let m = program.ir().machines.get(machine)?;
     let mut s = &m.root;
-    while let Some(init) = &s.initial {
-        s = s.states.iter().find(|c| &c.id == init)?;
+    // Each turn goes down or follows an `else`, so a loop of `else`s is the only way to
+    // turn more often than this; it ends the walk where it is.
+    for _ in 0..64 * (m.root.states.len() + 1) {
+        let next = if let Some(init) = &s.initial {
+            init
+        } else if s.kind == StateKind::Choice {
+            s.transitions.last()?.targets.first()?
+        } else if s.kind.is_history() {
+            let parent = find(&m.root, &s.id)?.1;
+            match (s.default.first(), &parent.initial) {
+                (Some(d), _) => d,
+                (None, Some(init)) => init,
+                // A parallel parent: the state to stop at.
+                (None, None) => return Some(parent.id.clone()),
+            }
+        } else {
+            break;
+        };
+        s = find(&m.root, next)?.0;
     }
     Some(s.id.clone())
 }

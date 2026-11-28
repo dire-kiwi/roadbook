@@ -91,6 +91,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  event A\n  event B\n  event C { reason: string }\n  on A | B -> S\n  state S {\n    on B | C | A if n < 3 -> S  set r = event.reason\n    on A|C {\n      if ok -> S\n      else ignore\n    }\n  }\n}\n",
     ),
     (
+        "choice",
+        "machine M() {\n  initial Pick\n  /// Where to go.\n  choice Pick {\n    if ok() -> A  do log()\n    else    -> B(1)\n  }\n  state A {\n    choice Inner {\n      if ok() -> B(2)\n      else    -> A\n    }\n  }\n  state B(n: int) {}\n}\n",
+    ),
+    (
         "history",
         "machine M() {\n  state A {\n    initial B\n    history H\n    history Back -> C\n    deep history D -> C.X\n    state B {}\n    state C {\n      initial X\n      state X {}\n    }\n  }\n  parallel state P {\n    deep history H -> R1.X, R2.Y\n    state R1 { initial X  state X {} }\n    state R2 { initial Y  state Y {} }\n  }\n}\n",
     ),

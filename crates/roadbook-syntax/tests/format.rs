@@ -41,6 +41,12 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  on A|B  |C -> S\n  state S { on  B |A ignore }\n}\n",
         "machine M() {\n  on A | B | C -> S\n  state S { on B | A ignore }\n}\n",
     ),
+    // A choice keeps its block, its header not aligned with the branches, which are aligned
+    // with each other; `choice` is a name elsewhere.
+    (
+        "machine M() {\n  var choice: int = 0\n  choice   Routing{ if choice>1->A do log() else ->B }\n  state A {}\n  state B {}\n}\n",
+        "machine M() {\n  var choice: int = 0\n  choice Routing {\n    if choice > 1 -> A  do log()\n    else          -> B\n  }\n  state A {}\n  state B {}\n}\n",
+    ),
     // A history state's default targets follow ` -> `, joined by `, `.
     (
         "machine M() {\n  state A {\n    history H->B\n    deep history  D ->  B.X ,C\n    state B {}\n  }\n}\n",

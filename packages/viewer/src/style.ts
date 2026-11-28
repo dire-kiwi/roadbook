@@ -86,6 +86,9 @@ export const DIAGRAM_CSS = `
 .rb-history > .rb-box { stroke-width: 1.5; }
 .rb-history-mark { font-size: 12px; font-weight: 750; fill: var(--rb-fg); }
 .rb-legend-swatch .rb-history-mark { font-size: 10px; }
+/* a choice state: a small diamond with its name beside it */
+.rb-choice > .rb-box { stroke-width: 1.5; }
+.rb-choice-name { font-size: 11.5px; font-weight: 650; fill: var(--rb-fg); }
 
 .rb-title { font-size: 13px; font-weight: 650; }
 .rb-tag { font-size: 11px; fill: var(--rb-muted) !important; }

@@ -76,7 +76,7 @@ export interface EventDecl {
  * in their parent's `states`, never active, only ever a transition's target. A state's
  * children and a parallel state's regions are its other `states`.
  */
-export type StateKind = 'atomic' | 'compound' | 'parallel' | 'final' | 'history' | 'deepHistory'
+export type StateKind = 'atomic' | 'compound' | 'parallel' | 'final' | 'history' | 'deepHistory' | 'choice'
 
 export interface Invoke {
   kind: 'task' | 'machine' | 'call'

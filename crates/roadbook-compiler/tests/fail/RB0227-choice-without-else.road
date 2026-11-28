@@ -1,0 +1,13 @@
+machine M() {
+  var n: int = 0
+
+  initial Pick
+  choice Pick {
+    if n > 1 -> A
+    if n > 0 -> B
+  }
+  state A {}
+  state B {}
+}
+
+// expect: RB0227 at 7:8

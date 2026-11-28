@@ -151,8 +151,14 @@ pub const MISSING_STATE_ARGUMENTS: Code = Code(224);
 /// state twice.
 pub const UNEXPECTED_STATE_ARGUMENTS: Code = Code(225);
 /// A history state's default target that is not a proper descendant of the history state's
-/// parent, or that is a history state.
+/// parent, or that is a history or choice state.
 pub const BAD_HISTORY_DEFAULT: Code = Code(226);
+/// A choice state whose last branch has a guard: it needs an `else`.
+pub const CHOICE_WITHOUT_ELSE: Code = Code(227);
+/// A branch of a choice state with no target.
+pub const CHOICE_BRANCH_WITHOUT_TARGET: Code = Code(228);
+/// A choice state directly in a parallel state, as one of its regions.
+pub const CHOICE_AS_REGION: Code = Code(229);
 
 // ───────────── types ─────────────
 
@@ -359,6 +365,9 @@ pub const ALL: &[Code] = &[
     MISSING_STATE_ARGUMENTS,
     UNEXPECTED_STATE_ARGUMENTS,
     BAD_HISTORY_DEFAULT,
+    CHOICE_WITHOUT_ELSE,
+    CHOICE_BRANCH_WITHOUT_TARGET,
+    CHOICE_AS_REGION,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
     BAD_OPERANDS,

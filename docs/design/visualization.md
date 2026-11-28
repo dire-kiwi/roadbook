@@ -33,6 +33,7 @@ A machine nobody invokes or spawns is marked top level. A legend under the graph
 | Initial state | A filled dot with an arrow |
 | Final state | A double border, with its `output` or `fail` |
 | History state (`history Previous`, `deep history All`) | A small circle marked `H`, or `H*` for a deep one, inside its parent; the arrows of the transitions to it end on the circle. A dashed arrow, unlabelled, goes from the circle to each of its default targets (`history Previous -> Editing`), and clicking it selects the history state. It is never a region or an initial state. Its details say what entering it does (`returns to where Working was when it was last left`, all the way down for a deep one) and which transitions target it. |
+| Choice state (`choice Routing { … }`) | A small diamond with its name beside it; the arrows into it end on the diamond, and its branches leave from it, each labelled with its guard alone (`[isVip(user)]`, `[else]` for the last), dotted as `always` transitions are. Its details say that it is entered and left at once, and list its branches. Simulate and replay show it entered and left within the step. |
 | `invoke` of a task | A row inside the state: `invoke chargeCard(order, user)` |
 | `invoke` of a machine | The same row with a badge. Clicking it opens that machine. |
 | `invoke … as upload` | The badge ends with `as upload`, the name in italics |

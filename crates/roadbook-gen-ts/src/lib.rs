@@ -56,8 +56,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
 
 use roadbook_ir::{
-    Builtin, ChildrenKind, Effect, Expr, ExprKind, Field, InvokeKind, Ir, Machine, State, Trigger,
-    TypeDecl, TypeDef, TypeRef,
+    Builtin, ChildrenKind, Effect, Expr, ExprKind, Field, InvokeKind, Ir, Machine, State,
+    StateKind, Trigger, TypeDecl, TypeDef, TypeRef,
 };
 
 /// Lines longer than this are broken, where the generator knows how.
@@ -956,10 +956,11 @@ fn pascal(task: &str) -> String {
     }
 }
 
-/// Every state id under `s`, `s` included, in document order. History states are left out:
-/// they are never active, so host code never sees one.
+/// Every state id under `s`, `s` included, in document order. History states and choice
+/// states are left out: one is never active and a run never rests in the other, so host code
+/// never sees either.
 fn state_ids(s: &State, out: &mut Vec<String>) {
-    if s.kind.is_history() {
+    if s.kind.is_history() || s.kind == StateKind::Choice {
         return;
     }
     out.push(format!("\"{}\"", s.id));

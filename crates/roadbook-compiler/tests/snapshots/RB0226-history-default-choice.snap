@@ -1,0 +1,11 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0226]: `history Previous -> Pick`: `M.A.Pick` is a choice state
+ --> RB0226-history-default-choice.road:7:25
+  |
+7 |     history Previous -> Pick
+  |                         ^^^^
+  |             -------- the history state of `M.A`
+  |
+  = help: a default names the states to enter and stay in; a run never rests in a choice, so name a state its branches go to, or make the choice the parent's `initial`

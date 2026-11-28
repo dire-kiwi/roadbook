@@ -1,0 +1,58 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Routes each order by its amount. -->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Router" datamodel="roadbook" initial="Router_Start">
+  <datamodel>
+    <data id="amount" expr="0" rb:type="int"/>
+    <data id="ceiling" rb:type="int"/>
+  </datamodel>
+  <state id="Router_Start">
+    <transition cond="amount &gt; 0" target="Router_Desk"/>
+    <transition target="Router_Idle"/>
+  </state>
+  <state id="Router_Idle">
+    <transition event="Order" target="Router_Desk">
+      <assign location="amount" expr="event.amount"/>
+    </transition>
+    <transition event="Resume" target="Router_Desk_Last">
+      <assign location="amount" expr="event.amount"/>
+    </transition>
+    <transition event="Audit" target="Router_Auditing"/>
+  </state>
+  <state id="Router_Desk" initial="Router_Desk_Route">
+    <transition event="Leave" target="Router_Idle"/>
+    <history id="Router_Desk_Last" type="deep">
+      <transition target="Router_Desk_Standard"/>
+    </history>
+    <state id="Router_Desk_Route">
+      <transition cond="vip(amount)" target="Router_Desk_Vip"/>
+      <transition cond="amount &gt; 1000" target="Router_Idle">
+        <rb:do action="flag">
+          <param name="what" expr="&quot;big&quot;"/>
+        </rb:do>
+      </transition>
+      <transition cond="amount &gt; 100" target="Router_Desk_Review">
+        <rb:do action="flag">
+          <param name="what" expr="&quot;review&quot;"/>
+        </rb:do>
+        <assign location="Router_Desk_Review.owed" expr="amount"/>
+      </transition>
+      <transition target="Router_Desk_Standard"/>
+    </state>
+    <state id="Router_Desk_Vip"/>
+    <state id="Router_Desk_Review">
+      <datamodel>
+        <!-- Roadbook gives these their values each time the state is entered and drops them when it is left -->
+        <data id="Router_Desk_Review.owed" rb:type="int" rb:param="true"/>
+      </datamodel>
+    </state>
+    <state id="Router_Desk_Standard"/>
+  </state>
+  <state id="Router_Auditing">
+    <transition cond="amount &gt; ceiling" target="Router_Idle"/>
+    <transition target="Router_Idle"/>
+  </state>
+</scxml>

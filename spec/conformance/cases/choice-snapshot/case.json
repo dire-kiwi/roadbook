@@ -1,0 +1,57 @@
+{
+  "description": "A saved snapshot whose deep history record holds the choice `Route`, the leaf `Desk` was left from, restores as a new run, and `Resume` there enters `Route` again, which decides again; a snapshot with `Route` active is refused (`invalid`), since a run never rests in a choice.",
+  "requires": [
+    "history",
+    "locals",
+    "snapshots"
+  ],
+  "chart": "charts/choice.road",
+  "machine": "Router",
+  "input": {},
+  "stub": [],
+  "fns": {
+    "vip": [
+      {
+        "args": [
+          2000
+        ],
+        "returns": false
+      },
+      {
+        "args": [
+          50
+        ],
+        "returns": false
+      }
+    ]
+  },
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Order",
+        "amount": 2000
+      }
+    },
+    {
+      "snapshot": "recorded"
+    },
+    {
+      "restore": "recorded",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "restore": "inchoice",
+      "refused": "invalid"
+    },
+    {
+      "event": {
+        "_tag": "Resume",
+        "amount": 50
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "running"
+}

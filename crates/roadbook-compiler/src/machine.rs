@@ -869,6 +869,7 @@ impl<'p> Cx<'_, 'p> {
                 StateKind::Normal => "state",
                 StateKind::Final => "final state",
                 StateKind::Parallel => "parallel state",
+                StateKind::Choice => "choice",
             };
             let symbol = self.ck.define(
                 SymbolKind::State,
@@ -1071,9 +1072,9 @@ impl<'p> Cx<'_, 'p> {
 
     /// Resolves and checks the default targets of history state `idx` of `parent`, `-> X, …`,
     /// as a transition's targets written in the history state: among its siblings, then
-    /// outward. Each is a proper descendant of `parent` and not a history state (`RB0226`), no
-    /// state from just below `parent` down to it has parameters (`RB0223`), and several go
-    /// together as a transition's targets do (`RB0222`). The ids of those that pass.
+    /// outward. Each is a proper descendant of `parent` and not a history or choice state
+    /// (`RB0226`), no state from just below `parent` down to it has parameters (`RB0223`), and
+    /// several go together as a transition's targets do (`RB0222`). The ids of those that pass.
     fn history_default(&mut self, idx: usize, parent: usize, h: &ast::History) -> Vec<String> {
         let word = if h.deep { "deep history" } else { "history" };
         let parent_id = self.nodes[parent].id.clone();
@@ -1110,8 +1111,15 @@ impl<'p> Cx<'_, 'p> {
                     format!("`{written}`: `{}` is a history state", self.nodes[n].id),
                     "a default names the states to enter; a history state is only a transition's target".to_string(),
                 ))
+            } else if self.nodes[n]
+                .state
+                .is_some_and(|s| s.kind == StateKind::Choice)
+            {
+                Some((
+                    format!("`{written}`: `{}` is a choice state", self.nodes[n].id),
+                    "a default names the states to enter and stay in; a run never rests in a choice, so name a state its branches go to, or make the choice the parent's `initial`".to_string(),
+                ))
             } else {
-                // Step 5 (choice) adds: a choice state is not a default either.
                 None
             };
             if let Some((message, help)) = problem {
@@ -2187,9 +2195,13 @@ impl<'p> Cx<'_, 'p> {
             Some(StateKind::Parallel) => ir::StateKind::Parallel,
             Some(StateKind::Normal) if has_children => ir::StateKind::Compound,
             Some(StateKind::Normal) => ir::StateKind::Atomic,
+            Some(StateKind::Choice) => ir::StateKind::Choice,
         };
         let id = self.nodes[idx].id.clone();
         let name_span = self.nodes[idx].name_span;
+        if kind == ir::StateKind::Choice {
+            self.check_choice(idx);
+        }
         if kind == ir::StateKind::Final && has_children {
             self.ck.diags.push(
                 Diagnostic::error(
@@ -2494,6 +2506,55 @@ impl<'p> Cx<'_, 'p> {
             self.write_out_retry(&mut lowered, r);
         }
         lowered
+    }
+
+    /// Checks choice state `idx`: not a region of a parallel state (`RB0229`), a target on
+    /// every branch (`RB0228`) and an `else` last (`RB0227`), so the run always leaves it.
+    fn check_choice(&mut self, idx: usize) {
+        let Some(s) = self.nodes[idx].state else {
+            return;
+        };
+        let id = self.nodes[idx].id.clone();
+        if let Some(p) = self.nodes[idx].parent
+            && self.is_parallel(p)
+        {
+            let pid = self.nodes[p].id.clone();
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::CHOICE_AS_REGION,
+                    s.name.span,
+                    format!("choice `{id}` is a region of parallel state `{pid}`"),
+                )
+                .with_help("every region of a parallel state stays active while it is; put the choice inside a region, a state of its own"),
+            );
+        }
+        let Some(Item::Transition(t)) = s.body.items.first() else {
+            return;
+        };
+        for b in t.branches.iter().filter(|b| b.targets.is_empty()) {
+            let span = b.guard.as_ref().map_or(b.span, |g| b.span.to(g.span));
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::CHOICE_BRANCH_WITHOUT_TARGET,
+                    span,
+                    format!("a branch of choice `{id}` has no target"),
+                )
+                .with_help("a run never stays in a choice, so each branch leaves it: give the branch a target, `-> State`"),
+            );
+        }
+        if let Some(last) = t.branches.iter().last()
+            && let Some(guard) = &last.guard
+        {
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::CHOICE_WITHOUT_ELSE,
+                    guard.span,
+                    format!("choice `{id}` has no `else`"),
+                )
+                .with_secondary(t.trigger_span, "the choice")
+                .with_help("a run never stays in a choice, so one branch must always be taken: end it with `else -> State`"),
+            );
+        }
     }
 
     /// Reports `RB0223` if node `c`, the `initial` of `parent` (written at `initial`) or one of

@@ -350,7 +350,8 @@ impl Writer<'_> {
     fn state(&mut self, s: &State, depth: usize) {
         self.comment(depth, &s.doc);
         let tag = match s.kind {
-            StateKind::Atomic | StateKind::Compound => "state",
+            // A choice is a transient state: its branches are eventless transitions.
+            StateKind::Atomic | StateKind::Compound | StateKind::Choice => "state",
             StateKind::Parallel => "parallel",
             StateKind::Final => "final",
             StateKind::History | StateKind::DeepHistory => {

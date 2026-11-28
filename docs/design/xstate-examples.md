@@ -33,30 +33,17 @@ routing: {
 },
 ```
 
-**Roadbook** writes it the v5 way, as a transient state with an `always` block:
+**Roadbook** has a choice state (since IR 0.14, SM-30). Its body is only branches, and the compiler checks that it ends with an `else` and that every branch has a target (`RB0227`, `RB0228`), so the run always leaves it: what v6 throws for at run time is a compile error here.
 
 ```
-state Routing {
-  always {
-    if isVip(user)       -> VipFlow
-    if overBudget(order) -> Review
-    else                 -> StandardFlow
-  }
-}
-```
-
-**Is v6 better?** A little, in three ways. The diagram can draw a choice as a diamond rather than a state. The reader knows at a glance that the state holds no work. And the choice must always pick a target. Roadbook's transient state is a real state, so the trace shows it being entered and left, and if its `always` block has no `else` and no branch holds, the machine stays there. Roadbook could do better than v6 by checking at compile time that a choice has an `else`, rather than throwing at run time:
-
-```
-// proposed
 choice Routing {
   if isVip(user)       -> VipFlow
-  if overBudget(order) -> Review
+  if overBudget(order) -> Review        do flag(order)
   else                 -> StandardFlow
 }
 ```
 
-It would be a pseudo-state, like `history`: no body other than the branches, an `else` required, and drawn as a diamond.
+A branch may have effects and pass a target's arguments, as any transition's can. The viewer and Mermaid draw it as a diamond. Unlike v6's, it is not a pseudo-state the transition passes through in one step: the run enters it and leaves it again, as a v5 transient state, so the trace shows `Routing` entered and exited, and the guards see what the transition into it assigned. A transient state written with `always { if … else … }` still works, and is the form to use when the state does more than choose (an `entry` effect, say).
 
 ## Route states: jump to a state by an event
 

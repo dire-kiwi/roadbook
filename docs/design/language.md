@@ -88,8 +88,9 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | `state Name { ... }` | A state. Atomic if it has no children, compound if it does. `state Name(params) { ... }` takes parameters, which every transition into it passes: `-> Name(args)` (see [data local to a state](#data-local-to-a-state)). |
 | `parallel state Name { ... }` | All children are active at once (regions). A region may be any kind of state. |
 | `final state Name { ... }` | Ends the enclosing compound state, or the machine at the top level. |
+| `choice Name { if ... else ... }` | A [choice state](#choice-states): entered and left at once, by the first branch whose guard holds. |
 | `history Name`, `deep history Name` | In a state with children: a [history state](#history-states), a target that returns to where the state was when it was last left. |
-| `check property` | Only directly in a machine body: an assertion about the machine's states, `never A and B`, `reachable A`, `A only after B` or `can finish`, for `roadbook check` to verify (see [checking properties](#checking-properties)). A state path is written from the machine body, like a target at machine level, and may name any state but a history state. Checks are not part of the IR. |
+| `check property` | Only directly in a machine body: an assertion about the machine's states, `never A and B`, `reachable A`, `A only after B` or `can finish`, for `roadbook check` to verify (see [checking properties](#checking-properties)). A state path is written from the machine body, like a target at machine level, and may name any state but a history or choice state. Checks are not part of the IR. |
 
 ## Inside a state
 
@@ -615,7 +616,7 @@ From `Working.Previewing`, `Help` leaves `Working`, and `Back` returns to `Worki
 - **`history Name`** declares a shallow history state of the state it is written in, its **parent**. It is a pseudo-state: it is never active, has no body, and is only ever a transition's target. Entering it enters the child of its parent that was active when the parent was last left, and that child's default entry (its `initial` chain, or every region).
 - **`deep history Name`** restores the whole configuration below its parent: every state that was active below it, down to the atomic and final states, in every region.
 - **Before the parent has ever been left**, there is nothing to return to, and entering the history state enters the parent's default entry, as a transition to the parent would: its `initial` chain, or every region of a parallel state. Unless it has a default target.
-- **A default target**, `history Previous -> Editing`, is where the history state goes when there is nothing to return to, in place of the parent's default entry. Once the parent has been left, the history state returns to where it was, as any does. The target is written as a transition's would be from the history state, among its siblings, and is a state inside the parent: one of its children or a state below one, `deep history Last -> Editing.Draft`, which enters `Editing` on the way (`RB0226` for a state outside the parent, the parent itself or a history state). It has no arguments, so neither it nor a state between it and the parent may have parameters (`RB0223`). The target gets its default entry below it, and in a parallel state the regions it is not in get theirs. Several targets, `history Restore -> Main.Split, Side.Wide`, are for a parallel parent, one in each of some of its regions, as a transition's several targets are (`RB0222`). The viewer draws a dashed arrow from the history state's circle to each default.
+- **A default target**, `history Previous -> Editing`, is where the history state goes when there is nothing to return to, in place of the parent's default entry. Once the parent has been left, the history state returns to where it was, as any does. The target is written as a transition's would be from the history state, among its siblings, and is a state inside the parent: one of its children or a state below one, `deep history Last -> Editing.Draft`, which enters `Editing` on the way (`RB0226` for a state outside the parent, the parent itself, a history state or a [choice state](#choice-states)). It has no arguments, so neither it nor a state between it and the parent may have parameters (`RB0223`). The target gets its default entry below it, and in a parallel state the regions it is not in get theirs. Several targets, `history Restore -> Main.Split, Side.Wide`, are for a parallel parent, one in each of some of its regions, as a transition's several targets are (`RB0222`). The viewer draws a dashed arrow from the history state's circle to each default.
 - **What is recorded** is where the parent was the last time a transition left it. Finishing the run and cancelling it leave states too, but record nothing: the run is over.
 - **Where.** In a state with child states, compound or parallel. Not in the machine body, which is never left; not in a final or atomic state (`RB0219`). A history state's name shares the namespace of its sibling states (`RB0108`), and it is targeted like one, `-> Working.Previous`, or `-> Previous` from a sibling. It cannot be the `initial`, and a path cannot go through it (`Working.Previous.Editing`). A state may have one history state of each kind, or several; they record the same exits.
 - **Which states a transition leaves** does not depend on what was recorded: it is decided as if the history state were an ordinary child of its parent. So a transition from inside the parent to its own history state (`on Reset -> Previous` in `Working.Previewing`) leaves the states below the parent but not the parent itself, and goes back to where the parent was when it was last left, which is not where it is now. (SCXML computes this from the states the history restores; the difference shows only in such transitions.)
@@ -624,6 +625,47 @@ From `Working.Previewing`, `Help` leaves `Working`, and `Back` returns to `Worki
 - **Saving.** What each history state recorded is part of a [saved snapshot](../../spec/execution.md#the-saved-snapshot), so a restored run returns to the same states.
 
 The [semantics](../../spec/execution.md#a-microstep) give the precise rules. The viewer draws a history state as a small circle marked `H`, or `H*` for a deep one, inside its parent.
+
+## Choice states
+
+A choice state picks where to go from a list of guarded branches, as soon as it is entered. It is a state of its own, so several transitions can lead to one decision, and the viewer draws it as a diamond.
+
+```
+type User  { id: string, vip: bool }
+type Order { totalCents: int }
+
+fn isVip(user: User)        -> bool
+fn overBudget(order: Order) -> bool
+action flag(order: Order)
+
+machine Checkout(user: User) {
+  var order: Order
+  event Submit { order: Order }
+
+  initial Editing
+
+  state Editing { on Submit -> Routing  set order = event.order }
+
+  choice Routing {
+    if isVip(user)       -> VipFlow
+    if overBudget(order) -> Review        do flag(order)
+    else                 -> StandardFlow
+  }
+
+  state VipFlow      {}
+  state Review       {}
+  state StandardFlow {}
+}
+```
+
+- **`choice Name { … }`** is written wherever a `state` can be, the machine body included. Its body is only branches, as in an `always` block: `if guard` branches tried in order, and an `else` last. A `///` doc comment documents it.
+- **It is a state the run passes through.** Entering it is like entering any atomic state, with its `entered` record in the trace; then, before the step ends, the first branch whose guard holds is taken, as an `always` transition would be, and the choice is left again (`exited`). The guards see everything the transition into the choice assigned. A run never ends a step in a choice, and a saved snapshot never has one active.
+- **Every branch has a target** (`RB0228`) and **the last is `else`** (`RB0227`), so one branch is always taken and the run always leaves. A branch may have effects, which run between the choice's exit and the target's entry, and pass a target's [arguments](#data-local-to-a-state): `if overBudget(order) -> Review(order)  do flag(order)`.
+- **What it may be.** A choice may be a machine's or a compound state's `initial`, and the target of any transition, another choice's branch among them. It has no parameters, variables, `entry`, `exit`, `invoke` or other transitions. It is not a region of a parallel state (`RB0229`), since every region stays active while its parallel state is; put it inside a region. It cannot be a [history state's](#history-states) default target (`RB0226`), and a `check` cannot name it (`RB0123`).
+- **History.** A branch that leaves a state with a `deep history` from the choice is recorded with the choice as the leaf it left from, so entering the history state enters the choice again, which decides again.
+- **Loops.** Branches that lead back to the choice through other states are allowed; the run's limit of 1000 microsteps per step ends one that never settles, as for any guarded `always` loop.
+
+In the IR a choice is a state of kind `choice` whose transitions are its branches, all `always` ([`spec/ir.md`](../../spec/ir.md#choice-states)); runtimes run it as an atomic state. Mermaid export draws it as `<<choice>>`, SCXML export as a `<state>` with eventless transitions. The generated `State` enum and union leave it out, as they leave out history states: a run is never in one between steps. A Rust actor that starts in a choice reports the state its `else` leads to until its first step has run.
 
 ## Data local to a state
 
@@ -731,7 +773,7 @@ machine PaymentWebhook(body: string, signature: string, secret: string) -> ApiRe
 | `check reachable S` | `S` can be active. |
 | `check can finish` | From every configuration the machine can be in, some path leads to a top-level final state: it has no dead end and no trap it can't leave. |
 
-A state is written as a path from the machine body, as a target written at machine level is (`Applying.RecordingRefund`). It may name any state, including a region, a final state, or the `Attempt` and `Backoff` states a [`retry`](#what-retry-compiles-to) writes out, but not a history state, which is never active. A check is written only directly in a machine body (`RB0015` in a state, `RB0016` at the top level of a file), and an unknown state is `RB0123`. A `///` doc comment documents the check, and is shown in `--checks` and the JSON.
+A state is written as a path from the machine body, as a target written at machine level is (`Applying.RecordingRefund`). It may name any state, including a region, a final state, or the `Attempt` and `Backoff` states a [`retry`](#what-retry-compiles-to) writes out, but not a history state, which is never active, nor a choice state, which a run never rests in. A check is written only directly in a machine body (`RB0015` in a state, `RB0016` at the top level of a file), and an unknown state is `RB0123`. A `///` doc comment documents the check, and is shown in `--checks` and the JSON.
 
 ### How checks are decided
 
@@ -978,6 +1020,7 @@ Errors (the build fails):
 - A transition or `invoke` in a final state. A final state ends its parent as soon as it is entered, so they could never run; it holds only `entry`, `exit`, `output` and `fail`, and variables of its own.
 - A `done` transition in a state with no child states: it waits for a final child, so it could never be taken. (An invoke's `done` goes inside `invoke { }`.)
 - A history state in a state with no child states, or in a final state, and an `initial` that names a history state.
+- A [choice state](#choice-states) whose last branch is not an `else`, a branch of one with no target, and a choice that is a region of a parallel state.
 - An unguarded cycle of `always` transitions: states each with an `always` whose first branch has no `if` (an `else` counts as guarded, since it runs only when the guards before it fail), each leading to the next, where entering a state also enters its `initial` chain (and every region of a parallel state), and a transition to a state's own ancestor leaves and re-enters it. A transition to a history state counts as entering any state it could restore: every child of its parent with that child's default entry for a shallow one, every state below the parent for a deep one. An unguarded `always` with no target is the shortest such cycle, and so is an unguarded internal one (`always -> .X`): it never leaves its state, so it is taken again after every step, even when it enters a final child, since an `always` is taken before a `done`. So is an unguarded `always` written in the machine body, whatever its target, unless that target is a top-level final state: the machine itself is never left, so its `always` would be taken again after every step.
 - `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` and `on name.fail` through a name that is not a `children` collection, and a `send name.E` to a collection with no `[key]` or `.*`; a `spawn` of a machine or task other than the collection's; a key of the wrong type; a collection whose key type is not `string`, `int` or an enum, or whose upper-case name is not a machine or lower-case name not a task; `key` as the name of a parameter, variable, `as` or collection; `on name.fail E` for an error the collection's machine or task does not declare.
 - `send`, `emit` and `on name.Event` that do not match a declaration: an unknown or out-of-scope `name`, or one that is not a `ref` (a `ref` that is optional or a list cannot be sent to); an event the receiver does not declare with `event`, or the sender (a machine or a task) with `emits`; a missing, extra or wrongly typed field. A `send` to a task, through its `as` name or a collection of tasks. A `send` to an invoked child where it is not running. An `as` on a call or on a task that declares no `emits` in a state with one invoke, an invoke without `as` in a state with several, or an `as` that clashes with a variable, parameter or enclosing `as`. A `ref` to something that is not a machine, or in a field or a result.
@@ -1194,7 +1237,7 @@ The compiler's codes:
 | `RB0120` | `attempt` in a retry delay of a machine with a parameter or variable named `attempt`, or of a state where a state's local of that name is in scope. | `retry 3 after backoff(attempt)` with `var attempt: int` |
 | `RB0121` | A `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` or `on name.fail` through a name that is not a `children` collection, or a `send name.E` to a collection without a key or `*`. | `stop upload[1]`, `send sessions.Notify` |
 | `RB0122` | `key` as the name of a machine or state parameter, a variable, an `as` name or a collection. | `var key: string` |
-| `RB0123` | A state path in a `check` that names no state of the machine, or names a history state. | `check reachable Applyng`, `check never Work.Last` for `history Last` |
+| `RB0123` | A state path in a `check` that names no state of the machine, or names a history or choice state. | `check reachable Applyng`, `check never Work.Last` for `history Last` |
 | `RB0124` | `on name.ended` through an `invoke … as name` child or task, or a `children` collection, whose end is its outcome. | `on upload.ended`, `on up.ended`, `on sessions.ended` |
 | `RB0125` | A `raise` of an event that is not one of the machine's own events or internal events: an event it emits, another machine's, or an unknown one. | `raise Progress` for `emits Progress`, `raise Unknown` |
 | `RB0126` | A `cancel` of a name that no `raise … after … as name` of the machine uses. | `cancel reminder` with no `raise … as reminder` |
@@ -1224,7 +1267,10 @@ The compiler's codes:
 | `RB0223` | A state with parameters as a compound state's `initial`, as a region of a parallel state or on the way to a history state's default target, which are entered with no arguments. | `initial Confirming` for `state Confirming(token: ResetToken)`, `history H -> Confirming` |
 | `RB0224` | A transition that enters a state with parameters without passing its arguments. | `-> Confirming`, `-> Editing.Changing` from outside `Editing(doc: Doc)` |
 | `RB0225` | Arguments for a state that takes none, for one the transition does not enter, or for one state twice. | `-> Idle(1)`, `-> Editing(doc).Changing` written inside `Editing` |
-| `RB0226` | A history state's default target that is not inside its parent (or is the parent itself), or that is a history state. | `history Previous -> Help` for a `Help` outside `Working`, `history Previous -> Working` |
+| `RB0226` | A history state's default target that is not inside its parent (or is the parent itself), or that is a history or choice state. | `history Previous -> Help` for a `Help` outside `Working`, `history Previous -> Working` |
+| `RB0227` | A choice state whose last branch has a guard: it needs an `else`. | `choice Routing { if vip -> Vip  if big -> Review }` |
+| `RB0228` | A branch of a choice state with no target. | `choice Routing { if vip do flag()  else -> Standard }` |
+| `RB0229` | A choice state that is a region of a parallel state. | `parallel state P { choice C { … }  state Q { … } }` |
 | `RB0301` | A value of the wrong type. | `var ratio: float = 1` |
 | `RB0302` | The wrong number of arguments. | `retryDelay(1, 2)` |
 | `RB0303` | An operator on operands it is not defined on, or `==` on a type with a part that cannot be compared. | `attempts + 1.5`, `payload == other` for a `json` |
@@ -1317,7 +1363,8 @@ property    = "never" statePath { "and" statePath }
             | "can" "finish" ;
 statePath   = Upper { "." Upper } ;
 
-stateDecl   = [ "final" | "parallel" ] "state" Upper [ params ] "{" { stateItem } "}" ;
+stateDecl   = [ "final" | "parallel" ] "state" Upper [ params ] "{" { stateItem } "}"
+            | "choice" Upper "{" "if" expr action { "if" expr action } "else" action "}" ;
 stateItem   = commonItem
             | varDecl
             | [ "deep" ] "history" Upper
@@ -1387,7 +1434,7 @@ comment     = "//" … end of line ;        doc comment = "///" … end of line 
 Rules the grammar does not express:
 
 - Every comma-separated list accepts a trailing comma.
-- All keywords are reserved: `import type enum error extern fn action task machine strict var event emits call initial state final parallel entry exit on after always done invoke output fail if else set do send emit reply ignore and or not true false`. `from`, `as`, `retry`, `ref`, `map`, `sensitive`, `history`, `deep`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `check`, `never`, `reachable`, `only`, `can`, `finish` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`) and after a delayed raise's delay (`as`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), at the start of an item of a state body (`history`, `deep`), in `children name:` at the start of a machine item, after a collection's machine, in `spawn name[`, `stop name[`, `raise Name` and `cancel name` at the start of an effect (so `action stop()` is still a valid action), in `internal event` at the start of a machine item, and in a check: `check` followed by a name at the start of a machine item, and the words of its property after it (so `var check: int` is still a variable). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field. (`call` is a keyword.)
+- All keywords are reserved: `import type enum error extern fn action task machine strict var event emits call initial state final parallel entry exit on after always done invoke output fail if else set do send emit reply ignore and or not true false`. `from`, `as`, `retry`, `ref`, `map`, `sensitive`, `history`, `deep`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `check`, `never`, `reachable`, `only`, `can`, `finish` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`) and after a delayed raise's delay (`as`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), at the start of an item of a state body (`history`, `deep`), `choice` followed by a name at the start of a machine or state item, in `children name:` at the start of a machine item, after a collection's machine, in `spawn name[`, `stop name[`, `raise Name` and `cancel name` at the start of an effect (so `action stop()` is still a valid action), in `internal event` at the start of a machine item, and in a check: `check` followed by a name at the start of a machine item, and the words of its property after it (so `var check: int` is still a variable). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field. (`call` is a keyword.)
 - In a type, the `>` closing type arguments may be written as the first character of a `>=`: `var m: map<string, int>= f()` reads as written (the formatter writes `> =` with a space).
 - A `///` comment documents the declaration, machine, state, history state, event, variable or check that follows it. A `///` anywhere else is an error: use `//`.
 - A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust, and so must one in a retry's delay, which the invoke's `{` follows. A `{` after the event of a `send`, `emit` or `raise` is always its record body.

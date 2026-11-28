@@ -1,0 +1,92 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          strict: false
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - initial: Pick
+            - state:
+                doc: Where to go.
+                kind: choice
+                name: Pick
+                body:
+                  - transition:
+                      trigger: always
+                      branches:
+                        block:
+                          branches:
+                            - guard:
+                                call:
+                                  name: ok
+                                  args: []
+                              targets:
+                                - dot: false
+                                  path:
+                                    - A
+                              effects:
+                                - do:
+                                    name: log
+                                    args: []
+                              ignore: false
+                            - guard: ~
+                              targets:
+                                - dot: false
+                                  path:
+                                    - B
+                                  args:
+                                    - args:
+                                        - int: 1
+                              effects: []
+                              ignore: false
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - state:
+                      kind: choice
+                      name: Inner
+                      body:
+                        - transition:
+                            trigger: always
+                            branches:
+                              block:
+                                branches:
+                                  - guard:
+                                      call:
+                                        name: ok
+                                        args: []
+                                    targets:
+                                      - dot: false
+                                        path:
+                                          - B
+                                        args:
+                                          - args:
+                                              - int: 2
+                                    effects: []
+                                    ignore: false
+                                  - guard: ~
+                                    targets:
+                                      - dot: false
+                                        path:
+                                          - A
+                                    effects: []
+                                    ignore: false
+            - state:
+                kind: normal
+                name: B
+                params:
+                  - name: n
+                    ty:
+                      builtin: int
+                body: []
+comments:
+  - kind: doc
+    text: /// Where to go.

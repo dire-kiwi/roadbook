@@ -229,6 +229,14 @@
           }
         },
         {
+          "comment": "`choice` is contextual: a choice state only when a state name follows.",
+          "match": "\\b(choice)\\s+([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "storage.type.choice.roadbook" },
+            "2": { "name": "entity.name.type.state.roadbook" }
+          }
+        },
+        {
           "match": "\\b(?:(deep)\\s+)?(history)\\s+([A-Z][A-Za-z0-9]*)",
           "captures": {
             "1": { "name": "storage.modifier.deep.roadbook" },

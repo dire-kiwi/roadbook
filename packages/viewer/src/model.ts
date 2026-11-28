@@ -28,6 +28,8 @@ export const METRICS = {
   machinePillPad: 6,
   toggle: 14, // the collapse / expand button of a container
   historyD: 28, // diameter of the circle of a history state
+  choiceD: 30, // width and height of the diamond of a choice state
+  choiceGap: 6, // between a choice's diamond and its name
 } as const
 
 /** Width of `text` at `fontSize` px. The browser passes a real measurer; Node estimates. */
@@ -372,7 +374,8 @@ export interface LabelLine {
 export function transitionLines(state: State, index: number): LabelLine[] {
   const t = state.transitions[index]
   if (!t) return []
-  const head = transitionTrigger(state, index)
+  // A choice's branches are all `always`: the guard says it all.
+  const head = isChoice(state) ? '' : transitionTrigger(state, index)
   const guard = guardText(state, index)
   const split = state.transitions.some((o, i) => {
     const g = o.group === t.group ? guardText(state, i) : ''
@@ -433,6 +436,11 @@ export interface Row {
 /** Whether a state is a history pseudo-state, shallow (`history`) or deep (`deepHistory`). */
 export function isHistory(state: State): boolean {
   return state.kind === 'history' || state.kind === 'deepHistory'
+}
+
+/** Whether a state is a choice state: a diamond the run passes through, left by its first branch whose guard holds. */
+export function isChoice(state: State): boolean {
+  return state.kind === 'choice'
 }
 
 /** A state's children: its `states` less its history states (the regions of a parallel state). */

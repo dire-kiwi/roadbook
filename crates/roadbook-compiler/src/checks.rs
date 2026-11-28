@@ -6,7 +6,8 @@
 //! A state path is resolved from the machine body, as a target written at machine level is:
 //! the first segment among the top-level states, then each further segment among the
 //! children of the one before. It may name any state of the IR (the children a `retry` writes
-//! out included) but not a history state, which is never active, nor the machine.
+//! out included) but not a history state, which is never active, a choice state, which a run
+//! never rests in, nor the machine.
 
 use std::collections::HashMap;
 
@@ -149,6 +150,17 @@ fn state_path(
             ck.diags.push(d);
             return None;
         }
+        if child.kind == ir::StateKind::Choice {
+            ck.diags.push(
+                Diagnostic::error(
+                    codes::UNKNOWN_CHECK_STATE,
+                    seg.span,
+                    format!("`{written}` is a choice state, which a check cannot name"),
+                )
+                .with_help("a run never rests in a choice: it leaves it in the same step; name the states its branches go to"),
+            );
+            return None;
+        }
         node = child;
     }
     Some(StatePath {
@@ -163,7 +175,12 @@ fn unknown(machine: &str, node: &ir::State, written: &str, t: &Target, i: usize)
     let children: Vec<&str> = node
         .states
         .iter()
-        .filter(|s| !matches!(s.kind, ir::StateKind::History | ir::StateKind::DeepHistory))
+        .filter(|s| {
+            !matches!(
+                s.kind,
+                ir::StateKind::History | ir::StateKind::DeepHistory | ir::StateKind::Choice
+            )
+        })
         .map(|s| s.name.as_str())
         .collect();
     if i == 0 {

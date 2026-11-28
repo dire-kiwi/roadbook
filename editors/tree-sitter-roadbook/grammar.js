@@ -25,7 +25,7 @@ module.exports = grammar({
   externals: ($) => [$._same_line_after, $._error_sentinel],
 
   // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref`, `sensitive`,
-  // `history`, `deep`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `map`,
+  // `history`, `deep`, `choice`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `map`,
   // the words of a check (`check`, `never`, `reachable`, `only`, `can`, `finish`) and the
   // built-in type names are not, because they mean something only where no name can appear.
   reserved: {
@@ -305,10 +305,16 @@ module.exports = grammar({
         optional(seq('->', field('default', $.state_path), repeat(seq(',', field('default', $.state_path))))),
       ),
 
+    // `choice` is not reserved either: a choice state starts with it and a name. The compiler
+    // requires the `else` (RB0227) and a target on every branch (RB0228); the grammar accepts
+    // a choice without them, as it does other items the compiler rejects.
+    choice_state: ($) => seq('choice', field('name', $.type_identifier), field('branches', $.branches)),
+
     _common_item: ($) =>
       choice(
         $.initial,
         $.state_declaration,
+        $.choice_state,
         $.entry,
         $.exit,
         $.on_transition,

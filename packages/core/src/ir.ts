@@ -146,8 +146,11 @@ export interface ChildrenDecl {
   readonly span: Span
 }
 
-/** `history` and `deepHistory` are history pseudo-states (ir.md, "History states"). */
-export type StateKind = "atomic" | "compound" | "parallel" | "final" | "history" | "deepHistory"
+/**
+ * `history` and `deepHistory` are history pseudo-states (ir.md, "History states"). A `choice` is
+ * run as an atomic state whose transitions are all `always`, the last unguarded.
+ */
+export type StateKind = "atomic" | "compound" | "parallel" | "final" | "history" | "deepHistory" | "choice"
 
 export interface State {
   readonly id: string

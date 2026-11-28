@@ -2144,3 +2144,74 @@ fn a_history_states_default_targets() {
     assert!(text.contains("history Previous -> Editing.Saved"), "{text}");
     c.shutdown();
 }
+
+const CHOICE: &str = "machine Shop() {
+  event Order { amount: int }
+  var amount: int = 0
+  initial Idle
+  state Idle {
+    on Order -> Routing  set amount = event.amount
+  }
+  /// Where an order goes.
+  choice Routing {
+    if amount > 100 -> Review
+    else            -> Done
+  }
+  state Review { on Order -> Routing }
+  final state Done {}
+}
+";
+
+#[test]
+fn a_choice_state() {
+    let p = Project::new("choice", &[("c.road", CHOICE)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, CHOICE);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // The outline lists it as a choice.
+    let symbols = c
+        .request(
+            "textDocument/documentSymbol",
+            json!({ "textDocument": { "uri": uri } }),
+        )
+        .unwrap();
+    let states: Vec<(&str, &str)> = symbols[0]["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|s| s["kind"] == 19)
+        .map(|s| (s["name"].as_str().unwrap(), s["detail"].as_str().unwrap()))
+        .collect();
+    assert!(states.contains(&("Routing", "choice")), "{states:?}");
+
+    // A target naming it goes to it, and its branches' targets to theirs.
+    for (from, to) in [
+        ("on Order -> ^Routing  set", "choice ^Routing"),
+        ("Review { on Order -> ^Routing", "choice ^Routing"),
+        ("-> ^Review\n", "state ^Review"),
+    ] {
+        let loc = c
+            .request("textDocument/definition", at(&uri, CHOICE, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(CHOICE, to),
+            "{from} -> {to}"
+        );
+    }
+    let h = c
+        .request("textDocument/hover", at(&uri, CHOICE, "choice ^Routing"))
+        .unwrap();
+    let value = h["contents"]["value"].as_str().unwrap();
+    assert!(value.contains("choice Shop.Routing"), "{value}");
+    assert!(value.contains("Where an order goes."), "{value}");
+
+    // Renaming it renames every target that names it.
+    let text = rename(&mut c, &uri, CHOICE, "choice ^Routing", "Pick");
+    assert!(text.contains("choice Pick {"), "{text}");
+    assert!(text.contains("on Order -> Pick  set"), "{text}");
+    assert!(text.contains("state Review { on Order -> Pick }"), "{text}");
+    c.shutdown();
+}

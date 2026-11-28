@@ -32,6 +32,7 @@
   "finish"
   "state"
   "history"
+  "choice"
   "ended"
   "initial"
   "entry"
@@ -200,6 +201,9 @@
   name: (type_identifier) @label)
 
 (history_state
+  name: (type_identifier) @label)
+
+(choice_state
   name: (type_identifier) @label)
 
 (initial

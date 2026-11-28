@@ -435,6 +435,7 @@ pub enum Item {
     Children(ChildrenDecl),
     /// `initial Name`
     Initial(Ident),
+    /// `[final | parallel] state Name { … }`, or `choice Name { … }`
     State(State),
     Entry(Hook),
     Exit(Hook),
@@ -538,9 +539,13 @@ pub enum StateKind {
     Normal,
     Final,
     Parallel,
+    /// `choice Name { if … else … }`: a state the run enters and leaves at once, by the first
+    /// branch whose guard holds. Its body holds one `always` transition, the branches, whose
+    /// trigger span is `choice Name`; it has no parameters.
+    Choice,
 }
 
-/// `[final | parallel] state Name { body }`
+/// `[final | parallel] state Name { body }`, or `choice Name { branches }`
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct State {
     #[serde(skip_serializing_if = "Option::is_none")]

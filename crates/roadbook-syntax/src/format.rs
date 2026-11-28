@@ -707,6 +707,13 @@ impl Formatter<'_> {
     }
 
     fn state(&mut self, s: &State, indent: usize) {
+        if s.kind == StateKind::Choice {
+            if let [Item::Transition(t)] = s.body.items.as_slice() {
+                // The header is a state's, not aligned with the branches.
+                self.branch_rows(t, format!("choice {}", s.name.name), None, indent);
+            }
+            return;
+        }
         let mut head = format!("{}state {}", state_prefix(s.kind), s.name.name);
         let header = (s.span.start.offset, s.body.span.start.offset + 1);
         if !s.params.is_empty() {
@@ -733,7 +740,12 @@ impl Formatter<'_> {
     }
 
     fn transition(&mut self, t: &Transition, indent: usize) {
-        let trigger = trigger(&t.trigger);
+        self.branch_rows(t, trigger(&t.trigger), Some(Group::Transition), indent);
+    }
+
+    /// The rows of transition `t` headed by `trigger`: `on Go` for a transition, `choice Name`
+    /// for a choice state's branches. `head` is the group of a block's first line.
+    fn branch_rows(&mut self, t: &Transition, trigger: String, head: Option<Group>, indent: usize) {
         match &t.branches {
             Branches::Single(b) => {
                 let mut cells = branch_cells(b);
@@ -749,7 +761,7 @@ impl Formatter<'_> {
                     indent,
                     vec![trigger],
                     " {",
-                    Some(Group::Transition),
+                    head,
                 );
                 self.open_block();
                 for b in branches {
@@ -791,6 +803,8 @@ fn state_prefix(kind: StateKind) -> &'static str {
         StateKind::Normal => "",
         StateKind::Final => "final ",
         StateKind::Parallel => "parallel ",
+        // Written by `branch_rows`, never with `state`.
+        StateKind::Choice => "",
     }
 }
 

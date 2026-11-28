@@ -1048,6 +1048,9 @@ impl Parser<'_> {
             }
             return Ok(Some(Item::History(h)));
         }
+        if self.at_choice() {
+            return Ok(Some(Item::State(self.choice()?)));
+        }
         let mut t = self.tok();
         if self.at_check() {
             return self.check_item(kind);
@@ -1083,10 +1086,10 @@ impl Parser<'_> {
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
-                    "a machine item (`var`, `event`, `internal event`, `emits`, `call`, `children`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
+                    "a machine item (`var`, `event`, `internal event`, `emits`, `call`, `children`, `initial`, `state`, `choice`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
                 }
                 BodyKind::State => {
-                    "a state item (`var`, `initial`, `state`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
+                    "a state item (`var`, `initial`, `state`, `choice`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
                 }
             };
             return Err(self.unexpected(expected));
@@ -1413,6 +1416,48 @@ impl Parser<'_> {
             "deep" if matches!(self.nth(1), T::Lower | T::Upper) => Some(true),
             _ => None,
         }
+    }
+
+    /// At the start of `choice Name`. `choice` is contextual, like `history`.
+    fn at_choice(&self) -> bool {
+        self.at(T::Lower) && self.text(self.tok()) == "choice" && self.nth(1) == T::Upper
+    }
+
+    /// `choice Name { if g -> A … else -> B }`: a state whose body is one `always` transition,
+    /// the branches, written as a block. Its trigger span is `choice Name`.
+    fn choice(&mut self) -> PResult<State> {
+        let doc = self.take_doc();
+        let start = self.bump().span;
+        let name = self.upper("the name of the choice state")?;
+        let trigger_span = self.since(start);
+        if !self.at_p(P::LBrace) {
+            return Err(self.unexpected(&format!(
+                "`{{` to start the branches of choice `{}`",
+                name.name
+            )));
+        }
+        let branches = self.branches(trigger_span, false)?;
+        let span = self.since(start);
+        let body_span = match &branches {
+            Branches::Block { span, .. } => *span,
+            Branches::Single(b) => b.span,
+        };
+        Ok(State {
+            doc,
+            kind: StateKind::Choice,
+            name,
+            params: Vec::new(),
+            body: Body {
+                items: vec![Item::Transition(Transition {
+                    trigger: Trigger::Always,
+                    branches,
+                    trigger_span,
+                    span,
+                })],
+                span: body_span,
+            },
+            span,
+        })
     }
 
     fn history(&mut self, deep: bool) -> PResult<History> {

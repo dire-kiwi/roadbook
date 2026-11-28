@@ -260,6 +260,24 @@ fn export_scxml_writes_history_defaults() {
     insta::assert_snapshot!("history_default_scxml", xml);
 }
 
+/// A choice state is a `<state>` whose branches are eventless transitions, the `else` last
+/// with no `cond`.
+#[test]
+fn export_scxml_writes_choices() {
+    let chart = "spec/conformance/charts/choice.road";
+    let out = roadbook(&repo(), &["export", "scxml", chart]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let xml = text(&out.stdout);
+    roxmltree::Document::parse(&xml).unwrap();
+    assert!(
+        xml.contains(
+            "<state id=\"Router_Start\">\n    <transition cond=\"amount &gt; 0\" target=\"Router_Desk\"/>\n    <transition target=\"Router_Idle\"/>\n  </state>"
+        ),
+        "{xml}"
+    );
+    insta::assert_snapshot!("choice_scxml", xml);
+}
+
 /// History states are `<history type="shallow|deep">` in their parent, with the default
 /// transition SCXML requires: the parent's default entry, its `initial` or every region.
 #[test]

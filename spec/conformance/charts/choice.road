@@ -1,0 +1,57 @@
+// Conformance chart: choice states, entered and left at once by the first
+// branch whose guard holds.
+
+fn vip(amount: int)       -> bool
+action flag(what: string)
+
+/// Routes each order by its amount.
+machine Router() {
+  event Order  { amount: int }
+  event Resume { amount: int }
+  event Audit
+  event Leave
+
+  var amount: int = 0
+  // Never assigned: the guard that reads it is a defect, which the compiler lets
+  // through only because roadbook.toml lists this chart in `allow-unassigned`.
+  var ceiling: int
+
+  // The machine starts in a choice.
+  initial Start
+
+  choice Start {
+    if amount > 0 -> Desk
+    else          -> Idle
+  }
+
+  state Idle {
+    on Order  -> Desk       set amount = event.amount
+    on Resume -> Desk.Last  set amount = event.amount
+    on Audit  -> Auditing
+  }
+
+  state Desk {
+    // Desk starts in a choice too. Its history's default is not the choice, so
+    // restoring a record of the choice is told apart from the default.
+    initial Route
+    deep history Last -> Standard
+
+    choice Route {
+      if vip(amount)   -> Vip
+      if amount > 1000 -> Idle            do flag("big")
+      if amount > 100  -> Review(amount)  do flag("review")
+      else             -> Standard
+    }
+
+    state Vip               {}
+    state Review(owed: int) {}
+    state Standard          {}
+
+    on Leave -> Idle
+  }
+
+  choice Auditing {
+    if amount > ceiling -> Idle
+    else                -> Idle
+  }
+}

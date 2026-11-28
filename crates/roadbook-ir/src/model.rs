@@ -546,6 +546,9 @@ pub enum StateKind {
     /// `deep history Name`: a deep history pseudo-state of its parent.
     #[serde(rename = "deepHistory")]
     DeepHistory,
+    /// `choice Name { … }`: no children, and only `always` transitions, the last unguarded.
+    /// Run as an atomic state, so it is entered and left at once; a run never rests in one.
+    Choice,
 }
 
 impl StateKind {

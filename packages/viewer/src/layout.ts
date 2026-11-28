@@ -5,7 +5,7 @@
 import type { ElkExtendedEdge, ElkNode, LayoutOptions as ElkOptions } from 'elkjs/lib/elk-api.js'
 import type { Machine, State, Ir } from './ir.ts'
 import { own } from './ir.ts'
-import { METRICS, ancestorIds, descendantCount, estimateWidth, historyDefaultEdgeId, isCopy, isHistory, rootIsVisible, stateRows, targetEdgeId, transitionId, transitionLines, walkStates } from './model.ts'
+import { METRICS, ancestorIds, descendantCount, estimateWidth, historyDefaultEdgeId, isChoice, isCopy, isHistory, rootIsVisible, stateRows, targetEdgeId, transitionId, transitionLines, walkStates } from './model.ts'
 import type { Measure, Row, LabelLine } from './model.ts'
 
 /** What `layoutMachine` needs of elkjs. */
@@ -180,6 +180,11 @@ export function stateBox(state: State, measure: Measure, collapsed = false): Sta
   const M = METRICS
   // A history state is a small circle marked `H` or `H*`, with no rows.
   if (isHistory(state)) return { rows: [], titleH: M.historyD, width: M.historyD, height: M.historyD }
+  // A choice state is a small diamond with its name beside it, with no rows.
+  if (isChoice(state)) {
+    const width = Math.ceil(M.choiceD + M.choiceGap + measure(state.name, M.fontRow, true))
+    return { rows: [], titleH: M.choiceD, width, height: M.choiceD }
+  }
   const rows = stateRows(state, collapsed)
   const isContainer = state.states.length > 0 && !collapsed
   const inset = state.kind === 'final' ? M.finalInset : 0

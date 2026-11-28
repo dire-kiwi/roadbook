@@ -105,6 +105,14 @@ describe('scopes', () => {
     expect(await scopesAt('    always set deep = history + 1', 'deep')).not.toContain('storage.modifier.deep.roadbook')
   })
 
+  it('marks choice states, and choice as a name elsewhere', async () => {
+    expect(await scopesAt('  choice Routing {', 'choice')).toContain('storage.type.choice.roadbook')
+    expect(await scopesAt('  choice Routing {', 'Routing')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt('    if isVip(user) -> VipFlow', 'VipFlow')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt('  var choice: int', 'choice')).toContain('variable.other.definition.roadbook')
+    expect(await scopesAt('    always set n = choice + 1', 'choice')).not.toContain('storage.type.choice.roadbook')
+  })
+
   it('marks internal targets and several targets as states', async () => {
     const line = '    on Sleep -> .Playback.Paused, .Volume.Muted  do log()'
     expect(await scopesAt(line, 'Playback')).toContain('entity.name.type.state.roadbook')

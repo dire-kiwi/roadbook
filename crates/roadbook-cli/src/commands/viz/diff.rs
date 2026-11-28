@@ -927,6 +927,7 @@ fn kind_text(k: StateKind) -> String {
         StateKind::Final => "final",
         StateKind::History => "history",
         StateKind::DeepHistory => "deep history",
+        StateKind::Choice => "choice",
     }
     .into()
 }

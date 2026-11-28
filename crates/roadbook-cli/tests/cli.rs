@@ -1110,6 +1110,26 @@ fn export_mermaid_draws_history_defaults() {
     insta::assert_snapshot!("history_default_mermaid", md);
 }
 
+/// A choice state is Mermaid's `<<choice>>` diamond, its branches arrows labelled with their
+/// guards (`[else]` for the last), with no `always`.
+#[test]
+fn export_mermaid_draws_choices() {
+    let out = roadbook(
+        &repo(),
+        &["export", "mermaid", "spec/conformance/charts/choice.road"],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let md = text(&out.stdout);
+    assert!(md.contains("  state Start <<choice>>\n"), "{md}");
+    assert!(md.contains("    state Desk_Route <<choice>>\n"), "{md}");
+    assert!(
+        md.contains("    Desk_Route --> Desk_Vip: [vip(amount)]\n"),
+        "{md}"
+    );
+    assert!(md.contains("  Start --> Idle: [else]\n"), "{md}");
+    insta::assert_snapshot!("choice_mermaid", md);
+}
+
 /// A transition with several targets is an arrow to each, with the same label.
 #[test]
 fn export_mermaid_snapshots_several_targets() {

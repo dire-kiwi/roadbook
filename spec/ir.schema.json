@@ -350,7 +350,7 @@
       "properties": {
         "id": { "$ref": "#/$defs/stateId" },
         "name": { "$ref": "#/$defs/upperName" },
-        "kind": { "enum": ["atomic", "compound", "parallel", "final", "history", "deepHistory"] },
+        "kind": { "enum": ["atomic", "compound", "parallel", "final", "history", "deepHistory", "choice"] },
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" },
         "params": {
@@ -387,8 +387,25 @@
           "else": { "properties": { "initial": { "type": "null" } } }
         },
         {
-          "if": { "properties": { "kind": { "enum": ["atomic", "final", "history", "deepHistory"] } } },
+          "if": { "properties": { "kind": { "enum": ["atomic", "final", "history", "deepHistory", "choice"] } } },
           "then": { "properties": { "states": { "maxItems": 0 } } }
+        },
+        {
+          "description": "A choice has no locals, effects or work, and only always transitions, the last unguarded.",
+          "if": { "properties": { "kind": { "const": "choice" } } },
+          "then": {
+            "properties": {
+              "params": { "maxItems": 0 },
+              "vars": { "maxItems": 0 },
+              "entry": { "maxItems": 0 },
+              "exit": { "maxItems": 0 },
+              "invokes": { "maxItems": 0 },
+              "transitions": {
+                "minItems": 1,
+                "items": { "properties": { "trigger": { "properties": { "kind": { "const": "always" } } } } }
+              }
+            }
+          }
         },
         {
           "description": "A history state is a pseudo-state: no effects, work or transitions.",

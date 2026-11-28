@@ -1373,7 +1373,10 @@ impl<'a> Chart<'a> {
                         .copied()
                         .filter(|&x| {
                             self.contains(s, x)
-                                && matches!(self.kind(x), StateKind::Atomic | StateKind::Final)
+                                && matches!(
+                                    self.kind(x),
+                                    StateKind::Atomic | StateKind::Choice | StateKind::Final
+                                )
                         })
                         .collect()
                 };
@@ -1564,7 +1567,12 @@ impl<'a> Chart<'a> {
             .active
             .iter()
             .copied()
-            .filter(|&s| matches!(self.kind(s), StateKind::Atomic | StateKind::Final))
+            .filter(|&s| {
+                matches!(
+                    self.kind(s),
+                    StateKind::Atomic | StateKind::Choice | StateKind::Final
+                )
+            })
             .map(|leaf| {
                 let mut chain = vec![leaf];
                 let mut cur = leaf;
