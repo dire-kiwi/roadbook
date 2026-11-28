@@ -1,0 +1,25 @@
+{
+  "description": "`Ping -> .Waiting` written in the invoking state `Talking` does not leave it, so its child keeps running and the transition's `send echo.Ping` reaches it; the child's `Pong` is taken by `on echo.Pong -> .Heard`, which keeps `Talking` and the child too.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/internal-child.road",
+  "machine": "Caller",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Ping"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Ping"
+      }
+    }
+  ],
+  "status": "running"
+}

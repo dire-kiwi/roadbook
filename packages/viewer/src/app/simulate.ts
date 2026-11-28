@@ -125,7 +125,7 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
         .map((t) => {
           const st = findState(m, t.state)
           const tr = st?.transitions[t.index]
-          return `<li><button class="rb-link rb-mono" type="button" data-m-transition="${esc(JSON.stringify([t.state, t.index]))}">${esc(stateName(t.state) || t.state)}: ${esc(tr ? triggerText(tr.trigger) : `#${t.index}`)}${tr?.target ? ` → ${esc(stateName(tr.target))}` : ''}</button></li>`
+          return `<li><button class="rb-link rb-mono" type="button" data-m-transition="${esc(JSON.stringify([t.state, t.index]))}">${esc(stateName(t.state) || t.state)}: ${esc(tr ? triggerText(tr.trigger) : `#${t.index}`)}${tr?.targets.length ? ` → ${esc(tr.targets.map(stateName).join(', '))}` : ''}</button></li>`
         })
         .join('')}</ul>`
     }

@@ -1,0 +1,13 @@
+machine M() {
+  initial S
+  state S {
+    initial A
+    always -> .B
+    state A {}
+    final state B {}
+    done -> T
+  }
+  final state T {}
+}
+
+// expect: RB0401 at 5:5

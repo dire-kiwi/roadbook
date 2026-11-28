@@ -127,7 +127,7 @@ struct StepJson<'a> {
     index: usize,
     trigger: &'a str,
     guard: Option<&'a str>,
-    to: Option<&'a str>,
+    to: &'a [String],
 }
 
 fn check<'a>(c: &'a CheckResult, files: &'a [(String, String)]) -> CheckJson<'a> {
@@ -146,7 +146,7 @@ fn check<'a>(c: &'a CheckResult, files: &'a [(String, String)]) -> CheckJson<'a>
                 index: s.index,
                 trigger: &s.trigger,
                 guard: s.guard.as_deref(),
-                to: s.to.as_deref(),
+                to: &s.to,
             })
             .collect(),
     }

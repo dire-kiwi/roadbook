@@ -1,0 +1,27 @@
+{"input":{},"ir":"sha256:ebafc0a7abf5536a14abf2d7e5239c9d79d953dfc1bfbb05cfcc63e5066f3797","kind":"started","machine":"Player","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Player","t":0}
+{"kind":"entered","run":"r1","state":"Player.Idle","t":0}
+{"event":{"kind":"event","value":{"_tag":"Wake"}},"kind":"event","run":"r1","t":0}
+{"from":"Player.Idle","index":0,"kind":"transition","run":"r1","t":0,"to":["Player.On.Playback.Paused","Player.On.Volume.Muted"]}
+{"kind":"exited","run":"r1","state":"Player.Idle","t":0}
+{"kind":"entered","run":"r1","state":"Player.On","t":0}
+{"action":"log","args":{"what":"enter On"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Player.On.Playback","t":0}
+{"kind":"entered","run":"r1","state":"Player.On.Playback.Paused","t":0}
+{"kind":"entered","run":"r1","state":"Player.On.Volume","t":0}
+{"kind":"entered","run":"r1","state":"Player.On.Volume.Muted","t":0}
+{"kind":"entered","run":"r1","state":"Player.On.Light","t":0}
+{"action":"log","args":{"what":"enter Light"},"kind":"action","run":"r1","t":0}
+{"delay":1000,"index":0,"kind":"timer.started","run":"r1","state":"Player.On.Light","t":0,"timer":1}
+{"event":{"kind":"event","value":{"_tag":"Off"}},"kind":"event","run":"r1","t":0}
+{"from":"Player.On","index":1,"kind":"transition","run":"r1","t":0,"to":["Player.Idle"]}
+{"index":0,"kind":"timer.cancelled","run":"r1","state":"Player.On.Light","t":0,"timer":1}
+{"action":"log","args":{"what":"exit Light"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Player.On.Light","t":0}
+{"kind":"exited","run":"r1","state":"Player.On.Volume.Muted","t":0}
+{"kind":"exited","run":"r1","state":"Player.On.Volume","t":0}
+{"kind":"exited","run":"r1","state":"Player.On.Playback.Paused","t":0}
+{"kind":"exited","run":"r1","state":"Player.On.Playback","t":0}
+{"action":"log","args":{"what":"exit On"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Player.On","t":0}
+{"kind":"entered","run":"r1","state":"Player.Idle","t":0}

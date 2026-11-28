@@ -591,22 +591,29 @@ impl Writer<'_> {
         if let Some(guard) = &t.guard {
             attrs.push(("cond", guard.text.clone()));
         }
-        match &t.target {
-            Some(target) => {
-                attrs.push(("target", xml_id(target)));
-                // A transition of the machine body does not leave the machine, unless it
-                // goes to a top-level final state, which is outside the machine's `<state>`.
-                let root = &self.m.root;
-                if s.id == root.id
-                    && !root
-                        .states
-                        .iter()
-                        .any(|c| c.kind == StateKind::Final && c.id == *target)
-                {
-                    attrs.push(("type", "internal".into()));
-                }
+        if t.targets.is_empty() {
+            attrs.push(("type", "internal".into()));
+        } else {
+            let targets: Vec<String> = t.targets.iter().map(|x| xml_id(x)).collect();
+            attrs.push(("target", targets.join(" ")));
+            // A transition of the machine body does not leave the machine, unless it goes to a
+            // top-level final state, which is outside the machine's `<state>`; an internal one
+            // (`-> .X`) does not leave its state.
+            let root = &self.m.root;
+            let body = s.id == root.id
+                && !root
+                    .states
+                    .iter()
+                    .any(|c| c.kind == StateKind::Final && t.targets.contains(&c.id));
+            if body || t.internal {
+                attrs.push(("type", "internal".into()));
             }
-            None => attrs.push(("type", "internal".into())),
+            if t.internal && s.kind == StateKind::Parallel {
+                self.comment(
+                    depth,
+                    "SCXML takes an internal transition of a parallel state as external, leaving every region; Roadbook leaves only the regions its targets are in",
+                );
+            }
         }
         let empty = t.effects.is_empty();
         self.open(depth, "transition", &attrs, empty);

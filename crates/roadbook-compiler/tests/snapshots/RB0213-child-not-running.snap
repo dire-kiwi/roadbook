@@ -7,7 +7,7 @@ error[RB0213]: `child` is not running here: in the `entry` of `M.Running`, its c
 14 |     entry send child.Poke
    |                ^^^^^
    |
-   = help: send to an invoked child from a transition that stays inside the invoking state, or from the states inside it
+   = help: send to an invoked child from a transition that stays inside the invoking state (an internal one, `-> .X`, written in it among them), or from the states inside it
 
 error[RB0213]: `child` is not running here: in the `exit` of `M.Running`, its child has already been stopped
   --> RB0213-child-not-running.road:15:15
@@ -15,7 +15,7 @@ error[RB0213]: `child` is not running here: in the `exit` of `M.Running`, its ch
 15 |     exit send child.Poke
    |               ^^^^^
    |
-   = help: send to an invoked child from a transition that stays inside the invoking state, or from the states inside it
+   = help: send to an invoked child from a transition that stays inside the invoking state (an internal one, `-> .X`, written in it among them), or from the states inside it
 
 error[RB0213]: `child` is not running here: in an outcome of the invoke of `M.Running`, its child has already ended
   --> RB0213-child-not-running.road:17:26
@@ -23,7 +23,7 @@ error[RB0213]: `child` is not running here: in an outcome of the invoke of `M.Ru
 17 |       done -> Done  send child.Poke
    |                          ^^^^^
    |
-   = help: send to an invoked child from a transition that stays inside the invoking state, or from the states inside it
+   = help: send to an invoked child from a transition that stays inside the invoking state (an internal one, `-> .X`, written in it among them), or from the states inside it
 
 error[RB0213]: `child` is not running here: this transition leaves `M.Running`, which stops its child before the transition's effects run
   --> RB0213-child-not-running.road:20:28
@@ -31,7 +31,7 @@ error[RB0213]: `child` is not running here: this transition leaves `M.Running`, 
 20 |     on Leave -> Done  send child.Poke
    |                            ^^^^^
    |
-   = help: send to an invoked child from a transition that stays inside the invoking state, or from the states inside it
+   = help: send to an invoked child from a transition that stays inside the invoking state (an internal one, `-> .X`, written in it among them), or from the states inside it
 
 error[RB0213]: `child` is not running here: this transition leaves `M.Running`, which stops its child before the transition's effects run
   --> RB0213-child-not-running.road:26:33
@@ -39,4 +39,12 @@ error[RB0213]: `child` is not running here: this transition leaves `M.Running`, 
 26 |       on Leave -> Running  send child.Poke
    |                                 ^^^^^
    |
-   = help: send to an invoked child from a transition that stays inside the invoking state, or from the states inside it
+   = help: send to an invoked child from a transition that stays inside the invoking state (an internal one, `-> .X`, written in it among them), or from the states inside it
+
+error[RB0213]: `child` is not running here: this transition leaves `N.P`, which stops its child before the transition's effects run
+  --> RB0213-child-not-running.road:42:37
+   |
+42 |     state A { on Go -> P.B.B2  send child.Poke }
+   |                                     ^^^^^
+   |
+   = help: send to an invoked child from a transition that stays inside the invoking state (an internal one, `-> .X`, written in it among them), or from the states inside it

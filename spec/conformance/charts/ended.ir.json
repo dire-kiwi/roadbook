@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/ended.road",
@@ -190,7 +190,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Inventory.Closed",
+                "targets": [
+                  "Inventory.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -207,7 +210,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Inventory.Broken",
+                "targets": [
+                  "Inventory.Broken"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -224,7 +230,8 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -310,7 +317,8 @@
             },
             "group": 0,
             "guard": null,
-            "target": null,
+            "targets": [],
+            "internal": false,
             "effects": [],
             "span": {
               "file": 0,
@@ -453,7 +461,10 @@
                   "type": "bool",
                   "text": "event.status == Ended.Done"
                 },
-                "target": "Order.Closed",
+                "targets": [
+                  "Order.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -497,7 +508,10 @@
                   "type": "bool",
                   "text": "event.status == Ended.Defect"
                 },
-                "target": "Order.Alarm",
+                "targets": [
+                  "Order.Alarm"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -535,7 +549,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Order.Gone",
+                "targets": [
+                  "Order.Gone"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -573,7 +590,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Order.TimedOut",
+                "targets": [
+                  "Order.TimedOut"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -757,7 +777,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Clerk.Stopped",
+                "targets": [
+                  "Clerk.Stopped"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -878,7 +901,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Picker.Watching",
+                "targets": [
+                  "Picker.Watching"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -922,7 +948,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Picker.Gone",
+                "targets": [
+                  "Picker.Gone"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1043,7 +1072,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Guard.Watching",
+                "targets": [
+                  "Guard.Watching"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1087,7 +1119,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Guard.Gone",
+                "targets": [
+                  "Guard.Gone"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1236,7 +1271,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1271,7 +1307,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Switcher.Gone",
+                "targets": [
+                  "Switcher.Gone"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",

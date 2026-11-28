@@ -4,7 +4,7 @@
 {"kind":"entered","run":"r1","state":"Top.A","t":0}
 {"delay":10000,"index":1,"kind":"timer.started","run":"r1","state":"Top","t":0,"timer":1}
 {"event":{"kind":"after","timer":1},"kind":"event","run":"r1","t":10000}
-{"from":"Top","index":1,"kind":"transition","run":"r1","t":10000,"to":"Top.Late"}
+{"from":"Top","index":1,"kind":"transition","run":"r1","t":10000,"to":["Top.Late"]}
 {"kind":"exited","run":"r1","state":"Top.A","t":10000}
 {"kind":"entered","run":"r1","state":"Top.Late","t":10000}
 {"kind":"exited","run":"r1","state":"Top.Late","t":10000}

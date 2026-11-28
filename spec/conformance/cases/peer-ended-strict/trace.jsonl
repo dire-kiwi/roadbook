@@ -2,7 +2,7 @@
 {"kind":"entered","run":"r1","state":"Inventory","t":0}
 {"kind":"entered","run":"r1","state":"Inventory.Open","t":0}
 {"event":{"kind":"event","value":{"_tag":"Close"}},"kind":"event","run":"r1","t":0}
-{"from":"Inventory.Open","index":0,"kind":"transition","run":"r1","t":0,"to":"Inventory.Closed"}
+{"from":"Inventory.Open","index":0,"kind":"transition","run":"r1","t":0,"to":["Inventory.Closed"]}
 {"kind":"exited","run":"r1","state":"Inventory.Open","t":0}
 {"kind":"entered","run":"r1","state":"Inventory.Closed","t":0}
 {"kind":"exited","run":"r1","state":"Inventory.Closed","t":0}
@@ -13,6 +13,6 @@
 {"kind":"entered","run":"r2","state":"Guard.Idle","t":0}
 {"event":{"from":"r1","kind":"ended","status":"Done"},"kind":"dropped","run":"r2","t":0}
 {"event":{"kind":"event","value":{"_tag":"Go"}},"kind":"event","run":"r2","t":0}
-{"from":"Guard.Idle","index":0,"kind":"transition","run":"r2","t":0,"to":"Guard.Watching"}
+{"from":"Guard.Idle","index":0,"kind":"transition","run":"r2","t":0,"to":["Guard.Watching"]}
 {"kind":"exited","run":"r2","state":"Guard.Idle","t":0}
 {"kind":"entered","run":"r2","state":"Guard.Watching","t":0}

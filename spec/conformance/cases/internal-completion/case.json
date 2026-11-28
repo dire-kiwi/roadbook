@@ -1,0 +1,23 @@
+{
+  "description": "Entering final `S.Done` queues `S`'s completion, but `S`'s `always` is taken first, and it goes back to `S.Work` without leaving `S`: exiting `Done` takes the completion back, so `S`'s `done` is not taken while `S` is in `Work`. The second time `Work` ends no `always` is enabled, and the completion leaves `S`.",
+  "requires": [],
+  "chart": "charts/internal.road",
+  "machine": "Again",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Finish"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Finish"
+      }
+    }
+  ],
+  "status": "done"
+}

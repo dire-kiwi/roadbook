@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0201]: unknown target state `.Missing`: `M.S` has no child `Missing`
+  --> RB0201-internal.road:10:15
+   |
+10 |     on Go -> .Missing
+   |               ^^^^^^^
+   |
+   = help: the children of `M.S` are A
+
+error[RB0201]: unknown target state `.S`: `M.S.A` has no child `S`
+  --> RB0201-internal.road:11:27
+   |
+11 |     state A { on Back -> .S }
+   |                           ^
+   |
+   = help: `.X` names a child of the state the transition is written in; without the dot, `S` is `M.S`, and the transition leaves `M.S.A`
+
+error[RB0201]: unknown target state `.Attempt`: `M.R` has no child `Attempt`
+  --> RB0201-internal.road:15:16
+   |
+15 |       done -> .Attempt
+   |                ^^^^^^^
+   |
+   = help: `.X` names a child of `M.R`; a state with `retry` has none of its own, and the `Attempt` and `Backoff` states the retry compiles to can't be named

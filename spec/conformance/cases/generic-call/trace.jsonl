@@ -2,14 +2,14 @@
 {"kind":"entered","run":"r1","state":"Catalog","t":0}
 {"kind":"entered","run":"r1","state":"Catalog.Open","t":0}
 {"event":{"args":{"page":{"items":[{"qty":2,"sku":"a1"},{"qty":1,"sku":"b2"}],"next":"p2"},"stock":{"a1":3,"b2":0}},"call":"search","from":"r2","invoke":1,"kind":"call"},"kind":"event","run":"r1","t":0}
-{"from":"Catalog.Open","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"from":"Catalog.Open","index":0,"kind":"transition","run":"r1","t":0,"to":[]}
 {"call":"search","invoke":1,"kind":"replied","outcome":"done","run":"r1","t":0,"to":"r2","value":{"items":[{"qty":2,"sku":"a1"}],"next":"p2"}}
 {"input":{"catalog":"r1","stock":{"a1":3,"b2":0},"wanted":{"items":[{"qty":2,"sku":"a1"},{"qty":1,"sku":"b2"}],"next":"p2"}},"ir":"sha256:dfe1f93895107bfb1db805dff70aeb9f66d8ee3ac84ca2f370c2c5533711310f","kind":"started","machine":"Shopper","run":"r2","t":0}
 {"kind":"entered","run":"r2","state":"Shopper","t":0}
 {"kind":"entered","run":"r2","state":"Shopper.Asking","t":0}
 {"args":{"page":{"items":[{"qty":2,"sku":"a1"},{"qty":1,"sku":"b2"}],"next":"p2"},"stock":{"a1":3,"b2":0}},"invoke":1,"kind":"invoke.started","run":"r2","src":"catalog.search","state":"Shopper.Asking","t":0}
 {"event":{"invoke":1,"kind":"invoke.done","value":{"items":[{"qty":2,"sku":"a1"}],"next":"p2"}},"kind":"event","run":"r2","t":0}
-{"from":"Shopper.Asking","index":0,"kind":"transition","run":"r2","t":0,"to":"Shopper.Found"}
+{"from":"Shopper.Asking","index":0,"kind":"transition","run":"r2","t":0,"to":["Shopper.Found"]}
 {"kind":"exited","run":"r2","state":"Shopper.Asking","t":0}
 {"kind":"set","run":"r2","t":0,"value":{"items":[{"qty":2,"sku":"a1"}],"next":"p2"},"var":"found"}
 {"kind":"entered","run":"r2","state":"Shopper.Found","t":0}

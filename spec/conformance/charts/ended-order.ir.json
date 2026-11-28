@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/ended-order.road",
@@ -151,7 +151,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Desk.Holding",
+                "targets": [
+                  "Desk.Holding"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -181,7 +184,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Desk.Closed",
+                "targets": [
+                  "Desk.Closed"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "emit",
@@ -231,7 +237,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Desk.Open",
+                "targets": [
+                  "Desk.Open"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "reply",
@@ -267,7 +276,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Desk.Closed",
+                "targets": [
+                  "Desk.Closed"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "emit",
@@ -411,7 +423,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Booker.Booked",
+                "targets": [
+                  "Booker.Booked"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -428,7 +443,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Booker.Waiting",
+                "targets": [
+                  "Booker.Waiting"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -451,7 +469,8 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -501,7 +520,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Booker.Gone",
+                "targets": [
+                  "Booker.Gone"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

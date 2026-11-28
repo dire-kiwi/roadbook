@@ -55,17 +55,40 @@ impl<'a> Tree<'a> {
         out
     }
 
-    /// The states a transition written in `from` with target `to` leaves, among `from` and the
-    /// states containing it: those below the deepest state that strictly contains both.
-    fn left_by(&self, from: &'a str, to: &'a str) -> Vec<&'a str> {
-        let from_anc = self.ancestors(from);
-        let domain = self
-            .ancestors(to)
+    /// Whether `a` is a proper descendant of `of`.
+    fn inside(&self, a: &str, of: &str) -> bool {
+        let mut cur = a;
+        while let Some(&p) = self.parent.get(cur) {
+            if p == of {
+                return true;
+            }
+            cur = p;
+        }
+        false
+    }
+
+    /// The domain of transition `t` written in `from` (`spec/execution.md`): the root for the
+    /// machine body's, `from` for an internal one, else the nearest proper ancestor of `from`
+    /// that is not a parallel state and contains every target.
+    fn domain(&self, from: &'a str, t: &ir::Transition) -> &'a str {
+        if from == self.root || t.internal {
+            return from;
+        }
+        self.ancestors(from)
             .into_iter()
-            .find(|a| from_anc.contains(a))
-            .unwrap_or(self.root);
+            .find(|&a| {
+                self.states[a].kind != StateKind::Parallel
+                    && t.targets.iter().all(|x| self.inside(x, a))
+            })
+            .unwrap_or(self.root)
+    }
+
+    /// The states transition `t` written in `from` leaves, among `from` and the states
+    /// containing it: those below its domain. None for an internal one.
+    fn left_by(&self, from: &'a str, t: &ir::Transition) -> Vec<&'a str> {
+        let domain = self.domain(from, t);
         std::iter::once(from)
-            .chain(from_anc.iter().copied())
+            .chain(self.ancestors(from))
             .take_while(|&s| s != domain && s != self.root)
             .collect()
     }
@@ -92,64 +115,58 @@ impl<'a> Tree<'a> {
         }
     }
 
-    /// The states entered by a transition written in `from` with target `to`: those below the
-    /// deepest state that strictly contains both (the machine root at most), down to `to`,
-    /// with the other regions of any parallel state on the way, then `to`'s initial chain. A
-    /// transition to the state itself or to an ancestor leaves and re-enters it.
+    /// The states entered by transition `t` written in `from`: for each target, the states
+    /// from just below the domain down to it, and its initial chain; then every region of a
+    /// parallel state among them that none of them is in, by default entry. A transition to the
+    /// state itself or to an ancestor leaves and re-enters it.
     ///
     /// A transition to a history state enters its parent's default entry: a history state
     /// only restores states that were entered before.
-    fn entry_set(&self, from: &'a str, to: &'a str) -> Vec<&'a str> {
-        let from_anc = self.ancestors(from);
-        let domain = self
-            .ancestors(to)
-            .into_iter()
-            .find(|a| from_anc.contains(a))
-            .unwrap_or(self.root);
-        let to = if self.states[to].kind.is_history() {
-            let parent = self.parent[to];
-            if parent == domain {
-                // From inside the parent, which is not left: its default entry, below it.
-                let mut out = vec![parent];
-                self.enter_down(parent, &mut out);
-                out.drain(..2);
-                return out;
+    fn entry_set(&self, from: &'a str, t: &ir::Transition) -> Vec<&'a str> {
+        let domain = self.domain(from, t);
+        let mut out: Vec<&'a str> = Vec::new();
+        for to in &t.targets {
+            let Some((&to, _)) = self.states.get_key_value(to.as_str()) else {
+                continue;
+            };
+            let to = if self.states[to].kind.is_history() {
+                let parent = self.parent[to];
+                if parent == domain {
+                    // From inside the parent, which is not left: its default entry, below it.
+                    let mut below = Vec::new();
+                    self.enter_down(parent, &mut below);
+                    out.extend(&below[1..]);
+                    continue;
+                }
+                parent
+            } else {
+                to
+            };
+            let mut cur = to;
+            while let Some(&p) = self.parent.get(cur) {
+                if p == domain {
+                    break;
+                }
+                out.push(p);
+                cur = p;
             }
-            parent
-        } else {
-            to
-        };
-        let mut path = vec![to];
-        let mut cur = to;
-        while let Some(&p) = self.parent.get(cur) {
-            if p == domain {
-                break;
-            }
-            path.push(p);
-            cur = p;
+            self.enter_down(to, &mut out);
         }
-        path.reverse();
-        let mut out = Vec::new();
-        for (i, &p) in path.iter().enumerate() {
-            if let Some(&parent) = self.parent.get(p)
-                && self.states[parent].kind == StateKind::Parallel
-            {
-                for c in self.states[parent]
-                    .states
-                    .iter()
-                    .filter(|c| !c.kind.is_history())
-                {
-                    if c.id != p {
+        let mut i = 0;
+        while i < out.len() {
+            let q = self.states[out[i]];
+            if q.kind == StateKind::Parallel {
+                for c in q.states.iter().filter(|c| !c.kind.is_history()) {
+                    let covered = out.iter().any(|&x| x == c.id || self.inside(x, &c.id));
+                    if !covered {
                         self.enter_down(&c.id, &mut out);
                     }
                 }
             }
-            if i + 1 == path.len() {
-                self.enter_down(p, &mut out);
-            } else {
-                out.push(p);
-            }
+            i += 1;
         }
+        let mut seen = HashSet::new();
+        out.retain(|x| seen.insert(*x));
         out
     }
 
@@ -191,11 +208,8 @@ impl<'a> Tree<'a> {
         let mut work = start;
         while let Some(x) = work.pop() {
             for t in &self.states[x].transitions {
-                if let Some(to) = t.target.as_deref()
-                    && follow(t)
-                    && let Some((&to, _)) = self.states.get_key_value(to)
-                {
-                    for s in self.entry_set(x, to) {
+                if !t.targets.is_empty() && follow(t) {
+                    for s in self.entry_set(x, t) {
                         if seen.insert(s) {
                             work.push(s);
                         }
@@ -286,19 +300,18 @@ pub(crate) fn run(
                     for target in spawned(m, &t.effects) {
                         edges.push((target, r.span));
                     }
-                    let Some((&to, _)) = t
-                        .target
-                        .as_deref()
-                        .and_then(|to| tree.states.get_key_value(to))
-                    else {
+                    if t.targets.is_empty() {
                         continue;
-                    };
-                    let ends = tree.parent.get(to) == Some(&tree.root)
-                        && tree.states[to].kind == StateKind::Final;
+                    }
+                    let ends = t.targets.iter().any(|to| {
+                        tree.parent.get(to.as_str()) == Some(&tree.root)
+                            && tree.states.get(to.as_str()).map(|s| s.kind)
+                                == Some(StateKind::Final)
+                    });
                     if ends {
                         continue;
                     }
-                    for left in tree.left_by(id, to) {
+                    for left in tree.left_by(id, t) {
                         for target in spawned(m, &tree.states[left].exit) {
                             edges.push((target, r.span));
                         }
@@ -309,6 +322,119 @@ pub(crate) fn run(
         invokes_eagerly.push((name.as_str(), edges));
     }
     recursion(&invokes_eagerly, diags);
+}
+
+/// Warns of each transition that leaves a parallel state it is written in, towards a target
+/// inside it, so that the parallel state is entered again and some of its regions start over
+/// by default entry: the outermost such parallel state, with the regions no target is in. A
+/// target that is a history state of the parallel state restores every region, and the
+/// branches a `retry` adds are left out.
+fn regions_reset(tree: &Tree<'_>, info: &MachineInfo, diags: &mut Vec<Diagnostic>) {
+    for &id in &tree.order[1..] {
+        let s = tree.states[id];
+        let Some(si) = info.states.get(id) else {
+            continue;
+        };
+        for (i, t) in s.transitions.iter().enumerate() {
+            if t.targets.is_empty() || t.internal || si.retry_branches.contains(&i) {
+                continue;
+            }
+            let left = tree.left_by(id, t);
+            let Some(&p) = left.iter().rev().find(|&&p| {
+                p != id
+                    && tree.states[p].kind == StateKind::Parallel
+                    && t.targets.iter().any(|x| tree.inside(x, p))
+            }) else {
+                continue;
+            };
+            let restores_all = t.targets.iter().any(|x| {
+                tree.parent.get(x.as_str()) == Some(&p)
+                    && tree
+                        .states
+                        .get(x.as_str())
+                        .is_some_and(|h| h.kind.is_history())
+            });
+            if restores_all {
+                continue;
+            }
+            let reset: Vec<&str> = tree.states[p]
+                .states
+                .iter()
+                .filter(|c| !c.kind.is_history())
+                .filter(|c| {
+                    !t.targets
+                        .iter()
+                        .any(|x| x == &c.id || tree.inside(x, &c.id))
+                })
+                .map(|c| c.id.as_str())
+                .collect();
+            if reset.is_empty() {
+                continue;
+            }
+            let Some(r) = si.transition_reads.get(i) else {
+                continue;
+            };
+            let names: Vec<String> = reset.iter().map(|c| format!("`{}`", short(c, p))).collect();
+            let what = if names.len() == 1 {
+                format!("{} starts over from its initial state", names[0])
+            } else {
+                format!("{} start over from their initial states", list(&names))
+            };
+            let below = t.targets.iter().all(|x| tree.inside(x, id));
+            let help = if below {
+                let targets: Vec<String> = t
+                    .targets
+                    .iter()
+                    .map(|x| format!(".{}", short(x, id)))
+                    .collect();
+                format!(
+                    "to keep `{}` and the other regions, write the target with a leading dot, `-> {}`, which changes only the states below `{}`; to start `{}` over on purpose, target it: `-> {}`",
+                    short(id, p),
+                    targets.join(", "),
+                    short(id, p),
+                    short(p, tree.root),
+                    short(p, tree.root)
+                )
+            } else {
+                format!(
+                    "to keep the other regions where they are, write the transition inside the region it changes, or in `{0}` with a leading dot (`-> .{1}`), or list a target in every region; to start `{0}` over on purpose, target it: `-> {0}`",
+                    short(p, tree.root),
+                    t.targets
+                        .iter()
+                        .map(|x| short(x, p))
+                        .collect::<Vec<_>>()
+                        .join(", .")
+                )
+            };
+            diags.push(
+                Diagnostic::warning(
+                    codes::REGIONS_RESET,
+                    r.span,
+                    format!(
+                        "this transition leaves parallel state `{}` and enters it again: {what}",
+                        short(p, tree.root)
+                    ),
+                )
+                .with_help(help),
+            );
+        }
+    }
+}
+
+/// `id` relative to its ancestor `of`: `P.A.X` relative to `P` is `A.X`.
+fn short<'s>(id: &'s str, of: &str) -> &'s str {
+    id.strip_prefix(of)
+        .and_then(|rest| rest.strip_prefix('.'))
+        .unwrap_or(id)
+}
+
+/// `a`, `a and b`, `a, b and c`.
+fn list(items: &[String]) -> String {
+    match items {
+        [] => String::new(),
+        [one] => one.clone(),
+        [init @ .., last] => format!("{} and {last}", init.join(", ")),
+    }
 }
 
 /// The first branch of a state's `always` block, if it has no guard.
@@ -330,7 +456,20 @@ fn always_cycles(tree: &Tree<'_>, info: &MachineInfo, diags: &mut Vec<Diagnostic
         let Some(i) = unguarded_always(s) else {
             continue;
         };
-        match s.transitions[i].target.as_deref() {
+        let t = &s.transitions[i];
+        match t.targets.first().map(String::as_str) {
+            _ if t.internal => {
+                if let Some(span) = trigger_span(id, i) {
+                    diags.push(
+                        Diagnostic::error(
+                            codes::ALWAYS_CYCLE,
+                            span,
+                            format!("`always` with no guard and an internal target is taken again and again: it never leaves `{id}`, so `{id}` never settles"),
+                        )
+                        .with_help("give it a guard that its own effects make false, or remove the dot so that it leaves the state"),
+                    );
+                }
+            }
             None => {
                 if let Some(span) = trigger_span(id, i) {
                     diags.push(
@@ -343,14 +482,16 @@ fn always_cycles(tree: &Tree<'_>, info: &MachineInfo, diags: &mut Vec<Diagnostic
                     );
                 }
             }
-            Some(to) if id == tree.root => {
+            Some(_) if id == tree.root => {
                 // The machine itself is never left, so its `always` is taken again after every
                 // step, unless the machine has finished.
-                let ends = tree.parent.get(to) == Some(&tree.root)
-                    && tree
-                        .states
-                        .get(to)
-                        .is_some_and(|t| t.kind == StateKind::Final);
+                let ends = t.targets.iter().any(|to| {
+                    tree.parent.get(to.as_str()) == Some(&tree.root)
+                        && tree
+                            .states
+                            .get(to.as_str())
+                            .is_some_and(|t| t.kind == StateKind::Final)
+                });
                 if !ends && let Some(span) = trigger_span(id, i) {
                     diags.push(
                         Diagnostic::error(
@@ -362,15 +503,17 @@ fn always_cycles(tree: &Tree<'_>, info: &MachineInfo, diags: &mut Vec<Diagnostic
                     );
                 }
             }
-            Some(to) => {
-                if let Some((&to, _)) = tree.states.get_key_value(to) {
-                    nodes.push(id);
-                    let mut entered = tree.entry_set(id, to);
-                    if tree.states[to].kind.is_history() {
+            Some(_) => {
+                nodes.push(id);
+                let mut entered = tree.entry_set(id, t);
+                for to in &t.targets {
+                    if let Some((&to, _)) = tree.states.get_key_value(to.as_str())
+                        && tree.states[to].kind.is_history()
+                    {
                         entered.extend(tree.could_restore(to));
                     }
-                    edges.insert(id, entered);
                 }
+                edges.insert(id, entered);
             }
         }
     }
@@ -526,7 +669,7 @@ fn warnings(
     let leaves = |s: &ir::State| {
         let added = info.states.get(&s.id).map(|i| &i.retry_branches);
         s.transitions.iter().enumerate().any(|(i, t)| {
-            t.target.is_some()
+            !t.targets.is_empty()
                 && !matches!(t.trigger, Trigger::Done)
                 && !added.is_some_and(|a| a.contains(&i))
         })
@@ -535,7 +678,7 @@ fn warnings(
         .order
         .iter()
         .flat_map(|id| &tree.states[id].transitions)
-        .filter_map(|t| t.target.as_deref())
+        .flat_map(|t| t.targets.iter().map(String::as_str))
         .collect();
     for &id in &tree.order[1..] {
         let s = tree.states[id];
@@ -616,6 +759,7 @@ fn warnings(
             }
         }
     }
+    regions_reset(tree, info, diags);
     for (c, span) in &info.children {
         if root_file && !info.spawned.contains(c) {
             diags.push(

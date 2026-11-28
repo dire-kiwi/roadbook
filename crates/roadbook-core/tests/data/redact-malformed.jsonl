@@ -2,11 +2,11 @@
 {"kind":"entered","state":"Teller"}
 {"kind":"entered","state":"Teller.Listening"}
 {"event":{"kind":"event","value":{"_tag":"Ask","extra":"<redacted>","question":"<redacted>"}},"kind":"event"}
-{"from":"Teller.Listening","index":0,"kind":"transition","to":null}
+{"from":"Teller.Listening","index":0,"kind":"transition","to":[]}
 {"kind":"emitted","message":1,"value":{"_tag":"Told","answer":"<redacted>","to":"ada"}}
 {"event":{"kind":"event","value":{"_tag":"Unknown","secret":"<redacted>"}},"kind":"dropped"}
 {"event":{"from":"r9","kind":"message","message":1,"value":{"_tag":"Ask","question":"<redacted>"}},"kind":"event"}
-{"from":"Teller.Listening","index":0,"kind":"transition","to":null}
+{"from":"Teller.Listening","index":0,"kind":"transition","to":[]}
 {"kind":"emitted","message":2,"value":{"_tag":"Told","answer":"<redacted>","to":"ada"}}
 {"event":{"from":"r5","invoke":null,"kind":"emitted","message":1,"value":{"_tag":"Told","answer":"<redacted>","extra":"<redacted>","to":"<redacted>"}},"kind":"dropped"}
 {"event":{"from":"r5","invoke":null,"kind":"emitted","message":2,"value":{"_tag":"Told","answer":"<redacted>","to":"b"}},"kind":"dropped"}
@@ -14,7 +14,7 @@
 {"event":{"invoke":8,"kind":"invoke.done","value":"<redacted>"},"kind":"stale"}
 {"event":{"error":{"_tag":"Nope","why":"<redacted>"},"invoke":9,"kind":"invoke.fail"},"kind":"stale"}
 {"event":{"kind":"event","value":{"_tag":"Bye"}},"kind":"event"}
-{"from":"Teller.Listening","index":1,"kind":"transition","to":"Teller.Gone"}
+{"from":"Teller.Listening","index":1,"kind":"transition","to":["Teller.Gone"]}
 {"kind":"exited","state":"Teller.Listening"}
 {"kind":"entered","state":"Teller.Gone"}
 {"kind":"exited","state":"Teller.Gone"}

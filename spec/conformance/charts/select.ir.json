@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/select.road",
@@ -244,7 +244,8 @@
                   "type": "bool",
                   "text": "event.n > 0"
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -273,7 +274,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -303,7 +305,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Select.Loading",
+                "targets": [
+                  "Select.Loading"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -354,7 +359,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Select.Form",
+                "targets": [
+                  "Select.Form"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -378,7 +386,10 @@
                   "type": "bool",
                   "text": "ready"
                 },
-                "target": "Select.Form",
+                "targets": [
+                  "Select.Form"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -395,7 +406,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Select.Form",
+                "targets": [
+                  "Select.Form"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -412,7 +426,10 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": "Select.Form",
+                "targets": [
+                  "Select.Form"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -465,7 +482,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Select.Form.Complete",
+                    "targets": [
+                      "Select.Form.Complete"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -559,7 +579,10 @@
                   "type": "bool",
                   "text": "laps == 1"
                 },
-                "target": "Select.Form",
+                "targets": [
+                  "Select.Form"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -614,7 +637,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Select.Passing",
+                "targets": [
+                  "Select.Passing"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -678,7 +704,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Select.Ended",
+                "targets": [
+                  "Select.Ended"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -700,7 +729,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Select.Ended",
+                "targets": [
+                  "Select.Ended"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -716,7 +748,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Select.Ended",
+                "targets": [
+                  "Select.Ended"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -776,7 +811,8 @@
             },
             "group": 0,
             "guard": null,
-            "target": null,
+            "targets": [],
+            "internal": false,
             "effects": [
               {
                 "kind": "do",

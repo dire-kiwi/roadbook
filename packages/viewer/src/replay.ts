@@ -207,7 +207,7 @@ export class Replay {
     if (!r) return { states: [], transition: null }
     switch (r.kind) {
       case 'transition':
-        return { states: r.to ? [str(r.to)] : [], transition: { state: str(r.from), index: num(r.index) } }
+        return { states: Array.isArray(r.to) ? r.to.map(str) : [], transition: { state: str(r.from), index: num(r.index) } }
       case 'timer.started':
       case 'timer.cancelled':
         return { states: [str(r.state)], transition: { state: str(r.state), index: num(r.index) } }
@@ -273,7 +273,7 @@ export class Replay {
             const t = s?.transitions[num(r.index)]
             if (!s || !t) out.push(`${at}: ${str(r.from)} has no transition ${String(r.index)}`)
             else if (!view.active.includes(s.id)) out.push(`${at}: ${s.id} is not active`)
-            else if (t.target !== (r.to ?? null)) out.push(`${at}: the transition goes to ${t.target ?? 'nowhere (internal)'}, not ${String(r.to)}`)
+            else if (JSON.stringify(t.targets) !== JSON.stringify(r.to)) out.push(`${at}: the transition goes to ${t.targets.join(', ') || 'no state'}, not ${JSON.stringify(r.to)}`)
             break
           }
           case 'set':
@@ -574,7 +574,7 @@ export function recordText(r: { kind: string; [member: string]: unknown }): stri
       return `replied ${str(r.outcome)}${value ? ` ${value}` : ''} to ${str(r.to)}'s call ${str(r.call)} (its invoke ${String(r.invoke)})`
     }
     case 'transition':
-      return `transition ${stateName(r.from)} #${String(r.index)} → ${r.to === null ? '(internal)' : stateName(r.to)}`
+      return `transition ${stateName(r.from)} #${String(r.index)} → ${Array.isArray(r.to) && r.to.length ? r.to.map(stateName).join(', ') : '(no target)'}`
     case 'set':
       return `set ${str(r.var)} = ${jsonText(r.value, 100)}`
     case 'action':

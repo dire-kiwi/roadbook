@@ -455,7 +455,7 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     let index = u64_of(r, "index") as usize;
                     match st.transitions.get(index) {
                         None => bad(format!("{from} has no transition {index}")),
-                        Some(tr) if tr.target.as_deref() != r["to"].as_str() => bad(format!(
+                        Some(tr) if serde_json::json!(tr.targets) != r["to"] => bad(format!(
                             "transition {from}[{index}] does not go to {}",
                             r["to"]
                         )),

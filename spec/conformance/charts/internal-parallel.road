@@ -1,0 +1,38 @@
+// Conformance chart: internal transitions in and of a parallel state.
+
+action log(what: string)
+
+/// Internal transitions in a parallel state: one written in a region stays in it, so another
+/// region takes the same event too; one written in the parallel state exits and enters only
+/// the regions it targets.
+machine Sides() {
+  event T
+  event Redo
+  event Reset
+
+  initial P
+
+  parallel state P {
+    entry do log("enter P")
+    exit do log("exit P")
+    on Redo  -> .A.A2
+    on Reset -> .B
+
+    state A {
+      entry do log("enter A")
+      exit do log("exit A")
+      on T -> .A1
+      initial A1
+      state A1 {}
+      state A2 {}
+    }
+
+    state B {
+      entry do log("enter B")
+      exit do log("exit B")
+      initial B1
+      state B1 { on T -> B2 }
+      state B2 {}
+    }
+  }
+}

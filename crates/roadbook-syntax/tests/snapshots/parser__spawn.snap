@@ -30,7 +30,7 @@ items:
                 branches:
                   single:
                     guard: ~
-                    target: ~
+                    targets: []
                     effects:
                       - spawn:
                           children: sessions
@@ -52,7 +52,7 @@ items:
                 branches:
                   single:
                     guard: ~
-                    target: ~
+                    targets: []
                     effects:
                       - stop:
                           children: sessions
@@ -72,7 +72,7 @@ items:
                 branches:
                   single:
                     guard: ~
-                    target: ~
+                    targets: []
                     effects:
                       - send:
                           to: sessions
@@ -91,7 +91,7 @@ items:
                 branches:
                   single:
                     guard: ~
-                    target: ~
+                    targets: []
                     effects:
                       - send:
                           to: sessions
@@ -116,7 +116,7 @@ items:
                 branches:
                   single:
                     guard: ~
-                    target: ~
+                    targets: []
                     effects:
                       - do:
                           name: log
@@ -130,8 +130,10 @@ items:
                 branches:
                   single:
                     guard: ~
-                    target:
-                      - A
+                    targets:
+                      - dot: false
+                        path:
+                          - A
                     effects:
                       - set:
                           var: n
@@ -150,7 +152,7 @@ items:
                 branches:
                   single:
                     guard: ~
-                    target: ~
+                    targets: []
                     effects:
                       - do:
                           name: log
@@ -166,7 +168,7 @@ items:
                 branches:
                   single:
                     guard: ~
-                    target: ~
+                    targets: []
                     effects:
                       - do:
                           name: log

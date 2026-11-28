@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/defects.road",
@@ -193,7 +193,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Main.Loading",
+                "targets": [
+                  "Main.Loading"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -210,7 +213,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Main.Calling",
+                "targets": [
+                  "Main.Calling"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -284,7 +290,10 @@
                   "type": "bool",
                   "text": "result > limit"
                 },
-                "target": "Main.Finished",
+                "targets": [
+                  "Main.Finished"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -300,7 +309,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Main.Idle",
+                "targets": [
+                  "Main.Idle"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -322,7 +334,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Main.Idle",
+                "targets": [
+                  "Main.Idle"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -373,7 +388,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Main.Finished",
+                "targets": [
+                  "Main.Finished"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -390,7 +408,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Main.Idle",
+                "targets": [
+                  "Main.Idle"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

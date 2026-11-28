@@ -714,21 +714,41 @@ class Macrostep {
 
   // ---- microsteps ----
 
-  /** The nearest compound proper ancestor of the source that is a proper ancestor of the target. */
-  private domain(t: Selected, target: State): State {
+  /**
+   * The domain of a transition with targets: the root for one of the root's, the source for an
+   * internal one, else the nearest compound proper ancestor of the source that is a proper
+   * ancestor of every target. Only an internal transition's domain can be a parallel state.
+   */
+  private domain(t: Selected): State {
     const root = this.index.machine.root
-    if (t.source === root) return root
+    if (t.source === root || t.transition.internal) return t.source
+    const targets = t.transition.targets.map((id) => this.index.state(id))
     for (let p = this.index.parent(t.source); p !== undefined; p = this.index.parent(p)) {
-      if ((p === root || p.kind === "compound") && this.index.isProperAncestor(p, target)) return p
+      if ((p === root || p.kind === "compound") && targets.every((x) => this.index.isProperAncestor(p, x))) return p
     }
     return root
   }
 
-  /** The active states a transition leaves: the proper descendants of its domain. */
+  /**
+   * The active states a transition leaves: the proper descendants of its domain; for a parallel
+   * domain, only those in the regions the targets are in (every region, for a history state of
+   * the domain).
+   */
   private exitSet(t: Selected): Array<string> {
-    if (t.transition.target === null) return []
-    const domain = this.domain(t, this.index.state(t.transition.target))
-    return this.active.filter((id) => this.index.isProperAncestor(domain, this.index.state(id)))
+    if (t.transition.targets.length === 0) return []
+    const domain = this.domain(t)
+    if (domain.kind !== "parallel") {
+      return this.active.filter((id) => this.index.isProperAncestor(domain, this.index.state(id)))
+    }
+    const targets = t.transition.targets.map((id) => this.index.state(id))
+    const every = targets.some((x) => isHistory(x) && this.index.parent(x) === domain)
+    const regions = childrenOf(domain).filter((c) =>
+      every || targets.some((x) => x === c || this.index.isProperAncestor(c, x))
+    )
+    return this.active.filter((id) => {
+      const s = this.index.state(id)
+      return regions.some((r) => r === s || this.index.isProperAncestor(r, s))
+    })
   }
 
   /** The states from just below `domain` down to `target`, outermost first. */
@@ -738,37 +758,20 @@ class Macrostep {
     return path
   }
 
-  /** The states a transition enters, below its domain down to the target and its default entry. */
-  private entrySet(t: Selected, target: State): Array<State> {
-    if (isHistory(target)) return this.historyEntrySet(t, target)
-    const path = this.pathFrom(this.domain(t, target), target)
-    const set = [...path, ...this.index.defaultEntry(target)]
-    for (const p of path) {
-      if (p === target || p.kind !== "parallel") continue
-      for (const c of childrenOf(p)) if (!path.includes(c)) set.push(c, ...this.index.defaultEntry(c))
-    }
-    return set
-  }
-
   /**
-   * execution.md's `entrySet` for a history target `h`: what `h` recorded, or its parent's
-   * default entry, each with the path down to it from the domain (computed with `h` as the
-   * target) and its own default entry; then every region on the way that none of them is in,
-   * by default entry. `h` itself is never entered.
+   * execution.md's `entrySet`, for a transition with targets: for each target, the states it
+   * stands for (what a history state restores), the paths from just below the domain down to
+   * them and their default entries; then every region of a parallel state among them that none
+   * of them is in, by default entry. A history state itself is never entered.
    */
-  private historyEntrySet(t: Selected, h: State): Array<State> {
-    const parent = this.index.parent(h)!
-    const recorded = this.history[h.id]
-    const targets = recorded !== undefined
-      ? recorded.map((id) => this.index.state(id))
-      : parent.kind === "compound"
-      ? [this.index.state(parent.initial!)]
-      : [...childrenOf(parent)]
-    const domain = this.domain(t, h)
+  private entrySet(t: Selected): Array<State> {
+    const domain = this.domain(t)
     const set = new Set<State>()
-    for (const r of targets) {
-      for (const s of this.pathFrom(domain, r)) set.add(s)
-      for (const s of this.index.defaultEntry(r)) set.add(s)
+    for (const id of t.transition.targets) {
+      for (const r of this.standsFor(this.index.state(id))) {
+        for (const s of this.pathFrom(domain, r)) set.add(s)
+        for (const s of this.index.defaultEntry(r)) set.add(s)
+      }
     }
     const inSet = (c: State): boolean => [...set].some((s) => s === c || this.index.isProperAncestor(c, s))
     for (const q of [...set]) {
@@ -778,6 +781,21 @@ class Macrostep {
       }
     }
     return [...set]
+  }
+
+  /**
+   * The states target `x` stands for: `x`, or for a history state, what it recorded, or else the
+   * states its parent's default entry starts with.
+   */
+  private standsFor(x: State): Array<State> {
+    if (!isHistory(x)) return [x]
+    const parent = this.index.parent(x)!
+    const recorded = this.history[x.id]
+    return recorded !== undefined
+      ? recorded.map((id) => this.index.state(id))
+      : parent.kind === "compound"
+      ? [this.index.state(parent.initial!)]
+      : [...childrenOf(parent)]
   }
 
   /**
@@ -801,7 +819,7 @@ class Macrostep {
   /** Take the transitions of `selected` together: every exit, then every effect, then every entry. */
   private microstep(selected: ReadonlyArray<Selected>, bindings: Bindings) {
     for (const { index, source, transition } of selected) {
-      this.trace({ kind: "transition", from: source.id, index, to: transition.target })
+      this.trace({ kind: "transition", from: source.id, index, to: transition.targets })
     }
     const exits = new Set(selected.flatMap((t) => this.exitSet(t)))
     this.recordHistory(exits)
@@ -811,8 +829,8 @@ class Macrostep {
     for (const t of selected) this.runEffects(t.transition.effects, bindings)
     const entries = new Set<State>()
     for (const t of selected) {
-      if (t.transition.target !== null) {
-        for (const state of this.entrySet(t, this.index.state(t.transition.target))) entries.add(state)
+      if (t.transition.targets.length > 0) {
+        for (const state of this.entrySet(t)) entries.add(state)
       }
     }
     this.enterStates([...entries].sort((a, b) => this.index.position(a) - this.index.position(b)))
@@ -833,7 +851,12 @@ class Macrostep {
     }
     this.runEffects(state.exit, NO_BINDINGS)
     this.active = this.active.filter((id) => id !== state.id)
-    this.completions = this.completions.filter((id) => id !== state.id)
+    // A state's completion goes with it, and so does every completion of a state around it: an
+    // internal transition that exits a final state takes back its parent's.
+    this.completions = this.completions.filter((id) => {
+      const c = this.index.state(id)
+      return c !== state && !this.index.isProperAncestor(c, state)
+    })
     this.trace({ kind: "exited", state: state.id })
   }
 

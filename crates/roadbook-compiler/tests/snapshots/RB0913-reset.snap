@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0913]: this transition leaves parallel state `P` and enters it again: `B` starts over from its initial state
+  --> RB0913-reset.road:11:7
+   |
+11 |       on Into -> A.A2
+   |       ^^^^^^^^^^^^^^^
+   |
+   = help: to keep `A` and the other regions, write the target with a leading dot, `-> .A2`, which changes only the states below `A`; to start `P` over on purpose, target it: `-> P`
+
+warning[RB0913]: this transition leaves parallel state `P` and enters it again: `A` starts over from its initial state
+  --> RB0913-reset.road:12:18
+   |
+12 |       state A1 { on Cross -> P.B.B2 }
+   |                  ^^^^^^^^^^^^^^^^^^
+   |
+   = help: to keep the other regions where they are, write the transition inside the region it changes, or in `P` with a leading dot (`-> .B.B2`), or list a target in every region; to start `P` over on purpose, target it: `-> P`

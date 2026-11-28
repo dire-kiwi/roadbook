@@ -2,7 +2,7 @@
 {"kind":"entered","run":"r1","state":"Inventory","t":0}
 {"kind":"entered","run":"r1","state":"Inventory.Ready","t":0}
 {"event":{"kind":"event","value":{"_tag":"Close"}},"kind":"event","run":"r1","t":0}
-{"from":"Inventory.Ready","index":1,"kind":"transition","run":"r1","t":0,"to":"Inventory.Closed"}
+{"from":"Inventory.Ready","index":1,"kind":"transition","run":"r1","t":0,"to":["Inventory.Closed"]}
 {"kind":"exited","run":"r1","state":"Inventory.Ready","t":0}
 {"kind":"entered","run":"r1","state":"Inventory.Closed","t":0}
 {"kind":"exited","run":"r1","state":"Inventory.Closed","t":0}
@@ -15,7 +15,7 @@
 {"kind":"undelivered","message":1,"run":"r2","t":0,"to":"r1","value":{"_tag":"Reserve","items":[{"qty":2,"sku":"s1"}],"orderId":"o1"}}
 {"delay":5000,"index":2,"kind":"timer.started","run":"r2","state":"Order.Reserving","t":0,"timer":1}
 {"event":{"kind":"after","timer":1},"kind":"event","run":"r2","t":5000}
-{"from":"Order.Reserving","index":2,"kind":"transition","run":"r2","t":5000,"to":"Order.Unavailable"}
+{"from":"Order.Reserving","index":2,"kind":"transition","run":"r2","t":5000,"to":["Order.Unavailable"]}
 {"kind":"exited","run":"r2","state":"Order.Reserving","t":5000}
 {"kind":"set","run":"r2","t":5000,"value":{"_tag":"OutOfStock","reason":"the warehouse did not answer"},"var":"problem"}
 {"kind":"entered","run":"r2","state":"Order.Unavailable","t":5000}

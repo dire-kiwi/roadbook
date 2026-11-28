@@ -27,8 +27,10 @@ items:
                 branches:
                   single:
                     guard: ~
-                    target:
-                      - Cancelled
+                    targets:
+                      - dot: false
+                        path:
+                          - Cancelled
                     effects: []
                     ignore: false
             - transition:
@@ -40,8 +42,10 @@ items:
                 branches:
                   single:
                     guard: ~
-                    target:
-                      - TimedOut
+                    targets:
+                      - dot: false
+                        path:
+                          - TimedOut
                     effects: []
                     ignore: false
             - transition:
@@ -50,8 +54,10 @@ items:
                   single:
                     guard:
                       var: broken
-                    target:
-                      - Cancelled
+                    targets:
+                      - dot: false
+                        path:
+                          - Cancelled
                     effects: []
                     ignore: false
             - state:

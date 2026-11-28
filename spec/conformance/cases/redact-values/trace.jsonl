@@ -4,14 +4,14 @@
 {"action":"audit","args":{"login":{"password":"<redacted>","user":"ada"},"who":"ada"},"kind":"action","run":"r1","t":0}
 {"args":{"login":{"password":"<redacted>","user":"ada"},"pin":"<redacted>"},"invoke":1,"kind":"invoke.started","run":"r1","src":"signIn","state":"Vault.SigningIn","t":0}
 {"event":{"error":{"_tag":"Locked","hint":"<redacted>","user":"ada"},"invoke":1,"kind":"invoke.fail"},"kind":"event","run":"r1","t":0}
-{"from":"Vault.SigningIn","index":1,"kind":"transition","run":"r1","t":0,"to":"Vault.Waiting"}
+{"from":"Vault.SigningIn","index":1,"kind":"transition","run":"r1","t":0,"to":["Vault.Waiting"]}
 {"kind":"exited","run":"r1","state":"Vault.SigningIn","t":0}
 {"kind":"set","run":"r1","t":0,"value":{"_tag":"Locked","hint":"<redacted>","user":"ada"},"var":"locked"}
 {"kind":"entered","run":"r1","state":"Vault.Waiting","t":0}
 {"delay":1000,"index":2,"kind":"timer.started","run":"r1","state":"Vault.Waiting","t":0,"timer":1}
 {"event":{"kind":"event","value":{"_tag":"Nudge","why":"<redacted>"}},"kind":"dropped","run":"r1","t":0}
 {"event":{"kind":"event","value":{"_tag":"Retry","note":"second try","pin":"<redacted>"}},"kind":"event","run":"r1","t":0}
-{"from":"Vault.Waiting","index":0,"kind":"transition","run":"r1","t":0,"to":"Vault.SigningIn"}
+{"from":"Vault.Waiting","index":0,"kind":"transition","run":"r1","t":0,"to":["Vault.SigningIn"]}
 {"index":2,"kind":"timer.cancelled","run":"r1","state":"Vault.Waiting","t":0,"timer":1}
 {"kind":"exited","run":"r1","state":"Vault.Waiting","t":0}
 {"kind":"set","run":"r1","t":0,"value":"<redacted>","var":"current"}
@@ -19,14 +19,14 @@
 {"action":"audit","args":{"login":{"password":"<redacted>","user":"ada"},"who":"ada"},"kind":"action","run":"r1","t":0}
 {"args":{"login":{"password":"<redacted>","user":"ada"},"pin":"<redacted>"},"invoke":2,"kind":"invoke.started","run":"r1","src":"signIn","state":"Vault.SigningIn","t":0}
 {"event":{"invoke":2,"kind":"invoke.done","value":{"expires":60,"id":"s1","token":"<redacted>"}},"kind":"event","run":"r1","t":0}
-{"from":"Vault.SigningIn","index":0,"kind":"transition","run":"r1","t":0,"to":"Vault.Loading"}
+{"from":"Vault.SigningIn","index":0,"kind":"transition","run":"r1","t":0,"to":["Vault.Loading"]}
 {"kind":"exited","run":"r1","state":"Vault.SigningIn","t":0}
 {"kind":"set","run":"r1","t":0,"value":{"expires":60,"id":"s1","token":"<redacted>"},"var":"session"}
 {"kind":"entered","run":"r1","state":"Vault.Loading","t":0}
 {"action":"remember","args":{"secret":"<redacted>","sessions":[{"expires":60,"id":"s1","token":"<redacted>"},{"expires":60,"id":"s1","token":"<redacted>"}]},"kind":"action","run":"r1","t":0}
 {"args":{"session":{"expires":60,"id":"s1","token":"<redacted>"}},"invoke":3,"kind":"invoke.started","run":"r1","src":"loadProfile","state":"Vault.Loading","t":0}
 {"event":{"kind":"event","value":{"_tag":"Retry","note":"again","pin":"<redacted>"}},"kind":"event","run":"r1","t":0}
-{"from":"Vault.Loading","index":1,"kind":"transition","run":"r1","t":0,"to":"Vault.Loading"}
+{"from":"Vault.Loading","index":1,"kind":"transition","run":"r1","t":0,"to":["Vault.Loading"]}
 {"invoke":3,"kind":"invoke.cancelled","run":"r1","src":"loadProfile","state":"Vault.Loading","t":0}
 {"kind":"exited","run":"r1","state":"Vault.Loading","t":0}
 {"kind":"entered","run":"r1","state":"Vault.Loading","t":0}
@@ -34,7 +34,7 @@
 {"args":{"session":{"expires":60,"id":"s1","token":"<redacted>"}},"invoke":4,"kind":"invoke.started","run":"r1","src":"loadProfile","state":"Vault.Loading","t":0}
 {"event":{"invoke":3,"kind":"invoke.done","value":"<redacted>"},"kind":"stale","run":"r1","t":0}
 {"event":{"invoke":4,"kind":"invoke.done","value":{"backup":{"expires":1,"id":"s0","token":"<redacted>"},"cards":[{"last4":"4242","number":"<redacted>"}],"logins":[{"password":"<redacted>","user":"ada"}],"name":"Ada"}},"kind":"event","run":"r1","t":0}
-{"from":"Vault.Loading","index":0,"kind":"transition","run":"r1","t":0,"to":"Vault.Loaded"}
+{"from":"Vault.Loading","index":0,"kind":"transition","run":"r1","t":0,"to":["Vault.Loaded"]}
 {"kind":"exited","run":"r1","state":"Vault.Loading","t":0}
 {"kind":"set","run":"r1","t":0,"value":{"backup":{"expires":1,"id":"s0","token":"<redacted>"},"cards":[{"last4":"4242","number":"<redacted>"}],"logins":[{"password":"<redacted>","user":"ada"}],"name":"Ada"},"var":"profile"}
 {"kind":"entered","run":"r1","state":"Vault.Loaded","t":0}

@@ -1,0 +1,50 @@
+// Conformance chart: transitions with several targets, which enter several regions of a
+// parallel state at once.
+
+action log(what: string)
+
+/// Several targets enter several regions of a parallel state at once, the other regions by
+/// default entry; written with dots in the parallel state, they exit and enter only those
+/// regions.
+machine Player() {
+  event Wake
+  event Resume
+  event Off
+  event Sleep
+  event Play
+  event Unmute
+
+  initial Idle
+
+  state Idle {
+    on Wake   -> On.Playback.Paused, On.Volume.Muted
+    on Resume -> On.Playback.Last, On.Volume.Loud
+  }
+
+  parallel state On {
+    entry do log("enter On")
+    exit do log("exit On")
+    on Sleep -> .Playback.Paused, .Volume.Muted
+    on Off   -> Idle
+
+    state Playback {
+      history Last
+      initial Playing
+      state Playing {}
+      state Paused  { on Play -> Playing }
+    }
+
+    state Volume {
+      initial Normal
+      state Normal {}
+      state Muted  { on Unmute -> Normal }
+      state Loud   {}
+    }
+
+    state Light {
+      entry do log("enter Light")
+      exit do log("exit Light")
+      after 1s do log("tick")
+    }
+  }
+}

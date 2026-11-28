@@ -185,12 +185,9 @@ fn outcome_targets_are_resolved_where_they_are_written() {
     let targets: Vec<_> = attempt
         .transitions
         .iter()
-        .map(|t| t.target.as_deref())
+        .map(|t| t.targets.as_slice())
         .collect();
-    assert_eq!(
-        targets,
-        [Some("M.Backoff"), Some("M.A.Backoff"), Some("M.Backoff")]
-    );
+    assert_eq!(targets, [["M.Backoff"], ["M.A.Backoff"], ["M.Backoff"]]);
 }
 
 #[test]

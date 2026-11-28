@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/strict-messages.road",
@@ -129,7 +129,8 @@
                   "type": "bool",
                   "text": "event.loud"
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -146,7 +147,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Door.Ajar",
+                "targets": [
+                  "Door.Ajar"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "emit",
@@ -196,7 +200,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -213,7 +218,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Door.Shut",
+                "targets": [
+                  "Door.Shut"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -331,7 +339,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Visitor.Waiting",
+                "targets": [
+                  "Visitor.Waiting"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -376,7 +387,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Visitor.Idle",
+                "targets": [
+                  "Visitor.Idle"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -402,7 +416,8 @@
             },
             "group": 0,
             "guard": null,
-            "target": null,
+            "targets": [],
+            "internal": false,
             "effects": [
               {
                 "kind": "send",

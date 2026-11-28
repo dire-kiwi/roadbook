@@ -159,11 +159,11 @@ fn checkout_json_names_transitions_as_traces_do() {
             "state": "Checkout.Charged",
             "steps": [
                 { "from": "Checkout.Charging", "index": 2, "trigger": "fail GatewayUnavailable",
-                  "guard": "attempts < 3", "to": "Checkout.Backoff" },
+                  "guard": "attempts < 3", "to": ["Checkout.Backoff"] },
                 { "from": "Checkout.Backoff", "index": 0, "trigger": "after retryDelay(attempts)",
-                  "guard": null, "to": "Checkout.Charging" },
+                  "guard": null, "to": ["Checkout.Charging"] },
                 { "from": "Checkout.Charging", "index": 0, "trigger": "done",
-                  "guard": null, "to": "Checkout.Charged" },
+                  "guard": null, "to": ["Checkout.Charged"] },
             ]
         })
     );
@@ -189,7 +189,7 @@ fn checkout_json_names_transitions_as_traces_do() {
     let raw = text(&out.stdout);
     assert!(raw.starts_with("{\n  \"machine\": \"Checkout\",\n  \"paths\": ["));
     assert!(raw.contains(
-        "{\"from\": \"Checkout.Charging\", \"index\": 0, \"trigger\": \"done\", \"guard\": null, \"to\": \"Checkout.Charged\"}"
+        "{\"from\": \"Checkout.Charging\", \"index\": 0, \"trigger\": \"done\", \"guard\": null, \"to\": [\"Checkout.Charged\"]}"
     ));
 }
 
@@ -224,7 +224,7 @@ fn place_order_reaches_every_final_and_the_compounds_transitions_apply_inside() 
                 let s = p["steps"].as_array().unwrap();
                 let last = s.last().unwrap();
                 (last["from"] == "PlaceOrder.Processing" && last["index"] == index)
-                    .then(|| s[s.len() - 2]["to"].as_str().unwrap())
+                    .then(|| s[s.len() - 2]["to"][0].as_str().unwrap())
             })
             .collect();
         before.sort();
@@ -312,7 +312,10 @@ fn loops_are_taken_once_stuck_states_end_and_nested_finals_take_the_parents_done
             ("loop", "Loop.Ping"),
         ]
     );
-    assert_eq!(v["paths"][3]["steps"][0]["to"], "Loop.Work.Finished");
+    assert_eq!(
+        v["paths"][3]["steps"][0]["to"],
+        serde_json::json!(["Loop.Work.Finished"])
+    );
     assert_eq!(v["paths"][3]["steps"][1]["trigger"], "done");
     let out = roadbook(&dir, &["paths", "Loop", "loop.road"]);
     assert_eq!(
@@ -365,9 +368,9 @@ fn calls_are_steps_of_the_caller_and_of_the_callee() {
             "state": "Inventory.Closed",
             "steps": [
                 { "from": "Inventory.Ready", "index": 0, "trigger": "reserve",
-                  "guard": null, "to": "Inventory.Reserving" },
+                  "guard": null, "to": ["Inventory.Reserving"] },
                 { "from": "Inventory.Reserving", "index": 4, "trigger": "Close",
-                  "guard": null, "to": "Inventory.Closed" },
+                  "guard": null, "to": ["Inventory.Closed"] },
             ]
         })
     );
@@ -415,7 +418,7 @@ fn a_peer_s_end_is_a_step() {
             "end": "final",
             "state": "Switcher.Gone",
             "steps": [{ "from": "Switcher.Watching", "index": 1, "trigger": "current.ended",
-                        "guard": null, "to": "Switcher.Gone" }]
+                        "guard": null, "to": ["Switcher.Gone"] }]
         }])
     );
 }
@@ -555,7 +558,7 @@ fn a_history_state_returns_to_where_its_parent_was_on_the_path() {
     // A step's `to` is the history state, as a trace's `transition` record names it.
     assert_eq!(
         v["paths"][0]["steps"][2],
-        json!({ "from": "Bounce.Q", "index": 0, "trigger": "always", "guard": null, "to": "Bounce.P.H" })
+        json!({ "from": "Bounce.Q", "index": 0, "trigger": "always", "guard": null, "to": ["Bounce.P.H"] })
     );
     // `Steps`: paused in `S1`, the deep history state restores `S1`.
     let out = roadbook(&repo(), &["paths", "Steps", chart]);

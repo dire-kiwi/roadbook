@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/crash.road",
@@ -134,7 +134,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Crash.Over",
+                    "targets": [
+                      "Crash.Over"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -192,7 +195,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Crash.Over",
+                    "targets": [
+                      "Crash.Over"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -243,7 +249,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Crash.Over",
+                    "targets": [
+                      "Crash.Over"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -387,7 +396,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Child.Stopped",
+                "targets": [
+                  "Child.Stopped"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

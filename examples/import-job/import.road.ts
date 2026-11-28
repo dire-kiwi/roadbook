@@ -62,7 +62,7 @@ export interface ImportJobDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "examples/import-job/import.road",
@@ -581,7 +581,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "ImportJob.Importing",
+                "targets": [
+                  "ImportJob.Importing"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -611,7 +614,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "ImportJob.Rejected",
+                "targets": [
+                  "ImportJob.Rejected"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -735,7 +741,10 @@ const ir: unknown = {
                       "type": "bool",
                       "text": "result == 0"
                     },
-                    "target": "ImportJob.Completed",
+                    "targets": [
+                      "ImportJob.Completed"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -795,7 +804,10 @@ const ir: unknown = {
                       "type": "bool",
                       "text": "pauseRequested"
                     },
-                    "target": "ImportJob.Importing.Paused",
+                    "targets": [
+                      "ImportJob.Importing.Paused"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -848,7 +860,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "ImportJob.Importing.RunningBatch",
+                    "targets": [
+                      "ImportJob.Importing.RunningBatch"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -923,7 +938,10 @@ const ir: unknown = {
                       "type": "bool",
                       "text": "retries < 3"
                     },
-                    "target": "ImportJob.Importing.WaitingToRetry",
+                    "targets": [
+                      "ImportJob.Importing.WaitingToRetry"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -1006,7 +1024,10 @@ const ir: unknown = {
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "ImportJob.Failed",
+                    "targets": [
+                      "ImportJob.Failed"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -1071,7 +1092,10 @@ const ir: unknown = {
                       "type": "bool",
                       "text": "pauseRequested"
                     },
-                    "target": "ImportJob.Importing.Paused",
+                    "targets": [
+                      "ImportJob.Importing.Paused"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1093,7 +1117,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "ImportJob.Importing.RunningBatch",
+                    "targets": [
+                      "ImportJob.Importing.RunningBatch"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1132,7 +1159,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "ImportJob.Importing.RunningBatch",
+                    "targets": [
+                      "ImportJob.Importing.RunningBatch"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -1169,7 +1199,8 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1197,7 +1228,8 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1422,7 +1454,10 @@ const ir: unknown = {
             },
             "group": 0,
             "guard": null,
-            "target": "ImportJob.Cancelled",
+            "targets": [
+              "ImportJob.Cancelled"
+            ],
+            "internal": false,
             "effects": [],
             "span": {
               "file": 0,

@@ -652,12 +652,14 @@ impl Branches {
     }
 }
 
-/// `[if guard] [-> Target] [effects]`, at least one of the target and the effects, or
+/// `[if guard] [-> Target {, Target}] [effects]`, at least one of the target and the effects, or
 /// `[if guard] ignore`, which has neither.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Branch {
     pub guard: Option<Expr>,
-    pub target: Option<Target>,
+    /// The targets after `->`, in the order written: none for a branch with no target,
+    /// several for `-> A.X, A.Y`.
+    pub targets: Vec<Target>,
     pub effects: Vec<Effect>,
     /// Written `ignore`: the branch takes the event and does nothing. Only in an `on`
     /// transition; it has no target and no effects.
@@ -666,10 +668,12 @@ pub struct Branch {
     pub span: Span,
 }
 
-/// `Name { . Name }`
+/// `[ . ] Name { . Name }`
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(transparent)]
 pub struct Target {
+    /// Written with a leading dot, `.Name`: resolved among the children of the state the
+    /// transition is written in, which the transition does not leave.
+    pub dot: bool,
     pub path: Vec<Ident>,
     #[serde(skip)]
     pub span: Span,

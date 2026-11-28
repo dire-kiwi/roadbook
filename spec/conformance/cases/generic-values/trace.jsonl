@@ -4,7 +4,7 @@
 {"kind":"set","run":"r1","t":0,"value":{"value":"b","wait":300},"var":"best"}
 {"delay":300,"index":1,"kind":"timer.started","run":"r1","state":"Gather.Waiting","t":0,"timer":1}
 {"event":{"kind":"event","value":{"_tag":"Add","more":{"1":4,"__proto__":3}}},"kind":"event","run":"r1","t":0}
-{"from":"Gather.Waiting","index":0,"kind":"transition","run":"r1","t":0,"to":"Gather.Fetching"}
+{"from":"Gather.Waiting","index":0,"kind":"transition","run":"r1","t":0,"to":["Gather.Fetching"]}
 {"index":1,"kind":"timer.cancelled","run":"r1","state":"Gather.Waiting","t":0,"timer":1}
 {"kind":"exited","run":"r1","state":"Gather.Waiting","t":0}
 {"kind":"set","run":"r1","t":0,"value":{"1":4,"2":5,"__proto__":3,"x":1},"var":"total"}
@@ -12,7 +12,7 @@
 {"kind":"entered","run":"r1","state":"Gather.Fetching","t":0}
 {"args":{"from":"b"},"invoke":1,"kind":"invoke.started","run":"r1","src":"fetch","state":"Gather.Fetching","t":0}
 {"event":{"invoke":1,"kind":"invoke.done","value":{"items":[{"value":7,"wait":250}],"next":"p2"}},"kind":"event","run":"r1","t":0}
-{"from":"Gather.Fetching","index":0,"kind":"transition","run":"r1","t":0,"to":"Gather.Done"}
+{"from":"Gather.Fetching","index":0,"kind":"transition","run":"r1","t":0,"to":["Gather.Done"]}
 {"kind":"exited","run":"r1","state":"Gather.Fetching","t":0}
 {"kind":"set","run":"r1","t":0,"value":{"items":[{"value":7,"wait":250}],"next":"p2"},"var":"page"}
 {"action":"log","args":{"page":{"items":[{"value":7,"wait":250}],"next":"p2"},"total":{"1":4,"2":5,"__proto__":3,"x":1}},"kind":"action","run":"r1","t":0}

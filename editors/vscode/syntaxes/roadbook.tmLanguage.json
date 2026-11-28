@@ -324,10 +324,14 @@
     },
 
     "target": {
-      "match": "(->)\\s*([A-Z][A-Za-z0-9]*(?:\\.[A-Z][A-Za-z0-9]*)*)",
+      "comment": "One target or several, separated by commas, each with an optional leading dot (an internal transition).",
+      "match": "(->)\\s*(\\.?[A-Z][A-Za-z0-9]*(?:\\.[A-Z][A-Za-z0-9]*)*(?:\\s*,\\s*\\.?[A-Z][A-Za-z0-9]*(?:\\.[A-Z][A-Za-z0-9]*)*)*)",
       "captures": {
         "1": { "name": "keyword.operator.arrow.roadbook" },
-        "2": { "name": "entity.name.type.state.roadbook" }
+        "2": {
+          "name": "entity.name.type.state.roadbook",
+          "patterns": [{ "match": ",", "name": "punctuation.separator.comma.roadbook" }]
+        }
       }
     },
 

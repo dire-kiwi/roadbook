@@ -30,7 +30,7 @@ export function coverageMode(host: Host, el: HTMLElement, embedded: { name: stri
     const st = m ? findState(m, state) : null
     const t = st?.transitions[index]
     if (!t) return `${short(state)} #${index}`
-    return `${short(state)}: ${triggerText(t.trigger)}${t.guard ? ` [${t.guard.text}]` : ''} → ${t.target ? short(t.target) : '(internal)'}`
+    return `${short(state)}: ${triggerText(t.trigger)}${t.guard ? ` [${t.guard.text}]` : ''} → ${t.targets.length ? t.targets.map(short).join(', ') : '(no target)'}`
   }
 
   const never = () => {

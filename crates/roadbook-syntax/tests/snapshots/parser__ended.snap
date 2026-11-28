@@ -36,8 +36,10 @@ items:
                         - enum:
                             - Ended
                             - Defect
-                    target:
-                      - A
+                    targets:
+                      - dot: false
+                        path:
+                          - A
                     effects: []
                     ignore: false
             - state:
@@ -60,8 +62,10 @@ items:
                                   - enum:
                                       - Ended
                                       - Done
-                              target:
-                                - A
+                              targets:
+                                - dot: false
+                                  path:
+                                    - A
                               effects:
                                 - set:
                                     var: ended
@@ -72,8 +76,10 @@ items:
                                         - int: 1
                               ignore: false
                             - guard: ~
-                              target:
-                                - A
+                              targets:
+                                - dot: false
+                                  path:
+                                    - A
                               effects: []
                               ignore: false
 comments: []

@@ -1,0 +1,66 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Several targets enter several regions of a parallel state at once, the other regions by
+  default entry; written with dots in the parallel state, they exit and enter only those
+  regions.
+-->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Player" datamodel="roadbook" initial="Player_Idle">
+  <state id="Player_Idle">
+    <transition event="Wake" target="Player_On_Playback_Paused Player_On_Volume_Muted"/>
+    <transition event="Resume" target="Player_On_Playback_Last Player_On_Volume_Loud"/>
+  </state>
+  <parallel id="Player_On">
+    <onentry>
+      <rb:do action="log">
+        <param name="what" expr="&quot;enter On&quot;"/>
+      </rb:do>
+    </onentry>
+    <onexit>
+      <rb:do action="log">
+        <param name="what" expr="&quot;exit On&quot;"/>
+      </rb:do>
+    </onexit>
+    <!-- SCXML takes an internal transition of a parallel state as external, leaving every region; Roadbook leaves only the regions its targets are in -->
+    <transition event="Sleep" target="Player_On_Playback_Paused Player_On_Volume_Muted" type="internal"/>
+    <transition event="Off" target="Player_Idle"/>
+    <state id="Player_On_Playback" initial="Player_On_Playback_Playing">
+      <history id="Player_On_Playback_Last" type="shallow">
+        <transition target="Player_On_Playback_Playing"/>
+      </history>
+      <state id="Player_On_Playback_Playing"/>
+      <state id="Player_On_Playback_Paused">
+        <transition event="Play" target="Player_On_Playback_Playing"/>
+      </state>
+    </state>
+    <state id="Player_On_Volume" initial="Player_On_Volume_Normal">
+      <state id="Player_On_Volume_Normal"/>
+      <state id="Player_On_Volume_Muted">
+        <transition event="Unmute" target="Player_On_Volume_Normal"/>
+      </state>
+      <state id="Player_On_Volume_Loud"/>
+    </state>
+    <state id="Player_On_Light">
+      <onentry>
+        <rb:do action="log">
+          <param name="what" expr="&quot;enter Light&quot;"/>
+        </rb:do>
+        <send id="Player_On_Light_after_0" event="roadbook.after.Player_On_Light.0" delay="1000ms"/>
+      </onentry>
+      <onexit>
+        <cancel sendid="Player_On_Light_after_0"/>
+        <rb:do action="log">
+          <param name="what" expr="&quot;exit Light&quot;"/>
+        </rb:do>
+      </onexit>
+      <transition event="roadbook.after.Player_On_Light.0" type="internal">
+        <rb:do action="log">
+          <param name="what" expr="&quot;tick&quot;"/>
+        </rb:do>
+      </transition>
+    </state>
+  </parallel>
+</scxml>

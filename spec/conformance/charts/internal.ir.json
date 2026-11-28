@@ -1,0 +1,771 @@
+{
+  "irVersion": "0.9",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/internal.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {
+    "keepAlive": {
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 17
+      }
+    }
+  },
+  "machines": {
+    "Kept": {
+      "doc": "`Session` keeps its timer and its invoke when an internal transition changes the states\nbelow it; an external one restarts both.",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 46,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Open": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 13
+          }
+        },
+        "Home": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 13
+          }
+        },
+        "Review": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 15
+          }
+        },
+        "Restart": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 16
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Kept",
+        "name": "Kept",
+        "kind": "compound",
+        "doc": "`Session` keeps its timer and its invoke when an internal transition changes the states\nbelow it; an external one restarts both.",
+        "span": {
+          "file": 0,
+          "line": 9,
+          "col": 1,
+          "endLine": 46,
+          "endCol": 2
+        },
+        "initial": "Kept.Session",
+        "states": [
+          {
+            "id": "Kept.Session",
+            "name": "Session",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 17,
+              "col": 3,
+              "endLine": 43,
+              "endCol": 4
+            },
+            "initial": "Kept.Session.Browsing",
+            "states": [
+              {
+                "id": "Kept.Session.Browsing",
+                "name": "Browsing",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 34,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "enter Browsing",
+                        "type": "string",
+                        "text": "\"enter Browsing\""
+                      }
+                    ]
+                  }
+                ],
+                "exit": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "exit Browsing",
+                        "type": "string",
+                        "text": "\"exit Browsing\""
+                      }
+                    ]
+                  }
+                ],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Open"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "targets": [
+                      "Kept.Session.Cart"
+                    ],
+                    "internal": false,
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 33,
+                      "col": 7,
+                      "endLine": 33,
+                      "endCol": 22
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Kept.Session.Cart",
+                "name": "Cart",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 36,
+                  "col": 5,
+                  "endLine": 42,
+                  "endCol": 6
+                },
+                "initial": "Kept.Session.Cart.Editing",
+                "states": [
+                  {
+                    "id": "Kept.Session.Cart.Editing",
+                    "name": "Editing",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 40,
+                      "col": 7,
+                      "endLine": 40,
+                      "endCol": 25
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Kept.Session.Cart.Reviewing",
+                    "name": "Reviewing",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 41,
+                      "col": 7,
+                      "endLine": 41,
+                      "endCol": 25
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "enter Cart",
+                        "type": "string",
+                        "text": "\"enter Cart\""
+                      }
+                    ]
+                  }
+                ],
+                "exit": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "exit Cart",
+                        "type": "string",
+                        "text": "\"exit Cart\""
+                      }
+                    ]
+                  }
+                ],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "enter Session",
+                    "type": "string",
+                    "text": "\"enter Session\""
+                  }
+                ]
+              }
+            ],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "exit Session",
+                    "type": "string",
+                    "text": "\"exit Session\""
+                  }
+                ]
+              }
+            ],
+            "invoke": {
+              "kind": "task",
+              "src": "keepAlive",
+              "to": null,
+              "as": null,
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 20,
+                "col": 5,
+                "endLine": 22,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Kept.TimedOut"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 7,
+                  "endLine": 21,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 1800000,
+                    "type": "duration",
+                    "text": "30m"
+                  }
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Kept.TimedOut"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 5,
+                  "endLine": 23,
+                  "endCol": 27
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Home"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [
+                  "Kept.Session.Browsing"
+                ],
+                "internal": true,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 24,
+                  "col": 5,
+                  "endLine": 24,
+                  "endCol": 28
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Review"
+                },
+                "group": 3,
+                "guard": null,
+                "targets": [
+                  "Kept.Session.Cart.Reviewing"
+                ],
+                "internal": true,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 5,
+                  "endLine": 25,
+                  "endCol": 34
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Restart"
+                },
+                "group": 4,
+                "guard": null,
+                "targets": [
+                  "Kept.Session"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 26,
+                  "endCol": 26
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Kept.TimedOut",
+            "name": "TimedOut",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 45,
+              "col": 3,
+              "endLine": 45,
+              "endCol": 26
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:85a6de18517f5021fbffd6f93b3f86ca357626321ee360785c9bba37e78932a1"
+    },
+    "Again": {
+      "doc": "An internal transition that exits a final state takes back its parent's completion: the\nfirst time `Work` ends, `S`'s `always` goes back into it before `S`'s `done` is tried.",
+      "span": {
+        "file": 0,
+        "line": 50,
+        "col": 1,
+        "endLine": 69,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "tries",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 51,
+            "col": 3,
+            "endLine": 51,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Finish": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 53,
+            "col": 3,
+            "endLine": 53,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Again",
+        "name": "Again",
+        "kind": "compound",
+        "doc": "An internal transition that exits a final state takes back its parent's completion: the\nfirst time `Work` ends, `S`'s `always` goes back into it before `S`'s `done` is tried.",
+        "span": {
+          "file": 0,
+          "line": 50,
+          "col": 1,
+          "endLine": 69,
+          "endCol": 2
+        },
+        "initial": "Again.S",
+        "states": [
+          {
+            "id": "Again.S",
+            "name": "S",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 57,
+              "col": 3,
+              "endLine": 66,
+              "endCol": 4
+            },
+            "initial": "Again.S.Work",
+            "states": [
+              {
+                "id": "Again.S.Work",
+                "name": "Work",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 63,
+                  "col": 5,
+                  "endLine": 63,
+                  "endCol": 60
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Finish"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "targets": [
+                      "Again.S.Done"
+                    ],
+                    "internal": false,
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "tries",
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "tries"
+                              ],
+                              "type": "int",
+                              "text": "tries"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "tries + 1"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 63,
+                      "col": 18,
+                      "endLine": 63,
+                      "endCol": 58
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Again.S.Done",
+                "name": "Done",
+                "kind": "final",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 65,
+                  "col": 5,
+                  "endLine": 65,
+                  "endCol": 46
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "done",
+                        "type": "string",
+                        "text": "\"done\""
+                      }
+                    ]
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "tries"
+                      ],
+                      "type": "int",
+                      "text": "tries"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 1,
+                      "type": "int",
+                      "text": "1"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "tries == 1"
+                },
+                "targets": [
+                  "Again.S.Work"
+                ],
+                "internal": true,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "tries",
+                    "value": {
+                      "kind": "lit",
+                      "value": 2,
+                      "type": "int",
+                      "text": "2"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 58,
+                  "col": 5,
+                  "endLine": 58,
+                  "endCol": 49
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "done"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Again.Out"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 59,
+                  "col": 5,
+                  "endLine": 59,
+                  "endCol": 32
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Again.Out",
+            "name": "Out",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 68,
+              "col": 3,
+              "endLine": 68,
+              "endCol": 21
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:5e9c36eee335f20057f26ad9a4f83ad7d5c499894aeff8f840f60f7b91c476a9"
+    }
+  }
+}

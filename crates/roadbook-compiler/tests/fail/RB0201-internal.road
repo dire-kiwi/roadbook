@@ -1,0 +1,23 @@
+error Busy
+task charge() ! Busy
+
+machine M() {
+  event Go
+  event Back
+  initial S
+  state S {
+    initial A
+    on Go -> .Missing
+    state A { on Back -> .S }
+  }
+  state R {
+    invoke charge() retry 2 on Busy {
+      done -> .Attempt
+      fail Busy -> S
+    }
+  }
+}
+
+// expect: RB0201 at 10:15
+// expect: RB0201 at 11:27
+// expect: RB0201 at 15:16

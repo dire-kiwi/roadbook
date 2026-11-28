@@ -779,20 +779,24 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         kept.into_iter().map(|(t, _)| t).collect()
     }
 
-    fn target(&self, (source, index): Tr) -> Option<usize> {
-        self.idx.targets[source][index]
+    fn targets(&self, (source, index): Tr) -> &[usize] {
+        &self.idx.targets[source][index]
     }
 
-    /// The domain of a transition from `source` to `target`: the root for one of the root's,
-    /// else the nearest proper ancestor of `source` that is a compound state and a proper
-    /// ancestor of `target`. Never a parallel state.
-    fn domain(&self, source: usize, target: usize) -> usize {
-        if source == 0 {
-            return 0;
+    /// The domain of a transition with targets: the root for one of the root's, the source
+    /// for an internal one, else the nearest proper ancestor of the source that is a compound
+    /// state and a proper ancestor of every target. Only an internal transition's domain can
+    /// be a parallel state.
+    fn domain(&self, (source, index): Tr) -> usize {
+        if source == 0 || self.state(source).transitions[index].internal {
+            return source;
         }
+        let targets = self.targets((source, index));
         let mut cur = self.idx.parents[source];
         while let Some(x) = cur {
-            if self.state(x).kind == StateKind::Compound && self.idx.is_ancestor(x, target) {
+            if self.state(x).kind == StateKind::Compound
+                && targets.iter().all(|&t| self.idx.is_ancestor(x, t))
+            {
                 return x;
             }
             cur = self.idx.parents[x];
@@ -800,77 +804,65 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         0
     }
 
-    /// The active states a transition exits, in document order: none for one with no target.
+    /// The active states a transition exits, in document order: none for one with no target,
+    /// the active proper descendants of its domain otherwise. For a parallel domain, only those
+    /// in the regions the targets are in (every region, for a history state of the domain).
     fn exit_set(&self, t: Tr) -> Vec<usize> {
-        let Some(target) = self.target(t) else {
+        let targets = self.targets(t);
+        if targets.is_empty() {
             return Vec::new();
-        };
-        let domain = self.domain(t.0, target);
+        }
+        let domain = self.domain(t);
+        if self.state(domain).kind != StateKind::Parallel {
+            return self
+                .active
+                .iter()
+                .copied()
+                .filter(|&s| self.idx.is_ancestor(domain, s))
+                .collect();
+        }
+        let every = targets
+            .iter()
+            .any(|&x| self.state(x).kind.is_history() && self.idx.parents[x] == Some(domain));
+        let regions: Vec<usize> = self.idx.children[domain]
+            .iter()
+            .copied()
+            .filter(|&c| {
+                every
+                    || targets
+                        .iter()
+                        .any(|&x| x == c || self.idx.is_ancestor(c, x))
+            })
+            .collect();
         self.active
             .iter()
             .copied()
-            .filter(|&s| self.idx.is_ancestor(domain, s))
+            .filter(|&s| {
+                regions
+                    .iter()
+                    .any(|&r| r == s || self.idx.is_ancestor(r, s))
+            })
             .collect()
     }
 
-    /// The states a transition with a target enters: the path from just below its domain to
-    /// the target, the target's default entry, and every other region of a parallel state on
-    /// the path by default entry.
-    fn entry_set(&self, t: Tr, target: usize) -> Vec<usize> {
-        if self.state(target).kind.is_history() {
-            return self.history_entry_set(t, target);
-        }
-        let domain = self.domain(t.0, target);
-        let mut path = Vec::new();
-        let mut cur = Some(target);
-        while let Some(c) = cur {
-            if c == domain {
-                break;
-            }
-            path.push(c);
-            cur = self.idx.parents[c];
-        }
-        path.reverse();
-        let mut set = path.clone();
-        self.default_entry_into(target, &mut set);
-        for &p in &path {
-            if p != target && self.state(p).kind == StateKind::Parallel {
-                for &c in &self.idx.children[p] {
-                    if !path.contains(&c) {
-                        set.push(c);
-                        self.default_entry_into(c, &mut set);
-                    }
-                }
-            }
-        }
-        set
-    }
-
-    /// `entrySet` for a transition to history state `h`: the paths from just below the domain
-    /// to what `h` recorded (or to the states its parent's default entry starts with), their
-    /// default entries, and every region of a parallel state among them that none of them is
-    /// in, by default entry. Unsorted.
-    fn history_entry_set(&self, t: Tr, h: usize) -> Vec<usize> {
-        let domain = self.domain(t.0, h);
-        let p = self.idx.parents[h].expect("a history state has a parent");
-        let parent = self.state(p);
-        let targets: Vec<usize> = match self.snap.history.get(&self.state(h).id) {
-            Some(record) => record.iter().map(|id| self.index_of(id)).collect(),
-            None if parent.kind == StateKind::Compound => {
-                parent.initial.iter().map(|id| self.index_of(id)).collect()
-            }
-            None => self.idx.children[p].clone(),
-        };
+    /// The states a transition with targets enters, unsorted: for each target in turn, the
+    /// states it stands for (what a history state restores), the paths from just below the
+    /// domain down to them and their default entries; then every region of a parallel state
+    /// among them that none of them is in, by default entry.
+    fn entry_set(&self, t: Tr) -> Vec<usize> {
+        let domain = self.domain(t);
         let mut set = Vec::new();
-        for r in targets {
-            let mut cur = Some(r);
-            while let Some(c) = cur.filter(|&c| c != domain) {
-                if !set.contains(&c) {
-                    set.push(c);
+        for &x in self.targets(t) {
+            for r in self.stands_for(x) {
+                let mut cur = Some(r);
+                while let Some(c) = cur.filter(|&c| c != domain) {
+                    if !set.contains(&c) {
+                        set.push(c);
+                    }
+                    cur = self.idx.parents[c];
                 }
-                cur = self.idx.parents[c];
+                self.default_entry_into(r, &mut set);
             }
-            self.default_entry_into(r, &mut set);
         }
         let mut i = 0;
         while i < set.len() {
@@ -887,6 +879,23 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             i += 1;
         }
         set
+    }
+
+    /// The states target `x` stands for: `x`, or for a history state `h` with parent `p`,
+    /// what it recorded, or else the states `p`'s default entry starts with.
+    fn stands_for(&self, x: usize) -> Vec<usize> {
+        if !self.state(x).kind.is_history() {
+            return vec![x];
+        }
+        let p = self.idx.parents[x].expect("a history state has a parent");
+        let parent = self.state(p);
+        match self.snap.history.get(&self.state(x).id) {
+            Some(record) => record.iter().map(|id| self.index_of(id)).collect(),
+            None if parent.kind == StateKind::Compound => {
+                parent.initial.iter().map(|id| self.index_of(id)).collect()
+            }
+            None => self.idx.children[p].clone(),
+        }
     }
 
     /// Whether `address` names the sender `from` of an emitted event, which this run's
@@ -982,7 +991,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             self.trace(Record::Transition {
                 from: state.id.clone(),
                 index,
-                to: state.transitions[index].target.clone(),
+                to: state.transitions[index].targets.clone(),
             });
         }
         let mut exits: Vec<usize> = t.iter().flat_map(|&x| self.exit_set(x)).collect();
@@ -998,8 +1007,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         }
         let mut entries: Vec<usize> = Vec::new();
         for &x in t {
-            if let Some(target) = self.target(x) {
-                entries.extend(self.entry_set(x, target));
+            if !self.targets(x).is_empty() {
+                entries.extend(self.entry_set(x));
             }
         }
         entries.sort_unstable();
@@ -1062,7 +1071,19 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         }
         self.run_effects(&self.state(s).exit, &[])?;
         self.active.retain(|&a| a != s);
-        self.completion.retain(|&c| c != s);
+        // A state's completion goes with it, and so does every completion of a state around
+        // it: an internal transition that exits a final state takes back its parent's.
+        let parents = &self.idx.parents;
+        self.completion.retain(|&c| {
+            let mut up = Some(s);
+            while let Some(x) = up {
+                if x == c {
+                    return false;
+                }
+                up = parents[x];
+            }
+            true
+        });
         self.trace(Record::Exited { state: id });
         Ok(())
     }

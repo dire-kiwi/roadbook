@@ -45,7 +45,7 @@ export interface SatisfactionSurveyDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "examples/large/survey.road",
@@ -904,7 +904,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "SatisfactionSurvey.Waiting",
+                "targets": [
+                  "SatisfactionSurvey.Waiting"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -934,7 +937,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "SatisfactionSurvey.NoAnswer",
+                "targets": [
+                  "SatisfactionSurvey.NoAnswer"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -978,7 +984,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "SatisfactionSurvey.Polling",
+                "targets": [
+                  "SatisfactionSurvey.Polling"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1038,7 +1047,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "SatisfactionSurvey.Answered",
+                "targets": [
+                  "SatisfactionSurvey.Answered"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1089,7 +1101,10 @@ const ir: unknown = {
                   "type": "bool",
                   "text": "polls < 7"
                 },
-                "target": "SatisfactionSurvey.Waiting",
+                "targets": [
+                  "SatisfactionSurvey.Waiting"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1133,7 +1148,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "SatisfactionSurvey.NoAnswer",
+                "targets": [
+                  "SatisfactionSurvey.NoAnswer"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

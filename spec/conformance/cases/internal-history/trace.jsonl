@@ -1,0 +1,33 @@
+{"input":{},"ir":"sha256:689ef2d16a15690ee87a1d017613d92e2bb054604cb6a57b5672e903f3b291c7","kind":"started","machine":"Restore","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Restore","t":0}
+{"kind":"entered","run":"r1","state":"Restore.C","t":0}
+{"action":"log","args":{"what":"enter C"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Restore.C.A","t":0}
+{"event":{"kind":"event","value":{"_tag":"Undo"}},"kind":"event","run":"r1","t":0}
+{"from":"Restore.C","index":1,"kind":"transition","run":"r1","t":0,"to":["Restore.C.H"]}
+{"kind":"exited","run":"r1","state":"Restore.C.A","t":0}
+{"kind":"entered","run":"r1","state":"Restore.C.A","t":0}
+{"event":{"kind":"event","value":{"_tag":"Next"}},"kind":"event","run":"r1","t":0}
+{"from":"Restore.C.A","index":0,"kind":"transition","run":"r1","t":0,"to":["Restore.C.B"]}
+{"kind":"exited","run":"r1","state":"Restore.C.A","t":0}
+{"kind":"entered","run":"r1","state":"Restore.C.B","t":0}
+{"event":{"kind":"event","value":{"_tag":"Leave"}},"kind":"event","run":"r1","t":0}
+{"from":"Restore.C","index":0,"kind":"transition","run":"r1","t":0,"to":["Restore.Out"]}
+{"kind":"exited","run":"r1","state":"Restore.C.B","t":0}
+{"action":"log","args":{"what":"exit C"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Restore.C","t":0}
+{"kind":"entered","run":"r1","state":"Restore.Out","t":0}
+{"event":{"kind":"event","value":{"_tag":"Back"}},"kind":"event","run":"r1","t":0}
+{"from":"Restore.Out","index":0,"kind":"transition","run":"r1","t":0,"to":["Restore.C.H"]}
+{"kind":"exited","run":"r1","state":"Restore.Out","t":0}
+{"kind":"entered","run":"r1","state":"Restore.C","t":0}
+{"action":"log","args":{"what":"enter C"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Restore.C.B","t":0}
+{"event":{"kind":"event","value":{"_tag":"Prev"}},"kind":"event","run":"r1","t":0}
+{"from":"Restore.C.B","index":0,"kind":"transition","run":"r1","t":0,"to":["Restore.C.A"]}
+{"kind":"exited","run":"r1","state":"Restore.C.B","t":0}
+{"kind":"entered","run":"r1","state":"Restore.C.A","t":0}
+{"event":{"kind":"event","value":{"_tag":"Undo"}},"kind":"event","run":"r1","t":0}
+{"from":"Restore.C","index":1,"kind":"transition","run":"r1","t":0,"to":["Restore.C.H"]}
+{"kind":"exited","run":"r1","state":"Restore.C.A","t":0}
+{"kind":"entered","run":"r1","state":"Restore.C.B","t":0}

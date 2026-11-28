@@ -53,7 +53,7 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
       effects(s.entry, `entry of ${machine}.${short(s.id)}`, state)
       effects(s.exit, `exit of ${machine}.${short(s.id)}`, state)
       s.transitions.forEach((t, index) => {
-        const where = `${machine}.${short(s.id)} → ${t.target ? short(t.target) : '(stays)'}`
+        const where = `${machine}.${short(s.id)} → ${t.targets.length ? t.targets.map(short).join(', ') : '(stays)'}`
         const target = { type: 'transition' as const, state: s.id, index }
         if (t.trigger.kind === 'event' || t.trigger.kind === 'emitted') out.push({ kind: 'event', name: t.trigger.event, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
         if (t.trigger.kind === 'call') out.push({ kind: 'call', name: t.trigger.call, label: `on ${t.trigger.call}: ${where}`, machine, target })

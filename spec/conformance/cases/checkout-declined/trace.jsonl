@@ -3,7 +3,7 @@
 {"kind":"entered","run":"r1","state":"Checkout.Charging","t":0}
 {"args":{"order":{"id":"o1","items":[{"qty":2,"sku":"apple"}],"totalCents":4200},"user":{"id":"u1","role":"Customer"}},"invoke":1,"kind":"invoke.started","run":"r1","src":"chargeCard","state":"Checkout.Charging","t":0}
 {"event":{"error":{"_tag":"CardDeclined","reason":"insufficient funds"},"invoke":1,"kind":"invoke.fail"},"kind":"event","run":"r1","t":0}
-{"from":"Checkout.Charging","index":1,"kind":"transition","run":"r1","t":0,"to":"Checkout.Declined"}
+{"from":"Checkout.Charging","index":1,"kind":"transition","run":"r1","t":0,"to":["Checkout.Declined"]}
 {"kind":"exited","run":"r1","state":"Checkout.Charging","t":0}
 {"kind":"set","run":"r1","t":0,"value":{"_tag":"CardDeclined","reason":"insufficient funds"},"var":"declined"}
 {"kind":"entered","run":"r1","state":"Checkout.Declined","t":0}

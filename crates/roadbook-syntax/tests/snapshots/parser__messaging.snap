@@ -43,8 +43,10 @@ items:
                           branches:
                             single:
                               guard: ~
-                              target:
-                                - B
+                              targets:
+                                - dot: false
+                                  path:
+                                    - B
                               effects:
                                 - emit:
                                     event: Done
@@ -57,7 +59,7 @@ items:
                       branches:
                         single:
                           guard: ~
-                          target: ~
+                          targets: []
                           effects:
                             - send:
                                 to: upload
@@ -72,7 +74,7 @@ items:
                       branches:
                         single:
                           guard: ~
-                          target: ~
+                          targets: []
                           effects:
                             - set:
                                 var: p
@@ -95,8 +97,10 @@ items:
                       branches:
                         single:
                           guard: ~
-                          target:
-                            - B
+                          targets:
+                            - dot: false
+                              path:
+                                - B
                           effects:
                             - send:
                                 to: peer

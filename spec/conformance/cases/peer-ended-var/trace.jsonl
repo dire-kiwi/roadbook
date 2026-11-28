@@ -2,7 +2,7 @@
 {"kind":"entered","run":"r1","state":"Inventory","t":0}
 {"kind":"entered","run":"r1","state":"Inventory.Open","t":0}
 {"event":{"kind":"event","value":{"_tag":"Close"}},"kind":"event","run":"r1","t":0}
-{"from":"Inventory.Open","index":0,"kind":"transition","run":"r1","t":0,"to":"Inventory.Closed"}
+{"from":"Inventory.Open","index":0,"kind":"transition","run":"r1","t":0,"to":["Inventory.Closed"]}
 {"kind":"exited","run":"r1","state":"Inventory.Open","t":0}
 {"kind":"entered","run":"r1","state":"Inventory.Closed","t":0}
 {"kind":"exited","run":"r1","state":"Inventory.Closed","t":0}
@@ -12,7 +12,7 @@
 {"kind":"entered","run":"r2","state":"Inventory","t":0}
 {"kind":"entered","run":"r2","state":"Inventory.Open","t":0}
 {"event":{"kind":"event","value":{"_tag":"Close"}},"kind":"event","run":"r2","t":0}
-{"from":"Inventory.Open","index":0,"kind":"transition","run":"r2","t":0,"to":"Inventory.Closed"}
+{"from":"Inventory.Open","index":0,"kind":"transition","run":"r2","t":0,"to":["Inventory.Closed"]}
 {"kind":"exited","run":"r2","state":"Inventory.Open","t":0}
 {"kind":"entered","run":"r2","state":"Inventory.Closed","t":0}
 {"kind":"exited","run":"r2","state":"Inventory.Closed","t":0}
@@ -22,11 +22,11 @@
 {"kind":"entered","run":"r3","state":"Switcher","t":0}
 {"kind":"entered","run":"r3","state":"Switcher.Watching","t":0}
 {"event":{"kind":"event","value":{"_tag":"Swap"}},"kind":"event","run":"r3","t":0}
-{"from":"Switcher.Watching","index":0,"kind":"transition","run":"r3","t":0,"to":null}
+{"from":"Switcher.Watching","index":0,"kind":"transition","run":"r3","t":0,"to":[]}
 {"kind":"set","run":"r3","t":0,"value":"r2","var":"current"}
 {"event":{"from":"r1","kind":"ended","status":"Done"},"kind":"dropped","run":"r3","t":0}
 {"event":{"from":"r2","kind":"ended","status":"Done"},"kind":"event","run":"r3","t":0}
-{"from":"Switcher.Watching","index":1,"kind":"transition","run":"r3","t":0,"to":"Switcher.Gone"}
+{"from":"Switcher.Watching","index":1,"kind":"transition","run":"r3","t":0,"to":["Switcher.Gone"]}
 {"kind":"exited","run":"r3","state":"Switcher.Watching","t":0}
 {"action":"note","args":{"status":"Done"},"kind":"action","run":"r3","t":0}
 {"kind":"entered","run":"r3","state":"Switcher.Gone","t":0}

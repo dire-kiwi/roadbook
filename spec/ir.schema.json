@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.8" },
+    "irVersion": { "const": "0.9" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -442,12 +442,13 @@
     "transition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["trigger", "group", "guard", "target", "effects", "span"],
+      "required": ["trigger", "group", "guard", "targets", "internal", "effects", "span"],
       "properties": {
         "trigger": { "$ref": "#/$defs/trigger" },
         "group": { "type": "integer", "minimum": 0 },
         "guard": { "oneOf": [{ "$ref": "#/$defs/expr" }, { "type": "null" }] },
-        "target": { "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }] },
+        "targets": { "type": "array", "items": { "$ref": "#/$defs/stateId" } },
+        "internal": { "type": "boolean" },
         "effects": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
         "span": { "$ref": "#/$defs/span" }
       }

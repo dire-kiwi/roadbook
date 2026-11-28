@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/retry.road",
@@ -315,7 +315,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Fetcher.Saving",
+                    "targets": [
+                      "Fetcher.Saving"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -366,7 +369,10 @@
                       "type": "bool",
                       "text": "loadingAttempt < 2"
                     },
-                    "target": "Fetcher.Loading.Backoff",
+                    "targets": [
+                      "Fetcher.Loading.Backoff"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -410,7 +416,10 @@
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "Fetcher.Waiting",
+                    "targets": [
+                      "Fetcher.Waiting"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -427,7 +436,10 @@
                     },
                     "group": 2,
                     "guard": null,
-                    "target": "Fetcher.Missing",
+                    "targets": [
+                      "Fetcher.Missing"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -495,7 +507,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Fetcher.Loading.Attempt",
+                    "targets": [
+                      "Fetcher.Loading.Attempt"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -562,7 +577,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Fetcher.TimedOut",
+                "targets": [
+                  "Fetcher.TimedOut"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -601,7 +619,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Fetcher.Loading",
+                "targets": [
+                  "Fetcher.Loading"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -675,7 +696,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Fetcher.Saved",
+                    "targets": [
+                      "Fetcher.Saved"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -713,7 +737,10 @@
                       "type": "bool",
                       "text": "savingAttempt < 1"
                     },
-                    "target": "Fetcher.Saving.Attempt",
+                    "targets": [
+                      "Fetcher.Saving.Attempt"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -757,7 +784,10 @@
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "Fetcher.Unsaved",
+                    "targets": [
+                      "Fetcher.Unsaved"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,

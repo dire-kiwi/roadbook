@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/gate.road",
@@ -225,7 +225,8 @@
                       "type": "bool",
                       "text": "event.amount < 0"
                     },
-                    "target": null,
+                    "targets": [],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "do",
@@ -315,7 +316,8 @@
                       "type": "bool",
                       "text": "count > 0 and big(event.amount + 1)"
                     },
-                    "target": null,
+                    "targets": [],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -426,7 +428,8 @@
                       "type": "bool",
                       "text": "event.amount == 0 or trusted(who, event.amount)"
                     },
-                    "target": null,
+                    "targets": [],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "do",
@@ -481,7 +484,8 @@
                   "type": "bool",
                   "text": "big(event.amount)"
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -537,7 +541,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -567,7 +572,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Gate.Closed",
+                "targets": [
+                  "Gate.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

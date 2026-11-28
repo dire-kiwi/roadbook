@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/nest.road",
@@ -270,7 +270,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Nest.Away",
+                        "targets": [
+                          "Nest.Away"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "set",
@@ -356,7 +359,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Nest.Away",
+                    "targets": [
+                      "Nest.Away"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -373,7 +379,10 @@
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "Nest.Outer.Middle.Inner",
+                    "targets": [
+                      "Nest.Outer.Middle.Inner"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "do",
@@ -488,7 +497,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Nest.Outer",
+                "targets": [
+                  "Nest.Outer"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -526,7 +538,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -590,7 +603,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Nest.Away",
+                "targets": [
+                  "Nest.Away"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",

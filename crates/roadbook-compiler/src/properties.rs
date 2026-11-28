@@ -97,8 +97,8 @@ pub struct Step {
     pub trigger: String,
     /// The guard's text, `else` for the unguarded last branch of a guarded block.
     pub guard: Option<String>,
-    /// The target's id; `None` for an internal transition.
-    pub to: Option<String>,
+    /// The targets' ids, as the IR's `targets`: `[]` for a transition with no target.
+    pub to: Vec<String>,
 }
 
 /// A check and its verdict.
@@ -586,7 +586,7 @@ impl<'a> Eval<'a> {
                         index: t.index,
                         trigger: trigger_text(&tr.trigger),
                         guard: guard_text(state, t.index),
-                        to: tr.target.clone(),
+                        to: tr.targets.clone(),
                     });
                 }
                 parts.join(", ")
@@ -622,9 +622,12 @@ impl<'a> Eval<'a> {
             }
             for t in &edge.transitions {
                 let tr = &self.state(t.state).transitions[t.index];
-                let to = match &tr.target {
-                    Some(id) => format!(" -> {}", self.relative(id)),
-                    None => " (internal)".to_string(),
+                let to = if tr.targets.is_empty() {
+                    " (no target)".to_string()
+                } else {
+                    let targets: Vec<&str> =
+                        tr.targets.iter().map(|id| self.relative(id)).collect();
+                    format!(" -> {}", targets.join(", "))
                 };
                 let label = format!(
                     "{}. {}{to}",
@@ -968,14 +971,14 @@ machine M() {
                     index: 0,
                     trigger: "Go".into(),
                     guard: to("ok()"),
-                    to: to("M.Paying"),
+                    to: vec!["M.Paying".into()],
                 },
                 Step {
                     from: "M.Paying".into(),
                     index: 1,
                     trigger: "always".into(),
                     guard: None,
-                    to: to("M.Charged"),
+                    to: vec!["M.Charged".into()],
                 },
             ]
         );

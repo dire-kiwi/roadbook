@@ -1,0 +1,421 @@
+{
+  "irVersion": "0.9",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/internal-parallel.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 3,
+        "col": 1,
+        "endLine": 3,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Sides": {
+      "doc": "Internal transitions in a parallel state: one written in a region stays in it, so another\nregion takes the same event too; one written in the parallel state exits and enters only\nthe regions it targets.",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 38,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "T": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 10
+          }
+        },
+        "Redo": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 13
+          }
+        },
+        "Reset": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Sides",
+        "name": "Sides",
+        "kind": "compound",
+        "doc": "Internal transitions in a parallel state: one written in a region stays in it, so another\nregion takes the same event too; one written in the parallel state exits and enters only\nthe regions it targets.",
+        "span": {
+          "file": 0,
+          "line": 8,
+          "col": 1,
+          "endLine": 38,
+          "endCol": 2
+        },
+        "initial": "Sides.P",
+        "states": [
+          {
+            "id": "Sides.P",
+            "name": "P",
+            "kind": "parallel",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 15,
+              "col": 3,
+              "endLine": 37,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [
+              {
+                "id": "Sides.P.A",
+                "name": "A",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 6
+                },
+                "initial": "Sides.P.A.A1",
+                "states": [
+                  {
+                    "id": "Sides.P.A.A1",
+                    "name": "A1",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 26,
+                      "col": 7,
+                      "endLine": 26,
+                      "endCol": 18
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Sides.P.A.A2",
+                    "name": "A2",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 27,
+                      "col": 7,
+                      "endLine": 27,
+                      "endCol": 18
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "enter A",
+                        "type": "string",
+                        "text": "\"enter A\""
+                      }
+                    ]
+                  }
+                ],
+                "exit": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "exit A",
+                        "type": "string",
+                        "text": "\"exit A\""
+                      }
+                    ]
+                  }
+                ],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "T"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "targets": [
+                      "Sides.P.A.A1"
+                    ],
+                    "internal": true,
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 24,
+                      "col": 7,
+                      "endLine": 24,
+                      "endCol": 18
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Sides.P.B",
+                "name": "B",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 36,
+                  "endCol": 6
+                },
+                "initial": "Sides.P.B.B1",
+                "states": [
+                  {
+                    "id": "Sides.P.B.B1",
+                    "name": "B1",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 34,
+                      "col": 7,
+                      "endLine": 34,
+                      "endCol": 30
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "T"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [
+                          "Sides.P.B.B2"
+                        ],
+                        "internal": false,
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 34,
+                          "col": 18,
+                          "endLine": 34,
+                          "endCol": 28
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Sides.P.B.B2",
+                    "name": "B2",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 35,
+                      "col": 7,
+                      "endLine": 35,
+                      "endCol": 18
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "enter B",
+                        "type": "string",
+                        "text": "\"enter B\""
+                      }
+                    ]
+                  }
+                ],
+                "exit": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "exit B",
+                        "type": "string",
+                        "text": "\"exit B\""
+                      }
+                    ]
+                  }
+                ],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "enter P",
+                    "type": "string",
+                    "text": "\"enter P\""
+                  }
+                ]
+              }
+            ],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "exit P",
+                    "type": "string",
+                    "text": "\"exit P\""
+                  }
+                ]
+              }
+            ],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Redo"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Sides.P.A.A2"
+                ],
+                "internal": true,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 5,
+                  "endLine": 18,
+                  "endCol": 22
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Reset"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Sides.P.B"
+                ],
+                "internal": true,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 19,
+                  "col": 5,
+                  "endLine": 19,
+                  "endCol": 19
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:28ea2e5b8f4cc3fc4f6b43faadb40c2a4bb1f092bd81ff7aae720771ca0402a9"
+    }
+  }
+}

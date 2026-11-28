@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/wizard.road",
@@ -133,7 +133,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Wizard.Form.Email",
+                    "targets": [
+                      "Wizard.Form.Email"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -199,7 +202,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Wizard.Form.Complete",
+                    "targets": [
+                      "Wizard.Form.Complete"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -285,7 +291,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Wizard.Review",
+                "targets": [
+                  "Wizard.Review"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -336,7 +345,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Wizard.Finished",
+                "targets": [
+                  "Wizard.Finished"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",

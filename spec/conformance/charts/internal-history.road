@@ -1,0 +1,31 @@
+// Conformance chart: an internal transition to a history state of its own source.
+
+action log(what: string)
+
+/// An internal transition to a history state of its own source restores what the source was
+/// in when it was last left, without leaving it.
+machine Restore() {
+  event Next
+  event Prev
+  event Leave
+  event Back
+  event Undo
+
+  initial C
+
+  state C {
+    entry do log("enter C")
+    exit do log("exit C")
+    on Leave -> Out
+    on Undo  -> .H
+
+    history H
+
+    initial A
+
+    state A { on Next -> B }
+    state B { on Prev -> A }
+  }
+
+  state Out { on Back -> C.H }
+}

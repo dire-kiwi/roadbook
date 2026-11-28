@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/root.road",
@@ -130,7 +130,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Top.B",
+                "targets": [
+                  "Top.B"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -174,7 +177,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Top.C",
+                "targets": [
+                  "Top.C"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -191,7 +197,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Top.C",
+                "targets": [
+                  "Top.C"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -292,7 +301,8 @@
             },
             "group": 0,
             "guard": null,
-            "target": null,
+            "targets": [],
+            "internal": false,
             "effects": [
               {
                 "kind": "set",
@@ -341,7 +351,10 @@
             },
             "group": 1,
             "guard": null,
-            "target": "Top.Late",
+            "targets": [
+              "Top.Late"
+            ],
+            "internal": false,
             "effects": [],
             "span": {
               "file": 0,

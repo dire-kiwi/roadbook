@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/booth.road",
@@ -152,7 +152,8 @@
                   "type": "bool",
                   "text": "tries < 2"
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -226,7 +227,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "reply",
@@ -413,7 +415,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Guest.Booked",
+                    "targets": [
+                      "Guest.Booked"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -464,7 +469,10 @@
                       "type": "bool",
                       "text": "bookingAttempt < 2"
                     },
-                    "target": "Guest.Booking.Backoff",
+                    "targets": [
+                      "Guest.Booking.Backoff"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -508,7 +516,10 @@
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "Guest.Gave",
+                    "targets": [
+                      "Guest.Gave"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -525,7 +536,10 @@
                     },
                     "group": 2,
                     "guard": null,
-                    "target": "Guest.Gave",
+                    "targets": [
+                      "Guest.Gave"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -569,7 +583,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Guest.Booking.Attempt",
+                    "targets": [
+                      "Guest.Booking.Attempt"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,

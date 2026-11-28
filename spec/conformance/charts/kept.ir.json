@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/kept.road",
@@ -191,7 +191,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Tally.Napping",
+                "targets": [
+                  "Tally.Napping"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -208,7 +211,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -277,7 +281,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Tally.Done",
+                "targets": [
+                  "Tally.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -329,7 +336,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Tally.Counting",
+                "targets": [
+                  "Tally.Counting"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -398,7 +408,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Tally.Done",
+                "targets": [
+                  "Tally.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -585,7 +598,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Desk.Closed",
+                "targets": [
+                  "Desk.Closed"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -615,7 +631,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -663,7 +680,8 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -704,7 +722,8 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -876,7 +895,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Office.Shut",
+                "targets": [
+                  "Office.Shut"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -906,7 +928,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -954,7 +977,8 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1134,7 +1158,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Fetcher.Holding",
+                "targets": [
+                  "Fetcher.Holding"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1186,7 +1213,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Fetcher.Done",
+                "targets": [
+                  "Fetcher.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1326,7 +1356,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Errand.Finished",
+                "targets": [
+                  "Errand.Finished"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1343,7 +1376,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1520,7 +1554,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1551,7 +1586,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Safe.Gone",
+                "targets": [
+                  "Safe.Gone"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1711,7 +1749,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Vault.Empty",
+                "targets": [
+                  "Vault.Empty"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1728,7 +1769,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1776,7 +1818,8 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",

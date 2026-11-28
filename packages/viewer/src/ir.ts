@@ -144,7 +144,10 @@ export interface Transition {
   trigger: Trigger
   group: number
   guard: Expr | null
-  target: string | null
+  /** Target state ids, in the order written: `[]` for a transition with no target. */
+  targets: string[]
+  /** An internal transition (`-> .X`): its own state is not left. */
+  internal: boolean
   effects: Effect[]
   span: Span
 }
@@ -215,4 +218,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.8'
+export const IR_VERSION = '0.9'

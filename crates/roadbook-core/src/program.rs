@@ -34,8 +34,8 @@ pub(crate) struct MachineIndex {
     /// child: it is never active.
     pub children: Vec<Vec<usize>>,
     pub by_id: HashMap<String, usize>,
-    /// For each state, its transitions' targets' indices, in order (`None`: no target).
-    pub targets: Vec<Vec<Option<usize>>>,
+    /// For each state, its transitions' targets' indices, in order (`[]`: no target).
+    pub targets: Vec<Vec<Vec<usize>>>,
     /// For each state, its initial child's index, if it names one.
     pub initial: Vec<Option<usize>>,
     /// The emitted events the machine has an `on x.E` for, anywhere in it, by the sender's
@@ -104,10 +104,10 @@ impl Program {
                     .transitions
                     .iter()
                     .map(|t| {
-                        t.target
-                            .as_ref()
+                        t.targets
+                            .iter()
                             .map(|id| index(id, "the target", &s.id))
-                            .transpose()
+                            .collect::<Result<Vec<_>, _>>()
                     })
                     .collect::<Result<_, _>>()?;
                 let initial = s

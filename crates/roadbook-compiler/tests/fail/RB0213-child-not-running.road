@@ -30,8 +30,28 @@ machine M() {
   final state Done {}
 }
 
+// A transition between the regions of the invoking parallel state leaves it; an internal one
+// written in it does not.
+machine N() {
+  event Go
+  event Stay
+  initial P
+  parallel state P {
+    invoke Child() as child { done -> Done }
+    on Stay -> .B.B2  send child.Poke
+    state A { on Go -> P.B.B2  send child.Poke }
+    state B {
+      initial B1
+      state B1 {}
+      state B2 {}
+    }
+  }
+  final state Done {}
+}
+
 // expect: RB0213 at 14:16
 // expect: RB0213 at 15:15
 // expect: RB0213 at 17:26
 // expect: RB0213 at 20:28
 // expect: RB0213 at 26:33
+// expect: RB0213 at 42:37

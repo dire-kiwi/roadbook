@@ -2,24 +2,24 @@
 {"kind":"entered","run":"r1","state":"Logbook","t":0}
 {"kind":"entered","run":"r1","state":"Logbook.Open","t":0}
 {"event":{"from":"r2.1","kind":"message","message":1,"value":{"_tag":"Note","text":"worker stopped"}},"kind":"event","run":"r1","t":0}
-{"from":"Logbook.Open","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"from":"Logbook.Open","index":0,"kind":"transition","run":"r1","t":0,"to":[]}
 {"action":"log","args":{"text":"worker stopped"},"kind":"action","run":"r1","t":0}
 {"event":{"from":"r2.2","kind":"message","message":1,"value":{"_tag":"Note","text":"worker stopped"}},"kind":"event","run":"r1","t":0}
-{"from":"Logbook.Open","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"from":"Logbook.Open","index":0,"kind":"transition","run":"r1","t":0,"to":[]}
 {"action":"log","args":{"text":"worker stopped"},"kind":"action","run":"r1","t":0}
 {"input":{"book":"r1"},"ir":"sha256:6a2148ace642621faa59476c272a9966cd7b86feaaec99511b2f9a20930ea1fc","kind":"started","machine":"Boss","run":"r2","t":0}
 {"kind":"entered","run":"r2","state":"Boss","t":0}
 {"kind":"entered","run":"r2","state":"Boss.Watching","t":0}
 {"args":{"book":"r1"},"invoke":1,"kind":"invoke.started","run":"r2","src":"Worker","state":"Boss.Watching","t":0}
 {"event":{"kind":"event","value":{"_tag":"Restart"}},"kind":"event","run":"r2","t":0}
-{"from":"Boss.Watching","index":2,"kind":"transition","run":"r2","t":0,"to":"Boss.Watching"}
+{"from":"Boss.Watching","index":2,"kind":"transition","run":"r2","t":0,"to":["Boss.Watching"]}
 {"invoke":1,"kind":"invoke.cancelled","run":"r2","src":"Worker","state":"Boss.Watching","t":0}
 {"kind":"exited","run":"r2","state":"Boss.Watching","t":0}
 {"kind":"entered","run":"r2","state":"Boss.Watching","t":0}
 {"args":{"book":"r1"},"invoke":2,"kind":"invoke.started","run":"r2","src":"Worker","state":"Boss.Watching","t":0}
 {"event":{"from":"r2.1","invoke":1,"kind":"emitted","message":2,"value":{"_tag":"Stopping"}},"kind":"stale","run":"r2","t":0}
 {"event":{"kind":"event","value":{"_tag":"Leave"}},"kind":"event","run":"r2","t":0}
-{"from":"Boss.Watching","index":3,"kind":"transition","run":"r2","t":0,"to":"Boss.Idle"}
+{"from":"Boss.Watching","index":3,"kind":"transition","run":"r2","t":0,"to":["Boss.Idle"]}
 {"invoke":2,"kind":"invoke.cancelled","run":"r2","src":"Worker","state":"Boss.Watching","t":0}
 {"kind":"exited","run":"r2","state":"Boss.Watching","t":0}
 {"kind":"entered","run":"r2","state":"Boss.Idle","t":0}

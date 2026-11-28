@@ -83,8 +83,9 @@
         "from": { "$ref": "#/$defs/stateId" },
         "index": { "$ref": "#/$defs/safeNatural" },
         "to": {
-          "description": "The target state, or null for an internal transition.",
-          "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }]
+          "description": "The transition's targets, as the IR's targets: [] for a transition with no target.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/stateId" }
         }
       },
       "required": ["from", "index", "to"]

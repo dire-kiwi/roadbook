@@ -135,7 +135,7 @@ fn export_ir_writes_the_fixture() {
     let out = roadbook(&dir, &["export", "ir", "m.road", "-o", "m.ir.json"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let written = std::fs::read_to_string(dir.join("m.ir.json")).unwrap();
-    assert!(written.contains("\"irVersion\": \"0.8\""));
+    assert!(written.contains("\"irVersion\": \"0.9\""));
 }
 
 #[test]
@@ -325,8 +325,8 @@ fn check_json_lists_every_check_with_its_verdict() {
             "verdict": "conditional",
             "assumptions": ["`ok()` holds"],
             "path": [
-                { "from": "Pay.Idle", "index": 0, "trigger": "Go", "guard": "ok()", "to": "Pay.Paying" },
-                { "from": "Pay.Paying", "index": 1, "trigger": "always", "guard": null, "to": "Pay.Charged" }
+                { "from": "Pay.Idle", "index": 0, "trigger": "Go", "guard": "ok()", "to": ["Pay.Paying"] },
+                { "from": "Pay.Paying", "index": 1, "trigger": "always", "guard": null, "to": ["Pay.Charged"] }
             ]
         })
     );
@@ -1009,6 +1009,17 @@ fn export_mermaid_snapshots_calls() {
     );
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     insta::assert_snapshot!("calls_mermaid", text(&out.stdout));
+}
+
+/// A transition with several targets is an arrow to each, with the same label.
+#[test]
+fn export_mermaid_snapshots_several_targets() {
+    let out = roadbook(
+        &repo(),
+        &["export", "mermaid", "spec/conformance/charts/targets.road"],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    insta::assert_snapshot!("targets_mermaid", text(&out.stdout));
 }
 
 /// A peer's end: `x.ended` on an edge with its guard (from the machine, for one in its body),

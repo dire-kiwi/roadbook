@@ -3,7 +3,7 @@
 {"kind":"entered","run":"r1","state":"Main.Idle","t":0}
 {"action":"note","args":{"memo":null},"kind":"action","run":"r1","t":0}
 {"event":{"kind":"event","value":{"_tag":"UseSub"}},"kind":"event","run":"r1","t":0}
-{"from":"Main.Idle","index":1,"kind":"transition","run":"r1","t":0,"to":"Main.Calling"}
+{"from":"Main.Idle","index":1,"kind":"transition","run":"r1","t":0,"to":["Main.Calling"]}
 {"kind":"exited","run":"r1","state":"Main.Idle","t":0}
 {"kind":"entered","run":"r1","state":"Main.Calling","t":0}
 {"args":{},"invoke":1,"kind":"invoke.started","run":"r1","src":"Sub","state":"Main.Calling","t":0}

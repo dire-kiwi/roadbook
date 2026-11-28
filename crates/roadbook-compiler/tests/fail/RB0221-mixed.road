@@ -1,0 +1,19 @@
+machine M() {
+  event Go
+  initial P
+  parallel state P {
+    state A {
+      initial A1
+      on Go -> .A2, B.B2
+      state A1 {}
+      state A2 {}
+    }
+    state B {
+      initial B1
+      state B1 {}
+      state B2 {}
+    }
+  }
+}
+
+// expect: RB0221 at 7:21

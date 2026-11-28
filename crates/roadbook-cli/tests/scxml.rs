@@ -88,6 +88,35 @@ fn export_scxml_snapshots_a_peer_s_end() {
     }
 }
 
+/// An internal transition (`-> .X`) is `type="internal"`, with a comment where the source is a
+/// parallel state, and several targets are one `target` attribute.
+#[test]
+fn export_scxml_snapshots_internal_transitions_and_several_targets() {
+    for (chart, machine, snapshot) in [
+        (
+            "spec/conformance/charts/internal.road",
+            "Kept",
+            "internal_kept_scxml",
+        ),
+        (
+            "spec/conformance/charts/internal-parallel.road",
+            "Sides",
+            "internal_sides_scxml",
+        ),
+        (
+            "spec/conformance/charts/targets.road",
+            "Player",
+            "targets_player_scxml",
+        ),
+    ] {
+        let out = roadbook(&repo(), &["export", "scxml", chart, "--machine", machine]);
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        let xml = text(&out.stdout);
+        roxmltree::Document::parse(&xml).unwrap();
+        insta::assert_snapshot!(snapshot, xml);
+    }
+}
+
 /// History states are `<history type="shallow|deep">` in their parent, with the default
 /// transition SCXML requires: the parent's default entry, its `initial` or every region.
 #[test]
@@ -258,7 +287,7 @@ fn export_scxml_is_well_formed_and_keeps_every_state_and_target() {
                     ids.contains(&id) || s.id == m.root.id,
                     "{rel}: no state {id}\n{xml}"
                 );
-                for t in s.transitions.iter().filter_map(|t| t.target.as_ref()) {
+                for t in s.transitions.iter().flat_map(|t| &t.targets) {
                     let target = t.replace('.', "_");
                     assert!(targets.contains(&target), "{rel}: no target {target}");
                 }

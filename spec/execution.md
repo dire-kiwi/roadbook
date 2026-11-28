@@ -224,7 +224,7 @@ step(ir, snap, input, fns):
 - An emitted event from a child run whose invoke or spawned child is no longer in the snapshot is **stale** too: it was cancelled or stopped after the child had emitted it, as a child cancelled by its parent does when its exit effects `emit`. Taking an emitted event does not consume the invoke or the spawned child. An emitted event from a peer (`invoke` `null`), a message and a peer's end (`ended`) are never stale.
 - A spawned child's outcome consumes it like an invoke's: the child is removed from `spawned` before a transition is chosen, whether or not one is. An outcome of a child that was stopped or replaced after the driver had queued it is stale.
 - An input that enables no transition is **dropped**: traced as `dropped`, and nothing else happens. Settling is skipped, since nothing changed. A consumed invoke or timer stays consumed. A dropped call is the exception: it is answered at once with `Unanswered`, so its caller does not wait for it ([calls between runs](#calls-between-runs)).
-- **In a strict machine** (`strict` in the IR), an external event, a message or a call that enables no transition is instead a runtime error, `unhandled`, whose `event` is the input ([defects](#defects)). A call that fails a strict callee this way is answered `Unanswered` by the callee's driver as the run ends, like any call pending when its callee ends ([calls between runs](#calls-between-runs)). Every other input that enables no transition is dropped as in any machine: an emitted event, from a peer or from a child run (invoked or spawned), a peer's end (`ended`: a strict machine is not required to have an `on name.ended`), an invoke's outcome whose guarded branches all fail, a spawned child's outcome that no transition takes (`spawn.done` or `spawn.fail`), and a timer's expiry whose guarded branches all fail. They arrive when another run or the clock decides, so failing on them would make an ordinary race fatal. A transition with no target and no effects (`ignore`) is an enabled transition like any other, so an input it takes is traced as `event`, with a `transition` record whose `to` is `null`, and is never `unhandled`. A `send` from a strict machine that reaches no run is `undelivered`, as from any machine ([delivery](#delivering-messages)): strictness is about what a machine receives.
+- **In a strict machine** (`strict` in the IR), an external event, a message or a call that enables no transition is instead a runtime error, `unhandled`, whose `event` is the input ([defects](#defects)). A call that fails a strict callee this way is answered `Unanswered` by the callee's driver as the run ends, like any call pending when its callee ends ([calls between runs](#calls-between-runs)). Every other input that enables no transition is dropped as in any machine: an emitted event, from a peer or from a child run (invoked or spawned), a peer's end (`ended`: a strict machine is not required to have an `on name.ended`), an invoke's outcome whose guarded branches all fail, a spawned child's outcome that no transition takes (`spawn.done` or `spawn.fail`), and a timer's expiry whose guarded branches all fail. They arrive when another run or the clock decides, so failing on them would make an ordinary race fatal. A transition with no target and no effects (`ignore`) is an enabled transition like any other, so an input it takes is traced as `event`, with a `transition` record whose `to` is `[]`, and is never `unhandled`. A `send` from a strict machine that reaches no run is `undelivered`, as from any machine ([delivery](#delivering-messages)): strictness is about what a machine receives.
 - A **call** that enables a transition becomes **pending**: it is appended to `snap.calls` after the `event` record and before the microstep, so a `reply` among the transition's effects finds it.
 - A `dropped` or `stale` record replaces the `event` record; an input is traced by exactly one of the three.
 - **A defect in the step that ended the run.** The core finishes the run (or cancels it) inside the step, so the snapshot a step returns can already be `done`, `failed` or `cancelled` while the driver is still carrying out that step's commands, every action of the step among them: say the effects of the transition into a top-level final state, the exit effects `finish` runs (the root's among them), or the exit effects of `cancelRun`. If any of those actions has a host defect, the driver stops at it as for any action ([defects](#defects)), so the `done`, `failed` or `cancelled` record after it is never written, and gives the core the `defect` input. That is why a `defect` input is taken in any status but `defect`: the run's status becomes `defect`, its result the defect, and the `defect` record is its last. `failWithDefect` finds no invokes or timers left to cancel, and `active` stays `[]`. A second `defect` input, for a run that already ended with one, changes nothing and writes nothing.
@@ -308,36 +308,48 @@ A microstep takes the transitions of `T` together, as SCXML's microstep does: fi
 ```
 microstep(T):                         # each t in T belongs to a state, t.source
   for t in T, in order:
-    emit trace { kind: "transition", from: t.source.id, index: t's index in t.source.transitions, to: t.target }
+    emit trace { kind: "transition", from: t.source.id, index: t's index in t.source.transitions, to: t.targets }
   exits = the union of exitSet(t) for t in T          # computed before anything is exited
   recordHistory(exits)
   for s in exits, innermost first: exitState(s)
   for t in T, in order: runEffects(t.effects)
-  entries = the union of entrySet(t) for t in T with a target
+  entries = the union of entrySet(t) for t in T with targets
   enterStates(entries, in document order)
 
-domain(t):                            # for t with a target
+domain(t):                            # for t with targets
   if t.source is the root: return the root
+  if t.internal: return t.source      # every target is a proper descendant of the source
   return the nearest proper ancestor of t.source that is a compound state (the root is one)
-         and a proper ancestor of the target
+         and a proper ancestor of every target
 
 exitSet(t):
-  if t.target == null: return []      # internal: no state is left or entered
-  return the active states that are proper descendants of domain(t)
+  if t.targets == []: return []       # no state is left or entered
+  d = domain(t)
+  if d.kind == "parallel":            # only an internal transition's domain can be one
+    regions = the children of d that are targets or have a target below them, or every
+              child of d if a target is a history state of d
+    return the active states that are regions or descendants of one
+  return the active states that are proper descendants of d
 
 entrySet(t):
-  path = the states from just below domain(t) down to the target, outermost first
-  set = path + defaultEntry(target)
-  for p in path, other than the target, if p.kind == "parallel":
-    for each child c of p, if c is not in path: set = set + [c] + defaultEntry(c)
+  set = []
+  for r in targets(t):                # the states the targets stand for, in order
+    set = set ∪ (the states from just below domain(t) down to r) ∪ defaultEntry(r)
+  for q in set, if q.kind == "parallel":          # once: a region added with its default
+    for c in the children of q, if neither c nor any descendant of c is in set:     # entry
+      set = set ∪ [c] ∪ defaultEntry(c)           # leaves no parallel state incomplete
   return set
+
+targets(t):
+  the concatenation, for each target x of t in order, of [x] if x is not a history state,
+  and of what entering x restores if it is one (history states, below)
 ```
 
-That is `entrySet` for a target that is not a history state. A target that is one is [below](#history-states).
+With one transition and one target that is not a history state this is: the `transition` record; the exits, innermost first; the effects; the entries, outermost first, which are the path from just below the domain to the target, the target's default entry, and every other region of a parallel state on the path by default entry. A transition with no target contributes only its `transition` record and its effects. The transitions of `T` never conflict, so their exit sets are disjoint, and so are their entry sets. Exiting innermost first across regions exits the later region's states before the earlier region's ([exiting](#exiting-and-entering-a-state)), while the effects run in the order of `T`, the earlier region's first.
 
-With one transition this is: the `transition` record; the exits, innermost first; the effects; the entries, outermost first. A transition with no target contributes only its `transition` record and its effects. The transitions of `T` never conflict, so their exit sets are disjoint, and so are their entry sets. Exiting innermost first across regions exits the later region's states before the earlier region's ([exiting](#exiting-and-entering-a-state)), while the effects run in the order of `T`, the earlier region's first.
+**Several targets.** A transition can have more than one target (`-> P.A.X, P.B.Y`), to enter a parallel state with a chosen state in more than one region, as SCXML's `target="a b"` does. The compiler guarantees that no target is another's ancestor or descendant and that any two meet at a parallel state: their nearest common ancestor is parallel, so they are in different regions of it, at any depth (a history state counting as a child of its parent). The entry set is then the union of the paths to every target, and a region of a parallel state on those paths that none of them is in is entered by default. The `transition` record's `to` lists the targets in the order the IR does.
 
-**Every transition with a target is external**, in SCXML's sense. Unless the source is the root, its domain is the least common compound ancestor of its source and target, which is a proper ancestor of both, so the source itself is always exited and the target always entered. **The domain is never a parallel state**: a parallel state is skipped when looking for it, as SCXML's `findLCCA` skips it, so a transition between two regions, or from a region to a state inside itself, leaves the parallel state and enters it again with all its regions:
+**A transition is external unless it is internal.** An **external** transition, `internal` `false`, is SCXML's external one. Unless the source is the root, its domain is the least common compound ancestor of its source and targets, which is a proper ancestor of all of them, so the source itself is always exited and the targets always entered. **An external transition's domain is never a parallel state**: a parallel state is skipped when looking for it, as SCXML's `findLCCA` skips it, so a transition between two regions, or from a region to a state inside itself, leaves the parallel state and enters it again with all its regions:
 
 | Transition | Domain | Exited | Entered |
 | --- | --- | --- | --- |
@@ -349,15 +361,31 @@ With one transition this is: the `transition` record; the exits, innermost first
 | `P.R.X -> P.S.Y`, from region `R` to region `S` | the nearest compound proper ancestor of `P` | `P` and all its active descendants | `P`, `R` and every other region but `S` by default entry, and `S`, then the path down to `Y`, and `Y`'s default entry |
 | `P.R -> P.R.Y`, a region into its own child | the nearest compound proper ancestor of `P` | `P` and all its active descendants | `P`, the path to `Y` and its default entry, and every other region by default entry |
 | `X -> P.S.Y`, from outside `P` | the least common compound ancestor | as for any transition | `P`, every region but `S` by default entry, the path down to `Y` and its default entry |
+| `X -> P.R.X2, P.S.Y`, two targets | the least common compound ancestor | as for any transition | `P`, the paths down to `X2` and to `Y` and their default entries, and every region but `R` and `S` by default entry |
 | `X -> C.H`, `H` a history state of `C`, from outside `C` | the least common compound ancestor | as for any transition | `C`, and what `H` recorded, or `C`'s default entry |
 | `C.A -> C.H`, from inside `C` | `C` (if compound) | `A` and its active descendants, not `C` | what `H` recorded when `C` was last exited, or `C`'s default entry, not `C` itself |
 | `C -> C.H`, written in `C` | the least common compound ancestor of `C` | `C` and its active descendants, recording them | `C`, and what `H` just recorded: the states `C` was in |
 
+An **internal** transition, `internal` `true` (written `-> .X`), keeps its source: its domain is the source itself, so only the states below the source change. Every target of one is a proper descendant of its source, and its source is never the root (the compiler writes `-> .X` in the machine body as an external transition, which is the same thing there). This is SCXML's `type="internal"`, and XState's default for a target written `.X`, except where the source is a parallel state: SCXML's rule applies only to a compound source, and from a parallel one takes the transition as external. Here a parallel source is kept too, and **only the regions the targets are in** are exited and entered again; the other regions keep going, as in XState v6:
+
+| Transition | Domain | Exited | Entered |
+| --- | --- | --- | --- |
+| `S -> .A`, `S` compound, now in `B` | `S` | `B` and its active descendants | `A` and its default entry |
+| `S -> .A`, now in `A` | `S` | `A` and its active descendants | `A` and its default entry: the target restarts, the source does not |
+| `S -> .A.C`, a deeper target | `S` | `S`'s active descendants | `A`, `C` and `C`'s default entry |
+| `P.R -> .Y`, a region into its own child | `R` | `R`'s active descendants | `Y` and its default entry; `P` and the other regions are kept |
+| `P -> .R.Y`, written in parallel `P` | `P` | `R` and its active descendants | `R`, the path down to `Y` and its default entry; every other region is kept |
+| `P -> .R`, written in parallel `P` | `P` | `R` and its active descendants | `R` and its default entry: the one region is reset |
+| `P -> .R.X, .S.Y`, two targets | `P` | `R`, `S` and their active descendants | `R` and `S` with the paths down to `X` and `Y`; every other region is kept |
+| `C -> .H`, `H` a history state of `C` | `C` | `C`'s active descendants, not `C`, so nothing is recorded | what `H` recorded when `C` was last exited, or `C`'s default entry |
+
+Since an internal transition's domain is its source, the source's own invoke, timers, `entry` and `exit` are untouched by it, as are every state above it and, for a parallel source, every region no target is in. An internal transition inside one region, `P.R -> .Y`, does not exit `P`, so it no longer conflicts with a transition in another region taken by the same input: both are taken, in one microstep.
+
 The entries are in document order, so the regions of a parallel state are entered one after the other, each with everything below it, in the order the regions are written.
 
-Re-entering a state restarts its work: its invoke is cancelled and started again with a new id, and its timers likewise. **A transition with no target is internal**: no state is left or entered, nothing is cancelled or restarted, and only its effects run.
+Re-entering a state restarts its work: its invoke is cancelled and started again with a new id, and its timers likewise. **A transition with no target** leaves and enters no state: nothing is cancelled or restarted, and only its effects run.
 
-The root is never a target. A transition written in the machine body (an `on`, `after` or `always` of the root) has the root as its domain: everything below the root is exited and the target entered, but the root itself is neither exited nor re-entered, so its entry and exit effects do not run again and its own timers keep running.
+The root is never a target. A transition written in the machine body (an `on`, `after` or `always` of the root) has the root as its domain: everything below the root is exited and the targets entered, but the root itself is neither exited nor re-entered, so its entry and exit effects do not run again and its own timers keep running.
 
 ### Exiting and entering a state
 
@@ -371,7 +399,7 @@ exitState(s):
     emit timer.cancel { timer: tm.id }
   runEffects(s.exit)
   remove s from active
-  remove every entry s from the completion queue
+  remove every entry s, and every entry of an ancestor of s, from the completion queue
   emit trace { kind: "exited", state: s.id }
 
 enterStates(list):
@@ -488,25 +516,18 @@ recordHistory(exits):                 # before any state of exits is exited
     if h.kind == "deepHistory": snap.history[h.id] = the active leaves that are proper descendants
                                                      of s, in document order
 
-entrySet(t), when t.target is a history state h with parent p:
-  if snap.history has h.id: targets = snap.history[h.id]
-  elif p.kind == "compound": targets = [p.initial]
-  else:                      targets = the children of p         # every region
-  set = []
-  for r in targets:
-    set = set ∪ (the states from just below domain(t) down to r) ∪ defaultEntry(r)
-  for q in set, if q.kind == "parallel":          # once: a region added with its default
-    for c in the children of q, if neither c nor any descendant of c is in set:     # entry
-      set = set ∪ [c] ∪ defaultEntry(c)           # leaves no parallel state incomplete
-  return set
+restores(h):                          # for a history state h with parent p
+  if snap.history has h.id: return snap.history[h.id]
+  if p.kind == "compound":  return [p.initial]
+  return the children of p                        # every region
 ```
 
 - **What is recorded.** A shallow history state records its parent's active children: one for a compound parent, every region for a parallel one. A deep one records the active leaves below its parent, atomic and final states, in every region. Each record replaces the one before. It is recorded from the active states as they are before the microstep exits anything, so the record is where `p` was at the end of the previous microstep. Only a microstep records: `finish` and `cancelRun` exit states without recording, and `failWithDefect` exits none. A runtime error in a step discards what the step recorded with the rest of the step.
-- **Entering.** Entering `h` enters what it recorded, or, with no record, the states directly below `p` that `p`'s default entry starts with. Each of those states gets its default entry: a shallow record's child its `initial` chain or every region, a deep record's leaves nothing more. Every state between the domain and them is entered too, and a region of a parallel state on the way that none of them is in gets its default entry, as for any target. A deep record holds a leaf in every region below `p`, so no region below `p` is entered by default. `h` itself is never entered: there is no `entered` record for it, and it is never in `active`. The `transition` record's `to` is `h`'s id.
-- **The domain** is `domain(t)` with `h` as the target, as for any state: the nearest compound proper ancestor of the source that is a proper ancestor of `h`. It does not depend on what `h` recorded. From outside `p` that is above `p`, so `p` is entered. From inside a compound `p` it is `p`, so `p` is neither exited nor recorded by this transition, and what is entered is what `p` recorded when it was last exited. (SCXML computes the domain from the states the history restores, which differs only for a transition from inside `p`.) From inside a parallel `p` the domain is above `p`, which is exited, recorded and entered again as recorded.
+- **Entering.** A target `h` stands for `restores(h)` in `entrySet`'s `targets(t)` ([a microstep](#a-microstep)). Entering `h` enters what it recorded, or, with no record, the states directly below `p` that `p`'s default entry starts with. Each of those states gets its default entry: a shallow record's child its `initial` chain or every region, a deep record's leaves nothing more. Every state between the domain and them is entered too, and a region of a parallel state on the way that none of them is in gets its default entry, as for any target. A deep record holds a leaf in every region below `p`, so no region below `p` is entered by default. `h` itself is never entered: there is no `entered` record for it, and it is never in `active`. The `transition` record's `to` has `h`'s id.
+- **The domain** is `domain(t)` with `h` as the target, as for any state: for an external transition, the nearest compound proper ancestor of the source that is a proper ancestor of `h`; for an internal one, the source. It does not depend on what `h` recorded. From outside `p` that is above `p`, so `p` is entered. From inside a compound `p` it is `p`, so `p` is neither exited nor recorded by this transition, and what is entered is what `p` recorded when it was last exited. (SCXML computes the domain from the states the history restores, which differs only for a transition from inside `p`.) From inside a parallel `p` the domain is above `p`, which is exited, recorded and entered again as recorded.
 - **Restored states are entered**, with their `entry` effects, their `entered` records and, once the step has settled, new invokes and timers, as on any entry. An entered final state completes its parent as usual (`complete`). Nothing else is restored: variables keep their values, and the work that ran in those states before, an invoked child run among it, is not resumed.
 - **Order.** A microstep records before it computes its entries, so a transition that exits `p` and targets `h` (from outside `p`, or from inside a parallel `p`) enters what `p` was a moment before: the same states, entered again.
-- With one transition and a recorded or default `targets` of one state, this is `entrySet` above with that state as the target, except that the domain is `h`'s.
+- **An internal transition to a history state of its own source**, `C -> .H`, does not exit `C`, so `C` records nothing and what is entered is what `C` recorded when it was last exited. From a parallel source, `P -> .H` with `H` a history state of `P` exits and enters every region.
 
 ## Settling
 
@@ -528,8 +549,8 @@ settle():
 ```
 
 - `always` transitions take priority over `done` transitions. A `done` is considered only when no `always` is enabled, and completions are considered in the order they were queued. The `always` transitions enabled in several regions are taken together, in one microstep, as an input's are.
-- A compound state is complete when one of its final children is entered. A parallel state is complete when it is in a final state: when, after a final state below it is entered, every region is in a final state (`complete`). The entry that completes the last region queues the parallel state, right after that region's own completion, so a region's `done` is tried before its parallel state's. A region that is itself a final state is in a final state from the moment it is entered; a region that is an atomic state never is, so a parallel state with one never completes. A parallel state inside a region of another completes it in turn when the outer one's other regions are in a final state too. Once a region is in a final state it stays so until its parallel state is exited, since a final state has no transitions and every transition that could leave it exits the parallel state.
-- A state's completion is queued once per entry, and removed from the queue when the state is exited (`exitState`), so a state in the queue is always active and still in a final state. A completion is therefore never taken for a state that was exited after it completed, even if it was entered again in the same macrostep: an `always` that leaves and re-enters it discards the completion. When a completion is taken from the queue, the state's `done` transitions are tried once: if none of their guards holds, it is discarded without a trace record and is not retried later.
+- A compound state is complete when one of its final children is entered. A parallel state is complete when it is in a final state: when, after a final state below it is entered, every region is in a final state (`complete`). The entry that completes the last region queues the parallel state, right after that region's own completion, so a region's `done` is tried before its parallel state's. A region that is itself a final state is in a final state from the moment it is entered; a region that is an atomic state never is, so a parallel state with one never completes. A parallel state inside a region of another completes it in turn when the outer one's other regions are in a final state too. A region in a final state can leave it again without its parallel state being exited, by an internal transition written in the region or in the parallel state (or one of their ancestors' in a deeper chart): that exits the final state, and the region is no longer in one.
+- A state's completion is queued once per entry, and removed from the queue when the state is exited, or when a state below it is (`exitState`), so a state in the queue is always active and still in a final state: a state whose final child an internal transition exits is no longer complete, and if the transition enters a final state again, `complete` queues it again, at the back. A completion is therefore never taken for a state that was exited after it completed, even if it was entered again in the same macrostep: an `always` that leaves and re-enters it discards the completion. When a completion is taken from the queue, the state's `done` transitions are tried once: if none of their guards holds, it is discarded without a trace record and is not retried later.
 - A run that takes more than 1000 microsteps while settling one input has a runtime error `limit`, so a guarded `always` loop cannot hang the host. (The compiler rejects unguarded ones.)
 
 ## Starting work

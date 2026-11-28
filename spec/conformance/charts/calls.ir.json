@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/calls.road",
@@ -331,7 +331,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Inventory.Reserving",
+                "targets": [
+                  "Inventory.Reserving"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -387,7 +390,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Inventory.Paused",
+                "targets": [
+                  "Inventory.Paused"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -404,7 +410,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Inventory.Closed",
+                "targets": [
+                  "Inventory.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -480,7 +489,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Inventory.Ready",
+                "targets": [
+                  "Inventory.Ready"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -565,7 +577,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Inventory.Ready",
+                "targets": [
+                  "Inventory.Ready"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "reply",
@@ -603,7 +618,8 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "reply",
@@ -649,7 +665,8 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "reply",
@@ -723,7 +740,10 @@
                 },
                 "group": 4,
                 "guard": null,
-                "target": "Inventory.Closed",
+                "targets": [
+                  "Inventory.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -762,7 +782,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Inventory.Ready",
+                "targets": [
+                  "Inventory.Ready"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -809,7 +832,8 @@
             },
             "group": 0,
             "guard": null,
-            "target": null,
+            "targets": [],
+            "internal": false,
             "effects": [
               {
                 "kind": "reply",
@@ -987,7 +1011,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Order.Reserved",
+                "targets": [
+                  "Order.Reserved"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1017,7 +1044,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Order.Failed",
+                "targets": [
+                  "Order.Failed"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1047,7 +1077,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Order.Failed",
+                "targets": [
+                  "Order.Failed"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1090,7 +1123,10 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": "Order.Failed",
+                "targets": [
+                  "Order.Failed"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1287,7 +1323,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Counter.Got",
+                "targets": [
+                  "Counter.Got"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1317,7 +1356,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Counter.Gave",
+                "targets": [
+                  "Counter.Gave"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

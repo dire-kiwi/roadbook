@@ -102,6 +102,14 @@ describe('scopes', () => {
     expect(await scopesAt('    always set deep = history + 1', 'deep')).not.toContain('storage.modifier.deep.roadbook')
   })
 
+  it('marks internal targets and several targets as states', async () => {
+    const line = '    on Sleep -> .Playback.Paused, .Volume.Muted  do log()'
+    expect(await scopesAt(line, 'Playback')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(line, 'Muted')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(line, ',')).toContain('punctuation.separator.comma.roadbook')
+    expect(await scopesAt(line, 'do')).not.toContain('entity.name.type.state.roadbook')
+  })
+
   it('marks states, events, calls and values', async () => {
     const line = '    after retryDelay(attempts) -> Charging set n = n + 1'
     expect(await scopesAt(line, 'retryDelay')).toContain('entity.name.function.call.roadbook')

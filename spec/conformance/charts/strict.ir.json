@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/strict.road",
@@ -156,7 +156,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Lock.Opened",
+                "targets": [
+                  "Lock.Opened"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -173,7 +176,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -216,7 +220,10 @@
                   "type": "bool",
                   "text": "tries > 0"
                 },
-                "target": "Lock.Opened",
+                "targets": [
+                  "Lock.Opened"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -253,7 +260,10 @@
                   "type": "bool",
                   "text": "result > 10"
                 },
-                "target": "Lock.Opened",
+                "targets": [
+                  "Lock.Opened"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -292,7 +302,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Lock.Closed",
+                "targets": [
+                  "Lock.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -309,7 +322,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -343,7 +357,8 @@
               "type": "bool",
               "text": "event.loud"
             },
-            "target": null,
+            "targets": [],
+            "internal": false,
             "effects": [],
             "span": {
               "file": 0,

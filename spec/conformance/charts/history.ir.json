@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/history.road",
@@ -272,7 +272,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Editor.Work.Review",
+                    "targets": [
+                      "Editor.Work.Review"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -289,7 +292,10 @@
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "Editor.Work.Shallow",
+                    "targets": [
+                      "Editor.Work.Shallow"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -342,7 +348,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Editor.Work.Review.Comment",
+                        "targets": [
+                          "Editor.Work.Review.Comment"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -393,7 +402,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Editor.Work.Review.Read",
+                        "targets": [
+                          "Editor.Work.Review.Read"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -415,7 +427,10 @@
                         },
                         "group": 1,
                         "guard": null,
-                        "target": "Editor.Work.Review.Read",
+                        "targets": [
+                          "Editor.Work.Review.Read"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -467,7 +482,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Editor.Work.Draft",
+                    "targets": [
+                      "Editor.Work.Draft"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -519,7 +537,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Editor.Help",
+                "targets": [
+                  "Editor.Help"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -536,7 +557,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Editor.Work.Deep",
+                "targets": [
+                  "Editor.Work.Deep"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -575,7 +599,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Editor.Work.Shallow",
+                "targets": [
+                  "Editor.Work.Shallow"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -592,7 +619,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Editor.Work.Deep",
+                "targets": [
+                  "Editor.Work.Deep"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -773,7 +803,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Steps.Flow.S2",
+                    "targets": [
+                      "Steps.Flow.S2"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -826,7 +859,10 @@
                   "type": "bool",
                   "text": "ready"
                 },
-                "target": "Steps.Finished",
+                "targets": [
+                  "Steps.Finished"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -843,7 +879,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Steps.Paused",
+                "targets": [
+                  "Steps.Paused"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -882,7 +921,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -910,7 +950,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Steps.Flow.H",
+                "targets": [
+                  "Steps.Flow.H"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1079,7 +1122,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Bounce.P.B",
+                    "targets": [
+                      "Bounce.P.B"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1138,7 +1184,10 @@
                       "type": "bool",
                       "text": "n == 0"
                     },
-                    "target": "Bounce.Q",
+                    "targets": [
+                      "Bounce.Q"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -1195,7 +1244,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Bounce.P.H",
+                "targets": [
+                  "Bounce.P.H"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",

@@ -7,16 +7,16 @@
 {"kind":"entered","run":"r1","state":"Finish.Work.Right","t":0}
 {"kind":"entered","run":"r1","state":"Finish.Work.Right.R1","t":0}
 {"event":{"kind":"event","value":{"_tag":"A"}},"kind":"event","run":"r1","t":0}
-{"from":"Finish.Work.Left.L1","index":0,"kind":"transition","run":"r1","t":0,"to":"Finish.Work.Left.L2"}
+{"from":"Finish.Work.Left.L1","index":0,"kind":"transition","run":"r1","t":0,"to":["Finish.Work.Left.L2"]}
 {"kind":"exited","run":"r1","state":"Finish.Work.Left.L1","t":0}
 {"kind":"entered","run":"r1","state":"Finish.Work.Left.L2","t":0}
-{"from":"Finish.Work.Left","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"from":"Finish.Work.Left","index":0,"kind":"transition","run":"r1","t":0,"to":[]}
 {"action":"log","args":{"what":"left done"},"kind":"action","run":"r1","t":0}
 {"event":{"kind":"event","value":{"_tag":"B"}},"kind":"event","run":"r1","t":0}
-{"from":"Finish.Work.Right.R1","index":0,"kind":"transition","run":"r1","t":0,"to":"Finish.Work.Right.R2"}
+{"from":"Finish.Work.Right.R1","index":0,"kind":"transition","run":"r1","t":0,"to":["Finish.Work.Right.R2"]}
 {"kind":"exited","run":"r1","state":"Finish.Work.Right.R1","t":0}
 {"kind":"entered","run":"r1","state":"Finish.Work.Right.R2","t":0}
-{"from":"Finish.Work","index":0,"kind":"transition","run":"r1","t":0,"to":"Finish.Over"}
+{"from":"Finish.Work","index":0,"kind":"transition","run":"r1","t":0,"to":["Finish.Over"]}
 {"kind":"exited","run":"r1","state":"Finish.Work.Right.R2","t":0}
 {"kind":"exited","run":"r1","state":"Finish.Work.Right","t":0}
 {"kind":"exited","run":"r1","state":"Finish.Work.Mid","t":0}

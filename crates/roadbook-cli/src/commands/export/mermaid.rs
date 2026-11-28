@@ -250,20 +250,22 @@ impl Writer<'_> {
 
     /// The transitions of `s` and the states inside it that belong in the block `block`.
     fn transitions(&mut self, s: &State, block: &str, depth: usize) {
+        // One arrow per target, each with the transition's label.
         for t in &s.transitions {
-            let Some(target) = &t.target else { continue };
-            let mut meet = meeting(&s.id, target);
-            while self.parallel.iter().any(|p| p == meet) {
-                meet = meet.rfind('.').map_or("", |at| &meet[..at]);
-            }
-            if meet == block {
-                let line = format!(
-                    "{} --> {}: {}",
-                    self.id(&s.id),
-                    self.id(target),
-                    escape(&label(s, t))
-                );
-                self.line(depth, &line);
+            for target in &t.targets {
+                let mut meet = meeting(&s.id, target);
+                while self.parallel.iter().any(|p| p == meet) {
+                    meet = meet.rfind('.').map_or("", |at| &meet[..at]);
+                }
+                if meet == block {
+                    let line = format!(
+                        "{} --> {}: {}",
+                        self.id(&s.id),
+                        self.id(target),
+                        escape(&label(s, t))
+                    );
+                    self.line(depth, &line);
+                }
             }
         }
         for c in &s.states {
@@ -439,7 +441,7 @@ fn description(s: &State) -> Vec<String> {
     }
     out.extend(s.entry.iter().map(|e| format!("entry {}", effect(e))));
     out.extend(s.exit.iter().map(|e| format!("exit {}", effect(e))));
-    for t in s.transitions.iter().filter(|t| t.target.is_none()) {
+    for t in s.transitions.iter().filter(|t| t.targets.is_empty()) {
         let head = match &t.trigger {
             Trigger::Event { .. }
             | Trigger::Emitted { .. }

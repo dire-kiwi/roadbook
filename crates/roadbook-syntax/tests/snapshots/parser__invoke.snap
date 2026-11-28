@@ -26,8 +26,10 @@ items:
                           branches:
                             single:
                               guard: ~
-                              target:
-                                - B
+                              targets:
+                                - dot: false
+                                  path:
+                                    - B
                               effects:
                                 - set:
                                     var: r
@@ -40,8 +42,10 @@ items:
                           branches:
                             single:
                               guard: ~
-                              target:
-                                - C
+                              targets:
+                                - dot: false
+                                  path:
+                                    - C
                               effects:
                                 - set:
                                     var: d
@@ -54,8 +58,10 @@ items:
                           branches:
                             single:
                               guard: ~
-                              target:
-                                - D
+                              targets:
+                                - dot: false
+                                  path:
+                                    - D
                               effects: []
                               ignore: false
                         - trigger:
@@ -69,13 +75,17 @@ items:
                                       - "<"
                                       - var: attempts
                                       - int: 3
-                                  target:
-                                    - Backoff
+                                  targets:
+                                    - dot: false
+                                      path:
+                                        - Backoff
                                   effects: []
                                   ignore: false
                                 - guard: ~
-                                  target:
-                                    - GaveUp
+                                  targets:
+                                    - dot: false
+                                      path:
+                                        - GaveUp
                                   effects: []
                                   ignore: false
             - state:
@@ -90,8 +100,10 @@ items:
                           branches:
                             single:
                               guard: ~
-                              target:
-                                - A
+                              targets:
+                                - dot: false
+                                  path:
+                                    - A
                               effects: []
                               ignore: false
 comments: []

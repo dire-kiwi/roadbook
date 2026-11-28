@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/upload.road",
@@ -221,7 +221,10 @@
                   "type": "bool",
                   "text": "offset >= size"
                 },
-                "target": "Upload.Done",
+                "targets": [
+                  "Upload.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -237,7 +240,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Upload.Sending",
+                "targets": [
+                  "Upload.Sending"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -289,7 +295,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Upload.Paused",
+                "targets": [
+                  "Upload.Paused"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -328,7 +337,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Upload.Sending",
+                "targets": [
+                  "Upload.Sending"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -522,7 +534,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Publish.Published",
+                "targets": [
+                  "Publish.Published"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -552,7 +567,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -587,7 +603,8 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -628,7 +645,8 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -809,7 +827,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Quiet.Over",
+                "targets": [
+                  "Quiet.Over"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1042,7 +1063,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1072,7 +1094,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1107,7 +1130,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Eager.Over",
+                "targets": [
+                  "Eager.Over"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

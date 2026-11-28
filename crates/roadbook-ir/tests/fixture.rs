@@ -92,7 +92,7 @@ fn schema_rejects_malformed_documents() {
             1.5.into(),
         ),
         (
-            format!("{charging}/transitions/0/target"),
+            format!("{charging}/transitions/0/targets/0"),
             "Checkout..Charged".into(),
         ),
         ("/machines/Checkout/root/kind".into(), "parallel".into()),
@@ -286,9 +286,33 @@ fn hash_changes_with_behaviour() {
 
     // A different target.
     let mut changed = fixture();
-    changed.machines["Checkout"].root.states[0].transitions[3].target =
-        Some("Checkout.Declined".into());
+    changed.machines["Checkout"].root.states[0].transitions[3].targets =
+        vec!["Checkout.Declined".into()];
     assert_ne!(machine_hash(&changed, "Checkout").unwrap(), checkout);
+
+    // An internal transition, and a second target, are seen.
+    let mut changed = fixture();
+    changed.machines["Checkout"].root.states[0].transitions[3].internal = true;
+    assert_ne!(machine_hash(&changed, "Checkout").unwrap(), checkout);
+    let mut changed = fixture();
+    changed.machines["Checkout"].root.states[0].transitions[3]
+        .targets
+        .push("Checkout.Declined".into());
+    assert_ne!(machine_hash(&changed, "Checkout").unwrap(), checkout);
+}
+
+/// IR 0.9's `targets` and `internal` leave the hash of a machine that uses neither as it was in
+/// 0.8: its semantic view writes them as 0.8's `target`.
+#[test]
+fn hash_writes_one_target_as_before() {
+    let ir = fixture();
+    let view = roadbook_ir::semantic_view(&ir, "Checkout").unwrap();
+    let t = &view["machines"]["Checkout"]["root"]["states"][0]["transitions"][3];
+    assert!(
+        t.get("targets").is_none() && t.get("internal").is_none(),
+        "{t}"
+    );
+    assert!(t["target"].is_string(), "{t}");
 }
 
 #[test]
@@ -390,7 +414,7 @@ fn a_peer_contributes_only_its_interface_to_the_hash() {
 
     // How the warehouse works inside does not change the order's hash.
     let mut changed = ir.clone();
-    changed.machines["Inventory"].root.states[1].transitions[0].target = None;
+    changed.machines["Inventory"].root.states[1].transitions[0].targets = Vec::new();
     assert_ne!(
         machine_hash(&changed, "Inventory").unwrap(),
         machine_hash(&ir, "Inventory").unwrap()

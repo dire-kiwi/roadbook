@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/switchboard.road",
@@ -87,7 +87,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Line.Down",
+                "targets": [
+                  "Line.Down"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -355,7 +358,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Switchboard.Working.Night",
+                    "targets": [
+                      "Switchboard.Working.Night"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -394,7 +400,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Switchboard.Working.Held",
+                    "targets": [
+                      "Switchboard.Working.Held"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -459,7 +468,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Switchboard.Paused",
+                    "targets": [
+                      "Switchboard.Paused"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -506,7 +518,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Switchboard.Answered",
+                "targets": [
+                  "Switchboard.Answered"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "reply",
@@ -564,7 +579,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Switchboard.Working.Last",
+                "targets": [
+                  "Switchboard.Working.Last"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -590,7 +608,8 @@
             },
             "group": 0,
             "guard": null,
-            "target": null,
+            "targets": [],
+            "internal": false,
             "effects": [
               {
                 "kind": "spawn",
@@ -740,7 +759,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Caller.Got",
+                "targets": [
+                  "Caller.Got"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -770,7 +792,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Caller.Got",
+                "targets": [
+                  "Caller.Got"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

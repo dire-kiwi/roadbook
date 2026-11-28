@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/strict-calls.road",
@@ -177,7 +177,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Desk.Staffed.Held",
+                    "targets": [
+                      "Desk.Staffed.Held"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -229,7 +232,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Desk.Staffed.Free",
+                    "targets": [
+                      "Desk.Staffed.Free"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "reply",
@@ -276,7 +282,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -340,7 +347,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Desk.Shut",
+                "targets": [
+                  "Desk.Shut"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -379,7 +389,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Desk.Staffed",
+                "targets": [
+                  "Desk.Staffed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -499,7 +512,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Asker.Got",
+                "targets": [
+                  "Asker.Got"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -529,7 +545,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Asker.Gave",
+                "targets": [
+                  "Asker.Gave"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -703,7 +722,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Holder.Got",
+                "targets": [
+                  "Holder.Got"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -733,7 +755,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Holder.Gave",
+                "targets": [
+                  "Holder.Gave"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
