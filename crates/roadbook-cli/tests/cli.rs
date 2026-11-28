@@ -806,7 +806,7 @@ fn viz_names_pages_after_their_entries_and_reports_errors() {
     }
     let index = page_data(&std::fs::read_to_string(out.join("index.html")).unwrap());
     let machines = index["index"]["machines"].as_array().unwrap();
-    assert_eq!(machines.len(), 12);
+    assert_eq!(machines.len(), 14);
     // Who talks to whom (`projectIndex` in packages/viewer/src/project.ts builds the same).
     let at = |name: &str| machines.iter().position(|m| m["name"] == name).unwrap();
     let (order, inventory) = (&machines[at("Order")], at("Inventory"));
