@@ -133,6 +133,26 @@ fn export_scxml_snapshots_raises() {
     }
 }
 
+/// `on *` takes internal events too: they are among the events of its `<transition>`.
+#[test]
+fn export_scxml_on_any_takes_internal_events() {
+    let dir = std::env::temp_dir().join(format!("roadbook-scxml-any-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("m.road"),
+        "machine M() {\n  event Go\n  internal event Ping\n  initial A\n  state A {\n    on Go raise Ping\n    on * -> B\n  }\n  state B {}\n}\n",
+    )
+    .unwrap();
+    let out = roadbook(&dir, &["export", "scxml", "m.road"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let xml = text(&out.stdout);
+    assert!(
+        xml.contains("<transition event=\"Ping\" target=\"M_B\""),
+        "{xml}"
+    );
+    std::fs::remove_dir_all(&dir).ok();
+}
+
 /// An internal transition (`-> .X`) is `type="internal"`, with a comment where the source is a
 /// parallel state, and several targets are one `target` attribute.
 #[test]

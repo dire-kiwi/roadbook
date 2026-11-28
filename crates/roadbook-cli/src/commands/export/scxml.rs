@@ -486,10 +486,12 @@ impl Writer<'_> {
                         _ => None,
                     })
                     .collect();
+                // `on *` takes the machine's own events, internal ones included.
                 let rest: Vec<&str> = self
                     .m
                     .events
                     .keys()
+                    .chain(self.m.internal_events.keys())
                     .map(String::as_str)
                     .filter(|e| !handled.contains(e))
                     .collect();
