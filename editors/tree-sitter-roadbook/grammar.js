@@ -270,18 +270,30 @@ module.exports = grammar({
 
     // ───────────── states ─────────────
 
+    // `state Confirming(token: ResetToken) { … }`: a state's parameters are given by the
+    // transitions that enter it.
     state_declaration: ($) =>
       seq(
         optional(field('kind', choice('final', 'parallel'))),
         'state',
         field('name', $.type_identifier),
+        optional(field('parameters', $.parameters)),
         field('body', $.state_body),
       ),
 
     state_body: ($) => seq('{', repeat($._state_item), '}'),
 
+    // A state's own `var`s live while it is active.
     _state_item: ($) =>
-      choice($._common_item, $.history_state, $.done_transition, $.invoke, $.output, $.fail),
+      choice(
+        $._common_item,
+        $.variable_declaration,
+        $.history_state,
+        $.done_transition,
+        $.invoke,
+        $.output,
+        $.fail,
+      ),
 
     // `history` and `deep` are not reserved: they mean something only at the start of an item.
     history_state: ($) =>
@@ -411,12 +423,14 @@ module.exports = grammar({
 
     ignore: (_) => 'ignore',
 
-    // A leading dot names a child of the transition's own state: an internal transition.
+    // A leading dot names a child of the transition's own state: an internal transition. The
+    // arguments after a state's name are that state's: `-> Editing(doc).Changing`.
     target: ($) =>
       seq(
         optional(field('internal', '.')),
         field('state', $.type_identifier),
-        repeat(seq('.', field('state', $.type_identifier))),
+        optional(field('arguments', $.arguments)),
+        repeat(seq('.', field('state', $.type_identifier), optional(field('arguments', $.arguments)))),
       ),
 
     _effects: ($) => repeat1(field('effect', $._effect)),

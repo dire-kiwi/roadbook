@@ -110,6 +110,23 @@ describe('scopes', () => {
     expect(await scopesAt(line, 'do')).not.toContain('entity.name.type.state.roadbook')
   })
 
+  it('marks state parameters, state variables and target arguments', async () => {
+    const decl = '  state Confirming(token: ResetToken, sensitive code: string) {'
+    expect(await scopesAt(decl, 'Confirming')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(decl, 'token')).toContain('variable.parameter.roadbook')
+    expect(await scopesAt(decl, 'ResetToken')).toContain('entity.name.type.roadbook')
+    expect(await scopesAt(decl, 'sensitive')).toContain('storage.modifier.sensitive.roadbook')
+    expect(await scopesAt('    var tries: int = 0', 'tries')).toContain('variable.other.definition.roadbook')
+    const line = '    on Go -> Editing(doc, f(n)).Changing, .Other(1)  set n = 1'
+    expect(await scopesAt(line, 'Editing')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(line, 'doc')).toContain('variable.other.roadbook')
+    expect(await scopesAt(line, 'doc')).not.toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(line, 'f(')).toContain('entity.name.function.call.roadbook')
+    expect(await scopesAt(line, 'Changing')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(line, 'Other')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(line, 'set')).toContain('keyword.other.effect.roadbook')
+  })
+
   it('marks states, events, calls and values', async () => {
     const line = '    after retryDelay(attempts) -> Charging set n = n + 1'
     expect(await scopesAt(line, 'retryDelay')).toContain('entity.name.function.call.roadbook')

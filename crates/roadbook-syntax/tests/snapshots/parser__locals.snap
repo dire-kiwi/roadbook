@@ -1,0 +1,146 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          strict: false
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - transition:
+                      trigger:
+                        "on":
+                          name: Go
+                      branches:
+                        single:
+                          guard: ~
+                          targets:
+                            - dot: false
+                              path:
+                                - B
+                                - C
+                              args:
+                                - args:
+                                    - int: 1
+                                    - field:
+                                        - var: event
+                                        - code
+                                - ~
+                          effects:
+                            - set:
+                                var: n
+                                value:
+                                  int: 1
+                          ignore: false
+                  - transition:
+                      trigger:
+                        "on":
+                          name: Back
+                      branches:
+                        single:
+                          guard: ~
+                          targets:
+                            - dot: true
+                              path:
+                                - Inner
+                              args:
+                                - args:
+                                    - var: n
+                            - dot: false
+                              path:
+                                - D
+                              args:
+                                - args:
+                                    - string: x
+                          effects: []
+                          ignore: false
+                  - state:
+                      kind: normal
+                      name: Inner
+                      params:
+                        - name: n
+                          ty:
+                            builtin: int
+                      body: []
+            - state:
+                doc: Takes a token.
+                kind: normal
+                name: B
+                params:
+                  - name: n
+                    ty:
+                      builtin: int
+                  - sensitive: true
+                    name: code
+                    ty:
+                      builtin: string
+                body:
+                  - var:
+                      doc: Counts.
+                      name: tries
+                      ty:
+                        builtin: int
+                      init:
+                        var: n
+                  - var:
+                      sensitive: true
+                      name: secret
+                      ty:
+                        builtin: string
+                      init: ~
+                  - transition:
+                      trigger:
+                        "on":
+                          name: Go
+                      branches:
+                        single:
+                          guard: ~
+                          targets:
+                            - dot: false
+                              path:
+                                - B
+                              args:
+                                - args:
+                                    - binary:
+                                        - +
+                                        - var: n
+                                        - int: 1
+                          effects: []
+                          ignore: false
+                  - initial: C
+                  - state:
+                      kind: normal
+                      name: C
+                      body: []
+            - state:
+                kind: parallel
+                name: P
+                params:
+                  - name: x
+                    ty:
+                      builtin: int
+                body: []
+            - state:
+                kind: final
+                name: F
+                params:
+                  - name: reason
+                    ty:
+                      builtin: string
+                body:
+                  - output:
+                      var: reason
+comments:
+  - kind: doc
+    text: /// Takes a token.
+  - kind: doc
+    text: /// Counts.

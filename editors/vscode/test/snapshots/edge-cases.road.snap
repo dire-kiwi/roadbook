@@ -685,3 +685,132 @@
 >"unterminated
 #^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
 # ^^^^^^^^^^^^ string.quoted.double.roadbook
+>
+>// State parameters, state variables and target arguments.
+#^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.double-slash.roadbook
+>machine Locals() {
+#^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
+#        ^^^^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
+#              ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#               ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                 ^ punctuation.section.braces.roadbook
+>  state A {
+#  ^^^^^ storage.type.state.roadbook
+#        ^ entity.name.type.state.roadbook
+#          ^ punctuation.section.braces.roadbook
+>    on Go -> B(1, f(event.code)).C, .D(Role.Admin)  set n = 1
+#    ^^ keyword.control.trigger.roadbook
+#       ^^ entity.name.type.event.roadbook
+#          ^^ keyword.operator.arrow.roadbook
+#             ^ entity.name.type.state.roadbook
+#              ^ meta.arguments.roadbook punctuation.definition.arguments.begin.roadbook
+#               ^ meta.arguments.roadbook constant.numeric.integer.roadbook
+#                ^ meta.arguments.roadbook punctuation.separator.comma.roadbook
+#                  ^ meta.arguments.roadbook entity.name.function.call.roadbook
+#                   ^ meta.arguments.roadbook
+#                    ^^^^^ meta.arguments.roadbook variable.language.roadbook
+#                         ^ meta.arguments.roadbook punctuation.accessor.roadbook
+#                          ^^^^ meta.arguments.roadbook variable.other.property.roadbook
+#                              ^ meta.arguments.roadbook
+#                               ^ meta.arguments.roadbook punctuation.definition.arguments.end.roadbook
+#                                ^^ entity.name.type.state.roadbook
+#                                  ^^ punctuation.separator.comma.roadbook
+#                                    ^^ entity.name.type.state.roadbook
+#                                      ^ meta.arguments.roadbook punctuation.definition.arguments.begin.roadbook
+#                                       ^^^^ meta.arguments.roadbook entity.name.type.roadbook
+#                                           ^ meta.arguments.roadbook punctuation.accessor.roadbook
+#                                            ^^^^^ meta.arguments.roadbook variable.other.enummember.roadbook
+#                                                 ^ meta.arguments.roadbook punctuation.definition.arguments.end.roadbook
+#                                                    ^^^ keyword.other.effect.roadbook
+#                                                        ^ variable.other.roadbook
+#                                                          ^ keyword.operator.assignment.roadbook
+#                                                            ^ constant.numeric.integer.roadbook
+>    on Back -> B(
+#    ^^ keyword.control.trigger.roadbook
+#       ^^^^ entity.name.type.event.roadbook
+#            ^^ keyword.operator.arrow.roadbook
+#               ^ entity.name.type.state.roadbook
+#                ^ meta.arguments.roadbook punctuation.definition.arguments.begin.roadbook
+>      2,
+#      ^ meta.arguments.roadbook constant.numeric.integer.roadbook
+#       ^ meta.arguments.roadbook punctuation.separator.comma.roadbook
+>      "x",
+#      ^ meta.arguments.roadbook string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#       ^ meta.arguments.roadbook string.quoted.double.roadbook
+#        ^ meta.arguments.roadbook string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+#         ^ meta.arguments.roadbook punctuation.separator.comma.roadbook
+>    )
+#    ^ meta.arguments.roadbook punctuation.definition.arguments.end.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>  state B(n: int, sensitive code: string) {
+#  ^^^^^ meta.declaration.state.roadbook storage.type.state.roadbook
+#        ^ meta.declaration.state.roadbook entity.name.type.state.roadbook
+#         ^ meta.declaration.state.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#          ^ meta.declaration.state.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#           ^ meta.declaration.state.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#             ^^^ meta.declaration.state.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                ^ meta.declaration.state.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                  ^^^^^^^^^ meta.declaration.state.roadbook meta.parameters.roadbook storage.modifier.sensitive.roadbook
+#                            ^^^^ meta.declaration.state.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                ^ meta.declaration.state.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                  ^^^^^^ meta.declaration.state.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                                        ^ meta.declaration.state.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                          ^ punctuation.section.braces.roadbook
+>    var tries: int = n
+#    ^^^ storage.type.var.roadbook
+#        ^^^^^ variable.other.definition.roadbook
+#             ^ punctuation.separator.colon.roadbook
+#               ^^^ support.type.primitive.roadbook
+#                   ^ keyword.operator.assignment.roadbook
+#                     ^ variable.other.roadbook
+>    sensitive var secret: string
+#    ^^^^^^^^^ storage.modifier.sensitive.roadbook
+#              ^^^ storage.type.var.roadbook
+#                  ^^^^^^ variable.other.definition.roadbook
+#                        ^ punctuation.separator.colon.roadbook
+#                          ^^^^^^ support.type.primitive.roadbook
+>    on Go -> B(n + 1)  do log(tries)
+#    ^^ keyword.control.trigger.roadbook
+#       ^^ entity.name.type.event.roadbook
+#          ^^ keyword.operator.arrow.roadbook
+#             ^ entity.name.type.state.roadbook
+#              ^ meta.arguments.roadbook punctuation.definition.arguments.begin.roadbook
+#               ^ meta.arguments.roadbook variable.other.roadbook
+#                 ^ meta.arguments.roadbook keyword.operator.arithmetic.roadbook
+#                   ^ meta.arguments.roadbook constant.numeric.integer.roadbook
+#                    ^ meta.arguments.roadbook punctuation.definition.arguments.end.roadbook
+#                       ^^ keyword.other.effect.roadbook
+#                          ^^^ entity.name.function.call.roadbook
+#                             ^ punctuation.section.parens.roadbook
+#                              ^^^^^ variable.other.roadbook
+#                                   ^ punctuation.section.parens.roadbook
+>    initial C
+#    ^^^^^^^ keyword.control.initial.roadbook
+#            ^ entity.name.type.state.roadbook
+>    state C {}
+#    ^^^^^ storage.type.state.roadbook
+#          ^ entity.name.type.state.roadbook
+#            ^ punctuation.section.braces.roadbook
+#             ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>  final state F(
+#  ^^^^^ meta.declaration.state.roadbook storage.modifier.final.roadbook
+#        ^^^^^ meta.declaration.state.roadbook storage.type.state.roadbook
+#              ^ meta.declaration.state.roadbook entity.name.type.state.roadbook
+#               ^ meta.declaration.state.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+>    reason: string,
+#    ^^^^^^ meta.declaration.state.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#          ^ meta.declaration.state.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#            ^^^^^^ meta.declaration.state.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                  ^ meta.declaration.state.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+>  ) { output reason }
+#  ^ meta.declaration.state.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#    ^ punctuation.section.braces.roadbook
+#      ^^^^^^ keyword.control.output.roadbook
+#             ^^^^^^ variable.other.roadbook
+#                    ^ punctuation.section.braces.roadbook
+>}
+#^ punctuation.section.braces.roadbook

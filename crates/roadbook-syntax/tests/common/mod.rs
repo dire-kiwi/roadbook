@@ -83,6 +83,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  event Go\n  /// Sent by the machine to itself.\n  internal event Remind { attempt: int }\n  internal event Ping\n  var raise: int = 0\n  on Go raise Ping  raise Remind { attempt: 1 } after 24h as reminder\n  on Ping cancel reminder  set raise = raise + 1\n  state A {\n    entry raise Remind { attempt: 2 } after delay(raise)\n    exit cancel reminder  do log()\n    on Remind raise Ping\n    after 5s -> A\n  }\n}\n",
     ),
     (
+        "locals",
+        "machine M() {\n  state A {\n    on Go -> B(1, event.code).C  set n = 1\n    on Back -> .Inner(n), D(\"x\")\n    state Inner(n: int) {}\n  }\n  /// Takes a token.\n  state B(n: int, sensitive code: string) {\n    /// Counts.\n    var tries: int = n\n    sensitive var secret: string\n    on Go -> B(n + 1)\n    initial C\n    state C {}\n  }\n  parallel state P(x: int) {}\n  final state F(reason: string) { output reason }\n}\n",
+    ),
+    (
         "ended",
         "machine M(peer: ref Peer) {\n  var ended: int = 0\n  on peer.ended if event.status == Ended.Defect -> A\n  state A {\n    on peer.ended {\n      if event.status == Ended.Done -> A  set ended = ended + 1\n      else -> A\n    }\n  }\n}\n",
     ),

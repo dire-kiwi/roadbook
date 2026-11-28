@@ -588,25 +588,27 @@ machine PasswordReset(email: string) -> ApiResponse {
 
   state Requesting {
     invoke requestReset(email) {
-      done -> Confirming(result)          // result is a ResetToken
+      done -> Confirming(result) // result is a ResetToken
     }
   }
 
   /// The token is only needed while the code is being confirmed.
   state Confirming(token: ResetToken) {
-    var tries: int = 0                    // 0 each time Confirming is entered
+    var tries: int = 0 // 0 each time Confirming is entered
     on Submit {
       if matches(token, event.code) -> Resetting(token)
-      if tries < 2                  set tries = tries + 1
+      if tries < 2                                                 set tries = tries + 1
       else                          -> Rejected("too many tries")
     }
   }
 
   state Resetting(token: ResetToken) {
-    invoke resetPassword(token) { done -> Changed }
+    invoke resetPassword(token) {
+      done -> Changed
+    }
   }
 
-  final state Changed { output noContent() }
+  final state Changed                  { output noContent() }
   final state Rejected(reason: string) { output problem(422, reason) }
 }
 ```

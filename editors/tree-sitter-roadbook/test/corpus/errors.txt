@@ -57,7 +57,7 @@ A machine item in a state
 :error
 ================================================================================
 
-machine M() { initial A  state A { var x: int } }
+machine M() { initial A  state A { event Go } }
 
 --------------------------------------------------------------------------------
 
