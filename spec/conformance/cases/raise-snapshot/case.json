@@ -1,0 +1,70 @@
+{
+  "description": "Delayed raises are saved in `scheduled` with their deadlines. `Again` replaces the reminder (id 3, due at 900) while `Waiting`'s `after 3s` (id 2) is due at 3000. Restored at 700, the state's timer starts again first, then the delayed raise, for the time that remains. Restored at 3500, both are overdue: `timer.fire` queues them by due time, then id, so the reminder is taken first; it re-enters `Waiting`, cancelling the state's timer, whose queued expiry is then `stale`. A suspended run keeps its pending raise.",
+  "requires": [
+    "raise",
+    "snapshots"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Reminder",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Start"
+      }
+    },
+    {
+      "advance": 400
+    },
+    {
+      "event": {
+        "_tag": "Again"
+      }
+    },
+    {
+      "snapshot": "waiting"
+    },
+    {
+      "advance": 300
+    },
+    {
+      "restore": "waiting",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "snapshot": "restarted",
+      "run": "r2"
+    },
+    {
+      "advance": 200
+    },
+    {
+      "event": {
+        "_tag": "Stop"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Stop"
+      },
+      "run": "r2"
+    },
+    {
+      "advance": 2600
+    },
+    {
+      "restore": "waiting",
+      "run": "r3",
+      "status": "running"
+    },
+    {
+      "suspend": "suspended",
+      "run": "r3"
+    }
+  ],
+  "status": "running"
+}

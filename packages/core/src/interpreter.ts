@@ -12,6 +12,7 @@ import {
   type Ir,
   isHistory,
   type Machine,
+  ownEvent,
   peerOf,
   type State,
   type Transition,
@@ -1390,7 +1391,7 @@ class Macrostep {
     if (t.kind !== "named") return undefined
     if (Object.hasOwn(this.ir.types, t.name)) return this.ir.types[t.name]!.kind === "error" ? t.name : undefined
     const m = this.index.machine
-    return Object.hasOwn(m.emits, t.name) || Object.hasOwn(m.events, t.name) ? t.name : undefined
+    return Object.hasOwn(m.emits, t.name) || ownEvent(m, t.name) !== undefined ? t.name : undefined
   }
 
   private evalOp(expr: Extract<Expr, { kind: "op" }>, bindings: Bindings): Json {

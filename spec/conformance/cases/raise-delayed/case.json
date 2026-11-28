@@ -1,0 +1,31 @@
+{
+  "description": "A delayed raise is a timer of the run, from the sequence `after` timers take their ids from. `Start` schedules `Remind` 1 for 1 s as it leaves `Idle`; it fires in `Waiting`, whose own `after 3s` is restarted each time `Remind` re-enters it. `Confirm` finishes the run: its states are exited, then the pending `reminder` is cancelled with `raise.cancelled`.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Reminder",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Start"
+      }
+    },
+    {
+      "advance": 1000
+    },
+    {
+      "advance": 1000
+    },
+    {
+      "event": {
+        "_tag": "Confirm"
+      }
+    }
+  ],
+  "status": "done"
+}

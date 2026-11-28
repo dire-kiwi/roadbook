@@ -44,6 +44,7 @@ impl Marks {
                     || m.calls.values().any(|c| fields(&c.params))
                     || m.events
                         .values()
+                        .chain(m.internal_events.values())
                         .chain(m.emits.values())
                         .any(|e| fields(&e.fields))
             });

@@ -1,0 +1,45 @@
+{
+  "description": "A saved snapshot's delayed raises must fit the machine, or it is refused as `invalid`: a value that is not one of its events, a name no `raise` of it uses, two raises with one name, an id that a timer has too, and an id not below `nextTimer`. An empty `scheduled` does not match the schema, which writes it only when it is not empty.",
+  "requires": [
+    "raise",
+    "snapshots"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Reminder",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "restore": "bad-value",
+      "refused": "invalid"
+    },
+    {
+      "restore": "bad-name",
+      "refused": "invalid"
+    },
+    {
+      "restore": "two-names",
+      "refused": "invalid"
+    },
+    {
+      "restore": "id-clash",
+      "refused": "invalid"
+    },
+    {
+      "restore": "id-high",
+      "refused": "invalid"
+    },
+    {
+      "restore": "empty",
+      "refused": "invalid"
+    },
+    {
+      "event": {
+        "_tag": "Start"
+      }
+    }
+  ],
+  "status": "running"
+}

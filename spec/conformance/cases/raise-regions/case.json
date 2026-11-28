@@ -1,0 +1,21 @@
+{
+  "description": "One region signals another: `Go` takes `L1 -> L2` in `Left`, whose effect raises `Signal`, and the raised event is taken in both regions in one microstep, by `L2` and by `R1`.",
+  "requires": [
+    "raise",
+    "parallel"
+  ],
+  "chart": "charts/raise-regions.road",
+  "machine": "Regions",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    }
+  ],
+  "status": "running"
+}

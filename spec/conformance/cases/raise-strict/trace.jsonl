@@ -1,0 +1,4 @@
+{"input":{},"ir":"sha256:f87a8aff1bfad48df50b3ff6555379cb775a1a4f945bac6e5755c0b0d9869420","kind":"started","machine":"Picky","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Picky","t":0}
+{"kind":"entered","run":"r1","state":"Picky.A","t":0}
+{"defect":{"event":{"kind":"raised","value":{"_tag":"Ping"}},"kind":"unhandled"},"kind":"defect","run":"r1","t":0}

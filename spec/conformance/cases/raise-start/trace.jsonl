@@ -1,0 +1,17 @@
+{"input":{},"ir":"sha256:a81485a0514fc8e38261fbb4ca0fc746ef1c9ab5e6eb3026a76df1b26e10d2d4","kind":"started","machine":"Starter","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Starter","t":0}
+{"kind":"entered","run":"r1","state":"Starter.A","t":0}
+{"kind":"raised","run":"r1","t":0,"value":{"_tag":"Ping"}}
+{"event":{"kind":"raised","value":{"_tag":"Ping"}},"kind":"event","run":"r1","t":0}
+{"from":"Starter.A","index":0,"kind":"transition","run":"r1","t":0,"to":["Starter.B"]}
+{"kind":"exited","run":"r1","state":"Starter.A","t":0}
+{"kind":"entered","run":"r1","state":"Starter.B","t":0}
+{"event":{"kind":"event","value":{"_tag":"Back"}},"kind":"event","run":"r1","t":0}
+{"from":"Starter.B","index":0,"kind":"transition","run":"r1","t":0,"to":["Starter.A"]}
+{"kind":"exited","run":"r1","state":"Starter.B","t":0}
+{"kind":"entered","run":"r1","state":"Starter.A","t":0}
+{"kind":"raised","run":"r1","t":0,"value":{"_tag":"Ping"}}
+{"event":{"kind":"raised","value":{"_tag":"Ping"}},"kind":"event","run":"r1","t":0}
+{"from":"Starter.A","index":0,"kind":"transition","run":"r1","t":0,"to":["Starter.B"]}
+{"kind":"exited","run":"r1","state":"Starter.A","t":0}
+{"kind":"entered","run":"r1","state":"Starter.B","t":0}

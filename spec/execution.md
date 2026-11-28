@@ -823,7 +823,7 @@ Expressions are evaluated by their IR node, recursively. Every node's `type` is 
 | `ref` | `path[0]` is a parameter (from `input`), a variable (from `vars`; reading one with no value is `unassigned`), or the implicit name `event`, `result`, `error`, `call` or `key`. Each further name reads that field of the value. A parameter or variable of a `ref` type reads as the run id it holds. |
 | `field` | Evaluate `of`, then read field `name`. |
 | `call` | Evaluate `args` left to right, then `fns(fn, args)`. |
-| `record` | An object with the fields in order. Its `type` may be an instance of a generic record (`Page<Order>`); the fields are the same. If `type` is an error, it also has `"_tag": type`. If `type` is an event (the value of a `send` or `emit`: `Machine.Name`, or the name of one of the current machine's `emits`), it also has `"_tag"` with the event's name, the part after the dot: `send upload.Pause` sends `{"_tag": "Pause"}`. |
+| `record` | An object with the fields in order. Its `type` may be an instance of a generic record (`Page<Order>`); the fields are the same. If `type` is an error, it also has `"_tag": type`. If `type` is an event (the value of a `send`, `emit` or `raise`: `Machine.Name`, or the name of one of the current machine's `emits`, `events` or `internalEvents`), it also has `"_tag"` with the event's name, the part after the dot: `send upload.Pause` sends `{"_tag": "Pause"}`. |
 | `enum` | The string `variant`. |
 | `op` | See below. |
 
