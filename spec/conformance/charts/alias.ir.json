@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/alias.road",
@@ -413,7 +413,10 @@
                   "type": "bool",
                   "text": "limit < m + event.by"
                 },
-                "target": "Aliases.Done",
+                "targets": [
+                  "Aliases.Done"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -500,7 +503,8 @@
                   "type": "bool",
                   "text": "limit == m + event.by"
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -611,7 +615,8 @@
                   "type": "bool",
                   "text": "m <= limit and m != limit"
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -727,7 +732,8 @@
                   "type": "bool",
                   "text": "event.ratio < r and event.wait <= w"
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -814,7 +820,8 @@
                   "type": "bool",
                   "text": "event.ratio == r and event.wait == w"
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -901,7 +908,8 @@
                   "type": "bool",
                   "text": "event.ratio >= r and event.wait > w"
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1030,7 +1038,8 @@
                   "type": "bool",
                   "text": "event.tier == t and -r < -1.0"
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -1114,7 +1123,8 @@
                   "type": "bool",
                   "text": "event.tier != t and m >= 0"
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/redact-call.road",
@@ -145,7 +145,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "reply",
@@ -206,7 +207,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Issuer.Shut",
+                "targets": [
+                  "Issuer.Shut"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -245,7 +249,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Issuer.Open",
+                "targets": [
+                  "Issuer.Open"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -394,7 +401,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Client.Got",
+                "targets": [
+                  "Client.Got"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -424,7 +434,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Client.Gave",
+                "targets": [
+                  "Client.Gave"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

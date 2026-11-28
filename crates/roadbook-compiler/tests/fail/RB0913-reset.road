@@ -1,0 +1,25 @@
+machine M() {
+  event Cross
+  event Into
+  event Reset
+  event Both
+  initial P
+  parallel state P {
+    on Both -> .A.A2, .B.B2
+    state A {
+      initial A1
+      on Into -> A.A2
+      state A1 { on Cross -> P.B.B2 }
+      state A2 {}
+    }
+    state B {
+      initial B1
+      on Reset -> P
+      state B1 { on Both -> P.A.A2, P.B.B2 }
+      state B2 {}
+    }
+  }
+}
+
+// expect: RB0913 at 11:7
+// expect: RB0913 at 12:18

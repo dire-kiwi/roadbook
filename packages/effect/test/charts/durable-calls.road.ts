@@ -32,7 +32,7 @@ export interface DeskDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable-calls.road",
@@ -241,7 +241,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Desk.Holding",
+                "targets": [
+                  "Desk.Holding"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -296,7 +299,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Desk.Closed",
+                "targets": [
+                  "Desk.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -335,7 +341,8 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -365,7 +372,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Desk.Open",
+                "targets": [
+                  "Desk.Open"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "reply",
@@ -420,7 +430,10 @@ const ir: unknown = {
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Desk.Closing",
+                "targets": [
+                  "Desk.Closing"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -472,7 +485,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Desk.Closed",
+                "targets": [
+                  "Desk.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -639,7 +655,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Asker.Got",
+                "targets": [
+                  "Asker.Got"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -669,7 +688,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Asker.Got",
+                "targets": [
+                  "Asker.Got"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -873,7 +895,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Host.Done",
+                "targets": [
+                  "Host.Done"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/hub.road",
@@ -243,7 +243,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -287,7 +288,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "emit",
@@ -328,7 +330,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Session.Left",
+                "targets": [
+                  "Session.Left"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -345,7 +350,10 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": "Session.Dropped",
+                "targets": [
+                  "Session.Dropped"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -362,7 +370,8 @@
                 },
                 "group": 4,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -794,7 +803,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "spawn",
@@ -837,7 +847,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "spawn",
@@ -918,7 +929,8 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "spawn",
@@ -980,7 +992,8 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "stop",
@@ -1011,7 +1024,8 @@
                 },
                 "group": 4,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1067,7 +1081,8 @@
                 },
                 "group": 5,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1115,7 +1130,8 @@
                 },
                 "group": 6,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1158,7 +1174,8 @@
                 },
                 "group": 7,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1201,7 +1218,8 @@
                 },
                 "group": 8,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1250,7 +1268,8 @@
                 },
                 "group": 9,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1308,7 +1327,8 @@
                 },
                 "group": 10,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -1341,7 +1361,8 @@
                 },
                 "group": 11,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -1374,7 +1395,10 @@
                 },
                 "group": 12,
                 "guard": null,
-                "target": "Hub.Closed",
+                "targets": [
+                  "Hub.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1391,7 +1415,10 @@
                 },
                 "group": 13,
                 "guard": null,
-                "target": "Hub.Closed",
+                "targets": [
+                  "Hub.Closed"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "spawn",
@@ -1639,7 +1666,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "spawn",
@@ -1682,7 +1710,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "stop",
@@ -1713,7 +1742,8 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1756,7 +1786,8 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1799,7 +1830,8 @@
                 },
                 "group": 4,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -1829,7 +1861,10 @@
                 },
                 "group": 5,
                 "guard": null,
-                "target": "Pool.Finished",
+                "targets": [
+                  "Pool.Finished"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1873,7 +1908,8 @@
                   "type": "bool",
                   "text": "key < 0"
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",

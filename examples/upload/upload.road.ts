@@ -70,7 +70,7 @@ export interface UploadDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "examples/upload/upload.road",
@@ -451,7 +451,10 @@ const ir: unknown = {
                   "type": "bool",
                   "text": "complete(file, offset)"
                 },
-                "target": "Upload.Finishing",
+                "targets": [
+                  "Upload.Finishing"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -467,7 +470,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Upload.Sending",
+                "targets": [
+                  "Upload.Sending"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -535,7 +541,10 @@ const ir: unknown = {
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Upload.Failed",
+                "targets": [
+                  "Upload.Failed"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -565,7 +574,10 @@ const ir: unknown = {
                 },
                 "group": 3,
                 "guard": null,
-                "target": "Upload.Paused",
+                "targets": [
+                  "Upload.Paused"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -604,7 +616,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Upload.Sending",
+                "targets": [
+                  "Upload.Sending"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -664,7 +679,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Upload.Done",
+                "targets": [
+                  "Upload.Done"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -694,7 +712,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Upload.Failed",
+                "targets": [
+                  "Upload.Failed"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",

@@ -50,7 +50,7 @@ export interface OrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "examples/orders/orders.road",
@@ -437,7 +437,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Order.Paying",
+                "targets": [
+                  "Order.Paying"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -454,7 +457,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Order.Unavailable",
+                "targets": [
+                  "Order.Unavailable"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -484,7 +490,10 @@ const ir: unknown = {
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Order.Unavailable",
+                "targets": [
+                  "Order.Unavailable"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -527,7 +536,10 @@ const ir: unknown = {
                 },
                 "group": 3,
                 "guard": null,
-                "target": "Order.Unavailable",
+                "targets": [
+                  "Order.Unavailable"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -616,7 +628,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Order.Paid",
+                "targets": [
+                  "Order.Paid"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -646,7 +661,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Order.Declined",
+                "targets": [
+                  "Order.Declined"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -972,7 +990,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Inventory.Reserving",
+                "targets": [
+                  "Inventory.Reserving"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1028,7 +1049,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Inventory.Closed",
+                "targets": [
+                  "Inventory.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 1,
@@ -1104,7 +1128,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Inventory.Ready",
+                "targets": [
+                  "Inventory.Ready"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "reply",
@@ -1135,7 +1162,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Inventory.Ready",
+                "targets": [
+                  "Inventory.Ready"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "reply",
@@ -1173,7 +1203,8 @@ const ir: unknown = {
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "reply",
@@ -1249,7 +1280,8 @@ const ir: unknown = {
             },
             "group": 0,
             "guard": null,
-            "target": null,
+            "targets": [],
+            "internal": false,
             "effects": [
               {
                 "kind": "do",
@@ -1290,7 +1322,8 @@ const ir: unknown = {
             },
             "group": 1,
             "guard": null,
-            "target": null,
+            "targets": [],
+            "internal": false,
             "effects": [
               {
                 "kind": "do",

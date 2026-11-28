@@ -5,14 +5,14 @@
 {"kind":"entered","run":"r1","state":"Editor.Work.Draft","t":0}
 {"action":"log","args":{"what":"enter Draft"},"kind":"action","run":"r1","t":0}
 {"event":{"kind":"event","value":{"_tag":"Next"}},"kind":"event","run":"r1","t":0}
-{"from":"Editor.Work.Draft","index":0,"kind":"transition","run":"r1","t":0,"to":"Editor.Work.Review"}
+{"from":"Editor.Work.Draft","index":0,"kind":"transition","run":"r1","t":0,"to":["Editor.Work.Review"]}
 {"action":"log","args":{"what":"exit Draft"},"kind":"action","run":"r1","t":0}
 {"kind":"exited","run":"r1","state":"Editor.Work.Draft","t":0}
 {"kind":"entered","run":"r1","state":"Editor.Work.Review","t":0}
 {"action":"log","args":{"what":"enter Review"},"kind":"action","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Editor.Work.Review.Read","t":0}
 {"event":{"kind":"event","value":{"_tag":"Help"}},"kind":"event","run":"r1","t":0}
-{"from":"Editor.Work","index":0,"kind":"transition","run":"r1","t":0,"to":"Editor.Help"}
+{"from":"Editor.Work","index":0,"kind":"transition","run":"r1","t":0,"to":["Editor.Help"]}
 {"kind":"exited","run":"r1","state":"Editor.Work.Review.Read","t":0}
 {"action":"log","args":{"what":"exit Review"},"kind":"action","run":"r1","t":0}
 {"kind":"exited","run":"r1","state":"Editor.Work.Review","t":0}
@@ -21,7 +21,7 @@
 {"kind":"entered","run":"r1","state":"Editor.Help","t":0}
 {"ir":"sha256:3c9c0073b41e6dac8a5722d66c35f14e9951e7306070790b80848db00df0b781","kind":"restored","machine":"Editor","migrated":null,"run":"r2","snapshot":{"active":["Editor","Editor.Help"],"history":{"Editor.Work.Deep":["Editor.Work.Review.Read"],"Editor.Work.Shallow":["Editor.Work.Review"]},"input":{},"invokes":[],"ir":"sha256:3c9c0073b41e6dac8a5722d66c35f14e9951e7306070790b80848db00df0b781","machine":"Editor","nextInvoke":1,"nextMessage":1,"nextTimer":1,"result":null,"run":"r1","snapshotVersion":4,"spawned":[],"status":"running","timers":[],"vars":{}},"t":0}
 {"event":{"kind":"event","value":{"_tag":"BackDeep"}},"kind":"event","run":"r2","t":0}
-{"from":"Editor.Help","index":1,"kind":"transition","run":"r2","t":0,"to":"Editor.Work.Deep"}
+{"from":"Editor.Help","index":1,"kind":"transition","run":"r2","t":0,"to":["Editor.Work.Deep"]}
 {"kind":"exited","run":"r2","state":"Editor.Help","t":0}
 {"kind":"entered","run":"r2","state":"Editor.Work","t":0}
 {"action":"log","args":{"what":"enter Work"},"kind":"action","run":"r2","t":0}
@@ -29,7 +29,7 @@
 {"action":"log","args":{"what":"enter Review"},"kind":"action","run":"r2","t":0}
 {"kind":"entered","run":"r2","state":"Editor.Work.Review.Read","t":0}
 {"event":{"kind":"event","value":{"_tag":"Deeper"}},"kind":"event","run":"r2","t":0}
-{"from":"Editor.Work.Review.Read","index":0,"kind":"transition","run":"r2","t":0,"to":"Editor.Work.Review.Comment"}
+{"from":"Editor.Work.Review.Read","index":0,"kind":"transition","run":"r2","t":0,"to":["Editor.Work.Review.Comment"]}
 {"kind":"exited","run":"r2","state":"Editor.Work.Review.Read","t":0}
 {"kind":"entered","run":"r2","state":"Editor.Work.Review.Comment","t":0}
 {"args":{},"invoke":1,"kind":"invoke.started","run":"r2","src":"fetch","state":"Editor.Work.Review.Comment","t":0}

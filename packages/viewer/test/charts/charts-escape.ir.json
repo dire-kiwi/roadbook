@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "packages/viewer/test/charts/escape.road",
@@ -274,7 +274,10 @@
                   "type": "bool",
                   "text": "event.who == \"</script><svg onload=alert(6)>\""
                 },
-                "target": "Escape.B",
+                "targets": [
+                  "Escape.B"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -304,7 +307,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Escape.A",
+                "targets": [
+                  "Escape.A"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -320,7 +326,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -370,7 +377,10 @@
                   "type": "bool",
                   "text": "t == \"x\""
                 },
-                "target": "Escape.B",
+                "targets": [
+                  "Escape.B"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -407,7 +417,10 @@
                   "type": "bool",
                   "text": "t == \"k\""
                 },
-                "target": "Escape.K",
+                "targets": [
+                  "Escape.K"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -452,7 +465,10 @@
                   "type": "bool",
                   "text": "event.text == \"</script><img src=x onerror=alert(11)>\""
                 },
-                "target": "Escape.B",
+                "targets": [
+                  "Escape.B"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -546,7 +562,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Escape.Done",
+                "targets": [
+                  "Escape.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -569,7 +588,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -655,7 +675,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Escape.P",
+                "targets": [
+                  "Escape.P"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -685,7 +708,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Escape.Failed",
+                "targets": [
+                  "Escape.Failed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -702,7 +728,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Escape.Failed",
+                "targets": [
+                  "Escape.Failed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -768,7 +797,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Escape.P.R1.XF",
+                        "targets": [
+                          "Escape.P.R1.XF"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -850,7 +882,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Escape.P.R2.YF",
+                        "targets": [
+                          "Escape.P.R2.YF"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -904,7 +939,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Escape.Done",
+                "targets": [
+                  "Escape.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1010,7 +1048,10 @@
             },
             "group": 0,
             "guard": null,
-            "target": "Escape.Done",
+            "targets": [
+              "Escape.Done"
+            ],
+            "internal": false,
             "effects": [],
             "span": {
               "file": 0,
@@ -1032,7 +1073,10 @@
             },
             "group": 1,
             "guard": null,
-            "target": "Escape.Done",
+            "targets": [
+              "Escape.Done"
+            ],
+            "internal": false,
             "effects": [],
             "span": {
               "file": 0,
@@ -1156,7 +1200,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "EscapePeer.End",
+                "targets": [
+                  "EscapePeer.End"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "emit",

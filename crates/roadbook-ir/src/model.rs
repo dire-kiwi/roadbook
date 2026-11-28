@@ -652,9 +652,14 @@ pub struct Transition {
     pub group: u32,
     /// The guard, `null` if unguarded (including `else`).
     pub guard: Option<Expr>,
-    /// Target state id, `null` for an internal transition. With no target
-    /// and no effects, the transition is an `ignore`.
-    pub target: Option<String>,
+    /// Target state ids, in the order written: `[]` for a transition with no
+    /// target, more than one for a transition into several regions of a
+    /// parallel state. With no target and no effects, the transition is an
+    /// `ignore`.
+    pub targets: Vec<String>,
+    /// Whether the transition is internal (`-> .X`): its domain is its own
+    /// state, which it does not leave. `false` for one with no target.
+    pub internal: bool,
     /// Effects: every `set` assignment, then the `do`, `send`, `emit` and
     /// `reply` effects in the order written.
     pub effects: Vec<Effect>,

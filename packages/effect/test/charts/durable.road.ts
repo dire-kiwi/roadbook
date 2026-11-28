@@ -36,7 +36,7 @@ export interface PipelineDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable.road",
@@ -248,7 +248,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Pipeline.Two",
+                "targets": [
+                  "Pipeline.Two"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -335,7 +338,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Pipeline.Waiting",
+                "targets": [
+                  "Pipeline.Waiting"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -403,7 +409,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Pipeline.Three",
+                "targets": [
+                  "Pipeline.Three"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -456,7 +465,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Pipeline.Three",
+                "targets": [
+                  "Pipeline.Three"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -514,7 +526,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Pipeline.Done",
+                "targets": [
+                  "Pipeline.Done"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -732,7 +747,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Parent.Done",
+                "targets": [
+                  "Parent.Done"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -762,7 +780,8 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -816,7 +835,10 @@ const ir: unknown = {
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Parent.Fallback",
+                "targets": [
+                  "Parent.Fallback"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -874,7 +896,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Parent.GaveUp",
+                "targets": [
+                  "Parent.GaveUp"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1086,7 +1111,8 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1155,7 +1181,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Counter.Closed",
+                "targets": [
+                  "Counter.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1289,7 +1318,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Adder.Waiting",
+                "targets": [
+                  "Adder.Waiting"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1388,7 +1420,10 @@ const ir: unknown = {
                   "type": "bool",
                   "text": "event.n >= goal"
                 },
-                "target": "Adder.Reached",
+                "targets": [
+                  "Adder.Reached"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1543,7 +1578,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Watcher.Done",
+                "targets": [
+                  "Watcher.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1602,7 +1640,8 @@ const ir: unknown = {
             },
             "group": 0,
             "guard": null,
-            "target": null,
+            "targets": [],
+            "internal": false,
             "effects": [
               {
                 "kind": "set",
@@ -1796,7 +1835,8 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1843,7 +1883,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Session.Working",
+                "targets": [
+                  "Session.Working"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1874,7 +1917,10 @@ const ir: unknown = {
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Session.Left",
+                "targets": [
+                  "Session.Left"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1897,7 +1943,10 @@ const ir: unknown = {
                 },
                 "group": 3,
                 "guard": null,
-                "target": "Session.Expired",
+                "targets": [
+                  "Session.Expired"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1957,7 +2006,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Session.Waiting",
+                "targets": [
+                  "Session.Waiting"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -2265,7 +2317,8 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "spawn",
@@ -2308,7 +2361,8 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -2364,7 +2418,8 @@ const ir: unknown = {
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -2420,7 +2475,8 @@ const ir: unknown = {
                 },
                 "group": 3,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -2463,7 +2519,8 @@ const ir: unknown = {
                 },
                 "group": 4,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -2523,7 +2580,10 @@ const ir: unknown = {
                 },
                 "group": 5,
                 "guard": null,
-                "target": "Hub.Done",
+                "targets": [
+                  "Hub.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2694,7 +2754,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Relay.Done",
+                "targets": [
+                  "Relay.Done"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",

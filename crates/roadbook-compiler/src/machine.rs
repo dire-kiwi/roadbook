@@ -114,11 +114,11 @@ pub(crate) enum Place {
     Entry(usize),
     /// The `exit` of a state.
     Exit(usize),
-    /// A transition written in a state, with its target, and whether it is an outcome of the
-    /// state's invoke.
+    /// A transition written in a state, with its domain (`None` with no target: it leaves
+    /// nothing), and whether it is an outcome of the state's invoke.
     Transition {
         node: usize,
-        target: Option<usize>,
+        domain: Option<usize>,
         outcome: bool,
     },
 }
@@ -1286,11 +1286,14 @@ impl<'p> Cx<'_, 'p> {
             } if node == invoking => Some(format!(
                 "in an outcome of the invoke of `{state}`, its child has already ended"
             )),
+            // A transition exits the states below its domain (for an internal one written in a
+            // parallel state, below some of its regions): the invoking state is the state the
+            // transition is written in or one around it, so it is exited when it is below the
+            // domain.
             Place::Transition {
-                node,
-                target: Some(t),
+                domain: Some(d),
                 ..
-            } if !(self.inside(node, invoking) && self.inside(t, invoking)) => Some(format!(
+            } if self.inside(invoking, d) => Some(format!(
                 "this transition leaves `{state}`, which stops its child before the transition's effects run"
             )),
             _ => None,
@@ -2304,11 +2307,16 @@ impl<'p> Cx<'_, 'p> {
                 .as_ref()
                 .map(|g| self.expect(g, scope, &BOOL, "a guard"));
             let guard_reads = std::mem::take(&mut self.reads);
-            let target_node = b.target.as_ref().and_then(|tg| self.target(idx, tg));
-            let target = target_node.map(|n| self.nodes[n].id.clone());
+            let (target_nodes, internal) = self.targets(idx, &b.targets);
+            let targets = target_nodes
+                .iter()
+                .map(|&n| self.nodes[n].id.clone())
+                .collect();
+            let domain =
+                (!target_nodes.is_empty()).then(|| self.domain(idx, &target_nodes, internal));
             let place = Place::Transition {
                 node: idx,
-                target: target_node,
+                domain,
                 outcome,
             };
             let (effects, effect_reads) = self.effects(&b.effects, scope, place);
@@ -2326,7 +2334,8 @@ impl<'p> Cx<'_, 'p> {
                 trigger: trigger.clone(),
                 group,
                 guard,
-                target,
+                targets,
+                internal,
                 effects,
                 span: ir_span(span),
             });
@@ -2334,11 +2343,162 @@ impl<'p> Cx<'_, 'p> {
         }
     }
 
-    /// Resolves a target: the first segment among the siblings of the state the transition is
-    /// written in, then among its parent's siblings, and so on outward (for the machine body,
-    /// among the top-level states); each further segment names a child of the one before.
+    /// Resolves the targets of a branch written in node `from`, and checks that they go
+    /// together: every one with the leading dot or none (`RB0221`), and each in a different
+    /// region of a parallel state (`RB0222`). With whether the transition is internal: written
+    /// with the dot, outside the machine body (where `-> .X` is `-> X`). A target that does not
+    /// resolve is left out, with its diagnostic.
+    fn targets(&mut self, from: usize, written: &[Target]) -> (Vec<usize>, bool) {
+        let dot = written.first().is_some_and(|t| t.dot);
+        let mut nodes = Vec::new();
+        for t in written {
+            if let Some(n) = self.target(from, t) {
+                nodes.push(n);
+            }
+        }
+        if let Some(odd) = written.iter().find(|t| t.dot != dot) {
+            let own = self.nodes[from].id.clone();
+            let mut d = Diagnostic::error(
+                codes::MIXED_TARGETS,
+                odd.span,
+                if dot {
+                    "this target has no leading dot, and the first one does: either every target is written `.X` or none is".to_string()
+                } else {
+                    "this target has a leading dot, and the first one does not: either every target is written `.X` or none is".to_string()
+                },
+            )
+            .with_secondary(written[0].span, "the first target")
+            .with_help(format!(
+                "the dot belongs to the transition: with it, the transition stays in `{own}` and every target is resolved among `{own}`'s children; without it, the transition leaves `{own}`"
+            ));
+            let dotted: Vec<_> = written.iter().filter(|t| !t.dot).map(|t| (t.span.shrink_to_start(), ".".to_string())).collect();
+            let undotted: Vec<_> = written.iter().filter(|t| t.dot).map(|t| (dot_span(t), String::new())).collect();
+            d = d
+                .with_fix_edits("write every target with the dot", dotted)
+                .with_fix_edits("write every target without the dot", undotted);
+            self.ck.diags.push(d);
+        } else if nodes.len() == written.len() && nodes.len() > 1 {
+            self.check_targets_go_together(written, &nodes);
+        }
+        (nodes, dot && self.nodes[from].parent.is_some())
+    }
+
+    /// Reports two targets that are not in different regions of a parallel state: one is the
+    /// other or inside it, or they meet in a compound state. A history state stands for its
+    /// parent's child, or for a parallel parent itself, since it restores every region.
+    fn check_targets_go_together(&mut self, written: &[Target], nodes: &[usize]) {
+        let stand_in = |cx: &Self, n: usize| match (cx.nodes[n].history, cx.nodes[n].parent) {
+            (Some(_), Some(p)) if cx.is_parallel(p) => p,
+            _ => n,
+        };
+        for j in 1..nodes.len() {
+            for i in 0..j {
+                let (x, y) = (nodes[i], nodes[j]);
+                let (a, b) = (stand_in(self, x), stand_in(self, y));
+                let id = |n: usize| self.nodes[n].id.clone();
+                let why = if x == y {
+                    format!("`{}` is targeted twice", id(x))
+                } else if a != x || b != y {
+                    // A history state of a parallel state, with another target in it.
+                    let (h, other) = if a != x { (x, y) } else { (y, x) };
+                    let p = stand_in(self, h);
+                    if other != p && !self.inside(other, p) {
+                        if !self.is_parallel(self.common_ancestor(a, b)) {
+                            format!(
+                                "both are in `{}`, which is not a parallel state, so only one of its children can be active",
+                                id(self.common_ancestor(a, b))
+                            )
+                        } else {
+                            continue;
+                        }
+                    } else {
+                        format!(
+                            "`{}` restores every region of `{}`, so the other target's region is entered twice",
+                            id(h),
+                            id(p)
+                        )
+                    }
+                } else if self.inside(b, a) || self.inside(a, b) {
+                    let (outer, inner) = if self.inside(b, a) { (a, b) } else { (b, a) };
+                    format!("`{}` is inside `{}`, which the other target enters", id(inner), id(outer))
+                } else {
+                    let meet = self.common_ancestor(a, b);
+                    if self.is_parallel(meet) {
+                        continue;
+                    }
+                    format!(
+                        "both are in `{}`, which is not a parallel state, so only one of its children can be active",
+                        id(meet)
+                    )
+                };
+                self.ck.diags.push(
+                    Diagnostic::error(
+                        codes::TARGETS_CLASH,
+                        written[j].span,
+                        format!("these targets can't be entered together: {why}"),
+                    )
+                    .with_secondary(written[i].span, "the other target")
+                    .with_help("several targets enter a parallel state with a chosen state in more than one region: each target must be in a different region of the same parallel state"),
+                );
+                return;
+            }
+        }
+    }
+
+    fn is_parallel(&self, n: usize) -> bool {
+        self.nodes[n]
+            .state
+            .is_some_and(|s| s.kind == StateKind::Parallel)
+    }
+
+    /// The nearest state containing both `a` and `b` (or either, if one contains the other).
+    fn common_ancestor(&self, a: usize, b: usize) -> usize {
+        let mut up = Some(a);
+        while let Some(x) = up {
+            if x == b || self.inside(b, x) {
+                return x;
+            }
+            up = self.nodes[x].parent;
+        }
+        0
+    }
+
+    /// The domain of a transition written in `from` to `targets`, as `spec/execution.md`
+    /// defines it: the root for the machine body's, `from` itself for an internal one, else
+    /// the nearest proper ancestor of `from` that is not a parallel state and contains every
+    /// target.
+    pub(crate) fn domain(&self, from: usize, targets: &[usize], internal: bool) -> usize {
+        if self.nodes[from].parent.is_none() || internal {
+            return from;
+        }
+        let mut up = self.nodes[from].parent;
+        while let Some(x) = up {
+            if !self.is_parallel(x) && targets.iter().all(|&t| self.inside(t, x)) {
+                return x;
+            }
+            up = self.nodes[x].parent;
+        }
+        0
+    }
+
+    /// Resolves a target. Written `.X`, the first segment among the children of the state the
+    /// transition is written in. Otherwise among the siblings of that state, then among its
+    /// parent's siblings, and so on outward (for the machine body, among the top-level
+    /// states). Each further segment names a child of the one before.
     fn target(&mut self, from: usize, t: &Target) -> Option<usize> {
         let head = &t.path[0];
+        if t.dot {
+            return match self.target_child(from, &head.name) {
+                Some(n) => {
+                    self.refer_state(n, head);
+                    self.descend(n, t)
+                }
+                None => {
+                    self.unknown_child(from, t);
+                    None
+                }
+            };
+        }
         let start = self.nodes[from].parent.unwrap_or(from);
         let mut scope = Some(start);
         let mut found = None;
@@ -2354,7 +2514,7 @@ impl<'p> Cx<'_, 'p> {
         if let Some(n) = found {
             self.refer_state(n, head);
         }
-        let Some(mut node) = found else {
+        let Some(node) = found else {
             // The states in scope, nearest first, for the message.
             let mut visible: Vec<String> = Vec::new();
             let mut scope = Some(start);
@@ -2391,6 +2551,67 @@ impl<'p> Cx<'_, 'p> {
             self.ck.diags.push(d);
             return None;
         };
+        self.descend(node, t)
+    }
+
+    /// `.X` written in `from`, where `from` has no child `X`.
+    fn unknown_child(&mut self, from: usize, t: &Target) {
+        let head = &t.path[0];
+        let own = self.nodes[from].id.clone();
+        let children: Vec<String> = self.nodes[from]
+            .order
+            .iter()
+            .map(|&c| self.nodes[c].name.clone())
+            .collect();
+        let mut d = Diagnostic::error(
+            codes::UNKNOWN_TARGET,
+            head.span,
+            format!("unknown target state `.{}`: `{own}` has no child `{}`", head.name, head.name),
+        );
+        let retried = self.nodes[from]
+            .body
+            .invokes()
+            .any(|inv| inv.retry.is_some());
+        // Where the name is without the dot: among the siblings, then outward.
+        let mut scope = Some(self.nodes[from].parent.unwrap_or(from));
+        let mut outward = None;
+        while let Some(sc) = scope {
+            if let Some(c) = self.target_child(sc, &head.name) {
+                outward = Some(c);
+                break;
+            }
+            scope = self.nodes[sc].parent;
+        }
+        if let Some(s) = suggest(&head.name, children.iter().map(String::as_str)) {
+            d = d
+                .with_help(format!("did you mean `.{s}`?"))
+                .with_fix(format!("replace with `{s}`"), head.span, s);
+        } else if retried {
+            d = d.with_help(format!(
+                "`.X` names a child of `{own}`; a state with `retry` has none of its own, and the `Attempt` and `Backoff` states the retry compiles to can't be named"
+            ));
+        } else if let Some(c) = outward {
+            d = d
+                .with_help(format!(
+                    "`.X` names a child of the state the transition is written in; without the dot, `{}` is `{}`, and the transition leaves `{own}`",
+                    head.name,
+                    self.nodes[c].id
+                ))
+                .with_fix("remove the dot", dot_span(t), String::new());
+        } else if children.is_empty() {
+            d = d.with_help(format!(
+                "`.X` names a child of the state the transition is written in, and `{own}` has no child states"
+            ));
+        } else {
+            d = d.with_help(format!("the children of `{own}` are {}", children.join(", ")));
+        }
+        self.ck.diags.push(d);
+    }
+
+    /// The rest of a target's path, below the state its first segment resolved to.
+    fn descend(&mut self, mut node: usize, t: &Target) -> Option<usize> {
+        let written: Vec<&str> = t.path.iter().map(|p| p.name.as_str()).collect();
+        let written = format!("{}{}", if t.dot { "." } else { "" }, written.join("."));
         for seg in &t.path[1..] {
             if self.nodes[node].history.is_some() {
                 let through = self.nodes[node].id.clone();
@@ -3287,4 +3508,12 @@ fn dest(sensitive: bool, place: String) -> Dest {
     } else {
         Dest::Plain(place)
     }
+}
+
+/// The leading dot of a target written `.X`.
+fn dot_span(t: &Target) -> Span {
+    let mut end = t.span.start;
+    end.offset += 1;
+    end.col += 1;
+    Span { end, ..t.span }
 }

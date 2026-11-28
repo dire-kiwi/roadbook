@@ -125,16 +125,19 @@ A target is resolved like a name in a block-structured language: first among the
 
 ```
 state Session {
-  invoke keepAlive()  { done -> LoggedOut }
-  after 30m -> TimedOut
-  on Home -> .Browsing                   // Session stays: the invoke and the timer keep running
-  on Restart -> Session                  // Session is left and entered again: both restart
+  invoke keepAlive() {
+    done -> LoggedOut
+  }
+  after 30m  -> TimedOut
+  on Home    -> .Browsing // Session stays: the invoke and the timer keep running
+  on Restart -> Session // Session is left and entered again: both restart
   initial Browsing
   state Browsing { on Open -> Cart }
-  state Cart { on Review -> .Reviewing   // Cart's own children
+  state Cart {
+    on Review -> .Reviewing // Cart's own children
     initial Editing
-    state Editing { }
-    state Reviewing { }
+    state Editing   {}
+    state Reviewing {}
   }
 }
 ```
@@ -701,7 +704,7 @@ Errors (the build fails):
 - A transition or `invoke` in a final state. A final state ends its parent as soon as it is entered, so they could never run; it holds only `entry`, `exit`, `output` and `fail`.
 - A `done` transition in a state with no child states: it waits for a final child, so it could never be taken. (An invoke's `done` goes inside `invoke { }`.)
 - A history state in a state with no child states, or in a final state, and an `initial` that names a history state.
-- An unguarded cycle of `always` transitions: states each with an `always` whose first branch has no `if` (an `else` counts as guarded, since it runs only when the guards before it fail), each leading to the next, where entering a state also enters its `initial` chain (and every region of a parallel state), and a transition to a state's own ancestor leaves and re-enters it. A transition to a history state counts as entering any state it could restore: every child of its parent with that child's default entry for a shallow one, every state below the parent for a deep one. An unguarded `always` with no target is the shortest such cycle, and so is an unguarded internal one (`always -> .X`), which never leaves its state, unless its targets are final states that can complete the state. So is an unguarded `always` written in the machine body, whatever its target, unless that target is a top-level final state: the machine itself is never left, so its `always` would be taken again after every step.
+- An unguarded cycle of `always` transitions: states each with an `always` whose first branch has no `if` (an `else` counts as guarded, since it runs only when the guards before it fail), each leading to the next, where entering a state also enters its `initial` chain (and every region of a parallel state), and a transition to a state's own ancestor leaves and re-enters it. A transition to a history state counts as entering any state it could restore: every child of its parent with that child's default entry for a shallow one, every state below the parent for a deep one. An unguarded `always` with no target is the shortest such cycle, and so is an unguarded internal one (`always -> .X`): it never leaves its state, so it is taken again after every step, even when it enters a final child, since an `always` is taken before a `done`. So is an unguarded `always` written in the machine body, whatever its target, unless that target is a top-level final state: the machine itself is never left, so its `always` would be taken again after every step.
 - `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` and `on name.fail` through a name that is not a `children` collection, and a `send name.E` to a collection with no `[key]` or `.*`; a `spawn` of a machine other than the collection's; a key of the wrong type; a collection whose key type is not `string`, `int` or an enum, or whose machine is not a machine; `key` as the name of a parameter, variable, `as` or collection; `on name.fail E` for an error the collection's machine does not declare.
 - `send`, `emit` and `on name.Event` that do not match a declaration: an unknown or out-of-scope `name`, or one that is not a `ref` (a `ref` that is optional or a list cannot be sent to); an event the receiver does not declare with `event`, or the sender with `emits`; a missing, extra or wrongly typed field. A `send` to an invoked child where it is not running. An `as` on a task, or one that clashes with a variable, parameter or enclosing `as`. A `ref` to something that is not a machine, or in a field or a result.
 - `on name.ended` through a name that is not a parameter or variable of type `ref M`, `ref M?` or `ref M[]` (an invoked child or a collection among them), and a lower-case word after `name.` other than `done`, `fail` and `ended`; `event` read in it other than as `event.status`; a declaration or event named `Ended`.

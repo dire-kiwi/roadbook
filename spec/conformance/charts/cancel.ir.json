@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/cancel.road",
@@ -124,7 +124,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Parent.Over",
+                "targets": [
+                  "Parent.Over"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -141,7 +144,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Parent.Over",
+                "targets": [
+                  "Parent.Over"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -301,7 +307,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Child.Finished",
+                    "targets": [
+                      "Child.Finished"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,

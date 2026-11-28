@@ -84,7 +84,7 @@ export interface PaymentWebhookDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "examples/webhook/webhook.road",
@@ -618,7 +618,10 @@ const ir: unknown = {
                   "type": "bool",
                   "text": "signatureValid(body, signature, secret)"
                 },
-                "target": "PaymentWebhook.Parsing",
+                "targets": [
+                  "PaymentWebhook.Parsing"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -634,7 +637,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "PaymentWebhook.BadSignature",
+                "targets": [
+                  "PaymentWebhook.BadSignature"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -694,7 +700,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "PaymentWebhook.CheckingDuplicate",
+                "targets": [
+                  "PaymentWebhook.CheckingDuplicate"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -724,7 +733,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "PaymentWebhook.Malformed",
+                "targets": [
+                  "PaymentWebhook.Malformed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -792,7 +804,10 @@ const ir: unknown = {
                   "type": "bool",
                   "text": "result"
                 },
-                "target": "PaymentWebhook.Acknowledged",
+                "targets": [
+                  "PaymentWebhook.Acknowledged"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -808,7 +823,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "PaymentWebhook.Applying",
+                "targets": [
+                  "PaymentWebhook.Applying"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -882,7 +900,10 @@ const ir: unknown = {
                       "type": "bool",
                       "text": "payment.kind == PaymentEventKind.PaymentSucceeded"
                     },
-                    "target": "PaymentWebhook.Applying.MarkingPaid",
+                    "targets": [
+                      "PaymentWebhook.Applying.MarkingPaid"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -920,7 +941,10 @@ const ir: unknown = {
                       "type": "bool",
                       "text": "payment.kind == PaymentEventKind.PaymentFailed"
                     },
-                    "target": "PaymentWebhook.Applying.NotifyingFailure",
+                    "targets": [
+                      "PaymentWebhook.Applying.NotifyingFailure"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -936,7 +960,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "PaymentWebhook.Applying.RecordingRefund",
+                    "targets": [
+                      "PaymentWebhook.Applying.RecordingRefund"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1006,7 +1033,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "PaymentWebhook.Applying.Applied",
+                    "targets": [
+                      "PaymentWebhook.Applying.Applied"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1044,7 +1074,10 @@ const ir: unknown = {
                       "type": "bool",
                       "text": "attempts < 5"
                     },
-                    "target": "PaymentWebhook.Applying.Backoff",
+                    "targets": [
+                      "PaymentWebhook.Applying.Backoff"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1061,7 +1094,10 @@ const ir: unknown = {
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "PaymentWebhook.Unavailable",
+                    "targets": [
+                      "PaymentWebhook.Unavailable"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1142,7 +1178,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "PaymentWebhook.Applying.MarkingPaid",
+                    "targets": [
+                      "PaymentWebhook.Applying.MarkingPaid"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1205,7 +1244,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "PaymentWebhook.Applying.Applied",
+                    "targets": [
+                      "PaymentWebhook.Applying.Applied"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1275,7 +1317,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "PaymentWebhook.Applying.Applied",
+                    "targets": [
+                      "PaymentWebhook.Applying.Applied"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "do",
@@ -1355,7 +1400,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "PaymentWebhook.MarkingProcessed",
+                "targets": [
+                  "PaymentWebhook.MarkingProcessed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1416,7 +1464,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "PaymentWebhook.Acknowledged",
+                "targets": [
+                  "PaymentWebhook.Acknowledged"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

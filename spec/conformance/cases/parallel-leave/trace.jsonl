@@ -7,7 +7,7 @@
 {"kind":"entered","run":"r1","state":"Escape.P.B.B1","t":0}
 {"delay":1000,"index":0,"kind":"timer.started","run":"r1","state":"Escape.P.B.B1","t":0,"timer":1}
 {"event":{"kind":"event","value":{"_tag":"Cross"}},"kind":"event","run":"r1","t":600}
-{"from":"Escape.P.A.A1","index":0,"kind":"transition","run":"r1","t":600,"to":"Escape.P.B.B1"}
+{"from":"Escape.P.A.A1","index":0,"kind":"transition","run":"r1","t":600,"to":["Escape.P.B.B1"]}
 {"index":0,"kind":"timer.cancelled","run":"r1","state":"Escape.P.B.B1","t":600,"timer":1}
 {"action":"log","args":{"what":"exit B1"},"kind":"action","run":"r1","t":600}
 {"kind":"exited","run":"r1","state":"Escape.P.B.B1","t":600}
@@ -24,7 +24,7 @@
 {"kind":"entered","run":"r1","state":"Escape.P.B.B1","t":600}
 {"delay":1000,"index":0,"kind":"timer.started","run":"r1","state":"Escape.P.B.B1","t":600,"timer":2}
 {"event":{"kind":"event","value":{"_tag":"Out"}},"kind":"event","run":"r1","t":1100}
-{"from":"Escape.P.A.A1","index":1,"kind":"transition","run":"r1","t":1100,"to":"Escape.Done"}
+{"from":"Escape.P.A.A1","index":1,"kind":"transition","run":"r1","t":1100,"to":["Escape.Done"]}
 {"index":0,"kind":"timer.cancelled","run":"r1","state":"Escape.P.B.B1","t":1100,"timer":2}
 {"action":"log","args":{"what":"exit B1"},"kind":"action","run":"r1","t":1100}
 {"kind":"exited","run":"r1","state":"Escape.P.B.B1","t":1100}

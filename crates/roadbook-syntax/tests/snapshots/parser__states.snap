@@ -29,8 +29,10 @@ items:
                             branches:
                               single:
                                 guard: ~
-                                target:
-                                  - Done
+                                targets:
+                                  - dot: false
+                                    path:
+                                      - Done
                                 effects: []
                                 ignore: false
                   - state:

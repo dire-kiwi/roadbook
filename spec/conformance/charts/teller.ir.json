@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/teller.road",
@@ -314,7 +314,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "emit",
@@ -367,7 +368,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Teller.Gone",
+                "targets": [
+                  "Teller.Gone"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -576,7 +580,8 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": null,
+                    "targets": [],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "send",
@@ -662,7 +667,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Keeper.Finished",
+                "targets": [
+                  "Keeper.Finished"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -685,7 +693,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -716,7 +725,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Keeper.Finished",
+                "targets": [
+                  "Keeper.Finished"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -910,7 +922,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -941,7 +954,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -988,7 +1002,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Caller.Done",
+                "targets": [
+                  "Caller.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

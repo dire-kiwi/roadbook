@@ -258,7 +258,7 @@ fn export_scxml_is_well_formed_and_keeps_every_state_and_target() {
                     ids.contains(&id) || s.id == m.root.id,
                     "{rel}: no state {id}\n{xml}"
                 );
-                for t in s.transitions.iter().filter_map(|t| t.target.as_ref()) {
+                for t in s.transitions.iter().flat_map(|t| &t.targets) {
                     let target = t.replace('.', "_");
                     assert!(targets.contains(&target), "{rel}: no target {target}");
                 }

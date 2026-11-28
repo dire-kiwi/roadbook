@@ -19,3 +19,11 @@ error[RB0401]: unguarded `always` transitions form a cycle: `N.P.R.B` -> `N.P.R.
    |                 ^^^^^^
    |
    = help: the machine would never settle; guard one of them with `if`
+
+warning[RB0913]: this transition leaves parallel state `P` and enters it again: `R` starts over from its initial state
+  --> RB0401-history.road:23:15
+   |
+23 |     state S { on Go -> S }
+   |               ^^^^^^^^^^
+   |
+   = help: to keep the other regions where they are, write the transition inside the region it changes, or in `P` with a leading dot (`-> .S`), or list a target in every region; to start `P` over on purpose, target it: `-> P`

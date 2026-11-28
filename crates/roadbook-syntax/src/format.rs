@@ -813,11 +813,19 @@ fn branch_cells(b: &Branch) -> Vec<String> {
         // In the target's column, so it lines up with the targets of the transitions around it.
         return vec![String::new(), "ignore".into(), String::new()];
     }
-    let target = b.target.as_ref().map_or(String::new(), |t| {
-        let path: Vec<_> = t.path.iter().map(|p| p.name.as_str()).collect();
-        format!("-> {}", path.join("."))
-    });
+    let target = if b.targets.is_empty() {
+        String::new()
+    } else {
+        let targets: Vec<_> = b.targets.iter().map(target_text).collect();
+        format!("-> {}", targets.join(", "))
+    };
     vec![String::new(), target, effects(&b.effects)]
+}
+
+/// `.A.B` or `A.B`, as written.
+fn target_text(t: &Target) -> String {
+    let path: Vec<_> = t.path.iter().map(|p| p.name.as_str()).collect();
+    format!("{}{}", if t.dot { "." } else { "" }, path.join("."))
 }
 
 fn trigger(t: &Trigger) -> String {

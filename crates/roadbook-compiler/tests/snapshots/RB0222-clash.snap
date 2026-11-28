@@ -1,0 +1,47 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0222]: these targets can't be entered together: both are in `M.C`, which is not a parallel state, so only one of its children can be active
+  --> RB0222-clash.road:11:19
+   |
+11 |     on Go -> C.X, C.Y
+   |                   ^^^
+   |              --- the other target
+   |
+   = help: several targets enter a parallel state with a chosen state in more than one region: each target must be in a different region of the same parallel state
+
+error[RB0222]: these targets can't be entered together: both are in `M.C`, which is not a parallel state, so only one of its children can be active
+  --> RB0222-clash.road:12:22
+   |
+12 |     on Mix -> .Last, .Y
+   |                      ^^
+   |               ----- the other target
+   |
+   = help: several targets enter a parallel state with a chosen state in more than one region: each target must be in a different region of the same parallel state
+
+error[RB0222]: these targets can't be entered together: `M.P.A.A1` is inside `M.P.A`, which the other target enters
+  --> RB0222-clash.road:18:21
+   |
+18 |     on Stop -> P.A, P.A.A1
+   |                     ^^^^^^
+   |                --- the other target
+   |
+   = help: several targets enter a parallel state with a chosen state in more than one region: each target must be in a different region of the same parallel state
+
+error[RB0222]: these targets can't be entered together: `M.P.H` restores every region of `M.P`, so the other target's region is entered twice
+  --> RB0222-clash.road:19:20
+   |
+19 |     on Back -> .H, .B.B1
+   |                    ^^^^^
+   |                -- the other target
+   |
+   = help: several targets enter a parallel state with a chosen state in more than one region: each target must be in a different region of the same parallel state
+
+error[RB0222]: these targets can't be entered together: `M.P.A.A1` is targeted twice
+  --> RB0222-clash.road:20:24
+   |
+20 |     on Twice -> .A.A1, .A.A1
+   |                        ^^^^^
+   |                 ----- the other target
+   |
+   = help: several targets enter a parallel state with a chosen state in more than one region: each target must be in a different region of the same parallel state

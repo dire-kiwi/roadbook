@@ -6,7 +6,7 @@ import { aliasCycle } from "./typeref.ts"
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.8"
+export const IR_VERSION = "0.9"
 
 export interface Span {
   readonly file: number
@@ -192,7 +192,10 @@ export interface Transition {
   readonly trigger: Trigger
   readonly group: number
   readonly guard: Expr | null
-  readonly target: string | null
+  /** Target state ids, in the order written: `[]` for a transition with no target. */
+  readonly targets: ReadonlyArray<string>
+  /** An internal transition (`-> .X`): its domain is its own state, which it does not leave. */
+  readonly internal: boolean
   readonly effects: ReadonlyArray<Effect>
   readonly span: Span
 }

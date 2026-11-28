@@ -38,7 +38,7 @@ items:
                             branches:
                               single:
                                 guard: ~
-                                target: ~
+                                targets: []
                                 effects:
                                   - set:
                                       var: check
@@ -51,26 +51,38 @@ items:
             - check:
                 property:
                   never:
-                    - - A
-                    - - A
-                      - B
+                    - dot: false
+                      path:
+                        - A
+                    - dot: false
+                      path:
+                        - A
+                        - B
             - check:
                 property:
                   never:
-                    - - A
+                    - dot: false
+                      path:
+                        - A
             - check:
                 property:
                   reachable:
-                    - A
-                    - B
+                    dot: false
+                    path:
+                      - A
+                      - B
             - check:
                 property:
                   onlyAfter:
                     state:
-                      - A
-                      - B
+                      dot: false
+                      path:
+                        - A
+                        - B
                     after:
-                      - A
+                      dot: false
+                      path:
+                        - A
             - check:
                 property: canFinish
 comments: []

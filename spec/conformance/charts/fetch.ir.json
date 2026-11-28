@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/fetch.road",
@@ -235,7 +235,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Fetch.Loaded",
+                "targets": [
+                  "Fetch.Loaded"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -265,7 +268,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Fetch.Missing",
+                "targets": [
+                  "Fetch.Missing"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -282,7 +288,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Fetch.Waiting",
+                "targets": [
+                  "Fetch.Waiting"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -312,7 +321,8 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -341,7 +351,8 @@
                 },
                 "group": 4,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -393,7 +404,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Fetch.Loading",
+                "targets": [
+                  "Fetch.Loading"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

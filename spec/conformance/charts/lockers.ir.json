@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/lockers.road",
@@ -214,7 +214,10 @@
                   "type": "bool",
                   "text": "event.pin == pin"
                 },
-                "target": "Locker.Opened",
+                "targets": [
+                  "Locker.Opened"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -231,7 +234,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Locker.Jammed",
+                "targets": [
+                  "Locker.Jammed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -507,7 +513,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "spawn",
@@ -559,7 +566,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -615,7 +623,8 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -658,7 +667,8 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -700,7 +710,8 @@
                 },
                 "group": 4,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -741,7 +752,10 @@
                 },
                 "group": 5,
                 "guard": null,
-                "target": "Lockers.Closed",
+                "targets": [
+                  "Lockers.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

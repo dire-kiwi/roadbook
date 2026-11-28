@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/history-regions.road",
@@ -194,7 +194,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Panels.Both.L.L2",
+                        "targets": [
+                          "Panels.Both.L.L2"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -276,7 +279,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Panels.Both.R.R2",
+                        "targets": [
+                          "Panels.Both.R.R2"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -353,7 +359,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Panels.Out",
+                "targets": [
+                  "Panels.Out"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -392,7 +401,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Panels.Both.Deep",
+                "targets": [
+                  "Panels.Both.Deep"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -409,7 +421,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Panels.Both.Shallow",
+                "targets": [
+                  "Panels.Both.Shallow"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -573,7 +588,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Region.P.A.A2",
+                        "targets": [
+                          "Region.P.A.A2"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -655,7 +673,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Region.P.B.B2",
+                        "targets": [
+                          "Region.P.B.B2"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -710,7 +731,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Region.Away",
+                "targets": [
+                  "Region.Away"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -749,7 +773,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Region.P.A.H",
+                "targets": [
+                  "Region.P.A.H"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

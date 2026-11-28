@@ -2,11 +2,11 @@
 {"kind":"entered","run":"r1","state":"Receiver","t":0}
 {"kind":"entered","run":"r1","state":"Receiver.WaitingFirst","t":0}
 {"event":{"from":"r2","kind":"message","message":1,"value":{"_tag":"First"}},"kind":"event","run":"r1","t":0}
-{"from":"Receiver.WaitingFirst","index":0,"kind":"transition","run":"r1","t":0,"to":"Receiver.WaitingSecond"}
+{"from":"Receiver.WaitingFirst","index":0,"kind":"transition","run":"r1","t":0,"to":["Receiver.WaitingSecond"]}
 {"kind":"exited","run":"r1","state":"Receiver.WaitingFirst","t":0}
 {"kind":"entered","run":"r1","state":"Receiver.WaitingSecond","t":0}
 {"event":{"from":"r2","kind":"message","message":2,"value":{"_tag":"Second"}},"kind":"event","run":"r1","t":0}
-{"from":"Receiver.WaitingSecond","index":0,"kind":"transition","run":"r1","t":0,"to":"Receiver.Done"}
+{"from":"Receiver.WaitingSecond","index":0,"kind":"transition","run":"r1","t":0,"to":["Receiver.Done"]}
 {"kind":"exited","run":"r1","state":"Receiver.WaitingSecond","t":0}
 {"kind":"entered","run":"r1","state":"Receiver.Done","t":0}
 {"kind":"exited","run":"r1","state":"Receiver.Done","t":0}
@@ -16,7 +16,7 @@
 {"kind":"entered","run":"r2","state":"Sender","t":0}
 {"kind":"entered","run":"r2","state":"Sender.Idle","t":0}
 {"event":{"kind":"event","value":{"_tag":"Go"}},"kind":"event","run":"r2","t":0}
-{"from":"Sender.Idle","index":0,"kind":"transition","run":"r2","t":0,"to":"Sender.Sent"}
+{"from":"Sender.Idle","index":0,"kind":"transition","run":"r2","t":0,"to":["Sender.Sent"]}
 {"kind":"exited","run":"r2","state":"Sender.Idle","t":0}
 {"action":"note","args":{"peer":"r1"},"kind":"action","run":"r2","t":0}
 {"kind":"sent","message":1,"run":"r2","t":0,"to":"r1","value":{"_tag":"First"}}

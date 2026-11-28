@@ -14,7 +14,7 @@
 {"kind":"entered","run":"r1","state":"Regions.Both.Lone","t":0}
 {"action":"log","args":{"what":"enter Lone"},"kind":"action","run":"r1","t":0}
 {"event":{"kind":"event","value":{"_tag":"Leave"}},"kind":"event","run":"r1","t":0}
-{"from":"Regions.Both","index":0,"kind":"transition","run":"r1","t":0,"to":"Regions.Away"}
+{"from":"Regions.Both","index":0,"kind":"transition","run":"r1","t":0,"to":["Regions.Away"]}
 {"action":"log","args":{"what":"exit Lone"},"kind":"action","run":"r1","t":0}
 {"kind":"exited","run":"r1","state":"Regions.Both.Lone","t":0}
 {"action":"log","args":{"what":"exit R2"},"kind":"action","run":"r1","t":0}
@@ -30,7 +30,7 @@
 {"action":"log","args":{"what":"leave"},"kind":"action","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Regions.Away","t":0}
 {"event":{"kind":"event","value":{"_tag":"Back"}},"kind":"event","run":"r1","t":0}
-{"from":"Regions.Away","index":0,"kind":"transition","run":"r1","t":0,"to":"Regions.Both"}
+{"from":"Regions.Away","index":0,"kind":"transition","run":"r1","t":0,"to":["Regions.Both"]}
 {"kind":"exited","run":"r1","state":"Regions.Away","t":0}
 {"kind":"entered","run":"r1","state":"Regions.Both","t":0}
 {"action":"log","args":{"what":"enter Both"},"kind":"action","run":"r1","t":0}

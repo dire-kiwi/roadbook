@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/race.road",
@@ -139,7 +139,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Race.Finished",
+                "targets": [
+                  "Race.Finished"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -169,7 +172,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Race.Quick",
+                "targets": [
+                  "Race.Quick"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -220,7 +226,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Race.Finished",
+                "targets": [
+                  "Race.Finished"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",

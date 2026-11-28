@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0401]: `always` with no guard and an internal target is taken again and again: it never leaves `M.S`, so `M.S` never settles
+ --> RB0401-internal.road:5:5
+  |
+5 |     always -> .B
+  |     ^^^^^^
+  |
+  = help: give it a guard that its own effects make false, or remove the dot so that it leaves the state

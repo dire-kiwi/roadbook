@@ -23,8 +23,10 @@ items:
                       branches:
                         single:
                           guard: ~
-                          target:
-                            - B
+                          targets:
+                            - dot: false
+                              path:
+                                - B
                           effects: []
                           ignore: false
                   - transition:
@@ -34,8 +36,10 @@ items:
                       branches:
                         single:
                           guard: ~
-                          target:
-                            - C
+                          targets:
+                            - dot: false
+                              path:
+                                - C
                           effects: []
                           ignore: false
                   - transition:
@@ -49,9 +53,11 @@ items:
                               - "<"
                               - var: n
                               - int: 3
-                          target:
-                            - A
-                            - Inner
+                          targets:
+                            - dot: false
+                              path:
+                                - A
+                                - Inner
                           effects:
                             - set:
                                 var: n
@@ -68,7 +74,7 @@ items:
                       branches:
                         single:
                           guard: ~
-                          target: ~
+                          targets: []
                           effects:
                             - do:
                                 name: log
@@ -84,8 +90,10 @@ items:
                       branches:
                         single:
                           guard: ~
-                          target:
-                            - Late
+                          targets:
+                            - dot: false
+                              path:
+                                - Late
                           effects: []
                           ignore: false
                   - transition:
@@ -98,8 +106,10 @@ items:
                       branches:
                         single:
                           guard: ~
-                          target:
-                            - Late
+                          targets:
+                            - dot: false
+                              path:
+                                - Late
                           effects: []
                           ignore: false
                   - transition:
@@ -114,8 +124,10 @@ items:
                       branches:
                         single:
                           guard: ~
-                          target:
-                            - Late
+                          targets:
+                            - dot: false
+                              path:
+                                - Late
                           effects: []
                           ignore: false
                   - transition:
@@ -124,10 +136,12 @@ items:
                         single:
                           guard:
                             var: ready
-                          target:
-                            - Go
-                            - Deep
-                            - Path
+                          targets:
+                            - dot: false
+                              path:
+                                - Go
+                                - Deep
+                                - Path
                           effects: []
                           ignore: false
                   - transition:
@@ -135,8 +149,10 @@ items:
                       branches:
                         single:
                           guard: ~
-                          target:
-                            - Next
+                          targets:
+                            - dot: false
+                              path:
+                                - Next
                           effects: []
                           ignore: false
 comments: []

@@ -5,7 +5,7 @@
 {"ir":"sha256:2bc68756a08a15caa00d90095d1496785585775d743e60ad0a8a9996bb08cf30","kind":"restored","machine":"Desk","migrated":null,"run":"r2","snapshot":{"active":["Desk","Desk.Open"],"history":{},"input":{"start":1},"invokes":[{"id":1,"src":"Tally","state":"Desk.Open"}],"ir":"sha256:2bc68756a08a15caa00d90095d1496785585775d743e60ad0a8a9996bb08cf30","machine":"Desk","nextInvoke":2,"nextMessage":1,"nextTimer":1,"result":null,"run":"r1","snapshotVersion":4,"spawned":[],"status":"running","timers":[],"vars":{"heard":0}},"t":0}
 {"args":{"start":1},"invoke":1,"kind":"invoke.started","run":"r2","src":"Tally","state":"Desk.Open","t":0}
 {"event":{"invoke":1,"kind":"invoke.done","value":4},"kind":"event","run":"r2","t":0}
-{"from":"Desk.Open","index":0,"kind":"transition","run":"r2","t":0,"to":"Desk.Closed"}
+{"from":"Desk.Open","index":0,"kind":"transition","run":"r2","t":0,"to":["Desk.Closed"]}
 {"kind":"exited","run":"r2","state":"Desk.Open","t":0}
 {"kind":"set","run":"r2","t":0,"value":4,"var":"heard"}
 {"kind":"entered","run":"r2","state":"Desk.Closed","t":0}

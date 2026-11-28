@@ -25,14 +25,18 @@ items:
                           branches:
                             - guard:
                                 var: a
-                              target:
-                                - A
+                              targets:
+                                - dot: false
+                                  path:
+                                    - A
                               effects: []
                               ignore: false
                             - guard:
                                 var: b
-                              target:
-                                - B
+                              targets:
+                                - dot: false
+                                  path:
+                                    - B
                               effects:
                                 - set:
                                     var: x
@@ -40,7 +44,7 @@ items:
                                       int: 1
                               ignore: false
                             - guard: ~
-                              target: ~
+                              targets: []
                               effects:
                                 - do:
                                     name: f
@@ -53,8 +57,10 @@ items:
                           branches:
                             - guard:
                                 var: ok
-                              target:
-                                - Done
+                              targets:
+                                - dot: false
+                                  path:
+                                    - Done
                               effects: []
                               ignore: false
 comments: []

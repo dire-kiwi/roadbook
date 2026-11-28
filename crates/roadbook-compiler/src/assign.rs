@@ -211,10 +211,25 @@ impl<'a> Chart<'a> {
     /// The states entered with `s`, `s` first: down `path` (each a child of the one before)
     /// and then by default entry, with every region of a parallel state, in document order.
     fn enter(&self, s: usize, path: &[usize], out: &mut Vec<usize>) {
+        self.enter_paths(s, &[path], out);
+    }
+
+    /// The states entered with `s`, `s` first: down each of `paths` (each a list of states,
+    /// each a child of the one before, starting with a child of `s`), and by default entry
+    /// below the ends of the paths and in every region of a parallel state no path is in, in
+    /// document order. A compound state's paths all go through one child.
+    fn enter_paths(&self, s: usize, paths: &[&[usize]], out: &mut Vec<usize>) {
         out.push(s);
+        let below = |c: usize| -> Vec<&[usize]> {
+            paths
+                .iter()
+                .filter(|p| p.first() == Some(&c))
+                .map(|p| &p[1..])
+                .collect()
+        };
         match self.kind(s) {
-            StateKind::Compound => match path.first() {
-                Some(&next) => self.enter(next, &path[1..], out),
+            StateKind::Compound => match paths.iter().find_map(|p| p.first()) {
+                Some(&next) => self.enter_paths(next, &below(next), out),
                 None => {
                     if let Some(i) = self.initial[s] {
                         self.enter(i, &[], out);
@@ -223,31 +238,81 @@ impl<'a> Chart<'a> {
             },
             StateKind::Parallel => {
                 for &r in &self.children[s] {
-                    if path.first() == Some(&r) {
-                        self.enter(r, &path[1..], out);
-                    } else {
-                        self.enter(r, &[], out);
-                    }
+                    self.enter_paths(r, &below(r), out);
                 }
             }
             _ => {}
         }
     }
 
-    /// The transition's domain, as in SCXML: for the root, the root; otherwise the nearest
-    /// proper ancestor of the source that is a proper ancestor of the target and not parallel.
-    fn domain(&self, from: usize, to: usize) -> usize {
-        if from == 0 {
-            return 0;
+    /// The transition's domain, as in SCXML: for the root, the root; for an internal
+    /// transition, its source; otherwise the nearest proper ancestor of the source that is a
+    /// proper ancestor of every target and not parallel.
+    fn domain(&self, from: usize, targets: &[usize], internal: bool) -> usize {
+        if from == 0 || internal {
+            return from;
         }
         let mut a = self.parent[from];
         while let Some(x) = a {
-            if x != to && self.contains(x, to) && self.kind(x) != StateKind::Parallel {
+            if targets.iter().all(|&to| x != to && self.contains(x, to))
+                && self.kind(x) != StateKind::Parallel
+            {
                 return x;
             }
             a = self.parent[x];
         }
         0
+    }
+
+    /// The states transition `t`, written in `from`, enters, in document order: the paths
+    /// from just below its domain to each target, with their default entries and the default
+    /// entry of each region of a parallel state on them that no target is in. A history state
+    /// stands for its parent's default entry: the states a history state restores were
+    /// entered before, and what was assigned then still is. A region of a parallel domain (an
+    /// internal transition written in a parallel state) that no target is in is not entered.
+    fn entry_chain(&self, domain: usize, targets: &[usize]) -> Vec<usize> {
+        let mut chain = Vec::new();
+        let mut paths: Vec<Vec<usize>> = Vec::new();
+        for &target in targets {
+            let history = self.kind(target).is_history();
+            let to = match self.parent[target] {
+                Some(p) if history => p,
+                _ => target,
+            };
+            if to == domain {
+                // A history state of the domain, from inside it: the domain stays, and what is
+                // below it is entered by default.
+                let mut below = Vec::new();
+                self.enter(to, &[], &mut below);
+                chain.extend(&below[1..]);
+                continue;
+            }
+            let mut path = Vec::new();
+            let mut x = to;
+            while x != domain {
+                path.push(x);
+                match self.parent[x] {
+                    Some(p) => x = p,
+                    None => break,
+                }
+            }
+            path.reverse();
+            paths.push(path);
+        }
+        let mut firsts: Vec<usize> = paths.iter().map(|p| p[0]).collect();
+        firsts.sort_unstable();
+        firsts.dedup();
+        for first in firsts {
+            let tails: Vec<&[usize]> = paths
+                .iter()
+                .filter(|p| p[0] == first)
+                .map(|p| &p[1..])
+                .collect();
+            self.enter_paths(first, &tails, &mut chain);
+        }
+        chain.sort_unstable();
+        chain.dedup();
+        chain
     }
 }
 
@@ -375,19 +440,18 @@ impl<'c, 'a> Flow<'c, 'a> {
         let mut out: Vec<Vec<Option<usize>>> = vec![Vec::new(); count];
         for (s, st) in chart.states.iter().enumerate() {
             for t in &st.transitions {
-                let Some(&target) = t.target.as_deref().and_then(|x| ids.get(x)) else {
+                let targets: Vec<usize> = t
+                    .targets
+                    .iter()
+                    .filter_map(|x| ids.get(x.as_str()).copied())
+                    .collect();
+                if targets.is_empty() {
                     out[s].push(None);
                     continue;
-                };
-                let domain = chart.domain(s, target);
-                // A transition to a history state is a way into its parent's default entry:
-                // the states a history state restores were entered before, and what was
-                // assigned then still is.
-                let history = chart.kind(target).is_history();
-                let to = match chart.parent[target] {
-                    Some(p) if history => p,
-                    _ => target,
-                };
+                }
+                let domain = chart.domain(s, &targets, t.internal);
+                // The exits of the source and the states around it that the transition
+                // leaves: none for an internal one, whose domain is the source.
                 let mut exits = Bits::empty(n);
                 if s != 0 {
                     let mut x = Some(s);
@@ -398,23 +462,7 @@ impl<'c, 'a> Flow<'c, 'a> {
                         x = chart.parent[e];
                     }
                 }
-                let mut path = Vec::new();
-                let mut x = to;
-                while x != domain {
-                    path.push(x);
-                    match chart.parent[x] {
-                        Some(p) => x = p,
-                        None => break,
-                    }
-                }
-                path.reverse();
-                let mut chain = Vec::new();
-                if let Some((&first, rest)) = path.split_first() {
-                    chart.enter(first, rest, &mut chain);
-                } else if history && let Some(i) = chart.initial[to] {
-                    // From inside the history state's compound parent: the parent stays.
-                    chart.enter(i, &[], &mut chain);
-                }
+                let chain = chart.entry_chain(domain, &targets);
                 out[s].push(Some(edges.len()));
                 edges.push(Edge {
                     source: Some(s),

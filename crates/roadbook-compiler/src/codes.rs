@@ -129,6 +129,10 @@ pub const RETRY_SHARED_OUTCOME: Code = Code(218);
 pub const HISTORY_WITHOUT_CHILDREN: Code = Code(219);
 /// A `spawn` of a machine other than its collection's.
 pub const SPAWN_MACHINE_MISMATCH: Code = Code(220);
+/// Several targets of which some have the leading dot of an internal transition and some do not.
+pub const MIXED_TARGETS: Code = Code(221);
+/// Several targets that are not each in a different region of a parallel state.
+pub const TARGETS_CLASH: Code = Code(222);
 
 // ───────────── types ─────────────
 
@@ -266,6 +270,9 @@ pub const UNUSED_HISTORY: Code = Code(910);
 pub const NEVER_SPAWNED: Code = Code(911);
 /// A machine whose checks were not evaluated: it has more configurations than the budget.
 pub const NOT_CHECKED: Code = Code(912);
+/// A transition that leaves a parallel state and enters it again, starting regions over that
+/// it does not target.
+pub const REGIONS_RESET: Code = Code(913);
 
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
@@ -313,6 +320,8 @@ pub const ALL: &[Code] = &[
     RETRY_SHARED_OUTCOME,
     HISTORY_WITHOUT_CHILDREN,
     SPAWN_MACHINE_MISMATCH,
+    MIXED_TARGETS,
+    TARGETS_CLASH,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
     BAD_OPERANDS,
@@ -359,6 +368,7 @@ pub const ALL: &[Code] = &[
     UNUSED_HISTORY,
     NEVER_SPAWNED,
     NOT_CHECKED,
+    REGIONS_RESET,
 ];
 
 #[cfg(test)]

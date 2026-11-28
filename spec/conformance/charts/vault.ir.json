@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/vault.road",
@@ -551,7 +551,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Vault.Loading",
+                "targets": [
+                  "Vault.Loading"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -581,7 +584,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Vault.Waiting",
+                "targets": [
+                  "Vault.Waiting"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -633,7 +639,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Vault.SigningIn",
+                "targets": [
+                  "Vault.SigningIn"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -685,7 +694,10 @@
                   "type": "bool",
                   "text": "current < 0"
                 },
-                "target": "Vault.GaveUp",
+                "targets": [
+                  "Vault.GaveUp"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -707,7 +719,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Vault.GaveUp",
+                "targets": [
+                  "Vault.GaveUp"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -799,7 +814,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Vault.Loaded",
+                "targets": [
+                  "Vault.Loaded"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -829,7 +847,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Vault.Loading",
+                "targets": [
+                  "Vault.Loading"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

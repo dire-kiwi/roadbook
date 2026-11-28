@@ -1318,7 +1318,11 @@ impl Parser<'_> {
             path.push(self.upper("a state name")?);
         }
         let span = path[0].span.to(path[path.len() - 1].span);
-        Ok(Target { path, span })
+        Ok(Target {
+            dot: false,
+            path,
+            span,
+        })
     }
 
     /// `children` is not reserved: it starts a collection only as `children name:`.
@@ -1624,19 +1628,21 @@ impl Parser<'_> {
             }
             return Ok(Branch {
                 guard,
-                target: None,
+                targets: Vec::new(),
                 effects: Vec::new(),
                 ignore: true,
                 span: self.since(start),
             });
         }
-        let target = if self.eat_p(P::Arrow).is_some() {
-            Some(self.target()?)
-        } else {
-            None
-        };
+        let mut targets = Vec::new();
+        if self.eat_p(P::Arrow).is_some() {
+            targets.push(self.target()?);
+            while self.eat_p(P::Comma).is_some() {
+                targets.push(self.target()?);
+            }
+        }
         let effects = self.effects()?;
-        if (target.is_some() || !effects.is_empty()) && self.at_kw(K::Ignore) {
+        if (!targets.is_empty() || !effects.is_empty()) && self.at_kw(K::Ignore) {
             let d = Diagnostic::error(
                 codes::MISPLACED_IGNORE,
                 self.tok().span,
@@ -1646,7 +1652,7 @@ impl Parser<'_> {
             self.error(d);
             return Err(Fail);
         }
-        if target.is_none() && effects.is_empty() {
+        if targets.is_empty() && effects.is_empty() {
             let (expected, help) = if ignore {
                 (
                     "`-> Target`, `set`, `do`, `send`, `emit`, `reply`, `spawn`, `stop` or `ignore`",
@@ -1670,20 +1676,31 @@ impl Parser<'_> {
         }
         Ok(Branch {
             guard,
-            target,
+            targets,
             effects,
             ignore: false,
             span: self.since(start),
         })
     }
 
+    /// `[ . ] Upper { . Upper }`: a leading dot names a child of the transition's own state.
     fn target(&mut self) -> PResult<Target> {
-        let mut path = vec![self.upper("a target state")?];
+        let dot = self.eat_p(P::Dot);
+        let mut path = vec![self.upper(if dot.is_some() {
+            "a child state after `.`"
+        } else {
+            "a target state"
+        })?];
         while self.eat_p(P::Dot).is_some() {
             path.push(self.upper("a state name")?);
         }
-        let span = path[0].span.to(path[path.len() - 1].span);
-        Ok(Target { path, span })
+        let first = dot.map_or(path[0].span, |d| d.span);
+        let span = first.to(path[path.len() - 1].span);
+        Ok(Target {
+            dot: dot.is_some(),
+            path,
+            span,
+        })
     }
 
     /// Zero or more `set …`, `do …`, `send …`, `emit …`, `reply …`, `spawn …` and `stop …`

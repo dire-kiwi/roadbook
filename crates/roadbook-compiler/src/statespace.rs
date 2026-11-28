@@ -753,8 +753,9 @@ struct Chart<'a> {
     /// The history states in each state's `states`.
     histories: Vec<Vec<u32>>,
     initial: Vec<Option<u32>>,
-    /// Each transition's target.
-    targets: Vec<Vec<Option<u32>>>,
+    /// Each transition's targets, and whether it is internal.
+    targets: Vec<Vec<Vec<u32>>>,
+    internal: Vec<Vec<bool>>,
     /// The `children` collections, in declaration order.
     collections: Vec<&'a str>,
     /// The collections a state's `entry` and `exit` spawn into.
@@ -796,6 +797,7 @@ impl<'a> Chart<'a> {
             histories: Vec::new(),
             initial: Vec::new(),
             targets: Vec::new(),
+            internal: Vec::new(),
             collections: machine.children.keys().map(String::as_str).collect(),
             spawn_entry: Vec::new(),
             spawn_exit: Vec::new(),
@@ -864,9 +866,16 @@ impl<'a> Chart<'a> {
             c.targets.push(
                 s.transitions
                     .iter()
-                    .map(|t| t.target.as_deref().and_then(|x| index.get(x).copied()))
+                    .map(|t| {
+                        t.targets
+                            .iter()
+                            .filter_map(|x| index.get(x.as_str()).copied())
+                            .collect()
+                    })
                     .collect(),
             );
+            c.internal
+                .push(s.transitions.iter().map(|t| t.internal).collect());
             c.spawn_entry.push(spawns(&s.entry));
             c.spawn_exit.push(spawns(&s.exit));
             c.spawn_effects
@@ -992,29 +1001,53 @@ impl<'a> Chart<'a> {
         }
     }
 
-    /// `domain(t)`: the root for a transition of the root, else the nearest compound proper
-    /// ancestor of the source that is a proper ancestor of the target.
-    fn domain(&self, source: u32, target: u32) -> u32 {
-        if source == 0 {
-            return 0;
+    /// `domain(t)`, for a transition with targets: the root for a transition of the root, the
+    /// source for an internal one, else the nearest compound proper ancestor of the source that
+    /// is a proper ancestor of every target.
+    fn domain(&self, (source, i): T) -> u32 {
+        if source == 0 || self.internal[source as usize][i] {
+            return source;
         }
+        let targets = &self.targets[source as usize][i];
         let mut a = self.parent[source as usize].unwrap_or(0);
-        while a != 0 && !(self.kind(a) == StateKind::Compound && self.contains(a, target)) {
+        while a != 0
+            && !(self.kind(a) == StateKind::Compound
+                && targets.iter().all(|&x| self.contains(a, x)))
+        {
             a = self.parent[a as usize].unwrap_or(0);
         }
         a
     }
 
-    /// `exitSet(t)`: the active states below the domain, in document order.
+    /// `exitSet(t)`: the active states below the domain, in document order; for a parallel
+    /// domain, only those in the regions the targets are in (every region, for a history
+    /// state of the domain).
     fn exit_set(&self, active: &[u32], t: T) -> Vec<u32> {
-        let Some(target) = self.targets[t.0 as usize][t.1] else {
+        let targets = &self.targets[t.0 as usize][t.1];
+        if targets.is_empty() {
             return Vec::new();
+        }
+        let d = self.domain(t);
+        let regions: Vec<u32> = if self.kind(d) == StateKind::Parallel {
+            let every = targets
+                .iter()
+                .any(|&x| self.kind(x).is_history() && self.parent[x as usize] == Some(d));
+            self.children[d as usize]
+                .iter()
+                .copied()
+                .filter(|&c| every || targets.iter().any(|&x| x == c || self.contains(c, x)))
+                .collect()
+        } else {
+            vec![d]
         };
-        let d = self.domain(t.0, target);
         active
             .iter()
             .copied()
-            .filter(|&x| self.contains(d, x))
+            .filter(|&x| {
+                regions
+                    .iter()
+                    .any(|&r| self.contains(r, x) || (r != d && r == x))
+            })
             .collect()
     }
 
@@ -1033,41 +1066,34 @@ impl<'a> Chart<'a> {
         path
     }
 
-    /// `entrySet(t)`, for a transition with a target, history states included, with the
-    /// history records of `cfg` (as they are after the microstep recorded).
+    /// `entrySet(t)`, for a transition with targets, history states included, with the
+    /// history records of `cfg` (as they are after the microstep recorded): the paths from
+    /// just below the domain to what each target stands for, their default entries, and every
+    /// region of a parallel state among them that none of them is in, by default entry.
     fn entry_set(&self, cfg: &Config, t: T, out: &mut Vec<u32>) {
-        let Some(target) = self.targets[t.0 as usize][t.1] else {
-            return;
-        };
-        let d = self.domain(t.0, target);
-        if !self.kind(target).is_history() {
-            let path = self.path(d, target);
-            out.extend(&path);
-            self.default_entry(target, out);
-            for &p in &path[..path.len() - 1] {
-                if self.kind(p) == StateKind::Parallel {
-                    for &c in &self.children[p as usize] {
-                        if !path.contains(&c) {
-                            out.push(c);
-                            self.default_entry(c, out);
-                        }
-                    }
-                }
-            }
+        let targets = &self.targets[t.0 as usize][t.1];
+        if targets.is_empty() {
             return;
         }
-        let p = self.parent[target as usize].unwrap_or(0);
-        let targets: Vec<u32> = match cfg.history.iter().find(|(h, _)| *h == target) {
-            Some((_, r)) => r.clone(),
-            None if self.kind(p) == StateKind::Compound => {
-                self.initial[p as usize].into_iter().collect()
-            }
-            None => self.children[p as usize].clone(),
-        };
+        let d = self.domain(t);
         let mut set = Vec::new();
-        for r in targets {
-            set.extend(self.path(d, r));
-            self.default_entry(r, &mut set);
+        for &target in targets {
+            let restores: Vec<u32> = if !self.kind(target).is_history() {
+                vec![target]
+            } else {
+                let p = self.parent[target as usize].unwrap_or(0);
+                match cfg.history.iter().find(|(h, _)| *h == target) {
+                    Some((_, r)) => r.clone(),
+                    None if self.kind(p) == StateKind::Compound => {
+                        self.initial[p as usize].into_iter().collect()
+                    }
+                    None => self.children[p as usize].clone(),
+                }
+            };
+            for r in restores {
+                set.extend(self.path(d, r));
+                self.default_entry(r, &mut set);
+            }
         }
         set.sort_unstable();
         set.dedup();
@@ -1194,7 +1220,9 @@ impl<'a> Chart<'a> {
             if let Ok(at) = cfg.active.binary_search(&s) {
                 cfg.active.remove(at);
             }
-            cfg.queue.retain(|&q| q != s);
+            // A state's completion goes with it, and with any state below it: an internal
+            // transition that exits a final state takes its parent's completion back.
+            cfg.queue.retain(|&q| q != s && !self.contains(q, s));
         }
         for &t in ts {
             Self::set_spawned(cfg, &self.spawn_effects[t.0 as usize][t.1]);

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "packages/viewer/test/charts/edges.road",
@@ -120,7 +120,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "OnlyRoot.S",
+                "targets": [
+                  "OnlyRoot.S"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -172,7 +175,8 @@
             },
             "group": 0,
             "guard": null,
-            "target": null,
+            "targets": [],
+            "internal": false,
             "effects": [
               {
                 "kind": "do",
@@ -270,7 +274,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Note.Direction",
+                "targets": [
+                  "Note.Direction"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -309,7 +316,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Note.ClassDef",
+                "targets": [
+                  "Note.ClassDef"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -348,7 +358,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Note.Class",
+                "targets": [
+                  "Note.Class"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -387,7 +400,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Note.Style",
+                "targets": [
+                  "Note.Style"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -426,7 +442,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Note.Default",
+                "targets": [
+                  "Note.Default"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -465,7 +484,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Note.Click",
+                "targets": [
+                  "Note.Click"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -504,7 +526,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Note.Href",
+                "targets": [
+                  "Note.Href"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -543,7 +568,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Note.Scale",
+                "targets": [
+                  "Note.Scale"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -582,7 +610,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Note.As",
+                "targets": [
+                  "Note.As"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -621,7 +652,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Note.AccTitle",
+                "targets": [
+                  "Note.AccTitle"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -660,7 +694,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Note.AccDescr",
+                "targets": [
+                  "Note.AccDescr"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -699,7 +736,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Note.StateDiagram",
+                "targets": [
+                  "Note.StateDiagram"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -813,7 +853,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Same.Bar",
+                "targets": [
+                  "Same.Bar"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -860,7 +903,10 @@
             },
             "group": 0,
             "guard": null,
-            "target": "Same.Same",
+            "targets": [
+              "Same.Same"
+            ],
+            "internal": false,
             "effects": [],
             "span": {
               "file": 0,
@@ -1004,7 +1050,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Rows.Busy.Inner.Deeper",
+                        "targets": [
+                          "Rows.Busy.Inner.Deeper"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -1043,7 +1092,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Rows.Busy.Inner.Deep",
+                        "targets": [
+                          "Rows.Busy.Inner.Deep"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -1139,7 +1191,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -1168,7 +1221,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Rows.Done",
+                "targets": [
+                  "Rows.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/catalog.road",
@@ -176,7 +176,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "reply",
@@ -371,7 +372,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Shopper.Found",
+                "targets": [
+                  "Shopper.Found"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -401,7 +405,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Shopper.Found",
+                "targets": [
+                  "Shopper.Found"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

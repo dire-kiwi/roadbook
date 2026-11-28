@@ -23,8 +23,10 @@ items:
                       branches:
                         single:
                           guard: ~
-                          target:
-                            - B
+                          targets:
+                            - dot: false
+                              path:
+                                - B
                           effects: []
                           ignore: false
             - state:

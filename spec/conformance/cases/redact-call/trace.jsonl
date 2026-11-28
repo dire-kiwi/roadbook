@@ -2,10 +2,10 @@
 {"kind":"entered","run":"r1","state":"Issuer","t":0}
 {"kind":"entered","run":"r1","state":"Issuer.Open","t":0}
 {"event":{"args":{"pin":"<redacted>","user":"ada"},"call":"issue","from":"r2","invoke":1,"kind":"call"},"kind":"event","run":"r1","t":0}
-{"from":"Issuer.Open","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"from":"Issuer.Open","index":0,"kind":"transition","run":"r1","t":0,"to":[]}
 {"call":"issue","invoke":1,"kind":"replied","outcome":"done","run":"r1","t":0,"to":"r2","value":{"secret":"<redacted>","user":"ada"}}
 {"event":{"kind":"event","value":{"_tag":"Close"}},"kind":"event","run":"r1","t":0}
-{"from":"Issuer.Open","index":1,"kind":"transition","run":"r1","t":0,"to":"Issuer.Shut"}
+{"from":"Issuer.Open","index":1,"kind":"transition","run":"r1","t":0,"to":["Issuer.Shut"]}
 {"kind":"exited","run":"r1","state":"Issuer.Open","t":0}
 {"kind":"entered","run":"r1","state":"Issuer.Shut","t":0}
 {"defect":{"event":{"args":{"pin":"<redacted>","user":"bob"},"call":"issue","from":"r3","invoke":1,"kind":"call"},"kind":"unhandled"},"kind":"defect","run":"r1","t":0}
@@ -14,7 +14,7 @@
 {"kind":"entered","run":"r2","state":"Client.Asking","t":0}
 {"args":{"pin":"<redacted>","user":"ada"},"invoke":1,"kind":"invoke.started","run":"r2","src":"issuer.issue","state":"Client.Asking","t":0}
 {"event":{"invoke":1,"kind":"invoke.done","value":{"secret":"<redacted>","user":"ada"}},"kind":"event","run":"r2","t":0}
-{"from":"Client.Asking","index":0,"kind":"transition","run":"r2","t":0,"to":"Client.Got"}
+{"from":"Client.Asking","index":0,"kind":"transition","run":"r2","t":0,"to":["Client.Got"]}
 {"kind":"exited","run":"r2","state":"Client.Asking","t":0}
 {"kind":"set","run":"r2","t":0,"value":{"secret":"<redacted>","user":"ada"},"var":"token"}
 {"kind":"entered","run":"r2","state":"Client.Got","t":0}
@@ -26,7 +26,7 @@
 {"kind":"entered","run":"r3","state":"Client.Asking","t":0}
 {"args":{"pin":"<redacted>","user":"bob"},"invoke":1,"kind":"invoke.started","run":"r3","src":"issuer.issue","state":"Client.Asking","t":0}
 {"event":{"error":{"_tag":"Unanswered"},"invoke":1,"kind":"invoke.fail"},"kind":"event","run":"r3","t":0}
-{"from":"Client.Asking","index":1,"kind":"transition","run":"r3","t":0,"to":"Client.Gave"}
+{"from":"Client.Asking","index":1,"kind":"transition","run":"r3","t":0,"to":["Client.Gave"]}
 {"kind":"exited","run":"r3","state":"Client.Asking","t":0}
 {"kind":"entered","run":"r3","state":"Client.Gave","t":0}
 {"kind":"exited","run":"r3","state":"Client.Gave","t":0}

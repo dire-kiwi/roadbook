@@ -926,9 +926,16 @@ fn state_changes(a: &State, b: &State) -> Vec<Change> {
 }
 
 fn target_text(t: &Transition) -> String {
-    t.target
-        .as_deref()
-        .map_or_else(|| "(internal: no target)".to_string(), short)
+    if t.targets.is_empty() {
+        return "(no target)".to_string();
+    }
+    let targets: Vec<String> = t.targets.iter().map(|x| short(x)).collect();
+    let targets = targets.join(", ");
+    if t.internal {
+        format!("{targets} (internal: its state is not left)")
+    } else {
+        targets
+    }
 }
 
 fn transition_changes(a: &State, ai: usize, b: &State, bi: usize) -> Vec<Change> {
@@ -1247,7 +1254,7 @@ machine M(n: int) -> int ! Declined {
         // Removed transitions follow the state's others, and point into the before sources.
         let a = &root.states[0];
         assert_eq!(a.transitions.len(), 3);
-        assert_eq!(a.transitions[2].target.as_deref(), Some("M.Out"));
+        assert_eq!(a.transitions[2].targets, ["M.Out"]);
         assert_eq!(transition_of(&d, "M.A", 2).unwrap().status, Status::Removed);
         assert_eq!(transition_of(&d, "M.B", 1).unwrap().status, Status::Added);
         assert_eq!(transition_of(&d, "M.B", 2).unwrap().status, Status::Removed);

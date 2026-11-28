@@ -227,7 +227,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -1464,7 +1464,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "SupportTicket.Intake.Screening",
+                    "targets": [
+                      "SupportTicket.Intake.Screening"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -1541,7 +1544,10 @@ const ir: unknown = {
                       "type": "bool",
                       "text": "classifyAttempts < 3"
                     },
-                    "target": "SupportTicket.Intake.ClassifyBackoff",
+                    "targets": [
+                      "SupportTicket.Intake.ClassifyBackoff"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1558,7 +1564,10 @@ const ir: unknown = {
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "SupportTicket.Intake.Unclassified",
+                    "targets": [
+                      "SupportTicket.Intake.Unclassified"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1639,7 +1648,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "SupportTicket.Intake.Classifying",
+                    "targets": [
+                      "SupportTicket.Intake.Classifying"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1692,7 +1704,10 @@ const ir: unknown = {
                       "type": "bool",
                       "text": "isSpam(classification)"
                     },
-                    "target": "SupportTicket.Spam",
+                    "targets": [
+                      "SupportTicket.Spam"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1723,7 +1738,10 @@ const ir: unknown = {
                       "type": "bool",
                       "text": "isDuplicate(classification)"
                     },
-                    "target": "SupportTicket.Duplicate",
+                    "targets": [
+                      "SupportTicket.Duplicate"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1739,7 +1757,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "SupportTicket.Intake.Accepted",
+                    "targets": [
+                      "SupportTicket.Intake.Accepted"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1827,7 +1848,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "SupportTicket.Triage",
+                "targets": [
+                  "SupportTicket.Triage"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1909,7 +1933,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "SupportTicket.Triage.Assigned",
+                    "targets": [
+                      "SupportTicket.Triage.Assigned"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -1939,7 +1966,10 @@ const ir: unknown = {
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "SupportTicket.Triage.Queued",
+                    "targets": [
+                      "SupportTicket.Triage.Queued"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1983,7 +2013,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "SupportTicket.Triage.Routing",
+                    "targets": [
+                      "SupportTicket.Triage.Routing"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -2074,7 +2107,8 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -2112,7 +2146,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "SupportTicket.Triage.Assigned",
+                "targets": [
+                  "SupportTicket.Triage.Assigned"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -2143,7 +2180,10 @@ const ir: unknown = {
                 },
                 "group": 2,
                 "guard": null,
-                "target": "SupportTicket.OutOfScope",
+                "targets": [
+                  "SupportTicket.OutOfScope"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2160,7 +2200,10 @@ const ir: unknown = {
                 },
                 "group": 3,
                 "guard": null,
-                "target": "SupportTicket.Withdrawn",
+                "targets": [
+                  "SupportTicket.Withdrawn"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2176,7 +2219,10 @@ const ir: unknown = {
                 },
                 "group": 4,
                 "guard": null,
-                "target": "SupportTicket.Active",
+                "targets": [
+                  "SupportTicket.Active"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2248,7 +2294,10 @@ const ir: unknown = {
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "SupportTicket.Active.Working.WithAgent",
+                        "targets": [
+                          "SupportTicket.Active.Working.WithAgent"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "do",
@@ -2294,7 +2343,10 @@ const ir: unknown = {
                         },
                         "group": 1,
                         "guard": null,
-                        "target": "SupportTicket.Active.Working.WaitingOnCustomer",
+                        "targets": [
+                          "SupportTicket.Active.Working.WaitingOnCustomer"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "do",
@@ -2335,7 +2387,10 @@ const ir: unknown = {
                         },
                         "group": 2,
                         "guard": null,
-                        "target": "SupportTicket.Active.Working.OnHold",
+                        "targets": [
+                          "SupportTicket.Active.Working.OnHold"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2352,7 +2407,10 @@ const ir: unknown = {
                         },
                         "group": 3,
                         "guard": null,
-                        "target": "SupportTicket.Active.Resolving",
+                        "targets": [
+                          "SupportTicket.Active.Resolving"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2369,7 +2427,10 @@ const ir: unknown = {
                         },
                         "group": 4,
                         "guard": null,
-                        "target": "SupportTicket.Duplicate",
+                        "targets": [
+                          "SupportTicket.Duplicate"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2427,7 +2488,10 @@ const ir: unknown = {
                             },
                             "group": 0,
                             "guard": null,
-                            "target": "SupportTicket.Active.Working.WaitingOnCustomer.Reminded",
+                            "targets": [
+                              "SupportTicket.Active.Working.WaitingOnCustomer.Reminded"
+                            ],
+                            "internal": false,
                             "effects": [
                               {
                                 "kind": "do",
@@ -2492,7 +2556,10 @@ const ir: unknown = {
                             },
                             "group": 0,
                             "guard": null,
-                            "target": "SupportTicket.Active.Working.WaitingOnCustomer.LastCall",
+                            "targets": [
+                              "SupportTicket.Active.Working.WaitingOnCustomer.LastCall"
+                            ],
+                            "internal": false,
                             "effects": [
                               {
                                 "kind": "do",
@@ -2565,7 +2632,10 @@ const ir: unknown = {
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "SupportTicket.AutoClosed",
+                        "targets": [
+                          "SupportTicket.AutoClosed"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2582,7 +2652,10 @@ const ir: unknown = {
                         },
                         "group": 1,
                         "guard": null,
-                        "target": "SupportTicket.Active.Working.WithAgent",
+                        "targets": [
+                          "SupportTicket.Active.Working.WithAgent"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2621,7 +2694,10 @@ const ir: unknown = {
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "SupportTicket.Active.Working.WithAgent",
+                        "targets": [
+                          "SupportTicket.Active.Working.WithAgent"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2643,7 +2719,10 @@ const ir: unknown = {
                         },
                         "group": 1,
                         "guard": null,
-                        "target": "SupportTicket.Active.Working.WithAgent",
+                        "targets": [
+                          "SupportTicket.Active.Working.WithAgent"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "do",
@@ -2698,7 +2777,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "SupportTicket.Active.Escalation",
+                    "targets": [
+                      "SupportTicket.Active.Escalation"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -2777,7 +2859,10 @@ const ir: unknown = {
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "SupportTicket.Active.Escalation.Tier3",
+                        "targets": [
+                          "SupportTicket.Active.Escalation.Tier3"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2842,7 +2927,10 @@ const ir: unknown = {
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "SupportTicket.Active.Escalation.Engineering",
+                        "targets": [
+                          "SupportTicket.Active.Escalation.Engineering"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2916,7 +3004,10 @@ const ir: unknown = {
                             },
                             "group": 0,
                             "guard": null,
-                            "target": "SupportTicket.Active.Escalation.Engineering.AwaitingFix",
+                            "targets": [
+                              "SupportTicket.Active.Escalation.Engineering.AwaitingFix"
+                            ],
+                            "internal": false,
                             "effects": [
                               {
                                 "kind": "set",
@@ -2967,7 +3058,10 @@ const ir: unknown = {
                               "type": "bool",
                               "text": "bugAttempts < 5"
                             },
-                            "target": "SupportTicket.Active.Escalation.Engineering.BugBackoff",
+                            "targets": [
+                              "SupportTicket.Active.Escalation.Engineering.BugBackoff"
+                            ],
+                            "internal": false,
                             "effects": [
                               {
                                 "kind": "set",
@@ -2998,7 +3092,10 @@ const ir: unknown = {
                             },
                             "group": 1,
                             "guard": null,
-                            "target": "SupportTicket.Active.Escalation.Engineering.AwaitingFix",
+                            "targets": [
+                              "SupportTicket.Active.Escalation.Engineering.AwaitingFix"
+                            ],
+                            "internal": false,
                             "effects": [
                               {
                                 "kind": "do",
@@ -3100,7 +3197,10 @@ const ir: unknown = {
                             },
                             "group": 0,
                             "guard": null,
-                            "target": "SupportTicket.Active.Escalation.Engineering.FilingBug",
+                            "targets": [
+                              "SupportTicket.Active.Escalation.Engineering.FilingBug"
+                            ],
+                            "internal": false,
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -3139,7 +3239,10 @@ const ir: unknown = {
                             },
                             "group": 0,
                             "guard": null,
-                            "target": "SupportTicket.Active.Escalation.Engineering.FixShipped",
+                            "targets": [
+                              "SupportTicket.Active.Escalation.Engineering.FixShipped"
+                            ],
+                            "internal": false,
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -3156,7 +3259,10 @@ const ir: unknown = {
                             },
                             "group": 1,
                             "guard": null,
-                            "target": "SupportTicket.Unresolvable",
+                            "targets": [
+                              "SupportTicket.Unresolvable"
+                            ],
+                            "internal": false,
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -3202,7 +3308,10 @@ const ir: unknown = {
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "SupportTicket.Active.Resolving",
+                        "targets": [
+                          "SupportTicket.Active.Resolving"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -3228,7 +3337,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "SupportTicket.Active.Working",
+                    "targets": [
+                      "SupportTicket.Active.Working"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3245,7 +3357,10 @@ const ir: unknown = {
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "SupportTicket.Active.Resolving",
+                    "targets": [
+                      "SupportTicket.Active.Resolving"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3340,7 +3455,10 @@ const ir: unknown = {
                               "type": "bool",
                               "text": "result"
                             },
-                            "target": "SupportTicket.Active.Resolving.FixCheck.Verified",
+                            "targets": [
+                              "SupportTicket.Active.Resolving.FixCheck.Verified"
+                            ],
+                            "internal": false,
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -3356,7 +3474,10 @@ const ir: unknown = {
                             },
                             "group": 0,
                             "guard": null,
-                            "target": "SupportTicket.Active.Working",
+                            "targets": [
+                              "SupportTicket.Active.Working"
+                            ],
+                            "internal": false,
                             "effects": [
                               {
                                 "kind": "do",
@@ -3488,7 +3609,10 @@ const ir: unknown = {
                             },
                             "group": 0,
                             "guard": null,
-                            "target": "SupportTicket.Active.Resolving.CustomerNotice.Drafted",
+                            "targets": [
+                              "SupportTicket.Active.Resolving.CustomerNotice.Drafted"
+                            ],
+                            "internal": false,
                             "effects": [
                               {
                                 "kind": "set",
@@ -3555,7 +3679,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "SupportTicket.Active.AwaitingConfirmation",
+                    "targets": [
+                      "SupportTicket.Active.AwaitingConfirmation"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "do",
@@ -3617,7 +3744,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "SupportTicket.Closing",
+                    "targets": [
+                      "SupportTicket.Closing"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3634,7 +3764,10 @@ const ir: unknown = {
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "SupportTicket.Active.Reopened",
+                    "targets": [
+                      "SupportTicket.Active.Reopened"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3656,7 +3789,10 @@ const ir: unknown = {
                     },
                     "group": 2,
                     "guard": null,
-                    "target": "SupportTicket.Closing",
+                    "targets": [
+                      "SupportTicket.Closing"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3742,7 +3878,10 @@ const ir: unknown = {
                       "type": "bool",
                       "text": "reopens < 3"
                     },
-                    "target": "SupportTicket.Active.Working",
+                    "targets": [
+                      "SupportTicket.Active.Working"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3758,7 +3897,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "SupportTicket.Active.Escalation",
+                    "targets": [
+                      "SupportTicket.Active.Escalation"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3799,7 +3941,8 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -3837,7 +3980,8 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -3878,7 +4022,10 @@ const ir: unknown = {
                 },
                 "group": 2,
                 "guard": null,
-                "target": "SupportTicket.Withdrawn",
+                "targets": [
+                  "SupportTicket.Withdrawn"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -3895,7 +4042,10 @@ const ir: unknown = {
                 },
                 "group": 3,
                 "guard": null,
-                "target": "SupportTicket.Merged",
+                "targets": [
+                  "SupportTicket.Merged"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -3969,7 +4119,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "SupportTicket.Closing.Surveyed",
+                    "targets": [
+                      "SupportTicket.Closing.Surveyed"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -4028,7 +4181,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "SupportTicket.Resolved",
+                "targets": [
+                  "SupportTicket.Resolved"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -4592,7 +4748,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "SatisfactionSurvey.Waiting",
+                "targets": [
+                  "SatisfactionSurvey.Waiting"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -4622,7 +4781,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "SatisfactionSurvey.NoAnswer",
+                "targets": [
+                  "SatisfactionSurvey.NoAnswer"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -4666,7 +4828,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "SatisfactionSurvey.Polling",
+                "targets": [
+                  "SatisfactionSurvey.Polling"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -4726,7 +4891,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "SatisfactionSurvey.Answered",
+                "targets": [
+                  "SatisfactionSurvey.Answered"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -4777,7 +4945,10 @@ const ir: unknown = {
                   "type": "bool",
                   "text": "polls < 7"
                 },
-                "target": "SatisfactionSurvey.Waiting",
+                "targets": [
+                  "SatisfactionSurvey.Waiting"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -4821,7 +4992,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "SatisfactionSurvey.NoAnswer",
+                "targets": [
+                  "SatisfactionSurvey.NoAnswer"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 2,

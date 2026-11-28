@@ -147,6 +147,22 @@ impl Diagnostic {
         self
     }
 
+    /// Add a fix made of several edits, made together.
+    pub fn with_fix_edits(
+        mut self,
+        message: impl Into<String>,
+        edits: impl IntoIterator<Item = (Span, String)>,
+    ) -> Diagnostic {
+        self.fixes.push(Fix {
+            message: message.into(),
+            edits: edits
+                .into_iter()
+                .map(|(span, text)| TextEdit { span, text })
+                .collect(),
+        });
+        self
+    }
+
     pub fn is_error(&self) -> bool {
         self.severity == Severity::Error
     }

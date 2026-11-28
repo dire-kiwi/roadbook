@@ -2,9 +2,9 @@
 {"kind":"entered","run":"r1","state":"Inventory","t":0}
 {"kind":"entered","run":"r1","state":"Inventory.Open","t":0}
 {"event":{"from":"r2","kind":"message","message":1,"value":{"_tag":"Reserve","orderId":"o1"}},"kind":"event","run":"r1","t":0}
-{"from":"Inventory","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"from":"Inventory","index":0,"kind":"transition","run":"r1","t":0,"to":[]}
 {"event":{"kind":"event","value":{"_tag":"Close"}},"kind":"event","run":"r1","t":0}
-{"from":"Inventory.Open","index":0,"kind":"transition","run":"r1","t":0,"to":"Inventory.Closed"}
+{"from":"Inventory.Open","index":0,"kind":"transition","run":"r1","t":0,"to":["Inventory.Closed"]}
 {"kind":"exited","run":"r1","state":"Inventory.Open","t":0}
 {"kind":"entered","run":"r1","state":"Inventory.Closed","t":0}
 {"kind":"exited","run":"r1","state":"Inventory.Closed","t":0}
@@ -16,7 +16,7 @@
 {"kind":"sent","message":1,"run":"r2","t":0,"to":"r1","value":{"_tag":"Reserve","orderId":"o1"}}
 {"delay":5000,"index":3,"kind":"timer.started","run":"r2","state":"Order.Waiting","t":0,"timer":1}
 {"event":{"from":"r1","kind":"ended","status":"Done"},"kind":"event","run":"r2","t":0}
-{"from":"Order.Waiting","index":0,"kind":"transition","run":"r2","t":0,"to":"Order.Closed"}
+{"from":"Order.Waiting","index":0,"kind":"transition","run":"r2","t":0,"to":["Order.Closed"]}
 {"index":3,"kind":"timer.cancelled","run":"r2","state":"Order.Waiting","t":0,"timer":1}
 {"kind":"exited","run":"r2","state":"Order.Waiting","t":0}
 {"kind":"entered","run":"r2","state":"Order.Closed","t":0}

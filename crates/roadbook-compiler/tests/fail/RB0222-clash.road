@@ -1,0 +1,36 @@
+machine M() {
+  event Go
+  event Stop
+  event Back
+  event Twice
+  event Mix
+  initial C
+  state C {
+    initial X
+    history Last
+    on Go -> C.X, C.Y
+    on Mix -> .Last, .Y
+    state X {}
+    state Y {}
+  }
+  parallel state P {
+    history H
+    on Stop -> P.A, P.A.A1
+    on Back -> .H, .B.B1
+    on Twice -> .A.A1, .A.A1
+    state A {
+      initial A1
+      state A1 {}
+    }
+    state B {
+      initial B1
+      state B1 {}
+    }
+  }
+}
+
+// expect: RB0222 at 11:19
+// expect: RB0222 at 12:22
+// expect: RB0222 at 18:21
+// expect: RB0222 at 19:20
+// expect: RB0222 at 20:24

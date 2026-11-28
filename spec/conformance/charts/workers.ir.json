@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/workers.road",
@@ -117,7 +117,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -150,7 +151,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Logbook.Closed",
+                "targets": [
+                  "Logbook.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -283,7 +287,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Worker.Finished",
+                "targets": [
+                  "Worker.Finished"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -474,7 +481,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Boss.Idle",
+                "targets": [
+                  "Boss.Idle"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -497,7 +507,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -527,7 +538,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Boss.Watching",
+                "targets": [
+                  "Boss.Watching"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -544,7 +558,10 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": "Boss.Idle",
+                "targets": [
+                  "Boss.Idle"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -583,7 +600,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Boss.Watching",
+                "targets": [
+                  "Boss.Watching"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

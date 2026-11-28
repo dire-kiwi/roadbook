@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "packages/viewer/test/charts/spawn.road",
@@ -256,7 +256,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Session.Open",
+                "targets": [
+                  "Session.Open"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -323,7 +326,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Session.Left",
+                "targets": [
+                  "Session.Left"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -345,7 +351,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Session.Dropped",
+                "targets": [
+                  "Session.Dropped"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -502,7 +511,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Job.Done",
+                "targets": [
+                  "Job.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -745,7 +757,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Hub.Serving",
+                "targets": [
+                  "Hub.Serving"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "spawn",
@@ -824,7 +839,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -934,7 +950,8 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "stop",
@@ -965,7 +982,8 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "send",
@@ -1019,7 +1037,8 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1072,7 +1091,8 @@
                 },
                 "group": 4,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1161,7 +1181,8 @@
                   "type": "bool",
                   "text": "error.reason == \"idle\""
                 },
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -1194,7 +1215,8 @@
                 },
                 "group": 6,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -1226,7 +1248,8 @@
                 },
                 "group": 7,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "stop",
@@ -1256,7 +1279,10 @@
                 },
                 "group": 8,
                 "guard": null,
-                "target": "Hub.Closed",
+                "targets": [
+                  "Hub.Closed"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

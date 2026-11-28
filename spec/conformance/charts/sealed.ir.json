@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/sealed.road",
@@ -282,7 +282,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Keep.Done",
+                "targets": [
+                  "Keep.Done"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",

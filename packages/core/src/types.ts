@@ -190,7 +190,7 @@ export type CoreRecord =
   | { readonly kind: "entered"; readonly state: string }
   | { readonly kind: "exited"; readonly state: string }
   | { readonly kind: "event" | "dropped" | "stale"; readonly event: TracedInput }
-  | { readonly kind: "transition"; readonly from: string; readonly index: number; readonly to: string | null }
+  | { readonly kind: "transition"; readonly from: string; readonly index: number; readonly to: ReadonlyArray<string> }
   | { readonly kind: "set"; readonly var: string; readonly value: Json }
   | { readonly kind: "action"; readonly action: string; readonly args: { readonly [param: string]: Json } }
   | { readonly kind: "sent"; readonly message: number; readonly to: string; readonly value: Tagged }

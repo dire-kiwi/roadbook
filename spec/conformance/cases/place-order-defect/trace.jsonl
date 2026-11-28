@@ -3,7 +3,7 @@
 {"kind":"entered","run":"r1","state":"PlaceOrder.Authenticating","t":0}
 {"args":{"token":"tok-1"},"invoke":1,"kind":"invoke.started","run":"r1","src":"authenticate","state":"PlaceOrder.Authenticating","t":0}
 {"event":{"invoke":1,"kind":"invoke.done","value":{"id":"u1","role":"Customer"}},"kind":"event","run":"r1","t":10}
-{"from":"PlaceOrder.Authenticating","index":0,"kind":"transition","run":"r1","t":10,"to":"PlaceOrder.Processing"}
+{"from":"PlaceOrder.Authenticating","index":0,"kind":"transition","run":"r1","t":10,"to":["PlaceOrder.Processing"]}
 {"kind":"exited","run":"r1","state":"PlaceOrder.Authenticating","t":10}
 {"kind":"set","run":"r1","t":10,"value":{"id":"u1","role":"Customer"},"var":"user"}
 {"kind":"entered","run":"r1","state":"PlaceOrder.Processing","t":10}
@@ -11,13 +11,13 @@
 {"delay":30000,"index":1,"kind":"timer.started","run":"r1","state":"PlaceOrder.Processing","t":10,"timer":1}
 {"args":{"draft":{"coupon":null,"items":[{"qty":2,"sku":"apple"}]}},"invoke":2,"kind":"invoke.started","run":"r1","src":"validateOrder","state":"PlaceOrder.Processing.Validating","t":10}
 {"event":{"invoke":2,"kind":"invoke.done","value":{"id":"o1","items":[{"qty":2,"sku":"apple"}],"totalCents":0}},"kind":"event","run":"r1","t":20}
-{"from":"PlaceOrder.Processing.Validating","index":0,"kind":"transition","run":"r1","t":20,"to":"PlaceOrder.Processing.Pricing"}
+{"from":"PlaceOrder.Processing.Validating","index":0,"kind":"transition","run":"r1","t":20,"to":["PlaceOrder.Processing.Pricing"]}
 {"kind":"exited","run":"r1","state":"PlaceOrder.Processing.Validating","t":20}
 {"kind":"set","run":"r1","t":20,"value":{"id":"o1","items":[{"qty":2,"sku":"apple"}],"totalCents":0},"var":"order"}
 {"kind":"entered","run":"r1","state":"PlaceOrder.Processing.Pricing","t":20}
 {"args":{"order":{"id":"o1","items":[{"qty":2,"sku":"apple"}],"totalCents":0},"user":{"id":"u1","role":"Customer"}},"invoke":3,"kind":"invoke.started","run":"r1","src":"priceOrder","state":"PlaceOrder.Processing.Pricing","t":20}
 {"event":{"invoke":3,"kind":"invoke.done","value":{"id":"o1","items":[{"qty":2,"sku":"apple"}],"totalCents":4200}},"kind":"event","run":"r1","t":30}
-{"from":"PlaceOrder.Processing.Pricing","index":0,"kind":"transition","run":"r1","t":30,"to":"PlaceOrder.Processing.Paying"}
+{"from":"PlaceOrder.Processing.Pricing","index":0,"kind":"transition","run":"r1","t":30,"to":["PlaceOrder.Processing.Paying"]}
 {"kind":"exited","run":"r1","state":"PlaceOrder.Processing.Pricing","t":30}
 {"kind":"set","run":"r1","t":30,"value":{"id":"o1","items":[{"qty":2,"sku":"apple"}],"totalCents":4200},"var":"order"}
 {"kind":"entered","run":"r1","state":"PlaceOrder.Processing.Paying","t":30}

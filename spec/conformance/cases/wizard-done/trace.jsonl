@@ -3,22 +3,22 @@
 {"kind":"entered","run":"r1","state":"Wizard.Form","t":0}
 {"kind":"entered","run":"r1","state":"Wizard.Form.Name","t":0}
 {"event":{"kind":"event","value":{"_tag":"Next"}},"kind":"event","run":"r1","t":0}
-{"from":"Wizard.Form.Name","index":0,"kind":"transition","run":"r1","t":0,"to":"Wizard.Form.Email"}
+{"from":"Wizard.Form.Name","index":0,"kind":"transition","run":"r1","t":0,"to":["Wizard.Form.Email"]}
 {"kind":"exited","run":"r1","state":"Wizard.Form.Name","t":0}
 {"kind":"set","run":"r1","t":0,"value":1,"var":"steps"}
 {"kind":"entered","run":"r1","state":"Wizard.Form.Email","t":0}
 {"event":{"kind":"event","value":{"_tag":"Next"}},"kind":"event","run":"r1","t":0}
-{"from":"Wizard.Form.Email","index":0,"kind":"transition","run":"r1","t":0,"to":"Wizard.Form.Complete"}
+{"from":"Wizard.Form.Email","index":0,"kind":"transition","run":"r1","t":0,"to":["Wizard.Form.Complete"]}
 {"kind":"exited","run":"r1","state":"Wizard.Form.Email","t":0}
 {"kind":"set","run":"r1","t":0,"value":2,"var":"steps"}
 {"kind":"entered","run":"r1","state":"Wizard.Form.Complete","t":0}
 {"action":"log","args":{"what":"complete"},"kind":"action","run":"r1","t":0}
-{"from":"Wizard.Form","index":0,"kind":"transition","run":"r1","t":0,"to":"Wizard.Review"}
+{"from":"Wizard.Form","index":0,"kind":"transition","run":"r1","t":0,"to":["Wizard.Review"]}
 {"kind":"exited","run":"r1","state":"Wizard.Form.Complete","t":0}
 {"kind":"exited","run":"r1","state":"Wizard.Form","t":0}
 {"action":"log","args":{"what":"form done"},"kind":"action","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Wizard.Review","t":0}
-{"from":"Wizard.Review","index":0,"kind":"transition","run":"r1","t":0,"to":"Wizard.Finished"}
+{"from":"Wizard.Review","index":0,"kind":"transition","run":"r1","t":0,"to":["Wizard.Finished"]}
 {"kind":"exited","run":"r1","state":"Wizard.Review","t":0}
 {"kind":"set","run":"r1","t":0,"value":20,"var":"steps"}
 {"kind":"entered","run":"r1","state":"Wizard.Finished","t":0}

@@ -63,7 +63,7 @@ describe("compareCodePoints", () => {
 
 describe("loadIr", () => {
   it("refuses another IR version, naming both", () => {
-    expect(() => loadIr({ irVersion: "0.7" })).toThrow(/"0\.7".*0\.8/)
+    expect(() => loadIr({ irVersion: "0.8" })).toThrow(/"0\.8".*0\.9/)
     expect(() => loadIr([])).toThrow(IrError)
   })
   it("refuses a machine the IR does not have", () => {
@@ -328,7 +328,7 @@ describe("history states", () => {
     // The domain is Work: it is neither exited nor entered, and nothing is recorded.
     expect(jumped.commands[1]).toEqual({
       kind: "trace",
-      record: { kind: "transition", from: "Editor.Work.Draft", index: 1, to: "Editor.Work.Shallow" }
+      record: { kind: "transition", from: "Editor.Work.Draft", index: 1, to: ["Editor.Work.Shallow"] }
     })
     expect(moves(jumped)).toEqual(["exited Editor.Work.Draft", "entered Editor.Work.Draft"])
     expect(jumped.snapshot.active).toEqual(["Editor", "Editor.Work", "Editor.Work.Draft"])

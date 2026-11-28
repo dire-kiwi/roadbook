@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "packages/viewer/test/charts/history.road",
@@ -203,7 +203,10 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "Histories.Work.B",
+                    "targets": [
+                      "Histories.Work.B"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -267,7 +270,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Histories.Work.B.B2",
+                        "targets": [
+                          "Histories.Work.B.B2"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -306,7 +312,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Histories.Work.Last",
+                        "targets": [
+                          "Histories.Work.Last"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -355,7 +364,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Histories.Paused",
+                "targets": [
+                  "Histories.Paused"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -394,7 +406,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Histories.Work.All",
+                "targets": [
+                  "Histories.Work.All"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -411,7 +426,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Histories.Work.Last",
+                "targets": [
+                  "Histories.Work.Last"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -428,7 +446,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Histories.Both",
+                "targets": [
+                  "Histories.Both"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -558,7 +579,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Histories.Both.Left.L2",
+                        "targets": [
+                          "Histories.Both.Left.L2"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -597,7 +621,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Histories.Away",
+                        "targets": [
+                          "Histories.Away"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -658,7 +685,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Histories.Both.Right.R1",
+                        "targets": [
+                          "Histories.Both.Right.R1"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -713,7 +743,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Histories.Both.Again",
+                "targets": [
+                  "Histories.Both.Again"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -730,7 +763,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Histories.Both.Regions",
+                "targets": [
+                  "Histories.Both.Regions"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -747,7 +783,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Histories.Both.Left.Inside",
+                "targets": [
+                  "Histories.Both.Left.Inside"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

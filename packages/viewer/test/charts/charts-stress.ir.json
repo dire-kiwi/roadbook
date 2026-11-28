@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "packages/viewer/test/charts/stress.road",
@@ -148,7 +148,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Ticker.Ticking",
+                "targets": [
+                  "Ticker.Ticking"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -183,7 +186,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Ticker.Stopping",
+                "targets": [
+                  "Ticker.Stopping"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -221,7 +227,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Ticker.Done",
+                "targets": [
+                  "Ticker.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -395,7 +404,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Stress.Running",
+                "targets": [
+                  "Stress.Running"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -412,7 +424,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Stress.Start",
+                "targets": [
+                  "Stress.Start"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -456,7 +471,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Stress.Exits",
+                "targets": [
+                  "Stress.Exits"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -472,7 +490,8 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -552,7 +571,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Stress.Running.Left.A",
+                        "targets": [
+                          "Stress.Running.Left.A"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "do",
@@ -587,7 +609,10 @@
                         },
                         "group": 1,
                         "guard": null,
-                        "target": "Stress.Running.Left.B",
+                        "targets": [
+                          "Stress.Running.Left.B"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -647,7 +672,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Stress.Running.Left.C",
+                        "targets": [
+                          "Stress.Running.Left.C"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "set",
@@ -698,7 +726,10 @@
                           "type": "bool",
                           "text": "n < 3"
                         },
-                        "target": "Stress.Running.Left.B",
+                        "targets": [
+                          "Stress.Running.Left.B"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "set",
@@ -742,7 +773,10 @@
                         },
                         "group": 1,
                         "guard": null,
-                        "target": "Stress.Running.Left.A",
+                        "targets": [
+                          "Stress.Running.Left.A"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -759,7 +793,10 @@
                         },
                         "group": 2,
                         "guard": null,
-                        "target": "Stress.Failed",
+                        "targets": [
+                          "Stress.Failed"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -797,7 +834,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Stress.Running.Left.LeftDone",
+                        "targets": [
+                          "Stress.Running.Left.LeftDone"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -893,7 +933,10 @@
                             },
                             "group": 0,
                             "guard": null,
-                            "target": "Stress.Running.Right.X.X1",
+                            "targets": [
+                              "Stress.Running.Right.X.X1"
+                            ],
+                            "internal": false,
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -910,7 +953,10 @@
                             },
                             "group": 1,
                             "guard": null,
-                            "target": "Stress.Running.Right.X.X2",
+                            "targets": [
+                              "Stress.Running.Right.X.X2"
+                            ],
+                            "internal": false,
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -977,7 +1023,10 @@
                                     },
                                     "group": 0,
                                     "guard": null,
-                                    "target": "Stress.Running.Left.C",
+                                    "targets": [
+                                      "Stress.Running.Left.C"
+                                    ],
+                                    "internal": false,
                                     "effects": [],
                                     "span": {
                                       "file": 0,
@@ -1011,7 +1060,10 @@
                             },
                             "group": 0,
                             "guard": null,
-                            "target": "Stress.Running.Right.X.X1",
+                            "targets": [
+                              "Stress.Running.Right.X.X1"
+                            ],
+                            "internal": false,
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -1037,7 +1089,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Stress.Running.Right.Y",
+                        "targets": [
+                          "Stress.Running.Right.Y"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -1097,7 +1152,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Stress.Running.Right.RightDone",
+                        "targets": [
+                          "Stress.Running.Right.RightDone"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "set",
@@ -1165,7 +1223,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Stress.Stopped",
+                "targets": [
+                  "Stress.Stopped"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1181,7 +1242,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Stress.Finished",
+                "targets": [
+                  "Stress.Finished"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1220,7 +1284,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Stress.Running.Right.X.X2",
+                "targets": [
+                  "Stress.Running.Right.X.X2"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1497,7 +1564,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Stress.Quit1",
+                "targets": [
+                  "Stress.Quit1"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1514,7 +1584,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Stress.Quit2",
+                "targets": [
+                  "Stress.Quit2"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1531,7 +1604,10 @@
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Stress.Quit3",
+                "targets": [
+                  "Stress.Quit3"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1553,7 +1629,10 @@
                 },
                 "group": 3,
                 "guard": null,
-                "target": "Stress.Quit4",
+                "targets": [
+                  "Stress.Quit4"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1569,7 +1648,10 @@
                 },
                 "group": 4,
                 "guard": null,
-                "target": "Stress.Quit5",
+                "targets": [
+                  "Stress.Quit5"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1595,7 +1677,10 @@
             },
             "group": 0,
             "guard": null,
-            "target": "Stress.Start",
+            "targets": [
+              "Stress.Start"
+            ],
+            "internal": false,
             "effects": [],
             "span": {
               "file": 0,
@@ -1617,7 +1702,10 @@
             },
             "group": 1,
             "guard": null,
-            "target": "Stress.Expired",
+            "targets": [
+              "Stress.Expired"
+            ],
+            "internal": false,
             "effects": [],
             "span": {
               "file": 0,

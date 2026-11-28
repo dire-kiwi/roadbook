@@ -35,8 +35,10 @@ items:
                           branches:
                             single:
                               guard: ~
-                              target:
-                                - B
+                              targets:
+                                - dot: false
+                                  path:
+                                    - B
                               effects: []
                               ignore: false
                         - trigger:
@@ -45,8 +47,10 @@ items:
                           branches:
                             single:
                               guard: ~
-                              target:
-                                - C
+                              targets:
+                                - dot: false
+                                  path:
+                                    - C
                               effects: []
                               ignore: false
             - state:
@@ -63,8 +67,10 @@ items:
                           branches:
                             single:
                               guard: ~
-                              target:
-                                - A
+                              targets:
+                                - dot: false
+                                  path:
+                                    - A
                               effects: []
                               ignore: false
             - state:
@@ -88,8 +94,10 @@ items:
                           branches:
                             single:
                               guard: ~
-                              target:
-                                - A
+                              targets:
+                                - dot: false
+                                  path:
+                                    - A
                               effects: []
                               ignore: false
 comments: []

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/parallel.road",
@@ -421,7 +421,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Regions.Away",
+                "targets": [
+                  "Regions.Away"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -473,7 +476,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Regions.Both",
+                "targets": [
+                  "Regions.Both"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -651,7 +657,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Fork.P.A.A2",
+                        "targets": [
+                          "Fork.P.A.A2"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "set",
@@ -757,7 +766,10 @@
                           "type": "bool",
                           "text": "n > 1"
                         },
-                        "target": "Fork.P.A.A3",
+                        "targets": [
+                          "Fork.P.A.A3"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "do",
@@ -860,7 +872,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Fork.P.B.B2",
+                        "targets": [
+                          "Fork.P.B.B2"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "set",
@@ -945,7 +960,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Fork.P.B.B3",
+                        "targets": [
+                          "Fork.P.B.B3"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "do",
@@ -997,7 +1015,8 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": null,
+                        "targets": [],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "do",
@@ -1065,7 +1084,8 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": null,
+                    "targets": [],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "do",
@@ -1229,7 +1249,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Clash.Out",
+                        "targets": [
+                          "Clash.Out"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "do",
@@ -1303,7 +1326,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Clash.P.B.B2",
+                        "targets": [
+                          "Clash.P.B.B2"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "do",
@@ -1333,7 +1359,10 @@
                         },
                         "group": 1,
                         "guard": null,
-                        "target": "Clash.P.B.B2",
+                        "targets": [
+                          "Clash.P.B.B2"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "do",
@@ -1401,7 +1430,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Clash.Out",
+                "targets": [
+                  "Clash.Out"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -1453,7 +1485,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Clash.P",
+                "targets": [
+                  "Clash.P"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1585,7 +1620,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Escape.P.B.B1",
+                        "targets": [
+                          "Escape.P.B.B1"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "do",
@@ -1615,7 +1653,10 @@
                         },
                         "group": 1,
                         "guard": null,
-                        "target": "Escape.Done",
+                        "targets": [
+                          "Escape.Done"
+                        ],
+                        "internal": false,
                         "effects": [
                           {
                             "kind": "do",
@@ -1707,7 +1748,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Escape.P.B.B2",
+                        "targets": [
+                          "Escape.P.B.B2"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -1910,7 +1954,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Finish.Work.Left.L2",
+                        "targets": [
+                          "Finish.Work.Left.L2"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -1956,7 +2003,8 @@
                     },
                     "group": 0,
                     "guard": null,
-                    "target": null,
+                    "targets": [],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "do",
@@ -2043,7 +2091,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Finish.Work.Right.R2",
+                        "targets": [
+                          "Finish.Work.Right.R2"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2097,7 +2148,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Finish.Over",
+                "targets": [
+                  "Finish.Over"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -2269,7 +2323,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Jobs.Busy.Up.Uploaded",
+                        "targets": [
+                          "Jobs.Busy.Up.Uploaded"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2291,7 +2348,10 @@
                         },
                         "group": 1,
                         "guard": null,
-                        "target": "Jobs.Busy.Up.Uploaded",
+                        "targets": [
+                          "Jobs.Busy.Up.Uploaded"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2385,7 +2445,10 @@
                         },
                         "group": 0,
                         "guard": null,
-                        "target": "Jobs.Busy.Down.Downloaded",
+                        "targets": [
+                          "Jobs.Busy.Down.Downloaded"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2407,7 +2470,10 @@
                         },
                         "group": 1,
                         "guard": null,
-                        "target": "Jobs.Busy.Down.Downloading",
+                        "targets": [
+                          "Jobs.Busy.Down.Downloading"
+                        ],
+                        "internal": false,
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2467,7 +2533,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Jobs.Late",
+                "targets": [
+                  "Jobs.Late"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2484,7 +2553,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Jobs.Stopped",
+                "targets": [
+                  "Jobs.Stopped"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2713,7 +2785,10 @@
                             },
                             "group": 0,
                             "guard": null,
-                            "target": "Shell.Outer.Split.Y.Y2",
+                            "targets": [
+                              "Shell.Outer.Split.Y.Y2"
+                            ],
+                            "internal": false,
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -2802,7 +2877,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Shell.Gone",
+                "targets": [
+                  "Shell.Gone"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",

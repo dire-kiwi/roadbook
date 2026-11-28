@@ -2,10 +2,10 @@
 {"kind":"entered","run":"r1","state":"Teller","t":0}
 {"kind":"entered","run":"r1","state":"Teller.Listening","t":0}
 {"event":{"from":"r2","kind":"message","message":1,"value":{"_tag":"Ask","question":"<redacted>"}},"kind":"event","run":"r1","t":0}
-{"from":"Teller.Listening","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"from":"Teller.Listening","index":0,"kind":"transition","run":"r1","t":0,"to":[]}
 {"kind":"emitted","message":1,"run":"r1","t":0,"value":{"_tag":"Told","answer":"<redacted>","to":"ada"}}
 {"event":{"kind":"event","value":{"_tag":"Bye"}},"kind":"event","run":"r1","t":0}
-{"from":"Teller.Listening","index":1,"kind":"transition","run":"r1","t":0,"to":"Teller.Gone"}
+{"from":"Teller.Listening","index":1,"kind":"transition","run":"r1","t":0,"to":["Teller.Gone"]}
 {"kind":"exited","run":"r1","state":"Teller.Listening","t":0}
 {"kind":"entered","run":"r1","state":"Teller.Gone","t":0}
 {"kind":"exited","run":"r1","state":"Teller.Gone","t":0}
@@ -16,9 +16,9 @@
 {"kind":"entered","run":"r2","state":"Caller.Asking","t":0}
 {"kind":"sent","message":1,"run":"r2","t":0,"to":"r1","value":{"_tag":"Ask","question":"<redacted>"}}
 {"event":{"from":"r1","invoke":null,"kind":"emitted","message":1,"value":{"_tag":"Told","answer":"<redacted>","to":"ada"}},"kind":"event","run":"r2","t":0}
-{"from":"Caller.Asking","index":0,"kind":"transition","run":"r2","t":0,"to":null}
+{"from":"Caller.Asking","index":0,"kind":"transition","run":"r2","t":0,"to":[]}
 {"kind":"set","run":"r2","t":0,"value":"<redacted>","var":"heard"}
 {"event":{"kind":"event","value":{"_tag":"Hang"}},"kind":"event","run":"r2","t":0}
-{"from":"Caller.Asking","index":1,"kind":"transition","run":"r2","t":0,"to":null}
+{"from":"Caller.Asking","index":1,"kind":"transition","run":"r2","t":0,"to":[]}
 {"kind":"sent","message":2,"run":"r2","t":0,"to":"r1","value":{"_tag":"Ask","question":"<redacted>"}}
 {"kind":"undelivered","message":2,"run":"r2","t":0,"to":"r1","value":{"_tag":"Ask","question":"<redacted>"}}

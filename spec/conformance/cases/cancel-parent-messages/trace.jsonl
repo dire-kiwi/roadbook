@@ -2,10 +2,10 @@
 {"kind":"entered","run":"r1","state":"Logbook","t":0}
 {"kind":"entered","run":"r1","state":"Logbook.Open","t":0}
 {"event":{"from":"r2.1","kind":"message","message":1,"value":{"_tag":"Note","text":"worker stopped"}},"kind":"event","run":"r1","t":0}
-{"from":"Logbook.Open","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"from":"Logbook.Open","index":0,"kind":"transition","run":"r1","t":0,"to":[]}
 {"action":"log","args":{"text":"worker stopped"},"kind":"action","run":"r1","t":0}
 {"event":{"from":"r2","kind":"message","message":1,"value":{"_tag":"Note","text":"boss stopped"}},"kind":"event","run":"r1","t":0}
-{"from":"Logbook.Open","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"from":"Logbook.Open","index":0,"kind":"transition","run":"r1","t":0,"to":[]}
 {"action":"log","args":{"text":"boss stopped"},"kind":"action","run":"r1","t":0}
 {"input":{"book":"r1"},"ir":"sha256:6a2148ace642621faa59476c272a9966cd7b86feaaec99511b2f9a20930ea1fc","kind":"started","machine":"Boss","run":"r2","t":0}
 {"kind":"entered","run":"r2","state":"Boss","t":0}

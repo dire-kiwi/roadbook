@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/pair.road",
@@ -110,7 +110,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Receiver.WaitingSecond",
+                "targets": [
+                  "Receiver.WaitingSecond"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -149,7 +152,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Receiver.Done",
+                "targets": [
+                  "Receiver.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -292,7 +298,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Sender.Sent",
+                "targets": [
+                  "Sender.Sent"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",

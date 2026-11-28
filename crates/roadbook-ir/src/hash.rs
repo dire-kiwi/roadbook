@@ -41,7 +41,11 @@
 //!   `children` when it is empty and a `send` effect's `key` when it is
 //!   `null`, and a type declaration's `params` is removed when it is `[]`, so
 //!   a machine that uses neither keyed spawn nor generic types hashes as it
-//!   did before they existed. `calls` and `strict` are always kept.
+//!   did before they existed. A transition's `internal` is removed when it
+//!   is `false`, and its `targets`, when it has at most one, is written as
+//!   IR 0.8's `target` (the id, or `null`), so a machine with neither
+//!   internal transitions nor several targets keeps its 0.8 hash. `calls`
+//!   and `strict` are always kept.
 //!
 //! Comments, formatting, source positions, `sensitive` marks and unused
 //! declarations therefore do not change a hash (a mark changes only what
@@ -450,6 +454,9 @@ fn strip(v: &mut Value) {
             {
                 m.remove("key");
             }
+            if m.contains_key("trigger") && m.contains_key("group") {
+                transition_as_before(m);
+            }
             for (key, value) in m.iter_mut() {
                 match value {
                     Value::Object(named) if key == "calls" || key == "children" => {
@@ -461,6 +468,22 @@ fn strip(v: &mut Value) {
         }
         Value::Array(a) => a.iter_mut().for_each(strip),
         _ => {}
+    }
+}
+
+/// Writes a transition as IR 0.8 did where 0.9 says nothing new: an `internal` that is
+/// `false` is removed, and `targets` with at most one id becomes `target`, the id or `null`.
+/// A machine with neither internal transitions nor several targets keeps its 0.8 hash.
+fn transition_as_before(m: &mut Map<String, Value>) {
+    if m.get("internal") == Some(&Value::Bool(false)) {
+        m.remove("internal");
+    }
+    if let Some(Value::Array(targets)) = m.get("targets") {
+        if targets.len() <= 1 {
+            let target = targets.first().cloned().unwrap_or(Value::Null);
+            m.remove("targets");
+            m.insert("target".into(), target);
+        }
     }
 }
 

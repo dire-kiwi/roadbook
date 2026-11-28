@@ -258,9 +258,10 @@ pub struct Step<'a> {
     pub trigger: String,
     /// The guard's text, `else` for the unguarded last branch of a guarded block.
     pub guard: Option<String>,
-    /// The target: a state, or a history state.
-    pub to: &'a str,
-    /// The position the step leads to: the target's initial leaf, or the parallel state
+    /// The targets: states, or history states (several, for a transition into several regions
+    /// of a parallel state).
+    pub to: Vec<&'a str>,
+    /// The position the step leads to: the first target's initial leaf, or the parallel state
     /// holding it; for a history state, what it recorded on the path, or its parent's.
     pub at: &'a str,
 }
@@ -353,18 +354,21 @@ impl<'a> Graph<'a> {
     }
 
     /// The transition's domain (`spec/execution.md`): the root for a transition of the root,
-    /// else the nearest compound proper ancestor of its source that is a proper ancestor of its
-    /// target. A history target counts as a child of its parent, as any state.
-    fn domain(&self, source: &'a str, target: &str) -> &'a str {
-        if source == self.root {
-            return self.root;
+    /// the source for an internal one, else the nearest compound proper ancestor of its source
+    /// that is a proper ancestor of every target. A history target counts as a child of its
+    /// parent, as any state.
+    fn domain(&self, source: &'a str, t: &Transition) -> &'a str {
+        if source == self.root || t.internal {
+            return source;
         }
         let mut up = self.parent.get(source).copied();
         while let Some(d) = up {
-            let below = target.len() > d.len()
-                && target.starts_with(d)
-                && target.as_bytes()[d.len()] == b'.';
-            if self.states[d].kind != StateKind::Parallel && below {
+            let below = |target: &String| {
+                target.len() > d.len()
+                    && target.starts_with(d)
+                    && target.as_bytes()[d.len()] == b'.'
+            };
+            if self.states[d].kind != StateKind::Parallel && t.targets.iter().all(below) {
                 return d;
             }
             up = self.parent.get(d).copied();
@@ -372,12 +376,20 @@ impl<'a> Graph<'a> {
         self.root
     }
 
-    /// What a step taking `source`'s transition to `target` from `at` records, as (history
-    /// state, position it would restore): for each state on the way up from `at` that the step
-    /// leaves (each below its domain), its history states.
-    fn records(&self, at: &'a str, source: &'a str, target: &str) -> Vec<(&'a str, &'a str)> {
-        let domain = self.domain(source, target);
+    /// What a step taking `source`'s transition `t` from `at` records, as (history state,
+    /// position it would restore): for each state on the way up from `at` that the step leaves
+    /// (each below its domain), its history states. None when the domain is below `at`, a
+    /// parallel state: what the step leaves inside it is not part of the position.
+    fn records(&self, at: &'a str, source: &'a str, t: &Transition) -> Vec<(&'a str, &'a str)> {
+        let domain = self.domain(source, t);
         let mut out = Vec::new();
+        let within = at == domain
+            || (at.len() > domain.len()
+                && at.starts_with(domain)
+                && at.as_bytes()[domain.len()] == b'.');
+        if !within {
+            return out;
+        }
         // The states left, innermost first, each with the one below it on the way (none for
         // the position itself).
         let mut below: Option<&'a str> = None;
@@ -426,7 +438,7 @@ impl<'a> Graph<'a> {
                 .transitions
                 .iter()
                 .enumerate()
-                .filter(|(_, t)| matches!(t.trigger, Trigger::Done) && t.target.is_some())
+                .filter(|(_, t)| matches!(t.trigger, Trigger::Done) && !t.targets.is_empty())
                 .map(|(i, _)| (parent, i))
                 .collect();
             if !done.is_empty() {
@@ -459,7 +471,7 @@ impl<'a> Graph<'a> {
             all.retain(|a| always(a.2));
         }
         all.into_iter()
-            .filter(|a| a.2.target.is_some())
+            .filter(|a| !a.2.targets.is_empty())
             .map(|(id, i, _)| (id, i))
             .collect()
     }
@@ -474,10 +486,7 @@ impl<'a> Graph<'a> {
         out: &mut Vec<(&'a str, usize, &'a Transition)>,
     ) {
         for (i, t) in s.transitions.iter().enumerate() {
-            let leaves = t
-                .target
-                .as_deref()
-                .is_some_and(|to| !to.starts_with(inside));
+            let leaves = t.targets.iter().any(|to| !to.starts_with(inside));
             if leaves && !matches!(t.trigger, Trigger::Done) {
                 out.push((&s.id, i, t));
             }
@@ -533,14 +542,14 @@ impl<'a> Graph<'a> {
             went_on = true;
             let owner = self.states[from];
             let t = &owner.transitions[index];
-            let to = t.target.as_deref().unwrap();
+            let to: Vec<&'a str> = t.targets.iter().map(String::as_str).collect();
             // Record before entering: a step that leaves a state and targets its history
             // state enters where it was a moment before.
             let mut undo = Vec::new();
-            for (h, restores) in self.records(at, from, to) {
+            for (h, restores) in self.records(at, from, t) {
                 undo.push((h, history.insert(h, restores)));
             }
-            let next = self.entered(to, history);
+            let next = self.entered(to[0], history);
             steps.push(Step {
                 from,
                 index,
@@ -599,9 +608,11 @@ pub fn text(name: &str, machine: &Machine, found: &Found) -> String {
                     .map(|g| format!(" [{g}]"))
                     .unwrap_or_default();
                 // Through a history state: where it led, and which.
-                let via = match states[s.to].kind {
-                    StateKind::History => format!(" (history {})", relative(name, s.to)),
-                    StateKind::DeepHistory => format!(" (deep history {})", relative(name, s.to)),
+                let via = match states[s.to[0]].kind {
+                    StateKind::History => format!(" (history {})", relative(name, s.to[0])),
+                    StateKind::DeepHistory => {
+                        format!(" (deep history {})", relative(name, s.to[0]))
+                    }
                     _ => String::new(),
                 };
                 format!("--{}{guard}--> {}{via}", s.trigger, relative(name, s.at))
@@ -664,7 +675,7 @@ pub fn json(name: &str, found: &Found) -> String {
                         s.index,
                         q(&s.trigger),
                         s.guard.as_deref().map_or("null".to_string(), q),
-                        q(s.to)
+                        serde_json::to_string(&s.to).unwrap()
                     )
                 })
                 .collect();
@@ -740,7 +751,7 @@ mod tests {
         );
         let found = paths(&m, 10, BUDGET);
         let back = &found.paths[0].steps[2];
-        assert_eq!((back.to, back.at), ("M.W.H", "M.W.B.B1"));
+        assert_eq!((back.to.as_slice(), back.at), (&["M.W.H"][..], "M.W.B.B1"));
     }
 
     #[test]

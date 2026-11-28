@@ -46,7 +46,7 @@ export interface CheckoutDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "examples/shop/checkout.road",
@@ -696,7 +696,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Checkout.Charged",
+                "targets": [
+                  "Checkout.Charged"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -726,7 +729,10 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Checkout.Declined",
+                "targets": [
+                  "Checkout.Declined"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -777,7 +783,10 @@ const ir: unknown = {
                   "type": "bool",
                   "text": "attempts < 3"
                 },
-                "target": "Checkout.Backoff",
+                "targets": [
+                  "Checkout.Backoff"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -794,7 +803,10 @@ const ir: unknown = {
                 },
                 "group": 2,
                 "guard": null,
-                "target": "Checkout.GaveUp",
+                "targets": [
+                  "Checkout.GaveUp"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -875,7 +887,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Checkout.Charging",
+                "targets": [
+                  "Checkout.Charging"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

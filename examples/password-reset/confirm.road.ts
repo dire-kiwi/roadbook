@@ -77,7 +77,7 @@ export interface ConfirmPasswordResetDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "examples/password-reset/confirm.road",
@@ -547,7 +547,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "ConfirmPasswordReset.Working.CheckingPolicy",
+                    "targets": [
+                      "ConfirmPasswordReset.Working.CheckingPolicy"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -577,7 +580,10 @@ const ir: unknown = {
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "ConfirmPasswordReset.UnknownToken",
+                    "targets": [
+                      "ConfirmPasswordReset.UnknownToken"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -594,7 +600,10 @@ const ir: unknown = {
                     },
                     "group": 2,
                     "guard": null,
-                    "target": "ConfirmPasswordReset.ExpiredToken",
+                    "targets": [
+                      "ConfirmPasswordReset.ExpiredToken"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -668,7 +677,10 @@ const ir: unknown = {
                       "type": "bool",
                       "text": "isEmpty(problems)"
                     },
-                    "target": "ConfirmPasswordReset.Working.Hashing",
+                    "targets": [
+                      "ConfirmPasswordReset.Working.Hashing"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -684,7 +696,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "ConfirmPasswordReset.WeakPassword",
+                    "targets": [
+                      "ConfirmPasswordReset.WeakPassword"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -744,7 +759,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "ConfirmPasswordReset.Working.Updating",
+                    "targets": [
+                      "ConfirmPasswordReset.Working.Updating"
+                    ],
+                    "internal": false,
                     "effects": [
                       {
                         "kind": "set",
@@ -826,7 +844,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "ConfirmPasswordReset.Working.Notifying",
+                    "targets": [
+                      "ConfirmPasswordReset.Working.Notifying"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -843,7 +864,10 @@ const ir: unknown = {
                     },
                     "group": 1,
                     "guard": null,
-                    "target": "ConfirmPasswordReset.UserVanished",
+                    "targets": [
+                      "ConfirmPasswordReset.UserVanished"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -912,7 +936,10 @@ const ir: unknown = {
                     },
                     "group": 0,
                     "guard": null,
-                    "target": "ConfirmPasswordReset.Changed",
+                    "targets": [
+                      "ConfirmPasswordReset.Changed"
+                    ],
+                    "internal": false,
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -943,7 +970,10 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": "ConfirmPasswordReset.TimedOut",
+                "targets": [
+                  "ConfirmPasswordReset.TimedOut"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

@@ -595,7 +595,7 @@ fn a_history_state_with_no_record_enters_its_parents_default_entry() {
         kinds,
         [
             json!({"kind": "event", "event": {"kind": "event", "value": {"_tag": "Jump"}}}),
-            json!({"kind": "transition", "from": "M.P.A", "index": 1, "to": "M.P.H"}),
+            json!({"kind": "transition", "from": "M.P.A", "index": 1, "to": ["M.P.H"]}),
             json!({"kind": "exited", "state": "M.P.A"}),
             json!({"kind": "entered", "state": "M.P.A"}),
         ]
@@ -697,7 +697,7 @@ fn an_ir_naming_a_missing_state_is_refused() {
     };
     let mut bad_target = ir();
     let m = bad_target.machines.get_mut("M").unwrap();
-    m.root.states[0].transitions[0].target = Some("M.Nope".into());
+    m.root.states[0].transitions[0].targets = vec!["M.Nope".into()];
     let e = Program::new(bad_target).unwrap_err().to_string();
     assert!(e.contains("the target `M.Nope` of state `M.A`"), "{e}");
 

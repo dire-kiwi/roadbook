@@ -41,7 +41,7 @@ export interface BeaconDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "packages/effect/test/charts/beacon.road",
@@ -281,7 +281,8 @@ const ir: unknown = {
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -347,7 +348,8 @@ const ir: unknown = {
                 },
                 "group": 1,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",
@@ -405,7 +407,8 @@ const ir: unknown = {
                 },
                 "group": 2,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "emit",
@@ -446,7 +449,10 @@ const ir: unknown = {
                 },
                 "group": 3,
                 "guard": null,
-                "target": "Beacon.Over",
+                "targets": [
+                  "Beacon.Over"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,

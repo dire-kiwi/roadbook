@@ -6,11 +6,11 @@
 {"kind":"entered","run":"r1","state":"Panels.Both.R","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Both.R.R1","t":0}
 {"event":{"kind":"event","value":{"_tag":"Left"}},"kind":"event","run":"r1","t":0}
-{"from":"Panels.Both.L.L1","index":0,"kind":"transition","run":"r1","t":0,"to":"Panels.Both.L.L2"}
+{"from":"Panels.Both.L.L1","index":0,"kind":"transition","run":"r1","t":0,"to":["Panels.Both.L.L2"]}
 {"kind":"exited","run":"r1","state":"Panels.Both.L.L1","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Both.L.L2","t":0}
 {"event":{"kind":"event","value":{"_tag":"Away"}},"kind":"event","run":"r1","t":0}
-{"from":"Panels.Both","index":0,"kind":"transition","run":"r1","t":0,"to":"Panels.Out"}
+{"from":"Panels.Both","index":0,"kind":"transition","run":"r1","t":0,"to":["Panels.Out"]}
 {"kind":"exited","run":"r1","state":"Panels.Both.R.R1","t":0}
 {"kind":"exited","run":"r1","state":"Panels.Both.R","t":0}
 {"kind":"exited","run":"r1","state":"Panels.Both.L.L2","t":0}
@@ -18,7 +18,7 @@
 {"kind":"exited","run":"r1","state":"Panels.Both","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Out","t":0}
 {"event":{"kind":"event","value":{"_tag":"Back"}},"kind":"event","run":"r1","t":0}
-{"from":"Panels.Out","index":0,"kind":"transition","run":"r1","t":0,"to":"Panels.Both.Deep"}
+{"from":"Panels.Out","index":0,"kind":"transition","run":"r1","t":0,"to":["Panels.Both.Deep"]}
 {"kind":"exited","run":"r1","state":"Panels.Out","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Both","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Both.L","t":0}
@@ -26,12 +26,12 @@
 {"kind":"entered","run":"r1","state":"Panels.Both.R","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Both.R.R1","t":0}
 {"event":{"kind":"event","value":{"_tag":"Right"}},"kind":"event","run":"r1","t":0}
-{"from":"Panels.Both.R.R1","index":0,"kind":"transition","run":"r1","t":0,"to":"Panels.Both.R.R2"}
+{"from":"Panels.Both.R.R1","index":0,"kind":"transition","run":"r1","t":0,"to":["Panels.Both.R.R2"]}
 {"kind":"exited","run":"r1","state":"Panels.Both.R.R1","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Both.R.R2","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Both.R.R2.R3","t":0}
 {"event":{"kind":"event","value":{"_tag":"Away"}},"kind":"event","run":"r1","t":0}
-{"from":"Panels.Both","index":0,"kind":"transition","run":"r1","t":0,"to":"Panels.Out"}
+{"from":"Panels.Both","index":0,"kind":"transition","run":"r1","t":0,"to":["Panels.Out"]}
 {"kind":"exited","run":"r1","state":"Panels.Both.R.R2.R3","t":0}
 {"kind":"exited","run":"r1","state":"Panels.Both.R.R2","t":0}
 {"kind":"exited","run":"r1","state":"Panels.Both.R","t":0}
@@ -40,7 +40,7 @@
 {"kind":"exited","run":"r1","state":"Panels.Both","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Out","t":0}
 {"event":{"kind":"event","value":{"_tag":"BackShallow"}},"kind":"event","run":"r1","t":0}
-{"from":"Panels.Out","index":1,"kind":"transition","run":"r1","t":0,"to":"Panels.Both.Shallow"}
+{"from":"Panels.Out","index":1,"kind":"transition","run":"r1","t":0,"to":["Panels.Both.Shallow"]}
 {"kind":"exited","run":"r1","state":"Panels.Out","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Both","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Both.L","t":0}
@@ -48,7 +48,7 @@
 {"kind":"entered","run":"r1","state":"Panels.Both.R","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Both.R.R1","t":0}
 {"event":{"kind":"event","value":{"_tag":"Away"}},"kind":"event","run":"r1","t":0}
-{"from":"Panels.Both","index":0,"kind":"transition","run":"r1","t":0,"to":"Panels.Out"}
+{"from":"Panels.Both","index":0,"kind":"transition","run":"r1","t":0,"to":["Panels.Out"]}
 {"kind":"exited","run":"r1","state":"Panels.Both.R.R1","t":0}
 {"kind":"exited","run":"r1","state":"Panels.Both.R","t":0}
 {"kind":"exited","run":"r1","state":"Panels.Both.L.L1","t":0}
@@ -56,7 +56,7 @@
 {"kind":"exited","run":"r1","state":"Panels.Both","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Out","t":0}
 {"event":{"kind":"event","value":{"_tag":"Back"}},"kind":"event","run":"r1","t":0}
-{"from":"Panels.Out","index":0,"kind":"transition","run":"r1","t":0,"to":"Panels.Both.Deep"}
+{"from":"Panels.Out","index":0,"kind":"transition","run":"r1","t":0,"to":["Panels.Both.Deep"]}
 {"kind":"exited","run":"r1","state":"Panels.Out","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Both","t":0}
 {"kind":"entered","run":"r1","state":"Panels.Both.L","t":0}

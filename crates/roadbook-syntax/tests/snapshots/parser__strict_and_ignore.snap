@@ -23,7 +23,7 @@ items:
                   single:
                     guard:
                       var: ready
-                    target: ~
+                    targets: []
                     effects: []
                     ignore: true
             - state:
@@ -37,7 +37,7 @@ items:
                       branches:
                         single:
                           guard: ~
-                          target: ~
+                          targets: []
                           effects: []
                           ignore: true
                   - transition:
@@ -49,12 +49,14 @@ items:
                           branches:
                             - guard:
                                 var: busy
-                              target: ~
+                              targets: []
                               effects: []
                               ignore: true
                             - guard: ~
-                              target:
-                                - A
+                              targets:
+                                - dot: false
+                                  path:
+                                    - A
                               effects: []
                               ignore: false
 comments: []

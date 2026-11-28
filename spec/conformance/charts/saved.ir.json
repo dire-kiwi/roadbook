@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources": [
     {
       "path": "spec/conformance/charts/saved.road",
@@ -255,7 +255,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -322,7 +323,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Counter.Done",
+                "targets": [
+                  "Counter.Done"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -479,7 +483,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Shop.Paid",
+                "targets": [
+                  "Shop.Paid"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -668,7 +675,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Pay.Charging",
+                "targets": [
+                  "Pay.Charging"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -741,7 +751,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Pay.Charged",
+                "targets": [
+                  "Pay.Charged"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -880,7 +893,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Reminder.Ringing",
+                "targets": [
+                  "Reminder.Ringing"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -932,7 +948,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Reminder.Waiting",
+                "targets": [
+                  "Reminder.Waiting"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1094,7 +1113,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Order.Expired",
+                "targets": [
+                  "Order.Expired"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1111,7 +1133,10 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Order.Shipping",
+                "targets": [
+                  "Order.Shipping"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1185,7 +1210,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Order.AwaitingDelivery",
+                "targets": [
+                  "Order.AwaitingDelivery"
+                ],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "set",
@@ -1237,7 +1265,10 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": "Order.Complete",
+                "targets": [
+                  "Order.Complete"
+                ],
+                "internal": false,
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1276,7 +1307,8 @@
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "targets": [],
+                "internal": false,
                 "effects": [
                   {
                     "kind": "do",

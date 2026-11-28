@@ -637,8 +637,8 @@ pub enum Record {
         from: String,
         /// Its index in that state's `transitions`.
         index: usize,
-        /// The target's id, `null` for an internal transition.
-        to: Option<String>,
+        /// The targets' ids, as the IR's `targets`: `[]` for a transition with no target.
+        to: Vec<String>,
     },
     /// A variable was assigned.
     #[serde(rename = "set")]

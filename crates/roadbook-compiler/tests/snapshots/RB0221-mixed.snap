@@ -1,0 +1,11 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0221]: this target has no leading dot, and the first one does: either every target is written `.X` or none is
+ --> RB0221-mixed.road:7:21
+  |
+7 |       on Go -> .A2, B.B2
+  |                     ^^^^
+  |                --- the first target
+  |
+  = help: the dot belongs to the transition: with it, the transition stays in `M.P.A` and every target is resolved among `M.P.A`'s children; without it, the transition leaves `M.P.A`
