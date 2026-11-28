@@ -7,4 +7,4 @@ error[RB0201]: unknown target state `Resting`
 6 |     on Go -> Resting
   |              ^^^^^^^
   |
-  = help: `Resting` is a child of `Busy`; a state names its own children through its name: `Busy.Resting`
+  = help: `Resting` is a child of `Busy`: write `.Resting` to go to it without leaving `Busy`, or `Busy.Resting` to leave `Busy` and enter it again

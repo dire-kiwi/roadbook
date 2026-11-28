@@ -1381,3 +1381,96 @@ fn a_peer_s_end() {
     );
     c.shutdown();
 }
+
+const INTERNAL: &str = "machine M() {
+  event Home
+  event Sleep
+  initial Session
+  state Session {
+    on Home -> .Browsing
+    initial Browsing
+    state Browsing { on Sleep -> Player }
+    parallel state Player {
+      on Sleep -> .Playback.Paused, .Volume.Muted
+      state Playback {
+        initial Playing
+        state Playing {}
+        state Paused {}
+      }
+      state Volume {
+        initial Normal
+        state Normal {}
+        state Muted {}
+      }
+    }
+  }
+}
+";
+
+#[test]
+fn internal_targets_and_several_targets() {
+    error_free(&[("c.road", INTERNAL)]);
+    let p = Project::new("internal", &[("c.road", INTERNAL)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, INTERNAL);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // A target with a dot leads to the child it names, each of several targets to its own.
+    for (from, to) in [
+        ("-> .^Browsing", "state ^Browsing"),
+        (".^Playback.Paused", "state ^Playback"),
+        (".Playback.^Paused", "state ^Paused"),
+        (".^Volume.Muted", "state ^Volume"),
+        (".Volume.^Muted", "state ^Muted"),
+    ] {
+        let loc = c
+            .request("textDocument/definition", at(&uri, INTERNAL, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(INTERNAL, to),
+            "{from} -> {to}"
+        );
+    }
+
+    // Renaming a state renames it where a dotted target names it.
+    let out = rename(&mut c, &uri, INTERNAL, "state ^Browsing", "Shopping");
+    assert!(out.contains("on Home -> .Shopping"), "{out}");
+    let out = rename(&mut c, &uri, INTERNAL, "state ^Muted", "Quiet");
+    assert!(out.contains("-> .Playback.Paused, .Volume.Quiet"), "{out}");
+
+    // Mixed dots: one quick fix adds the dot everywhere, one removes it everywhere.
+    let mixed = INTERNAL.replace(", .Volume.Muted", ", Player.Volume.Muted");
+    let uri2 = p.uri("c.road");
+    c.change(&uri2, 2, &mixed);
+    let diags = c.diagnostics(&uri2);
+    assert_eq!(diags[0]["code"], "RB0221", "{diags:?}");
+    let actions = c
+        .request(
+            "textDocument/codeAction",
+            json!({ "textDocument": { "uri": uri2 }, "range": diags[0]["range"], "context": { "diagnostics": diags } }),
+        )
+        .unwrap();
+    let titles: Vec<&str> = actions
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a["title"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        titles,
+        [
+            "write every target with the dot",
+            "write every target without the dot"
+        ]
+    );
+    let fixed = apply(&mixed, &actions[0]["edit"]["changes"][uri2.as_str()]);
+    assert_eq!(fixed, INTERNAL);
+    let fixed = apply(&mixed, &actions[1]["edit"]["changes"][uri2.as_str()]);
+    assert!(
+        fixed.contains("on Sleep -> Player.Playback.Paused, Player.Volume.Muted"),
+        "{fixed}"
+    );
+    c.shutdown();
+}

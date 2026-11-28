@@ -457,3 +457,59 @@ machine M(a: ref Inventory) {
       (state_declaration
         (type_identifier)
         (state_body)))))
+
+================================================================================
+Internal transitions and several targets
+================================================================================
+
+machine M() {
+  initial A
+  parallel state A {
+    on Home -> .B.B1
+    on Sleep -> .B.B2, .C.C1  do log()
+    on Wake -> A.B.B1, A.C.C1
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (target
+              (type_identifier)
+              (type_identifier)))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (target
+              (type_identifier)
+              (type_identifier))
+            (target
+              (type_identifier)
+              (type_identifier))
+            (do
+              (call
+                (identifier)
+                (arguments))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (target
+              (type_identifier)
+              (type_identifier)
+              (type_identifier))
+            (target
+              (type_identifier)
+              (type_identifier)
+              (type_identifier))))))))

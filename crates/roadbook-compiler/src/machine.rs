@@ -2350,12 +2350,8 @@ impl<'p> Cx<'_, 'p> {
     /// resolve is left out, with its diagnostic.
     fn targets(&mut self, from: usize, written: &[Target]) -> (Vec<usize>, bool) {
         let dot = written.first().is_some_and(|t| t.dot);
-        let mut nodes = Vec::new();
-        for t in written {
-            if let Some(n) = self.target(from, t) {
-                nodes.push(n);
-            }
-        }
+        let resolved: Vec<Option<usize>> = written.iter().map(|t| self.target(from, t)).collect();
+        let nodes: Vec<usize> = resolved.iter().flatten().copied().collect();
         if let Some(odd) = written.iter().find(|t| t.dot != dot) {
             let own = self.nodes[from].id.clone();
             let mut d = Diagnostic::error(
@@ -2371,11 +2367,30 @@ impl<'p> Cx<'_, 'p> {
             .with_help(format!(
                 "the dot belongs to the transition: with it, the transition stays in `{own}` and every target is resolved among `{own}`'s children; without it, the transition leaves `{own}`"
             ));
-            let dotted: Vec<_> = written.iter().filter(|t| !t.dot).map(|t| (t.span.shrink_to_start(), ".".to_string())).collect();
-            let undotted: Vec<_> = written.iter().filter(|t| t.dot).map(|t| (dot_span(t), String::new())).collect();
-            d = d
-                .with_fix_edits("write every target with the dot", dotted)
-                .with_fix_edits("write every target without the dot", undotted);
+            // With the dot: each target as a path from `from`, if every one is below it.
+            let dotted: Option<Vec<(Span, String)>> = written
+                .iter()
+                .zip(&resolved)
+                .filter(|(t, _)| !t.dot)
+                .map(|(t, n)| {
+                    let n = n.filter(|&n| self.inside(n, from))?;
+                    Some((t.span, format!(".{}", self.path_below(from, n))))
+                })
+                .collect();
+            if let Some(edits) = dotted {
+                d = d.with_fix_edits("write every target with the dot", edits);
+            }
+            // Without it: each dotted target through the state's own name.
+            let name = &self.nodes[from].name;
+            let undotted: Vec<(Span, String)> = written
+                .iter()
+                .filter(|t| t.dot)
+                .map(|t| match self.nodes[from].parent {
+                    Some(_) => (dot_span(t), format!("{name}.")),
+                    None => (dot_span(t), String::new()),
+                })
+                .collect();
+            d = d.with_fix_edits("write every target without the dot", undotted);
             self.ck.diags.push(d);
         } else if nodes.len() == written.len() && nodes.len() > 1 {
             self.check_targets_go_together(written, &nodes);
@@ -2443,6 +2458,18 @@ impl<'p> Cx<'_, 'p> {
                 return;
             }
         }
+    }
+
+    /// The names from just below `from` down to `n`, a state below it: `A.B`.
+    fn path_below(&self, from: usize, n: usize) -> String {
+        let mut names = Vec::new();
+        let mut x = n;
+        while x != from {
+            names.push(self.nodes[x].name.as_str());
+            x = self.nodes[x].parent.unwrap_or(from);
+        }
+        names.reverse();
+        names.join(".")
     }
 
     fn is_parallel(&self, n: usize) -> bool {
@@ -2535,9 +2562,10 @@ impl<'p> Cx<'_, 'p> {
                 let own = &self.nodes[from].name;
                 d = d
                     .with_help(format!(
-                        "`{}` is a child of `{own}`; a state names its own children through its name: `{own}.{written}`",
+                        "`{}` is a child of `{own}`: write `.{written}` to go to it without leaving `{own}`, or `{own}.{written}` to leave `{own}` and enter it again",
                         head.name
                     ))
+                    .with_fix(format!("write `.{written}`"), t.span, format!(".{written}"))
                     .with_fix(format!("write `{own}.{written}`"), t.span, format!("{own}.{written}"));
             } else if let Some(s) = suggest(&head.name, visible.iter().map(String::as_str)) {
                 d = d.with_help(format!("did you mean `{s}`?")).with_fix(

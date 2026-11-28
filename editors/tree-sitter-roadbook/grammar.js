@@ -390,11 +390,21 @@ module.exports = grammar({
     // transition (RB0026); the grammar accepts it in any branch, as it does other misplaced
     // items the compiler rejects.
     _action: ($) =>
-      choice(seq('->', field('target', $.target), optional($._effects)), $._effects, $.ignore),
+      choice(
+        seq('->', field('target', $.target), repeat(seq(',', field('target', $.target))), optional($._effects)),
+        $._effects,
+        $.ignore,
+      ),
 
     ignore: (_) => 'ignore',
 
-    target: ($) => seq(field('state', $.type_identifier), repeat(seq('.', field('state', $.type_identifier)))),
+    // A leading dot names a child of the transition's own state: an internal transition.
+    target: ($) =>
+      seq(
+        optional(field('internal', '.')),
+        field('state', $.type_identifier),
+        repeat(seq('.', field('state', $.type_identifier))),
+      ),
 
     _effects: ($) => repeat1(field('effect', $._effect)),
 
