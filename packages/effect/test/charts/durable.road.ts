@@ -3197,6 +3197,8 @@ const ir: unknown = {
         "name": "Lookout",
         "kind": "compound",
         "doc": "Waits for its Counter to end, and gives 1 once it has.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 202,
@@ -3207,12 +3209,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Lookout.Watching",
+        "default": [],
         "states": [
           {
             "id": "Lookout.Watching",
             "name": "Watching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 205,
@@ -3223,6 +3228,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -3263,6 +3269,8 @@ const ir: unknown = {
             "name": "Seen",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 207,
@@ -3273,6 +3281,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -3347,6 +3356,8 @@ const ir: unknown = {
         "name": "Post",
         "kind": "compound",
         "doc": "Runs a Lookout on its Counter, and gives what it gives.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 211,
@@ -3357,12 +3368,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Post.Running",
+        "default": [],
         "states": [
           {
             "id": "Post.Running",
             "name": "Running",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 216,
@@ -3373,6 +3387,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -3448,6 +3463,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 222,
@@ -3458,6 +3475,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4622,6 +4640,7 @@ export interface LookoutDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Lookout" | "Lookout.Watching" | "Lookout.Seen"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}
@@ -4641,6 +4660,7 @@ export interface PostDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Post" | "Post.Running" | "Post.Done"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}
