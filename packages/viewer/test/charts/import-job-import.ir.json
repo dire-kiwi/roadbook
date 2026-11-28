@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "examples/import-job/import.road",
@@ -473,6 +473,8 @@
           "endLine": 73,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "ImportJob.Validating",
         "states": [
           {
@@ -487,6 +489,8 @@
               "endLine": 34,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -503,6 +507,7 @@
                     "path": [
                       "upload"
                     ],
+                    "state": null,
                     "type": "Upload",
                     "text": "upload"
                   }
@@ -528,15 +533,18 @@
                   "ImportJob.Importing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "plan",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "ImportPlan",
                       "text": "result"
                     }
@@ -562,15 +570,18 @@
                   "ImportJob.Rejected"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "invalid",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "InvalidFile",
                       "text": "error"
                     }
@@ -600,6 +611,8 @@
               "endLine": 67,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "ImportJob.Importing.RunningBatch",
             "states": [
               {
@@ -614,6 +627,8 @@
                   "endLine": 56,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -630,6 +645,7 @@
                         "path": [
                           "upload"
                         ],
+                        "state": null,
                         "type": "Upload",
                         "text": "upload"
                       },
@@ -638,6 +654,7 @@
                         "path": [
                           "plan"
                         ],
+                        "state": null,
                         "type": "ImportPlan",
                         "text": "plan"
                       },
@@ -646,6 +663,7 @@
                         "path": [
                           "batch"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "batch"
                       }
@@ -675,6 +693,7 @@
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "result"
                         },
@@ -692,10 +711,12 @@
                       "ImportJob.Completed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "batch",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -705,6 +726,7 @@
                               "path": [
                                 "batch"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "batch"
                             },
@@ -722,6 +744,7 @@
                       {
                         "kind": "set",
                         "var": "retries",
+                        "state": null,
                         "value": {
                           "kind": "lit",
                           "value": 0,
@@ -749,6 +772,7 @@
                       "path": [
                         "pauseRequested"
                       ],
+                      "state": null,
                       "type": "bool",
                       "text": "pauseRequested"
                     },
@@ -756,10 +780,12 @@
                       "ImportJob.Importing.Paused"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "batch",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -769,6 +795,7 @@
                               "path": [
                                 "batch"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "batch"
                             },
@@ -786,6 +813,7 @@
                       {
                         "kind": "set",
                         "var": "retries",
+                        "state": null,
                         "value": {
                           "kind": "lit",
                           "value": 0,
@@ -813,10 +841,12 @@
                       "ImportJob.Importing.RunningBatch"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "batch",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -826,6 +856,7 @@
                               "path": [
                                 "batch"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "batch"
                             },
@@ -843,6 +874,7 @@
                       {
                         "kind": "set",
                         "var": "retries",
+                        "state": null,
                         "value": {
                           "kind": "lit",
                           "value": 0,
@@ -875,6 +907,7 @@
                           "path": [
                             "retries"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "retries"
                         },
@@ -892,10 +925,12 @@
                       "ImportJob.Importing.WaitingToRetry"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "retries",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -905,6 +940,7 @@
                               "path": [
                                 "retries"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "retries"
                             },
@@ -922,6 +958,7 @@
                       {
                         "kind": "set",
                         "var": "totalRetries",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -931,6 +968,7 @@
                               "path": [
                                 "totalRetries"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "totalRetries"
                             },
@@ -948,12 +986,14 @@
                       {
                         "kind": "set",
                         "var": "lastReason",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "error",
                             "reason"
                           ],
+                          "state": null,
                           "type": "string",
                           "text": "error.reason"
                         }
@@ -979,16 +1019,19 @@
                       "ImportJob.Failed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "lastReason",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "error",
                             "reason"
                           ],
+                          "state": null,
                           "type": "string",
                           "text": "error.reason"
                         }
@@ -1018,6 +1061,8 @@
                   "endLine": 64,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1040,6 +1085,7 @@
                       "path": [
                         "pauseRequested"
                       ],
+                      "state": null,
                       "type": "bool",
                       "text": "pauseRequested"
                     },
@@ -1047,6 +1093,7 @@
                       "ImportJob.Importing.Paused"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1072,6 +1119,7 @@
                       "ImportJob.Importing.RunningBatch"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1097,6 +1145,8 @@
                   "endLine": 66,
                   "endCol": 75
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1114,10 +1164,12 @@
                       "ImportJob.Importing.RunningBatch"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "pauseRequested",
+                        "state": null,
                         "value": {
                           "kind": "lit",
                           "value": false,
@@ -1152,10 +1204,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "pauseRequested",
+                    "state": null,
                     "value": {
                       "kind": "lit",
                       "value": true,
@@ -1181,10 +1235,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "pauseRequested",
+                    "state": null,
                     "value": {
                       "kind": "lit",
                       "value": false,
@@ -1217,6 +1273,8 @@
               "endLine": 69,
               "endCol": 139
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1234,6 +1292,7 @@
                       "upload",
                       "jobId"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "upload.jobId"
                   }
@@ -1246,6 +1305,7 @@
                       "plan",
                       "totalRows"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "plan.totalRows"
                   }
@@ -1257,6 +1317,7 @@
                     "path": [
                       "batch"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "batch"
                   }
@@ -1268,6 +1329,7 @@
                     "path": [
                       "totalRetries"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "totalRetries"
                   }
@@ -1290,6 +1352,8 @@
               "endLine": 70,
               "endCol": 41
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1302,6 +1366,7 @@
               "path": [
                 "invalid"
               ],
+              "state": null,
               "type": "InvalidFile",
               "text": "invalid"
             }
@@ -1318,6 +1383,8 @@
               "endLine": 71,
               "endCol": 82
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1335,6 +1402,7 @@
                     "path": [
                       "batch"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "batch"
                   }
@@ -1346,6 +1414,7 @@
                     "path": [
                       "lastReason"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "lastReason"
                   }
@@ -1367,6 +1436,8 @@
               "endLine": 72,
               "endCol": 72
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1384,6 +1455,7 @@
                     "path": [
                       "batch"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "batch"
                   }
@@ -1409,6 +1481,7 @@
               "ImportJob.Cancelled"
             ],
             "internal": false,
+            "args": [],
             "effects": [],
             "span": {
               "file": 0,

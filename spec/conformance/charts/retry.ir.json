@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/retry.road",
@@ -256,6 +256,8 @@
           "endLine": 47,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Fetcher.Loading",
         "states": [
           {
@@ -270,6 +272,8 @@
               "endLine": 31,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Fetcher.Loading.Attempt",
             "states": [
               {
@@ -284,6 +288,8 @@
                   "endLine": 29,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -300,6 +306,7 @@
                         "path": [
                           "id"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "id"
                       }
@@ -325,15 +332,18 @@
                       "Fetcher.Saving"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "body",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "string",
                           "text": "result"
                         }
@@ -363,6 +373,7 @@
                           "path": [
                             "loadingAttempt"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "loadingAttempt"
                         },
@@ -380,10 +391,12 @@
                       "Fetcher.Loading.Backoff"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "loadingAttempt",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -393,6 +406,7 @@
                               "path": [
                                 "loadingAttempt"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "loadingAttempt"
                             },
@@ -428,6 +442,7 @@
                       "Fetcher.Waiting"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -449,16 +464,19 @@
                       "Fetcher.Missing"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "why",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "error",
                             "reason"
                           ],
+                          "state": null,
                           "type": "string",
                           "text": "error.reason"
                         }
@@ -488,6 +506,8 @@
                   "endLine": 25,
                   "endCol": 60
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -506,6 +526,7 @@
                             "path": [
                               "loadingAttempt"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "loadingAttempt"
                           }
@@ -520,6 +541,7 @@
                       "Fetcher.Loading.Attempt"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -538,6 +560,7 @@
               {
                 "kind": "set",
                 "var": "loadingAttempt",
+                "state": null,
                 "value": {
                   "kind": "lit",
                   "value": 0,
@@ -590,6 +613,7 @@
                   "Fetcher.TimedOut"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -615,6 +639,8 @@
               "endLine": 33,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -632,6 +658,7 @@
                   "Fetcher.Loading"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -657,6 +684,8 @@
               "endLine": 41,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Fetcher.Saving.Attempt",
             "states": [
               {
@@ -671,6 +700,8 @@
                   "endLine": 40,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -687,6 +718,7 @@
                         "path": [
                           "body"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "body"
                       }
@@ -712,6 +744,7 @@
                       "Fetcher.Saved"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -737,6 +770,7 @@
                           "path": [
                             "savingAttempt"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "savingAttempt"
                         },
@@ -754,10 +788,12 @@
                       "Fetcher.Saving.Attempt"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "savingAttempt",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -767,6 +803,7 @@
                               "path": [
                                 "savingAttempt"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "savingAttempt"
                             },
@@ -802,6 +839,7 @@
                       "Fetcher.Unsaved"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -820,6 +858,7 @@
               {
                 "kind": "set",
                 "var": "savingAttempt",
+                "state": null,
                 "value": {
                   "kind": "lit",
                   "value": 0,
@@ -846,6 +885,8 @@
               "endLine": 43,
               "endCol": 39
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -857,6 +898,7 @@
               "path": [
                 "body"
               ],
+              "state": null,
               "type": "string",
               "text": "body"
             },
@@ -874,6 +916,8 @@
               "endLine": 44,
               "endCol": 37
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -900,6 +944,8 @@
               "endLine": 45,
               "endCol": 53
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -917,6 +963,7 @@
                     "path": [
                       "why"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "why"
                   }
@@ -938,6 +985,8 @@
               "endLine": 46,
               "endCol": 37
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

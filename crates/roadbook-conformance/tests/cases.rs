@@ -311,6 +311,16 @@ fn top_level_runs_are_started_in_order() {
                 "{}: `requires` must list `raise` exactly when a machine of its chart raises an event or declares an internal one",
                 c.name
             );
+            fn has_locals(s: &roadbook_ir::State) -> bool {
+                !s.params.is_empty() || !s.vars.is_empty() || s.states.iter().any(has_locals)
+            }
+            let locals = ir.machines.values().any(|m| has_locals(&m.root));
+            assert_eq!(
+                locals,
+                requires("locals"),
+                "{}: `requires` must list `locals` exactly when a state of its chart has parameters or variables",
+                c.name
+            );
         }
     }
 }
@@ -785,4 +795,40 @@ fn lint_catches_task_emit_mistakes() {
         problems.iter().any(|p| p.contains("has no run")),
         "{problems:#?}"
     );
+}
+
+#[test]
+fn lint_catches_local_mistakes() {
+    let c = cases()
+        .into_iter()
+        .find(|c| c.name == "locals-params")
+        .unwrap();
+    let ir = c.ir.as_ref();
+    assert!(lint(&c.records, Status::Running, ir).is_empty());
+    let set = |var: &str| json!({"t": 0, "run": "r1", "kind": "set", "var": var, "value": 1});
+    // A local set before its state is entered.
+    let mut early = c.records.clone();
+    let i = early
+        .iter()
+        .position(|r| r["kind"] == "entered" && r["state"] == "Fetch.Showing")
+        .unwrap();
+    early.insert(i, set("Fetch.Showing.count"));
+    assert!(!lint(&early, Status::Running, ir).is_empty());
+    // A local its state does not declare.
+    let mut unknown = c.records.clone();
+    unknown.push(set("Fetch.Showing.nope"));
+    assert!(!lint(&unknown, Status::Running, ir).is_empty());
+    // A machine variable the machine does not declare.
+    let mut machine = c.records.clone();
+    machine.push(set("nope"));
+    assert!(!lint(&machine, Status::Running, ir).is_empty());
+    // The effects of a transition that left the state may still assign its locals, but
+    // nothing after the next transition may.
+    let mut left = c.records.clone();
+    let i = left
+        .iter()
+        .rposition(|r| r["kind"] == "exited" && r["state"] == "Fetch.Showing")
+        .unwrap();
+    left.insert(i + 1, set("Fetch.Showing.seen"));
+    assert!(lint(&left, Status::Running, ir).is_empty());
 }

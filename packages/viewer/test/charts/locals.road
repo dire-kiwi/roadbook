@@ -1,0 +1,35 @@
+// Test chart: state parameters and state variables, drawn in their states, passed on edges,
+// and shown in simulate and replay.
+
+type Token { id: string, user: string }
+
+fn matches(token: Token, code: string) -> bool
+task request(email: string)            -> Token
+
+/// A token that lives only in the states that need it.
+machine Confirm(email: string) -> string {
+  event Submit { code: string }
+  event Again
+
+  initial Requesting
+
+  state Requesting {
+    invoke request(email) {
+      done -> Confirming(result)
+    }
+  }
+
+  state Confirming(token: Token) {
+    /// Wrong codes so far.
+    var tries: int = 0
+    on Submit {
+      if matches(token, event.code) -> Accepted(token.user)
+      if tries < 2                                                 set tries = tries + 1
+      else                          -> Rejected("too many tries")
+    }
+    on Again                        -> Confirming(token)
+  }
+
+  final state Accepted(user: string)   { output user }
+  final state Rejected(reason: string) { output reason }
+}

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/nest.road",
@@ -154,6 +154,8 @@
           "endLine": 56,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Nest.Outer",
         "states": [
           {
@@ -168,6 +170,8 @@
               "endLine": 50,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Nest.Outer.Middle",
             "states": [
               {
@@ -182,6 +186,8 @@
                   "endLine": 49,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Nest.Outer.Middle.Inner",
                 "states": [
                   {
@@ -196,6 +202,8 @@
                       "endLine": 48,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [
@@ -214,6 +222,7 @@
                             "path": [
                               "n"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "n"
                           }
@@ -236,6 +245,7 @@
                             "path": [
                               "n"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "n"
                           }
@@ -254,6 +264,7 @@
                             "path": [
                               "n"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "n"
                           }
@@ -279,15 +290,18 @@
                           "Nest.Away"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "set",
                             "var": "n",
+                            "state": null,
                             "value": {
                               "kind": "ref",
                               "path": [
                                 "result"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "result"
                             }
@@ -322,6 +336,7 @@
                         "path": [
                           "n"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "n"
                       }
@@ -344,6 +359,7 @@
                         "path": [
                           "n"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "n"
                       }
@@ -368,6 +384,7 @@
                       "Nest.Away"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -388,6 +405,7 @@
                       "Nest.Outer.Middle.Inner"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -404,6 +422,7 @@
                             "path": [
                               "n"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "n"
                           }
@@ -427,6 +446,7 @@
               {
                 "kind": "set",
                 "var": "n",
+                "state": null,
                 "value": {
                   "kind": "op",
                   "op": "+",
@@ -436,6 +456,7 @@
                       "path": [
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "n"
                     },
@@ -465,6 +486,7 @@
                     "path": [
                       "n"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "n"
                   }
@@ -487,6 +509,7 @@
                     "path": [
                       "n"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "n"
                   }
@@ -506,6 +529,7 @@
                   "Nest.Outer"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -522,6 +546,7 @@
                         "path": [
                           "n"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "n"
                       }
@@ -545,10 +570,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -558,6 +585,7 @@
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         },
@@ -587,6 +615,7 @@
                         "path": [
                           "n"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "n"
                       }
@@ -612,10 +641,12 @@
                   "Nest.Away"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -625,6 +656,7 @@
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         },
@@ -654,6 +686,7 @@
                         "path": [
                           "n"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "n"
                       }
@@ -684,6 +717,8 @@
               "endLine": 55,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -702,6 +737,7 @@
                     "path": [
                       "n"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "n"
                   }
@@ -724,6 +760,7 @@
                     "path": [
                       "n"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "n"
                   }
@@ -752,6 +789,7 @@
                 "path": [
                   "n"
                 ],
+                "state": null,
                 "type": "int",
                 "text": "n"
               }
@@ -774,6 +812,7 @@
                 "path": [
                   "n"
                 ],
+                "state": null,
                 "type": "int",
                 "text": "n"
               }

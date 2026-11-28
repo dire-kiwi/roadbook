@@ -9,6 +9,7 @@
 import type { Address, CallDecl, Effect, EventDecl, Invoke, Ir, State, TaskDecl, Machine } from './ir.ts'
 import { own } from './ir.ts'
 import {
+  argsText,
   callSignatureText,
   childStates,
   effectEvent,
@@ -460,11 +461,21 @@ export function statePanel(ctx: PanelContext, state: State): string {
   const chip = (c: State) => `${stateLink(ctx, c.id, c.name)} <span class="rb-chip">${esc(kindText(c))}</span>`
   const children = list(childStates(state).map(chip))
   const histories = list(state.states.filter(isHistory).map(chip))
+  const doc = (d: string) => (d ? `<span class="rb-sub rb-note">${esc(d)}</span>` : '')
+  const params = list(state.params.map((p) => `${p.sensitive ? 'sensitive ' : ''}${esc(p.name)}: ${typeHtml(ir, p.type)}${doc(p.doc)}`))
+  const vars = list(
+    state.vars.map(
+      (v) => `${v.sensitive ? 'sensitive ' : ''}${esc(v.name)}: ${typeHtml(ir, v.type)}${v.init ? ` = ${esc(v.init.text)}` : ' <span class="rb-note">(assigned later)</span>'}${doc(v.doc)}`,
+    ),
+  )
+  const localsNote = (what: string) => `<p class="rb-cnote">${what} Read in ${esc(state.name)} and the states inside it; gone once it is left.</p>`
   return (
     head(esc(state.name), `${state.kind} state${isInitial ? ', initial' : ''}${collapsed ? ', collapsed' : ''}`, true) +
     `<p class="rb-path">${esc(state.id)} · ${esc(sourceText(ir, state.span))}</p>` +
     docHtml(state.doc) +
     toggle +
+    section('Parameters', params && params + localsNote('Given by each transition that enters the state.')) +
+    section('Variables', vars && vars + localsNote('Set again each time the state is entered.')) +
     section(state.output ? 'Machine returns' : 'Machine fails with', result) +
     invokeSection(ctx, state) +
     section('Starts in', state.initial ? stateLink(ctx, state.initial) : '') +
@@ -625,6 +636,13 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
     section('Trigger', code(triggerSource(t.trigger)) + `<p class="rb-empty">${esc(what)}</p>`) +
     section('Guard', guard + branchNote) +
     section('Effects', list(t.effects.map((e) => effectHtml(ctx, e))) || '<p class="rb-empty">None.</p>') +
+    section(
+      'Arguments',
+      t.args.length
+        ? list(t.args.map((a) => `${stateLink(ctx, a.state)} <code>${esc(argsText(a))}</code>`)) +
+            '<p class="rb-cnote">Evaluated after the effects, before any state is entered: they see what the effects assign, and the locals of the states the transition leaves.</p>'
+        : '',
+    ) +
     section('From', stateLink(ctx, state.id)) +
     section(
       'To',

@@ -33,6 +33,9 @@ pub(crate) struct TransitionReads {
     pub guard: Reads,
     /// By IR effect index.
     pub effects: Vec<Reads>,
+    /// The arguments of the states it enters, evaluated after its effects. A state's local is
+    /// named here `<state id>.<name>`.
+    pub args: Reads,
     /// The branch: the whole line for a single-branch trigger, from `if` or `else` in a block.
     pub span: Span,
 }
@@ -61,6 +64,24 @@ pub(crate) struct StateInfo {
     pub retry_branches: Vec<usize>,
     /// For a state a `retry` added, the state it was written in, which diagnostics name.
     pub written_as: Option<String>,
+    /// The state's parameters, then its variables, in order.
+    pub locals: Vec<LocalInfo>,
+}
+
+/// A state's parameter or variable, for definite assignment. Reads of it are named
+/// `<state id>.<name>` in [`Reads`], which no machine variable's name can be.
+#[derive(Clone, Debug)]
+pub(crate) struct LocalInfo {
+    pub name: String,
+    /// The name in its declaration.
+    pub span: Span,
+    pub param: bool,
+    /// Whether it has an initial value.
+    pub init: bool,
+    /// Whether its type is optional, aliases expanded: it then starts as `null`.
+    pub optional: bool,
+    /// What its initial value reads.
+    pub init_reads: Reads,
 }
 
 /// A machine variable, for definite assignment.
@@ -219,6 +240,19 @@ pub(crate) struct Var {
     pub sensitive: bool,
 }
 
+/// A state's parameter or variable: one of its locals.
+#[derive(Clone, Debug)]
+pub(crate) struct Local {
+    pub name: String,
+    /// The name in its declaration.
+    pub span: Span,
+    pub ty: Ty,
+    pub param: bool,
+    /// Marked `sensitive`.
+    pub sensitive: bool,
+    pub symbol: Option<SymbolId>,
+}
+
 pub(crate) struct Cx<'c, 'p> {
     pub ck: &'c mut Checker<'p>,
     pub file: usize,
@@ -253,6 +287,10 @@ pub(crate) struct Cx<'c, 'p> {
     counter: Option<String>,
     /// Whether the expression [`Cx::expr`] last returned reads a sensitive value.
     pub sens: bool,
+    /// The locals of each node, its parameters then its variables, in order.
+    locals: Vec<Vec<Local>>,
+    /// The node whose items are being lowered: its locals and its ancestors' are in scope.
+    here: usize,
 }
 
 /// Checks machine `m` declared in `file` and lowers it. Its hash is left empty.
@@ -305,6 +343,8 @@ pub(crate) fn lower<'p>(
         retry_vars: Vec::new(),
         counter: None,
         sens: false,
+        locals: Vec::new(),
+        here: 0,
     };
 
     // Parameters and variables share one namespace.
@@ -634,6 +674,7 @@ pub(crate) fn lower<'p>(
     });
     cx.build_tree(0);
     cx.check_aliases();
+    cx.collect_locals(&seen);
     let mut root = cx.lower_state(0);
     root.doc = doc(&d.doc);
     root.span = ir_span(d.span);
@@ -993,6 +1034,7 @@ impl<'p> Cx<'_, 'p> {
                 transition_reads: Vec::new(),
                 retry_branches: Vec::new(),
                 written_as: None,
+                locals: Vec::new(),
             },
         );
         ir::State {
@@ -1005,6 +1047,8 @@ impl<'p> Cx<'_, 'p> {
             },
             doc: doc(&h.doc),
             span: ir_span(h.span),
+            params: Vec::new(),
+            vars: Vec::new(),
             initial: None,
             states: Vec::new(),
             entry: Vec::new(),
@@ -1137,6 +1181,212 @@ impl<'p> Cx<'_, 'p> {
                 }
             }
         }
+    }
+
+    /// Gathers every state's locals, its parameters then its variables, checking their names
+    /// and types: a name is unique in its state (`RB0108`), is not `key` (`RB0122`), is not
+    /// anything else in scope there or a local of a state inside it (`RB0127`), and a local
+    /// has no `ref` or `call` type (`RB0328`). `machine` holds the machine's parameters,
+    /// variables and collections. Each is defined as a member of its state's symbol.
+    fn collect_locals(&mut self, machine: &HashMap<String, Span>) {
+        self.locals = vec![Vec::new(); self.nodes.len()];
+        for i in 0..self.nodes.len() {
+            let Some(s) = self.nodes[i].state else {
+                continue;
+            };
+            let id = self.nodes[i].id.clone();
+            let decls = s
+                .params
+                .iter()
+                .map(|p| (&p.name, &p.ty, true, p.sensitive, p.span, &None, None))
+                .chain(
+                    s.body
+                        .vars()
+                        .map(|v| (&v.name, &v.ty, false, v.sensitive, v.span, &v.doc, Some(v))),
+                );
+            let mut mine: Vec<Local> = Vec::new();
+            for (name, tref, param, sensitive, span, doc, var) in decls {
+                let what = if param {
+                    "a state parameter"
+                } else {
+                    "a state variable"
+                };
+                self.key_as_name(name, what);
+                let ty = if let ast::TypeKind::Call(_) = tref.kind {
+                    self.local_type_not_allowed(name, tref.span, "a pending call", &id);
+                    Ty::Unknown
+                } else {
+                    let t = self.ck.resolve(self.file, tref);
+                    if self.ck.env.has_ref(&t) {
+                        self.local_type_not_allowed(name, tref.span, "a `ref`", &id);
+                        Ty::Unknown
+                    } else {
+                        t
+                    }
+                };
+                if let Some(first) = mine.iter().find(|l| l.name == name.name) {
+                    let kind = if first.param {
+                        "a parameter"
+                    } else {
+                        "a variable"
+                    };
+                    self.ck.diags.push(
+                        Diagnostic::error(
+                            codes::DUPLICATE_NAME,
+                            name.span,
+                            format!("`{}` is already {kind} of `{id}`", name.name),
+                        )
+                        .with_secondary(first.span, "first declared here")
+                        .with_help("a state's parameters and variables share one set of names"),
+                    );
+                    continue;
+                }
+                self.local_clash(i, name, machine);
+                let signature = match var {
+                    None => crate::index::field_text(&ast::Field {
+                        sensitive,
+                        name: name.clone(),
+                        ty: tref.clone(),
+                        span,
+                    }),
+                    Some(v) => {
+                        let mut sig = format!(
+                            "{}var {}",
+                            if v.sensitive { "sensitive " } else { "" },
+                            crate::index::field_text_of(&v.name, &v.ty)
+                        );
+                        if let Some(init) = &v.init {
+                            sig.push_str(&format!(" = {}", expr_text(init)));
+                        }
+                        sig
+                    }
+                };
+                let kind = if param {
+                    SymbolKind::Parameter
+                } else {
+                    SymbolKind::Variable
+                };
+                let symbol = self.nodes[i]
+                    .symbol
+                    .map(|st| self.ck.member(st, kind, name, span, doc, signature));
+                mine.push(Local {
+                    name: name.name.clone(),
+                    span: name.span,
+                    ty,
+                    param,
+                    sensitive,
+                    symbol,
+                });
+            }
+            self.locals[i] = mine;
+        }
+    }
+
+    fn local_type_not_allowed(&mut self, name: &Ident, span: Span, what: &str, id: &str) {
+        self.ck.diags.push(
+            Diagnostic::error(
+                codes::LOCAL_TYPE_NOT_ALLOWED,
+                span,
+                format!("`{}`, a local of `{id}`, cannot hold {what}", name.name),
+            )
+            .with_help("a handle to a peer and a pending call belong to the machine: declare it as a machine parameter or variable"),
+        );
+    }
+
+    /// Reports local `name` of node `i` if its name is already in scope there or is an `as`
+    /// name of a state inside it (`RB0127`). A clash with a local of a state inside it is
+    /// reported at that local, when its turn comes.
+    fn local_clash(&mut self, i: usize, name: &Ident, machine: &HashMap<String, Span>) {
+        let id = self.nodes[i].id.clone();
+        let clash: Option<(String, Option<Span>)> = if let Some(v) = self.vars.get(&name.name) {
+            let what = if v.param { "a parameter" } else { "a variable" };
+            Some((
+                format!("{what} of machine `{}`", self.machine),
+                machine.get(&name.name).copied(),
+            ))
+        } else if self.collections.contains_key(&name.name) {
+            Some((
+                format!("a children collection of `{}`", self.machine),
+                machine.get(&name.name).copied(),
+            ))
+        } else if let Some(span) = self.raise_names.get(&name.name) {
+            Some((
+                format!("the name of a delayed raise of `{}`", self.machine),
+                Some(*span),
+            ))
+        } else if let Some((owner, local)) = self.ancestors(i).find_map(|a| {
+            self.locals[a]
+                .iter()
+                .find(|l| l.name == name.name)
+                .map(|l| (a, l.span))
+        }) {
+            Some((
+                format!(
+                    "a local of `{}`, which contains `{id}`",
+                    self.nodes[owner].id
+                ),
+                Some(local),
+            ))
+        } else {
+            // An `as` name of the state, a state around it, or a state inside it.
+            (0..self.nodes.len())
+                .filter(|&n| n == i || self.inside(n, i) || self.inside(i, n))
+                .find_map(|n| {
+                    let a = self.alias_of(n, &name.name)?;
+                    Some((
+                        format!("the `as` name of an invoke of `{}`", self.nodes[n].id),
+                        Some(a.name.span),
+                    ))
+                })
+        };
+        let Some((what, first)) = clash else {
+            return;
+        };
+        let mut d = Diagnostic::error(
+            codes::LOCAL_SHADOWS,
+            name.span,
+            format!("`{}` is already {what}", name.name),
+        )
+        .with_help("a state's locals cannot have the name of anything else in scope in the state, or of a local of a state inside it; choose another name");
+        if let Some(span) = first {
+            d = d.with_secondary(span, "declared here");
+        }
+        self.ck.diags.push(d);
+    }
+
+    /// The proper ancestors of node `i`, innermost first.
+    fn ancestors(&self, i: usize) -> impl Iterator<Item = usize> + '_ {
+        std::iter::successors(self.nodes[i].parent, |&p| self.nodes[p].parent)
+    }
+
+    /// The local `name` in scope where the items of [`Cx::here`] are lowered: of that state or
+    /// of a state around it. With the node it belongs to.
+    pub(crate) fn local(&self, name: &str) -> Option<(usize, &Local)> {
+        if self.locals.is_empty() {
+            return None;
+        }
+        std::iter::once(self.here)
+            .chain(self.ancestors(self.here))
+            .find_map(|n| {
+                self.locals[n]
+                    .iter()
+                    .find(|l| l.name == name)
+                    .map(|l| (n, l))
+            })
+    }
+
+    /// The id of node `n`.
+    pub(crate) fn node_id(&self, n: usize) -> &str {
+        &self.nodes[n].id
+    }
+
+    /// A state's local named `name` anywhere in the machine, for the diagnostic of a read
+    /// outside its scope.
+    pub(crate) fn local_anywhere(&self, name: &str) -> Option<&str> {
+        self.locals
+            .iter()
+            .position(|ls| ls.iter().any(|l| l.name == name))
+            .map(|n| self.nodes[n].id.as_str())
     }
 
     /// The `as` name `name` of one of node `a`'s invokes.
@@ -1865,6 +2115,13 @@ impl<'p> Cx<'_, 'p> {
         }
 
         let initial = self.initial(idx, kind);
+        if kind == ir::StateKind::Parallel {
+            for c in self.nodes[idx].children.clone() {
+                self.default_entered_with_parameters(c, None, &id);
+            }
+        }
+        self.here = idx;
+        let (params, vars, locals) = self.lower_locals(idx);
         self.info.states.insert(
             id.clone(),
             StateInfo {
@@ -1883,6 +2140,7 @@ impl<'p> Cx<'_, 'p> {
                 transition_reads: Vec::new(),
                 retry_branches: Vec::new(),
                 written_as: None,
+                locals,
             },
         );
 
@@ -2095,6 +2353,7 @@ impl<'p> Cx<'_, 'p> {
         let retry = retry.and_then(|plan| self.check_retry(idx, kind, plan));
         let children = self.nodes[idx].order.clone();
         let states = children.into_iter().map(|c| self.lower_state(c)).collect();
+        self.here = idx;
         let mut lowered = ir::State {
             name: self.nodes[idx].name.clone(),
             id,
@@ -2103,6 +2362,8 @@ impl<'p> Cx<'_, 'p> {
             span: state
                 .map(|s| ir_span(s.span))
                 .unwrap_or_else(|| ir_span(name_span)),
+            params,
+            vars,
             initial,
             states,
             entry,
@@ -2116,6 +2377,106 @@ impl<'p> Cx<'_, 'p> {
             self.write_out_retry(&mut lowered, r);
         }
         lowered
+    }
+
+    /// Reports `RB0223` if node `c`, the `initial` of `parent` (written at `initial`) or one of
+    /// its regions (`initial` `None`), takes parameters: it is entered by default, with no
+    /// transition to pass them.
+    fn default_entered_with_parameters(&mut self, c: usize, initial: Option<Span>, parent: &str) {
+        let Some(first) = self
+            .locals
+            .get(c)
+            .and_then(|ls| ls.iter().find(|l| l.param))
+        else {
+            return;
+        };
+        let first = first.span;
+        let cid = self.nodes[c].id.clone();
+        let (span, message) = match initial {
+            Some(span) => (
+                span,
+                format!("`{cid}` takes parameters, so it cannot be the `initial` of `{parent}`"),
+            ),
+            None => (
+                self.nodes[c].name_span,
+                format!(
+                    "`{cid}` takes parameters, so it cannot be a region of the parallel state `{parent}`"
+                ),
+            ),
+        };
+        self.ck.diags.push(
+            Diagnostic::error(codes::PARAMETERS_ON_DEFAULT_ENTRY, span, message)
+                .with_secondary(first, "a parameter")
+                .with_help("a state's `initial` and the regions of a parallel state are entered with no transition to pass arguments; make the parameters variables of the state, or enter it from another state with a transition that passes them"),
+        );
+    }
+
+    /// Lowers node `idx`'s parameters and variables, checking its variables' initial values
+    /// (with [`Cx::here`] at `idx`).
+    fn lower_locals(&mut self, idx: usize) -> (Vec<ir::Field>, Vec<ir::Var>, Vec<LocalInfo>) {
+        let mut params = Vec::new();
+        let mut vars = Vec::new();
+        let mut infos = Vec::new();
+        let Some(s) = self.nodes[idx].state else {
+            return (params, vars, infos);
+        };
+        let mut seen: HashSet<&str> = HashSet::new();
+        for p in &s.params {
+            if !seen.insert(&p.name.name) {
+                continue;
+            }
+            params.push(ir::Field {
+                name: p.name.name.clone(),
+                ty: ir_type(&p.ty),
+                sensitive: p.sensitive,
+                doc: String::new(),
+            });
+            infos.push(LocalInfo {
+                name: p.name.name.clone(),
+                span: p.name.span,
+                param: true,
+                init: true,
+                optional: false,
+                init_reads: Vec::new(),
+            });
+        }
+        for v in s.body.vars() {
+            if !seen.insert(&v.name.name) {
+                continue;
+            }
+            let ty = self.locals[idx]
+                .iter()
+                .find(|l| l.name == v.name.name)
+                .map_or(Ty::Unknown, |l| l.ty.clone());
+            self.reads.clear();
+            let init = v.init.as_ref().map(|e| {
+                self.expect_to(
+                    e,
+                    &Scope::none(),
+                    &ty,
+                    &format!("the initial value of `{}`", v.name.name),
+                    dest(v.sensitive, format!("`{}`", v.name.name)),
+                )
+            });
+            let optional = matches!(self.ck.env.expand(&ty), Ty::Optional(_));
+            infos.push(LocalInfo {
+                name: v.name.name.clone(),
+                span: v.name.span,
+                param: false,
+                init: init.is_some(),
+                optional,
+                init_reads: std::mem::take(&mut self.reads),
+            });
+            vars.push(ir::Var {
+                name: v.name.name.clone(),
+                ty: ir_type(&v.ty),
+                sensitive: v.sensitive,
+                init,
+                doc: doc(&v.doc),
+                span: ir_span(v.span),
+            });
+        }
+        (params, vars, infos)
     }
 
     fn initial(&mut self, idx: usize, kind: ir::StateKind) -> Option<String> {
@@ -2212,6 +2573,7 @@ impl<'p> Cx<'_, 'p> {
         match self.child(idx, &first.name) {
             Some(c) => {
                 self.refer_state(c, first);
+                self.default_entered_with_parameters(c, Some(first.span), &id);
                 Some(self.nodes[c].id.clone())
             }
             None if let Some(h) = self.history_child(idx, &first.name) => {
@@ -2566,7 +2928,7 @@ impl<'p> Cx<'_, 'p> {
                 .as_ref()
                 .map(|g| self.expect(g, scope, &BOOL, "a guard"));
             let guard_reads = std::mem::take(&mut self.reads);
-            let (target_nodes, internal) = self.targets(idx, &b.targets);
+            let (target_nodes, internal, resolved) = self.targets(idx, &b.targets);
             let targets = target_nodes
                 .iter()
                 .map(|&n| self.nodes[n].id.clone())
@@ -2579,6 +2941,9 @@ impl<'p> Cx<'_, 'p> {
                 outcome,
             };
             let (effects, effect_reads) = self.effects(&b.effects, scope, place);
+            self.reads.clear();
+            let args = self.state_args(idx, &b.targets, &resolved, &target_nodes, domain, scope);
+            let arg_reads = std::mem::take(&mut self.reads);
             let span = match &t.branches {
                 Branches::Single(_) => t.span,
                 Branches::Block { .. } => b.span,
@@ -2587,6 +2952,7 @@ impl<'p> Cx<'_, 'p> {
                 delay: delay.clone(),
                 guard: guard_reads,
                 effects: effect_reads,
+                args: arg_reads,
                 span,
             });
             out.push(ir::Transition {
@@ -2595,6 +2961,7 @@ impl<'p> Cx<'_, 'p> {
                 guard,
                 targets,
                 internal,
+                args,
                 effects,
                 span: ir_span(span),
             });
@@ -2607,7 +2974,11 @@ impl<'p> Cx<'_, 'p> {
     /// region of a parallel state (`RB0222`). With whether the transition is internal: written
     /// with the dot, outside the machine body (where `-> .X` is `-> X`). A target that does not
     /// resolve is left out, with its diagnostic.
-    fn targets(&mut self, from: usize, written: &[Target]) -> (Vec<usize>, bool) {
+    fn targets(
+        &mut self,
+        from: usize,
+        written: &[Target],
+    ) -> (Vec<usize>, bool, Vec<Option<usize>>) {
         let dot = written.first().is_some_and(|t| t.dot);
         let resolved: Vec<Option<usize>> = written.iter().map(|t| self.target(from, t)).collect();
         let nodes: Vec<usize> = resolved.iter().flatten().copied().collect();
@@ -2654,7 +3025,211 @@ impl<'p> Cx<'_, 'p> {
         } else if nodes.len() == written.len() && nodes.len() > 1 {
             self.check_targets_go_together(written, &nodes);
         }
-        (nodes, dot && self.nodes[from].parent.is_some())
+        let internal = dot && self.nodes[from].parent.is_some();
+        (nodes, internal, resolved)
+    }
+
+    /// Checks and lowers the arguments written in the targets of a branch written in `from`,
+    /// whose targets resolved to `resolved` (by written target) and `nodes`, with `domain`
+    /// (`None` with no target). Every state the transition enters that takes parameters gets
+    /// arguments, once (`RB0224`); no other state does (`RB0225`). In document order, which
+    /// is the order the states are entered.
+    fn state_args(
+        &mut self,
+        from: usize,
+        written: &[Target],
+        resolved: &[Option<usize>],
+        nodes: &[usize],
+        domain: Option<usize>,
+        scope: &Scope,
+    ) -> Vec<ir::StateArgs> {
+        // The states entered on the way to each target, from just below the domain. Default
+        // entry never enters a state with parameters (`RB0223`).
+        let mut entered: Vec<usize> = Vec::new();
+        if let Some(d) = domain {
+            for &r in nodes {
+                let mut x = match (self.nodes[r].history, self.nodes[r].parent) {
+                    (Some(_), Some(p)) => p,
+                    _ => r,
+                };
+                while x != d && self.inside(x, d) {
+                    if !entered.contains(&x) {
+                        entered.push(x);
+                    }
+                    x = self.nodes[x].parent.unwrap_or(d);
+                }
+            }
+        }
+        let mut given: Vec<(usize, Span, ir::StateArgs)> = Vec::new();
+        for (t, r) in written.iter().zip(resolved) {
+            if !t.has_args() {
+                continue;
+            }
+            // The node each segment names: the target, its parent, and so on up.
+            let Some(r) = *r else {
+                // Unresolved, already reported: still check the arguments' expressions.
+                for a in t.args.iter().flatten() {
+                    for e in &a.args {
+                        self.expr(e, scope);
+                    }
+                }
+                continue;
+            };
+            let mut segs = vec![r; t.path.len()];
+            for k in (0..t.path.len().saturating_sub(1)).rev() {
+                segs[k] = self.nodes[segs[k + 1]].parent.unwrap_or(segs[k + 1]);
+            }
+            for (k, seg) in segs.iter().copied().enumerate() {
+                let Some(a) = t.args_of(k) else { continue };
+                let sid = self.nodes[seg].id.clone();
+                let takes = self
+                    .locals
+                    .get(seg)
+                    .is_some_and(|ls| ls.iter().any(|l| l.param));
+                let problem = if !takes {
+                    Some((
+                        format!("`{sid}` takes no parameters"),
+                        "remove the arguments".to_string(),
+                    ))
+                } else if !entered.contains(&seg) {
+                    Some((
+                        format!("this transition does not enter `{sid}`, so it takes no arguments"),
+                        format!(
+                            "`{sid}` stays active and keeps its locals; remove the arguments, or leave and enter it again with a target written from outside it"
+                        ),
+                    ))
+                } else if let Some((_, first, _)) = given.iter().find(|(n, _, _)| *n == seg) {
+                    let first = *first;
+                    self.ck.diags.push(
+                        Diagnostic::error(
+                            codes::UNEXPECTED_STATE_ARGUMENTS,
+                            a.span,
+                            format!("the arguments of `{sid}` are already given"),
+                        )
+                        .with_secondary(first, "given here")
+                        .with_help("a state on the paths of several targets gets its arguments once, on one of them"),
+                    );
+                    continue;
+                } else {
+                    None
+                };
+                if let Some((message, help)) = problem {
+                    let d = Diagnostic::error(codes::UNEXPECTED_STATE_ARGUMENTS, a.span, message)
+                        .with_help(help)
+                        .with_fix("remove the arguments", a.span, String::new());
+                    self.ck.diags.push(d);
+                    for e in &a.args {
+                        self.expr(e, scope);
+                    }
+                    continue;
+                }
+                let values = self.state_arg_values(seg, &t.path[k], a, scope);
+                given.push((seg, a.span, ir::StateArgs { state: sid, values }));
+            }
+        }
+        for &n in &entered {
+            let takes = self
+                .locals
+                .get(n)
+                .is_some_and(|ls| ls.iter().any(|l| l.param));
+            if !takes || given.iter().any(|(g, _, _)| *g == n) {
+                continue;
+            }
+            let Some(i) = resolved
+                .iter()
+                .position(|r| r.is_some_and(|r| r == n || self.inside(r, n)))
+            else {
+                continue;
+            };
+            let nid = self.nodes[n].id.clone();
+            let params: Vec<String> = self.locals[n]
+                .iter()
+                .filter(|l| l.param)
+                .map(|l| format!("{}: {}", l.name, l.ty))
+                .collect();
+            let r = resolved[i].unwrap_or(n);
+            let d = domain.unwrap_or(from);
+            let mut names = Vec::new();
+            let mut x = r;
+            while x != d {
+                let takes = self.locals[x].iter().any(|l| l.param);
+                names.push(format!(
+                    "{}{}",
+                    self.nodes[x].name,
+                    if takes { "(…)" } else { "" }
+                ));
+                x = self.nodes[x].parent.unwrap_or(d);
+            }
+            names.reverse();
+            let dot = if written[i].dot { "." } else { "" };
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::MISSING_STATE_ARGUMENTS,
+                    written[i].span,
+                    format!(
+                        "this transition enters `{nid}`, which takes `{}`, without passing its arguments",
+                        params.join(", ")
+                    ),
+                )
+                .with_secondary(self.nodes[n].name_span, "declared here")
+                .with_help(format!(
+                    "write the arguments after the state's name in the path: `-> {dot}{}`",
+                    names.join(".")
+                )),
+            );
+        }
+        given.sort_by_key(|(n, _, _)| *n);
+        given.into_iter().map(|(_, _, a)| a).collect()
+    }
+
+    /// Checks the arguments `a` written after `seg`, the name of node `n`, against its
+    /// parameters, and lowers them.
+    fn state_arg_values(
+        &mut self,
+        n: usize,
+        seg: &Ident,
+        a: &ast::TargetArgs,
+        scope: &Scope,
+    ) -> Vec<ir::Expr> {
+        let params: Vec<Local> = self.locals[n].iter().filter(|l| l.param).cloned().collect();
+        let id = self.nodes[n].id.clone();
+        if params.len() != a.args.len() {
+            let plural = |n: usize| if n == 1 { "" } else { "s" };
+            let shown: Vec<String> = params
+                .iter()
+                .map(|l| format!("{}: {}", l.name, l.ty))
+                .collect();
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::ARGUMENT_COUNT,
+                    a.span,
+                    format!(
+                        "`{}` takes {} argument{} but {} {} given",
+                        seg.name,
+                        params.len(),
+                        plural(params.len()),
+                        a.args.len(),
+                        if a.args.len() == 1 { "was" } else { "were" }
+                    ),
+                )
+                .with_secondary(
+                    self.nodes[n].name_span,
+                    format!("declared as `{}({})`", seg.name, shown.join(", ")),
+                ),
+            );
+        }
+        a.args
+            .iter()
+            .enumerate()
+            .map(|(i, e)| match params.get(i) {
+                Some(p) => {
+                    let what = format!("argument `{}` of `{id}`", p.name);
+                    let to = dest(p.sensitive, format!("parameter `{}` of `{id}`", p.name));
+                    self.expect_to(e, scope, &p.ty, &what, to)
+                }
+                None => self.expr(e, scope).0,
+            })
+            .collect()
     }
 
     /// Reports two targets that are not in different regions of a parallel state: one is the
@@ -2986,33 +3561,79 @@ impl<'p> Cx<'_, 'p> {
             let before = out.len();
             match e {
                 Effect::Set(a) => {
-                    self.ck.refer_member(self.file, self.symbol, &a.var);
-                    let to = dest(
-                        self.vars.get(&a.var.name).is_some_and(|v| v.sensitive),
-                        format!("`{}`", a.var.name),
-                    );
-                    let want = match self.vars.get(&a.var.name) {
-                        Some(v) if v.param => {
+                    let local = self
+                        .local(&a.var.name)
+                        .map(|(owner, l)| (owner, l.ty.clone(), l.param, l.sensitive, l.symbol));
+                    let (want, sensitive, state) = if let Some((owner, ty, param, sensitive, sym)) =
+                        local
+                    {
+                        let id = self.nodes[owner].id.clone();
+                        if let Some(sym) = sym
+                            && !self.ck.is_compiled(self.file)
+                        {
+                            self.ck.index.refer(sym, a.var.span);
+                        }
+                        if param {
                             self.ck.diags.push(
                                 Diagnostic::error(
                                     codes::ASSIGN_TO_PARAMETER,
                                     a.var.span,
-                                    format!("`{}` is a parameter of `{}`; parameters are read-only", a.var.name, self.machine),
+                                    format!("`{}` is a parameter of `{id}`; parameters are read-only", a.var.name),
                                 )
                                 .with_help(format!(
-                                    "declare a variable to hold the changing value: `var {} : <type>`",
+                                    "declare a variable of the state to hold the changing value: `var {}: <type>`, or enter the state again with a new argument",
                                     a.var.name
                                 )),
                             );
-                            v.ty.clone()
+                        } else if let Place::Transition {
+                            domain: Some(d), ..
+                        } = place
+                            && self.inside(owner, d)
+                        {
+                            self.ck.diags.push(
+                                Diagnostic::warning(
+                                    codes::LOCAL_SET_LOST,
+                                    a.var.span,
+                                    format!(
+                                        "this assigns `{}`, a variable of `{id}`, in a transition that leaves `{id}`, so the value is discarded with it",
+                                        a.var.name
+                                    ),
+                                )
+                                .with_help(format!(
+                                    "a state's variables get their initial values again each time it is entered; to keep the value, assign it in a transition with no target, pass it as an argument of a parameter (`-> {}(…)`), or use a machine variable",
+                                    self.nodes[owner].name
+                                )),
+                            );
                         }
-                        Some(v) => v.ty.clone(),
-                        None => {
-                            let d = self.unknown_variable(&a.var, false);
-                            self.ck.diags.push(d);
-                            Ty::Unknown
-                        }
+                        (ty, sensitive, Some(id))
+                    } else {
+                        self.ck.refer_member(self.file, self.symbol, &a.var);
+                        let sensitive = self.vars.get(&a.var.name).is_some_and(|v| v.sensitive);
+                        let want = match self.vars.get(&a.var.name) {
+                            Some(v) if v.param => {
+                                self.ck.diags.push(
+                                    Diagnostic::error(
+                                        codes::ASSIGN_TO_PARAMETER,
+                                        a.var.span,
+                                        format!("`{}` is a parameter of `{}`; parameters are read-only", a.var.name, self.machine),
+                                    )
+                                    .with_help(format!(
+                                        "declare a variable to hold the changing value: `var {} : <type>`",
+                                        a.var.name
+                                    )),
+                                );
+                                v.ty.clone()
+                            }
+                            Some(v) => v.ty.clone(),
+                            None => {
+                                let d = self.unknown_variable(&a.var, false);
+                                self.ck.diags.push(d);
+                                Ty::Unknown
+                            }
+                        };
+                        (want, sensitive, None)
                     };
+                    let to = dest(sensitive, format!("`{}`", a.var.name));
                     let value = self.expect_to(
                         &a.value,
                         scope,
@@ -3022,6 +3643,7 @@ impl<'p> Cx<'_, 'p> {
                     );
                     out.push(ir::Effect::Set {
                         var: a.var.name.clone(),
+                        state,
                         value,
                     });
                 }
@@ -3354,6 +3976,21 @@ impl<'p> Cx<'_, 'p> {
                 n.name
             ));
         }
+        if let Some(owner) = self.local_anywhere(&n.name) {
+            let here = &self.nodes[self.here].id;
+            return Diagnostic::error(
+                codes::UNKNOWN_VARIABLE,
+                n.span,
+                format!(
+                    "`{}` is a local of `{owner}`, which is not in scope in `{here}`",
+                    n.name
+                ),
+            )
+            .with_help(format!(
+                "a state's parameters and variables exist only in that state and the states inside it; pass the value on as an argument, or declare `{}` in a state around both, or in the machine",
+                n.name
+            ));
+        }
         let mut d = Diagnostic::error(
             codes::UNKNOWN_VARIABLE,
             n.span,
@@ -3362,11 +3999,22 @@ impl<'p> Cx<'_, 'p> {
                 n.name, self.machine
             ),
         );
+        let in_scope: Vec<&str> = if self.locals.is_empty() {
+            Vec::new()
+        } else {
+            std::iter::once(self.here)
+                .chain(self.ancestors(self.here))
+                .flat_map(|a| self.locals[a].iter())
+                .filter(|l| params || !l.param)
+                .map(|l| l.name.as_str())
+                .collect()
+        };
         let mut candidates: Vec<&str> = self
             .vars
             .iter()
             .filter(|(k, v)| (params || !v.param) && self.counter.as_ref() != Some(*k))
             .map(|(k, _)| k.as_str())
+            .chain(in_scope)
             .collect();
         candidates.sort_unstable();
         if n.name == "attempt" {

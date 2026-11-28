@@ -1,0 +1,108 @@
+================================================================================
+State parameters, state variables and target arguments
+================================================================================
+
+machine M() {
+  state A {
+    on Go -> B(1, event.code).C  set n = 1
+    on Back -> .Inner(n), D("x")
+    state Inner(n: int) {}
+  }
+  /// Takes a token.
+  state B(n: int, sensitive code: string) {
+    var tries: int = n
+    sensitive var secret: string
+    on Go -> B(n + 1)
+    initial C
+    state C {}
+  }
+  final state F(reason: string) { output reason }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (target
+              (type_identifier)
+              (arguments
+                (integer)
+                (field_expression
+                  (implicit_name)
+                  (identifier)))
+              (type_identifier))
+            (set
+              (assignment
+                (identifier)
+                (integer))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (target
+              (type_identifier)
+              (arguments
+                (identifier)))
+            (target
+              (type_identifier)
+              (arguments
+                (string
+                  (string_content)))))
+          (state_declaration
+            (type_identifier)
+            (parameters
+              (parameter
+                (identifier)
+                (builtin_type)))
+            (state_body))))
+      (doc_comment)
+      (state_declaration
+        (type_identifier)
+        (parameters
+          (parameter
+            (identifier)
+            (builtin_type))
+          (parameter
+            (sensitive)
+            (identifier)
+            (builtin_type)))
+        (state_body
+          (variable_declaration
+            (identifier)
+            (builtin_type)
+            (identifier))
+          (variable_declaration
+            (sensitive)
+            (identifier)
+            (builtin_type))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (target
+              (type_identifier)
+              (arguments
+                (binary_expression
+                  (identifier)
+                  (integer)))))
+          (initial
+            (type_identifier))
+          (state_declaration
+            (type_identifier)
+            (state_body))))
+      (state_declaration
+        (type_identifier)
+        (parameters
+          (parameter
+            (identifier)
+            (builtin_type)))
+        (state_body
+          (output
+            (identifier)))))))

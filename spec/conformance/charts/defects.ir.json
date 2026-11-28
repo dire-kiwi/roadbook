@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/defects.road",
@@ -153,6 +153,8 @@
           "endLine": 48,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Main.Idle",
         "states": [
           {
@@ -167,6 +169,8 @@
               "endLine": 27,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -179,6 +183,7 @@
                     "path": [
                       "memo"
                     ],
+                    "state": null,
                     "type": "string?",
                     "text": "memo"
                   }
@@ -199,6 +204,7 @@
                   "Main.Loading"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -219,6 +225,7 @@
                   "Main.Calling"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -244,6 +251,8 @@
               "endLine": 38,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -280,6 +289,7 @@
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     },
@@ -288,6 +298,7 @@
                       "path": [
                         "limit"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "limit"
                     }
@@ -299,6 +310,7 @@
                   "Main.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -319,6 +331,7 @@
                   "Main.Idle"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -344,6 +357,7 @@
                   "Main.Idle"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -369,6 +383,8 @@
               "endLine": 45,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -401,6 +417,7 @@
                   "Main.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -422,6 +439,7 @@
                   "Main.Idle"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -447,6 +465,8 @@
               "endLine": 47,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -504,6 +524,8 @@
           "endLine": 55,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Sub.Answer",
         "states": [
           {
@@ -518,6 +540,8 @@
               "endLine": 54,
               "endCol": 34
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

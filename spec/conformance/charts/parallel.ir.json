@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/parallel.road",
@@ -137,6 +137,8 @@
           "endLine": 58,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Regions.Both",
         "states": [
           {
@@ -151,6 +153,8 @@
               "endLine": 55,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -165,6 +169,8 @@
                   "endLine": 36,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Regions.Both.Left.L1",
                 "states": [
                   {
@@ -179,6 +185,8 @@
                       "endLine": 35,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [
@@ -260,6 +268,8 @@
                   "endLine": 49,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Regions.Both.Right.R1",
                 "states": [
                   {
@@ -274,6 +284,8 @@
                       "endLine": 48,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": "Regions.Both.Right.R1.R2",
                     "states": [
                       {
@@ -288,6 +300,8 @@
                           "endLine": 47,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [
@@ -351,6 +365,8 @@
                   "endLine": 54,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -428,6 +444,7 @@
                   "Regions.Away"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -466,6 +483,8 @@
               "endLine": 57,
               "endCol": 33
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -483,6 +502,7 @@
                   "Regions.Both"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -606,6 +626,8 @@
           "endLine": 93,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Fork.P",
         "states": [
           {
@@ -620,6 +642,8 @@
               "endLine": 92,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -634,6 +658,8 @@
                   "endLine": 79,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Fork.P.A.A1",
                 "states": [
                   {
@@ -648,6 +674,8 @@
                       "endLine": 74,
                       "endCol": 67
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -665,10 +693,12 @@
                           "Fork.P.A.A2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "set",
                             "var": "n",
+                            "state": null,
                             "value": {
                               "kind": "op",
                               "op": "+",
@@ -678,6 +708,7 @@
                                   "path": [
                                     "n"
                                   ],
+                                  "state": null,
                                   "type": "int",
                                   "text": "n"
                                 },
@@ -707,6 +738,7 @@
                                 "path": [
                                   "n"
                                 ],
+                                "state": null,
                                 "type": "int",
                                 "text": "n"
                               }
@@ -737,6 +769,8 @@
                       "endLine": 76,
                       "endCol": 66
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -757,6 +791,7 @@
                               "path": [
                                 "n"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "n"
                             },
@@ -774,6 +809,7 @@
                           "Fork.P.A.A3"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -790,6 +826,7 @@
                                 "path": [
                                   "n"
                                 ],
+                                "state": null,
                                 "type": "int",
                                 "text": "n"
                               }
@@ -820,6 +857,8 @@
                       "endLine": 78,
                       "endCol": 18
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -849,6 +888,8 @@
                   "endLine": 89,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Fork.P.B.B1",
                 "states": [
                   {
@@ -863,6 +904,8 @@
                       "endLine": 84,
                       "endCol": 68
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -880,10 +923,12 @@
                           "Fork.P.B.B2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "set",
                             "var": "n",
+                            "state": null,
                             "value": {
                               "kind": "op",
                               "op": "+",
@@ -893,6 +938,7 @@
                                   "path": [
                                     "n"
                                   ],
+                                  "state": null,
                                   "type": "int",
                                   "text": "n"
                                 },
@@ -922,6 +968,7 @@
                                 "path": [
                                   "n"
                                 ],
+                                "state": null,
                                 "type": "int",
                                 "text": "n"
                               }
@@ -952,6 +999,8 @@
                       "endLine": 86,
                       "endCol": 52
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -968,6 +1017,7 @@
                           "Fork.P.B.B3"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -1006,6 +1056,8 @@
                       "endLine": 88,
                       "endCol": 46
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -1021,6 +1073,7 @@
                         "guard": null,
                         "targets": [],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -1037,6 +1090,7 @@
                                 "path": [
                                   "n"
                                 ],
+                                "state": null,
                                 "type": "int",
                                 "text": "n"
                               }
@@ -1075,6 +1129,8 @@
                   "endLine": 91,
                   "endCol": 39
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1090,6 +1146,7 @@
                     "guard": null,
                     "targets": [],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -1199,6 +1256,8 @@
           "endLine": 125,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Clash.P",
         "states": [
           {
@@ -1213,6 +1272,8 @@
               "endLine": 122,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -1227,6 +1288,8 @@
                   "endLine": 110,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Clash.P.A.A1",
                 "states": [
                   {
@@ -1241,6 +1304,8 @@
                       "endLine": 109,
                       "endCol": 48
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -1258,6 +1323,7 @@
                           "Clash.Out"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -1304,6 +1370,8 @@
                   "endLine": 121,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Clash.P.B.B1",
                 "states": [
                   {
@@ -1318,6 +1386,8 @@
                       "endLine": 118,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -1335,6 +1405,7 @@
                           "Clash.P.B.B2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -1368,6 +1439,7 @@
                           "Clash.P.B.B2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -1406,6 +1478,8 @@
                       "endLine": 120,
                       "endCol": 18
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -1439,6 +1513,7 @@
                   "Clash.Out"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1477,6 +1552,8 @@
               "endLine": 124,
               "endCol": 29
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1494,6 +1571,7 @@
                   "Clash.P"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1571,6 +1649,8 @@
           "endLine": 161,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Escape.P",
         "states": [
           {
@@ -1585,6 +1665,8 @@
               "endLine": 158,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -1599,6 +1681,8 @@
                   "endLine": 145,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Escape.P.A.A1",
                 "states": [
                   {
@@ -1613,6 +1697,8 @@
                       "endLine": 144,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -1630,6 +1716,7 @@
                           "Escape.P.B.B1"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -1663,6 +1750,7 @@
                           "Escape.Done"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -1709,6 +1797,8 @@
                   "endLine": 157,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Escape.P.B.B1",
                 "states": [
                   {
@@ -1723,6 +1813,8 @@
                       "endLine": 154,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -1758,6 +1850,7 @@
                           "Escape.P.B.B2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -1783,6 +1876,8 @@
                       "endLine": 156,
                       "endCol": 18
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -1833,6 +1928,8 @@
               "endLine": 160,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1906,6 +2003,8 @@
           "endLine": 195,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Finish.Work",
         "states": [
           {
@@ -1920,6 +2019,8 @@
               "endLine": 192,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -1934,6 +2035,8 @@
                   "endLine": 181,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Finish.Work.Left.L1",
                 "states": [
                   {
@@ -1948,6 +2051,8 @@
                       "endLine": 178,
                       "endCol": 30
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -1965,6 +2070,7 @@
                           "Finish.Work.Left.L2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -1990,6 +2096,8 @@
                       "endLine": 180,
                       "endCol": 24
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -2012,6 +2120,7 @@
                     "guard": null,
                     "targets": [],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -2050,6 +2159,8 @@
                   "endLine": 183,
                   "endCol": 23
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -2071,6 +2182,8 @@
                   "endLine": 191,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Finish.Work.Right.R1",
                 "states": [
                   {
@@ -2085,6 +2198,8 @@
                       "endLine": 188,
                       "endCol": 30
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -2102,6 +2217,7 @@
                           "Finish.Work.Right.R2"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2127,6 +2243,8 @@
                       "endLine": 190,
                       "endCol": 24
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -2159,6 +2277,7 @@
                   "Finish.Over"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -2197,6 +2316,8 @@
               "endLine": 194,
               "endCol": 37
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2264,6 +2385,8 @@
           "endLine": 239,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Jobs.Busy",
         "states": [
           {
@@ -2278,6 +2401,8 @@
               "endLine": 234,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -2292,6 +2417,8 @@
                   "endLine": 219,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Jobs.Busy.Up.Uploading",
                 "states": [
                   {
@@ -2306,6 +2433,8 @@
                       "endLine": 216,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -2338,6 +2467,7 @@
                           "Jobs.Busy.Up.Uploaded"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2363,6 +2493,7 @@
                           "Jobs.Busy.Up.Uploaded"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2388,6 +2519,8 @@
                       "endLine": 218,
                       "endCol": 24
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -2417,6 +2550,8 @@
                   "endLine": 233,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Jobs.Busy.Down.Downloading",
                 "states": [
                   {
@@ -2431,6 +2566,8 @@
                       "endLine": 230,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -2463,6 +2600,7 @@
                           "Jobs.Busy.Down.Downloaded"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2488,6 +2626,7 @@
                           "Jobs.Busy.Down.Downloading"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2513,6 +2652,8 @@
                       "endLine": 232,
                       "endCol": 26
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -2551,6 +2692,7 @@
                   "Jobs.Late"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2571,6 +2713,7 @@
                   "Jobs.Stopped"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2596,6 +2739,8 @@
               "endLine": 236,
               "endCol": 16
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2617,6 +2762,8 @@
               "endLine": 238,
               "endCol": 19
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2679,6 +2826,8 @@
           "endLine": 275,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Shell.Outer",
         "states": [
           {
@@ -2693,6 +2842,8 @@
               "endLine": 272,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Shell.Outer.Split",
             "states": [
               {
@@ -2707,6 +2858,8 @@
                   "endLine": 271,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [
                   {
@@ -2721,6 +2874,8 @@
                       "endLine": 258,
                       "endCol": 40
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -2755,6 +2910,8 @@
                       "endLine": 270,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": "Shell.Outer.Split.Y.Y1",
                     "states": [
                       {
@@ -2769,6 +2926,8 @@
                           "endLine": 267,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -2804,6 +2963,7 @@
                               "Shell.Outer.Split.Y.Y2"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -2829,6 +2989,8 @@
                           "endLine": 269,
                           "endCol": 20
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -2896,6 +3058,7 @@
                   "Shell.Gone"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -2934,6 +3097,8 @@
               "endLine": 274,
               "endCol": 16
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

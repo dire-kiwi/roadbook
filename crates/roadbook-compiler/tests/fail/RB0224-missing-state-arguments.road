@@ -1,0 +1,20 @@
+type Doc { text: string }
+
+machine M(doc: Doc) {
+  event Go
+  event Edit
+
+  initial Idle
+  state Idle {
+    on Go   -> Editing
+    on Edit -> Editing.Changing
+  }
+  state Editing(d: Doc) {
+    initial Viewing
+    state Viewing {}
+    state Changing {}
+  }
+}
+
+// expect: RB0224 at 9:16
+// expect: RB0224 at 10:16

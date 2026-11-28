@@ -53,7 +53,10 @@
 //!   machine's `internalEvents` is removed when it is `{}`, so a machine with no
 //!   internal event keeps its 0.10 hash. A state with at most one invoke is written
 //!   with `invoke` in place of `invokes`, and its outcome triggers without `as`, so a
-//!   machine with no state of several invokes keeps its 0.11 hash. `calls` and `strict`
+//!   machine with no state of several invokes keeps its 0.11 hash. A state's `params`
+//!   and `vars` and a transition's `args` are removed when they are `[]`, and the
+//!   `state` of a `ref` expression or a `set` effect when it is `null`, so a machine
+//!   with no state parameters or variables keeps its 0.12 hash. `calls` and `strict`
 //!   are always kept.
 //!
 //! Comments, formatting, source positions, `sensitive` marks and unused
@@ -295,6 +298,13 @@ impl Walker<'_> {
     }
 
     fn state(&mut self, s: &State) -> Result<(), HashError> {
+        self.fields(&s.params)?;
+        for v in &s.vars {
+            self.type_ref(&v.ty)?;
+            if let Some(e) = &v.init {
+                self.expr(e)?;
+            }
+        }
         self.effects(&s.entry)?;
         self.effects(&s.exit)?;
         for inv in &s.invokes {
@@ -336,6 +346,9 @@ impl Walker<'_> {
             }
             if let Some(g) = &t.guard {
                 self.expr(g)?;
+            }
+            for a in &t.args {
+                a.values.iter().try_for_each(|v| self.expr(v))?;
             }
             self.effects(&t.effects)?;
         }
@@ -526,6 +539,7 @@ fn strip(v: &mut Value) {
             {
                 m.remove("key");
             }
+            locals_as_before(m);
             if m.contains_key("trigger") && m.contains_key("group") {
                 transition_as_before(m);
             }
@@ -549,12 +563,41 @@ fn strip(v: &mut Value) {
     }
 }
 
+/// Writes what IR 0.13 added as 0.12 did where it says nothing new: a state's `params` and
+/// `vars` that are `[]`, and the `state` of a `ref` expression or a `set` effect that is
+/// `null`, are removed (a transition's empty `args` goes in [`transition_as_before`]). A
+/// machine with no state parameters or variables keeps its 0.12 hash. An address's `state`
+/// is kept: an address is told from a `ref` expression by having no `path`.
+fn locals_as_before(m: &mut Map<String, Value>) {
+    let empty = |m: &Map<String, Value>, key: &str| {
+        m.get(key)
+            .is_some_and(|v| v.as_array().is_some_and(Vec::is_empty))
+    };
+    if m.contains_key("states") && m.contains_key("transitions") {
+        for key in ["params", "vars"] {
+            if empty(m, key) {
+                m.remove(key);
+            }
+        }
+    }
+    let kind = m.get("kind").and_then(Value::as_str);
+    let scoped = (kind == Some("ref") && m.contains_key("path")) || kind == Some("set");
+    if scoped && m.get("state").is_some_and(Value::is_null) {
+        m.remove("state");
+    }
+}
+
 /// Writes a transition as IR 0.8 did where 0.9 says nothing new: an `internal` that is
 /// `false` is removed, and `targets` with at most one id becomes `target`, the id or `null`.
 /// A machine with neither internal transitions nor several targets keeps its 0.8 hash.
 fn transition_as_before(m: &mut Map<String, Value>) {
     if m.get("internal") == Some(&Value::Bool(false)) {
         m.remove("internal");
+    }
+    if m.get("args")
+        .is_some_and(|v| v.as_array().is_some_and(Vec::is_empty))
+    {
+        m.remove("args");
     }
     if let Some(Value::Array(targets)) = m.get("targets") {
         if targets.len() <= 1 {

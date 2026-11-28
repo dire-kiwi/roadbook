@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/speakers.road",
@@ -109,6 +109,8 @@
           "endLine": 21,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Speaker.Talking",
         "states": [
           {
@@ -123,6 +125,8 @@
               "endLine": 18,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -138,6 +142,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "emit",
@@ -199,6 +204,7 @@
                   "Speaker.Gone"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -224,6 +230,8 @@
               "endLine": 20,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -345,6 +353,8 @@
           "endLine": 39,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Listener.Listening",
         "states": [
           {
@@ -359,6 +369,8 @@
               "endLine": 38,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -374,6 +386,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -385,6 +398,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -395,6 +409,7 @@
                           "event",
                           "id"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.id"
                       }
@@ -418,6 +433,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -433,6 +449,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -474,6 +491,7 @@
                       "path": [
                         "key"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "key"
                     },
@@ -489,10 +507,12 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "heard",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -502,6 +522,7 @@
                           "path": [
                             "heard"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "heard"
                         },
@@ -511,6 +532,7 @@
                             "event",
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "event.n"
                         }
@@ -673,6 +695,8 @@
           "endLine": 62,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Foreman.Working",
         "states": [
           {
@@ -687,6 +711,8 @@
               "endLine": 61,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -702,6 +728,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -713,6 +740,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -723,6 +751,7 @@
                           "event",
                           "id"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.id"
                       }
@@ -746,6 +775,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -761,6 +791,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -790,6 +821,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -805,6 +837,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -847,6 +880,7 @@
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     },
@@ -862,10 +896,12 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "heard",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -875,6 +911,7 @@
                           "path": [
                             "heard"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "heard"
                         },
@@ -884,6 +921,7 @@
                             "event",
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "event.n"
                         }
@@ -916,6 +954,7 @@
                       "path": [
                         "key"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "key"
                     },
@@ -931,10 +970,12 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "heard",
+                    "state": null,
                     "value": {
                       "kind": "lit",
                       "value": 0,

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Roadbook saved snapshot",
-  "description": "A saved snapshot of a top-level run: the core's snapshot (spec/execution.md#snapshot) with the format version and each timer's due time, and, in version 4, the saved snapshot of each child run that was running, nested in its invoke or spawned entry (child). See spec/execution.md#saving-and-restoring for what each member means and how a runtime restores one. It holds real values, those of sensitive parameters and variables too: nothing in it is redacted (spec/trace.md#redaction). Every member is required but calls, scheduled, history and spawned, and no other member is allowed. Version 1, written before history states, has neither history nor spawned; version 2 has history; version 3 has both; version 4 has both and may have child members. calls and scheduled, each written only when not empty, may be in any version.",
+  "description": "A saved snapshot of a top-level run: the core's snapshot (spec/execution.md#snapshot) with the format version and each timer's due time, and, in version 4, the saved snapshot of each child run that was running, nested in its invoke or spawned entry (child). See spec/execution.md#saving-and-restoring for what each member means and how a runtime restores one. It holds real values, those of sensitive parameters and variables too: nothing in it is redacted (spec/trace.md#redaction). Every member is required but calls, scheduled, locals, history, historyLocals and spawned, and no other member is allowed. Version 1, written before history states, has neither history nor spawned; version 2 has history; version 3 has both; version 4 has both and may have child members. calls, scheduled, locals and historyLocals, each written only when not empty, may be in any version.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -60,6 +60,12 @@
     "vars": {
       "description": "Every variable that has a value, keyed by name. A variable with no value has no member.",
       "$ref": "#/$defs/args"
+    },
+    "locals": {
+      "description": "The parameters and variables of the active states that declare any, keyed by state id, then by name: those that have a value. Written only when not empty; a snapshot without it has none.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/stateId" },
+      "additionalProperties": { "$ref": "#/$defs/args" }
     },
     "invokes": {
       "description": "The invokes running when the run was saved, in the order they were started, each with its child run's snapshot if it is one.",
@@ -179,6 +185,17 @@
         "minItems": 1,
         "uniqueItems": true,
         "items": { "$ref": "#/$defs/stateId" }
+      }
+    },
+    "historyLocals": {
+      "description": "The locals each history state recorded with its states, keyed by the history state's id, then by the id of a state it re-enters, then by name. A history state whose record holds no state with locals has no member. Written only when not empty.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/stateId" },
+      "additionalProperties": {
+        "type": "object",
+        "minProperties": 1,
+        "propertyNames": { "$ref": "#/$defs/stateId" },
+        "additionalProperties": { "$ref": "#/$defs/args" }
       }
     },
     "result": {

@@ -1,0 +1,12 @@
+{"input":{},"ir":"sha256:943dc91ad1f3182fc5d8453a6e9f9f2df6b88eb58ee9605777fed7763bf2ccee","kind":"started","machine":"Verdict","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Verdict","t":0}
+{"kind":"entered","run":"r1","state":"Verdict.Waiting","t":0}
+{"event":{"kind":"event","value":{"_tag":"Judge","score":3}},"kind":"event","run":"r1","t":0}
+{"from":"Verdict.Waiting","index":1,"kind":"transition","run":"r1","t":0,"to":["Verdict.Low"]}
+{"kind":"exited","run":"r1","state":"Verdict.Waiting","t":0}
+{"kind":"entered","run":"r1","state":"Verdict.Low","t":0}
+{"kind":"set","run":"r1","t":0,"value":3,"var":"Verdict.Low.score"}
+{"kind":"set","run":"r1","t":0,"value":6,"var":"Verdict.Low.doubled"}
+{"kind":"exited","run":"r1","state":"Verdict.Low","t":0}
+{"kind":"exited","run":"r1","state":"Verdict","t":0}
+{"kind":"done","output":6,"run":"r1","state":"Verdict.Low","t":0}

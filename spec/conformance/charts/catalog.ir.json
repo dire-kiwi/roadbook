@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/catalog.road",
@@ -150,6 +150,8 @@
           "endLine": 21,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Catalog.Open",
         "states": [
           {
@@ -164,6 +166,8 @@
               "endLine": 20,
               "endCol": 76
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -179,6 +183,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "reply",
@@ -187,6 +192,7 @@
                       "path": [
                         "call"
                       ],
+                      "state": null,
                       "type": "call search",
                       "text": "call"
                     },
@@ -201,6 +207,7 @@
                             "event",
                             "stock"
                           ],
+                          "state": null,
                           "type": "map<string, int>",
                           "text": "event.stock"
                         },
@@ -210,6 +217,7 @@
                             "event",
                             "page"
                           ],
+                          "state": null,
                           "type": "Page<Item>",
                           "text": "event.page"
                         }
@@ -283,6 +291,7 @@
             "path": [
               "wanted"
             ],
+            "state": null,
             "type": "Page<Item>",
             "text": "wanted"
           },
@@ -313,6 +322,8 @@
           "endLine": 37,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Shopper.Asking",
         "states": [
           {
@@ -327,6 +338,8 @@
               "endLine": 34,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -348,6 +361,7 @@
                     "path": [
                       "stock"
                     ],
+                    "state": null,
                     "type": "map<string, int>",
                     "text": "stock"
                   },
@@ -356,6 +370,7 @@
                     "path": [
                       "wanted"
                     ],
+                    "state": null,
                     "type": "Page<Item>",
                     "text": "wanted"
                   }
@@ -381,15 +396,18 @@
                   "Shopper.Found"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "found",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Page<Item>",
                       "text": "result"
                     }
@@ -415,6 +433,7 @@
                   "Shopper.Found"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -440,6 +459,8 @@
               "endLine": 36,
               "endCol": 37
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -451,6 +472,7 @@
               "path": [
                 "found"
               ],
+              "state": null,
               "type": "Page<Item>",
               "text": "found"
             },

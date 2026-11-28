@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0114]: `n` is a parameter of `M.A`; parameters are read-only
+ --> RB0114-assign-state-parameter.road:9:15
+  |
+9 |     on Go set n = 2
+  |               ^
+  |
+  = help: declare a variable of the state to hold the changing value: `var n: <type>`, or enter the state again with a new argument

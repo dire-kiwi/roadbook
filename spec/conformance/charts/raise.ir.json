@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/raise.road",
@@ -134,6 +134,8 @@
           "endLine": 35,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Order.Idle",
         "states": [
           {
@@ -148,6 +150,8 @@
               "endLine": 18,
               "endCol": 66
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -165,6 +169,7 @@
                   "Order.Work"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -225,6 +230,8 @@
               "endLine": 32,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Order.Work.Inner",
             "states": [
               {
@@ -239,6 +246,8 @@
                   "endLine": 29,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -268,6 +277,7 @@
                       "Order.Work.Finished"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -293,6 +303,8 @@
                   "endLine": 31,
                   "endCol": 55
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -339,10 +351,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -352,6 +366,7 @@
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         },
@@ -361,6 +376,7 @@
                             "event",
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "event.n"
                         }
@@ -399,6 +415,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -431,6 +448,7 @@
                   "Order.After"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -469,6 +487,8 @@
               "endLine": 34,
               "endCol": 41
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -484,6 +504,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -575,6 +596,8 @@
           "endLine": 50,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Starter.A",
         "states": [
           {
@@ -589,6 +612,8 @@
               "endLine": 47,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -619,6 +644,7 @@
                   "Starter.B"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -644,6 +670,8 @@
               "endLine": 49,
               "endCol": 27
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -661,6 +689,7 @@
                   "Starter.A"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -761,6 +790,8 @@
           "endLine": 68,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Lenient.A",
         "states": [
           {
@@ -775,6 +806,8 @@
               "endLine": 65,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -790,6 +823,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -821,6 +855,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -859,6 +894,7 @@
                   "Lenient.B"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -884,6 +920,8 @@
               "endLine": 67,
               "endCol": 27
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -901,6 +939,7 @@
                   "Lenient.A"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1001,6 +1040,8 @@
           "endLine": 87,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Picky.A",
         "states": [
           {
@@ -1015,6 +1056,8 @@
               "endLine": 84,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1030,6 +1073,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -1061,6 +1105,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -1099,6 +1144,7 @@
                   "Picky.B"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1124,6 +1170,8 @@
               "endLine": 86,
               "endCol": 27
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1141,6 +1189,7 @@
                   "Picky.A"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1219,6 +1268,8 @@
           "endLine": 100,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Loop.A",
         "states": [
           {
@@ -1233,6 +1284,8 @@
               "endLine": 99,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1248,6 +1301,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -1279,6 +1333,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -1441,6 +1496,8 @@
           "endLine": 131,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Reminder.Idle",
         "states": [
           {
@@ -1455,6 +1512,8 @@
               "endLine": 118,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1472,6 +1531,7 @@
                   "Reminder.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -1518,6 +1578,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "cancel",
@@ -1548,6 +1609,8 @@
               "endLine": 127,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1565,16 +1628,19 @@
                   "Reminder.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "attempts",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "attempt"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.attempt"
                     }
@@ -1597,6 +1663,7 @@
                                   "event",
                                   "attempt"
                                 ],
+                                "state": null,
                                 "type": "int",
                                 "text": "event.attempt"
                               },
@@ -1641,6 +1708,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -1689,6 +1757,7 @@
                   "Reminder.Idle"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "cancel",
@@ -1714,6 +1783,7 @@
                   "Reminder.Confirmed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1732,6 +1802,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1770,6 +1841,7 @@
                   "Reminder.GaveUp"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1795,6 +1867,8 @@
               "endLine": 129,
               "endCol": 27
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1816,6 +1890,8 @@
               "endLine": 130,
               "endCol": 27
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1890,6 +1966,8 @@
           "endLine": 148,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Ending.A",
         "states": [
           {
@@ -1904,6 +1982,8 @@
               "endLine": 145,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1921,6 +2001,7 @@
                   "Ending.Over"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1939,6 +2020,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1977,6 +2059,8 @@
               "endLine": 147,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2069,6 +2153,8 @@
           "endLine": 158,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Ticker.Running",
         "states": [
           {
@@ -2083,6 +2169,8 @@
               "endLine": 157,
               "endCol": 68
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2100,6 +2188,7 @@
                   "Ticker.Running"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -2202,6 +2291,8 @@
           "endLine": 173,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Parent.Using",
         "states": [
           {
@@ -2216,6 +2307,8 @@
               "endLine": 170,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2248,6 +2341,7 @@
                   "Parent.Left"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2268,6 +2362,7 @@
                   "Parent.Left"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2293,6 +2388,8 @@
               "endLine": 172,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2381,6 +2478,8 @@
           "endLine": 185,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Vault.Open",
         "states": [
           {
@@ -2395,6 +2494,8 @@
               "endLine": 182,
               "endCol": 124
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2412,6 +2513,7 @@
                   "Vault.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -2427,6 +2529,7 @@
                               "event",
                               "code"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.code"
                           }
@@ -2452,6 +2555,7 @@
                               "event",
                               "code"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.code"
                           }
@@ -2493,6 +2597,8 @@
               "endLine": 184,
               "endCol": 46
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2508,6 +2614,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",

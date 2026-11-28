@@ -708,8 +708,15 @@ impl Formatter<'_> {
     }
 
     fn state(&mut self, s: &State, indent: usize) {
-        let head = format!("{}state {}", state_prefix(s.kind), s.name.name);
+        let mut head = format!("{}state {}", state_prefix(s.kind), s.name.name);
+        let header = (s.span.start.offset, s.body.span.start.offset + 1);
+        if !s.params.is_empty() {
+            head = self.params(&s.name, &s.params, head, header, indent);
+        }
+        // A multi-line parameter list has already written the lines up to its `)`.
+        let multi = head == ")";
         let one_line = match s.body.items.as_slice() {
+            _ if multi => None,
             [] => Some("{}".to_string()),
             [item] => inline_item(item).map(|t| format!("{{ {t} }}")),
             _ => None,
@@ -722,12 +729,7 @@ impl Formatter<'_> {
                 "",
                 Some(Group::State),
             ),
-            _ => self.body(
-                &s.body,
-                (s.span.start.offset, s.body.span.start.offset + 1),
-                head,
-                indent,
-            ),
+            _ => self.body(&s.body, header, head, indent),
         }
     }
 
@@ -867,9 +869,20 @@ fn branch_cells(b: &Branch) -> Vec<String> {
     vec![String::new(), target, effects(&b.effects)]
 }
 
-/// `.A.B` or `A.B`, as written.
+/// `.A.B` or `A(x).B`, as written.
 fn target_text(t: &Target) -> String {
-    let path: Vec<_> = t.path.iter().map(|p| p.name.as_str()).collect();
+    let path: Vec<_> = t
+        .path
+        .iter()
+        .enumerate()
+        .map(|(i, p)| match t.args_of(i) {
+            Some(a) => {
+                let args: Vec<_> = a.args.iter().map(expr).collect();
+                format!("{}({})", p.name, args.join(", "))
+            }
+            None => p.name.clone(),
+        })
+        .collect();
     format!("{}{}", if t.dot { "." } else { "" }, path.join("."))
 }
 

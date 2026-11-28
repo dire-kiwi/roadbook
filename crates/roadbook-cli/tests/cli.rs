@@ -135,7 +135,7 @@ fn export_ir_writes_the_fixture() {
     let out = roadbook(&dir, &["export", "ir", "m.road", "-o", "m.ir.json"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let written = std::fs::read_to_string(dir.join("m.ir.json")).unwrap();
-    assert!(written.contains("\"irVersion\": \"0.12\""));
+    assert!(written.contains("\"irVersion\": \"0.13\""));
 }
 
 #[test]
@@ -1041,6 +1041,22 @@ fn export_mermaid_snapshots_calls() {
     );
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     insta::assert_snapshot!("calls_mermaid", text(&out.stdout));
+}
+
+/// A state's parameters label it, its variables are lines of its description, and a
+/// transition's arguments end its label.
+#[test]
+fn export_mermaid_snapshots_state_locals() {
+    let out = roadbook(
+        &repo(),
+        &[
+            "export",
+            "mermaid",
+            "crates/roadbook-compiler/tests/pass/locals.road",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    insta::assert_snapshot!("locals_mermaid", text(&out.stdout));
 }
 
 /// A transition with several targets is an arrow to each, with the same label.

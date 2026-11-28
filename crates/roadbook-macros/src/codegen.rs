@@ -272,6 +272,12 @@ fn names_in_arguments(ir: &Ir) -> HashSet<String> {
         for e in m.events.values().chain(m.emits.values()) {
             fields(&e.fields, &mut each);
         }
+        let mut stack = vec![&m.root];
+        while let Some(s) = stack.pop() {
+            fields(&s.params, &mut each);
+            s.vars.iter().for_each(|v| each(&v.ty));
+            stack.extend(&s.states);
+        }
     }
     out
 }
@@ -1962,6 +1968,9 @@ struct Uses {
 
 impl Uses {
     fn state(&mut self, s: &State) {
+        for e in s.vars.iter().filter_map(|v| v.init.as_ref()) {
+            self.expr(e);
+        }
         for e in s.entry.iter().chain(&s.exit) {
             self.effect(e);
         }
@@ -1979,6 +1988,10 @@ impl Uses {
                 self.expr(g);
             }
             t.effects.iter().for_each(|e| self.effect(e));
+            t.args
+                .iter()
+                .flat_map(|a| &a.values)
+                .for_each(|a| self.expr(a));
         }
         for e in s.output.iter().chain(&s.fail) {
             self.expr(e);

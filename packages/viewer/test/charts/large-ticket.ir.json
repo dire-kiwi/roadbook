@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -1212,6 +1212,8 @@
           "endLine": 284,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "SupportTicket.Intake",
         "states": [
           {
@@ -1226,6 +1228,8 @@
               "endLine": 83,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "SupportTicket.Intake.Classifying",
             "states": [
               {
@@ -1240,6 +1244,8 @@
                   "endLine": 64,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1256,6 +1262,7 @@
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       }
@@ -1281,15 +1288,18 @@
                       "SupportTicket.Intake.Screening"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "classification",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "Classification",
                           "text": "result"
                         }
@@ -1297,12 +1307,14 @@
                       {
                         "kind": "set",
                         "var": "priority",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result",
                             "priority"
                           ],
+                          "state": null,
                           "type": "Priority",
                           "text": "result.priority"
                         }
@@ -1310,12 +1322,14 @@
                       {
                         "kind": "set",
                         "var": "category",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result",
                             "category"
                           ],
+                          "state": null,
                           "type": "Category",
                           "text": "result.category"
                         }
@@ -1345,6 +1359,7 @@
                           "path": [
                             "classifyAttempts"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "classifyAttempts"
                         },
@@ -1362,6 +1377,7 @@
                       "SupportTicket.Intake.ClassifyBackoff"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1383,6 +1399,7 @@
                       "SupportTicket.Intake.Unclassified"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1408,12 +1425,15 @@
                   "endLine": 70,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
                   {
                     "kind": "set",
                     "var": "classifyAttempts",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -1423,6 +1443,7 @@
                           "path": [
                             "classifyAttempts"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "classifyAttempts"
                         },
@@ -1453,6 +1474,7 @@
                             "path": [
                               "classifyAttempts"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "classifyAttempts"
                           }
@@ -1467,6 +1489,7 @@
                       "SupportTicket.Intake.Classifying"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1492,6 +1515,8 @@
                   "endLine": 78,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1512,6 +1537,7 @@
                           "path": [
                             "classification"
                           ],
+                          "state": null,
                           "type": "Classification",
                           "text": "classification"
                         }
@@ -1523,6 +1549,7 @@
                       "SupportTicket.Spam"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1546,6 +1573,7 @@
                           "path": [
                             "classification"
                           ],
+                          "state": null,
                           "type": "Classification",
                           "text": "classification"
                         }
@@ -1557,6 +1585,7 @@
                       "SupportTicket.Duplicate"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1576,6 +1605,7 @@
                       "SupportTicket.Intake.Accepted"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1601,6 +1631,8 @@
                   "endLine": 81,
                   "endCol": 32
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1622,6 +1654,8 @@
                   "endLine": 82,
                   "endCol": 77
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -1634,6 +1668,7 @@
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -1667,6 +1702,7 @@
                   "SupportTicket.Triage"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1692,6 +1728,8 @@
               "endLine": 107,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "SupportTicket.Triage.Routing",
             "states": [
               {
@@ -1706,6 +1744,8 @@
                   "endLine": 101,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1722,6 +1762,7 @@
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -1730,6 +1771,7 @@
                         "path": [
                           "category"
                         ],
+                        "state": null,
                         "type": "Category",
                         "text": "category"
                       }
@@ -1755,15 +1797,18 @@
                       "SupportTicket.Triage.Assigned"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "agentId",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "string",
                           "text": "result"
                         }
@@ -1789,6 +1834,7 @@
                       "SupportTicket.Triage.Queued"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1814,6 +1860,8 @@
                   "endLine": 104,
                   "endCol": 42
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1836,6 +1884,7 @@
                       "SupportTicket.Triage.Routing"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1861,6 +1910,8 @@
                   "endLine": 106,
                   "endCol": 79
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -1873,6 +1924,7 @@
                         "path": [
                           "agentId"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "agentId"
                       },
@@ -1881,6 +1933,7 @@
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -1916,6 +1969,7 @@
                         "path": [
                           "priority"
                         ],
+                        "state": null,
                         "type": "Priority",
                         "text": "priority"
                       }
@@ -1928,6 +1982,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1938,6 +1993,7 @@
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -1969,16 +2025,19 @@
                   "SupportTicket.Triage.Assigned"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "agentId",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "agentId"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.agentId"
                     }
@@ -2003,6 +2062,7 @@
                   "SupportTicket.OutOfScope"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2023,6 +2083,7 @@
                   "SupportTicket.Withdrawn"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2042,6 +2103,7 @@
                   "SupportTicket.Active"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2067,6 +2129,8 @@
               "endLine": 252,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "SupportTicket.Active.Working",
             "states": [
               {
@@ -2081,6 +2145,8 @@
                   "endLine": 156,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "SupportTicket.Active.Working.WithAgent",
                 "states": [
                   {
@@ -2095,6 +2161,8 @@
                       "endLine": 135,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -2117,6 +2185,7 @@
                           "SupportTicket.Active.Working.WithAgent"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -2127,6 +2196,7 @@
                                 "path": [
                                   "agentId"
                                 ],
+                                "state": null,
                                 "type": "string",
                                 "text": "agentId"
                               },
@@ -2135,6 +2205,7 @@
                                 "path": [
                                   "ticket"
                                 ],
+                                "state": null,
                                 "type": "Ticket",
                                 "text": "ticket"
                               },
@@ -2166,6 +2237,7 @@
                           "SupportTicket.Active.Working.WaitingOnCustomer"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -2176,6 +2248,7 @@
                                 "path": [
                                   "ticket"
                                 ],
+                                "state": null,
                                 "type": "Ticket",
                                 "text": "ticket"
                               },
@@ -2185,6 +2258,7 @@
                                   "event",
                                   "body"
                                 ],
+                                "state": null,
                                 "type": "string",
                                 "text": "event.body"
                               }
@@ -2210,6 +2284,7 @@
                           "SupportTicket.Active.Working.OnHold"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2230,6 +2305,7 @@
                           "SupportTicket.Active.Resolving"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2250,6 +2326,7 @@
                           "SupportTicket.Duplicate"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2275,6 +2352,8 @@
                       "endLine": 149,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
                     "states": [
                       {
@@ -2289,6 +2368,8 @@
                           "endLine": 144,
                           "endCol": 87
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -2311,6 +2392,7 @@
                               "SupportTicket.Active.Working.WaitingOnCustomer.Reminded"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "do",
@@ -2321,6 +2403,7 @@
                                     "path": [
                                       "ticket"
                                     ],
+                                    "state": null,
                                     "type": "Ticket",
                                     "text": "ticket"
                                   },
@@ -2357,6 +2440,8 @@
                           "endLine": 146,
                           "endCol": 89
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -2379,6 +2464,7 @@
                               "SupportTicket.Active.Working.WaitingOnCustomer.LastCall"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "do",
@@ -2389,6 +2475,7 @@
                                     "path": [
                                       "ticket"
                                     ],
+                                    "state": null,
                                     "type": "Ticket",
                                     "text": "ticket"
                                   },
@@ -2425,6 +2512,8 @@
                           "endLine": 148,
                           "endCol": 26
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -2455,6 +2544,7 @@
                           "SupportTicket.AutoClosed"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2475,6 +2565,7 @@
                           "SupportTicket.Active.Working.WithAgent"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2500,6 +2591,8 @@
                       "endLine": 155,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -2517,6 +2610,7 @@
                           "SupportTicket.Active.Working.WithAgent"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2542,6 +2636,7 @@
                           "SupportTicket.Active.Working.WithAgent"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -2552,6 +2647,7 @@
                                 "path": [
                                   "agentId"
                                 ],
+                                "state": null,
                                 "type": "string",
                                 "text": "agentId"
                               },
@@ -2560,6 +2656,7 @@
                                 "path": [
                                   "ticket"
                                 ],
+                                "state": null,
                                 "type": "Ticket",
                                 "text": "ticket"
                               },
@@ -2600,6 +2697,7 @@
                       "SupportTicket.Active.Escalation"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -2625,6 +2723,8 @@
                   "endLine": 203,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "SupportTicket.Active.Escalation.Tier2",
                 "states": [
                   {
@@ -2639,6 +2739,8 @@
                       "endLine": 168,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [
@@ -2651,6 +2753,7 @@
                             "path": [
                               "ticket"
                             ],
+                            "state": null,
                             "type": "Ticket",
                             "text": "ticket"
                           },
@@ -2682,6 +2785,7 @@
                           "SupportTicket.Active.Escalation.Tier3"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2707,6 +2811,8 @@
                       "endLine": 173,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [
@@ -2719,6 +2825,7 @@
                             "path": [
                               "ticket"
                             ],
+                            "state": null,
                             "type": "Ticket",
                             "text": "ticket"
                           },
@@ -2750,6 +2857,7 @@
                           "SupportTicket.Active.Escalation.Engineering"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2775,6 +2883,8 @@
                       "endLine": 202,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": "SupportTicket.Active.Escalation.Engineering.FilingBug",
                     "states": [
                       {
@@ -2789,6 +2899,8 @@
                           "endLine": 189,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -2805,6 +2917,7 @@
                                 "path": [
                                   "ticket"
                                 ],
+                                "state": null,
                                 "type": "Ticket",
                                 "text": "ticket"
                               }
@@ -2830,15 +2943,18 @@
                               "SupportTicket.Active.Escalation.Engineering.AwaitingFix"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "set",
                                 "var": "bugId",
+                                "state": null,
                                 "value": {
                                   "kind": "ref",
                                   "path": [
                                     "result"
                                   ],
+                                  "state": null,
                                   "type": "string",
                                   "text": "result"
                                 }
@@ -2868,6 +2984,7 @@
                                   "path": [
                                     "bugAttempts"
                                   ],
+                                  "state": null,
                                   "type": "int",
                                   "text": "bugAttempts"
                                 },
@@ -2885,16 +3002,19 @@
                               "SupportTicket.Active.Escalation.Engineering.BugBackoff"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "set",
                                 "var": "retryWait",
+                                "state": null,
                                 "value": {
                                   "kind": "ref",
                                   "path": [
                                     "error",
                                     "retryAfter"
                                   ],
+                                  "state": null,
                                   "type": "duration",
                                   "text": "error.retryAfter"
                                 }
@@ -2920,6 +3040,7 @@
                               "SupportTicket.Active.Escalation.Engineering.AwaitingFix"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "do",
@@ -2930,6 +3051,7 @@
                                     "path": [
                                       "agentId"
                                     ],
+                                    "state": null,
                                     "type": "string",
                                     "text": "agentId"
                                   },
@@ -2938,6 +3060,7 @@
                                     "path": [
                                       "ticket"
                                     ],
+                                    "state": null,
                                     "type": "Ticket",
                                     "text": "ticket"
                                   },
@@ -2974,12 +3097,15 @@
                           "endLine": 194,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [
                           {
                             "kind": "set",
                             "var": "bugAttempts",
+                            "state": null,
                             "value": {
                               "kind": "op",
                               "op": "+",
@@ -2989,6 +3115,7 @@
                                   "path": [
                                     "bugAttempts"
                                   ],
+                                  "state": null,
                                   "type": "int",
                                   "text": "bugAttempts"
                                 },
@@ -3015,6 +3142,7 @@
                                 "path": [
                                   "retryWait"
                                 ],
+                                "state": null,
                                 "type": "duration",
                                 "text": "retryWait"
                               }
@@ -3025,6 +3153,7 @@
                               "SupportTicket.Active.Escalation.Engineering.FilingBug"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -3050,6 +3179,8 @@
                           "endLine": 199,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3067,6 +3198,7 @@
                               "SupportTicket.Active.Escalation.Engineering.FixShipped"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -3087,6 +3219,7 @@
                               "SupportTicket.Unresolvable"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -3112,6 +3245,8 @@
                           "endLine": 201,
                           "endCol": 34
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3136,6 +3271,7 @@
                           "SupportTicket.Active.Resolving"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -3165,6 +3301,7 @@
                       "SupportTicket.Active.Working"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3185,6 +3322,7 @@
                       "SupportTicket.Active.Resolving"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3210,6 +3348,8 @@
                   "endLine": 235,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [
                   {
@@ -3224,6 +3364,8 @@
                       "endLine": 222,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": "SupportTicket.Active.Resolving.FixCheck.Verifying",
                     "states": [
                       {
@@ -3238,6 +3380,8 @@
                           "endLine": 219,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3254,6 +3398,7 @@
                                 "path": [
                                   "ticket"
                                 ],
+                                "state": null,
                                 "type": "Ticket",
                                 "text": "ticket"
                               }
@@ -3279,6 +3424,7 @@
                               "path": [
                                 "result"
                               ],
+                              "state": null,
                               "type": "bool",
                               "text": "result"
                             },
@@ -3286,6 +3432,7 @@
                               "SupportTicket.Active.Resolving.FixCheck.Verified"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -3306,6 +3453,7 @@
                               "SupportTicket.Active.Working"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "do",
@@ -3316,6 +3464,7 @@
                                     "path": [
                                       "agentId"
                                     ],
+                                    "state": null,
                                     "type": "string",
                                     "text": "agentId"
                                   },
@@ -3324,6 +3473,7 @@
                                     "path": [
                                       "ticket"
                                     ],
+                                    "state": null,
                                     "type": "Ticket",
                                     "text": "ticket"
                                   },
@@ -3360,6 +3510,8 @@
                           "endLine": 221,
                           "endCol": 32
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3389,6 +3541,8 @@
                       "endLine": 234,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
                     "states": [
                       {
@@ -3403,6 +3557,8 @@
                           "endLine": 231,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3419,6 +3575,7 @@
                                 "path": [
                                   "ticket"
                                 ],
+                                "state": null,
                                 "type": "Ticket",
                                 "text": "ticket"
                               }
@@ -3444,15 +3601,18 @@
                               "SupportTicket.Active.Resolving.CustomerNotice.Drafted"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "set",
                                 "var": "resolution",
+                                "state": null,
                                 "value": {
                                   "kind": "ref",
                                   "path": [
                                     "result"
                                   ],
+                                  "state": null,
                                   "type": "string",
                                   "text": "result"
                                 }
@@ -3482,6 +3642,8 @@
                           "endLine": 233,
                           "endCol": 31
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3514,6 +3676,7 @@
                       "SupportTicket.Active.AwaitingConfirmation"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -3524,6 +3687,7 @@
                             "path": [
                               "ticket"
                             ],
+                            "state": null,
                             "type": "Ticket",
                             "text": "ticket"
                           },
@@ -3532,6 +3696,7 @@
                             "path": [
                               "resolution"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "resolution"
                           }
@@ -3562,6 +3727,8 @@
                   "endLine": 242,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -3579,6 +3746,7 @@
                       "SupportTicket.Closing"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3599,6 +3767,7 @@
                       "SupportTicket.Active.Reopened"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3624,6 +3793,7 @@
                       "SupportTicket.Closing"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3649,12 +3819,15 @@
                   "endLine": 251,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
                   {
                     "kind": "set",
                     "var": "reopens",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -3664,6 +3837,7 @@
                           "path": [
                             "reopens"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "reopens"
                         },
@@ -3696,6 +3870,7 @@
                           "path": [
                             "reopens"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "reopens"
                         },
@@ -3713,6 +3888,7 @@
                       "SupportTicket.Active.Working"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3732,6 +3908,7 @@
                       "SupportTicket.Active.Escalation"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3762,6 +3939,7 @@
                         "path": [
                           "priority"
                         ],
+                        "state": null,
                         "type": "Priority",
                         "text": "priority"
                       }
@@ -3774,6 +3952,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -3784,6 +3963,7 @@
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -3813,6 +3993,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -3823,6 +4004,7 @@
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -3832,6 +4014,7 @@
                           "event",
                           "text"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.text"
                       }
@@ -3857,6 +4040,7 @@
                   "SupportTicket.Withdrawn"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -3877,6 +4061,7 @@
                   "SupportTicket.Merged"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -3895,6 +4080,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -3911,6 +4097,7 @@
                         "event",
                         "delay"
                       ],
+                      "state": null,
                       "type": "duration",
                       "text": "event.delay"
                     },
@@ -3934,6 +4121,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -3944,6 +4132,7 @@
                         "path": [
                           "agentId"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "agentId"
                       },
@@ -3952,6 +4141,7 @@
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -3988,6 +4178,8 @@
               "endLine": 268,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "SupportTicket.Closing.Surveying",
             "states": [
               {
@@ -4002,6 +4194,8 @@
                   "endLine": 265,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -4018,6 +4212,7 @@
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       }
@@ -4043,15 +4238,18 @@
                       "SupportTicket.Closing.Surveyed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "survey",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "SurveyResult",
                           "text": "result"
                         }
@@ -4081,6 +4279,8 @@
                   "endLine": 267,
                   "endCol": 28
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -4110,6 +4310,7 @@
                   "SupportTicket.Resolved"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -4135,6 +4336,8 @@
               "endLine": 270,
               "endCol": 76
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4150,6 +4353,7 @@
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4158,6 +4362,7 @@
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 },
@@ -4166,6 +4371,7 @@
                   "path": [
                     "survey"
                   ],
+                  "state": null,
                   "type": "SurveyResult",
                   "text": "survey"
                 }
@@ -4187,6 +4393,8 @@
               "endLine": 271,
               "endCol": 87
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4202,6 +4410,7 @@
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4216,6 +4425,7 @@
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4237,6 +4447,8 @@
               "endLine": 272,
               "endCol": 81
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4252,6 +4464,7 @@
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4266,6 +4479,7 @@
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4287,6 +4501,8 @@
               "endLine": 273,
               "endCol": 86
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4302,6 +4518,7 @@
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4316,6 +4533,7 @@
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4337,6 +4555,8 @@
               "endLine": 274,
               "endCol": 86
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4352,6 +4572,7 @@
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4366,6 +4587,7 @@
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4387,6 +4609,8 @@
               "endLine": 275,
               "endCol": 87
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4402,6 +4626,7 @@
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4416,6 +4641,7 @@
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4437,6 +4663,8 @@
               "endLine": 276,
               "endCol": 83
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4452,6 +4680,7 @@
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4466,6 +4695,7 @@
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4487,6 +4717,8 @@
               "endLine": 277,
               "endCol": 89
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4502,6 +4734,7 @@
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4516,6 +4749,7 @@
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4626,6 +4860,8 @@
           "endLine": 33,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "SatisfactionSurvey.Sending",
         "states": [
           {
@@ -4640,6 +4876,8 @@
               "endLine": 16,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4656,6 +4894,7 @@
                     "path": [
                       "ticket"
                     ],
+                    "state": null,
                     "type": "Ticket",
                     "text": "ticket"
                   }
@@ -4681,15 +4920,18 @@
                   "SatisfactionSurvey.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "surveyId",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "result"
                     }
@@ -4715,6 +4957,7 @@
                   "SatisfactionSurvey.NoAnswer"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -4740,6 +4983,8 @@
               "endLine": 19,
               "endCol": 41
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4762,6 +5007,7 @@
                   "SatisfactionSurvey.Polling"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -4787,6 +5033,8 @@
               "endLine": 29,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4803,6 +5051,7 @@
                     "path": [
                       "surveyId"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "surveyId"
                   }
@@ -4828,15 +5077,18 @@
                   "SatisfactionSurvey.Answered"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "score",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -4866,6 +5118,7 @@
                       "path": [
                         "polls"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "polls"
                     },
@@ -4883,10 +5136,12 @@
                   "SatisfactionSurvey.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "polls",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -4896,6 +5151,7 @@
                           "path": [
                             "polls"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "polls"
                         },
@@ -4931,6 +5187,7 @@
                   "SatisfactionSurvey.NoAnswer"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -4956,6 +5213,8 @@
               "endLine": 31,
               "endCol": 80
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4981,6 +5240,7 @@
                     "path": [
                       "score"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "score"
                   }
@@ -5003,6 +5263,8 @@
               "endLine": 32,
               "endCol": 77
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

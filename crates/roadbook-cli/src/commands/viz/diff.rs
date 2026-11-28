@@ -597,6 +597,9 @@ fn mark_all(s: &State, status: Status, d: &mut MachineDiff) {
 
 fn shift_state(s: &mut State, offset: u32) {
     s.span.file += offset;
+    for v in &mut s.vars {
+        v.span.file += offset;
+    }
     for inv in &mut s.invokes {
         inv.span.file += offset;
     }
@@ -796,7 +799,7 @@ pub fn trigger_text(s: &State, t: &Trigger) -> String {
 /// `effectText` in `packages/viewer/src/model.ts`.
 pub fn effect_text(e: &Effect) -> String {
     match e {
-        Effect::Set { var, value } => format!("set {var} = {}", value.text),
+        Effect::Set { var, value, .. } => format!("set {var} = {}", value.text),
         Effect::Do { action, args } => format!(
             "do {action}({})",
             args.iter()
@@ -912,6 +915,7 @@ fn state_changes(a: &State, b: &State) -> Vec<Change> {
     };
     cmp("kind", Some(kind_text(b.kind)), Some(kind_text(a.kind)));
     cmp("doc", doc(&b.doc), doc(&a.doc));
+    cmp("params", params_text(&b.params), params_text(&a.params));
     cmp(
         "initial",
         b.initial.as_deref().map(short),
@@ -930,14 +934,71 @@ fn state_changes(a: &State, b: &State) -> Vec<Change> {
         b.fail.as_ref().map(|e| e.text.clone()),
         a.fail.as_ref().map(|e| e.text.clone()),
     );
+    keyed(
+        &mut out,
+        "var",
+        b.vars.iter().map(|v| (v.name.clone(), var_text(v))),
+        a.vars.iter().map(|v| (v.name.clone(), var_text(v))),
+    );
     out
+}
+
+/// `(token: ResetToken)`, or `None` for a state that takes no parameters.
+fn params_text(params: &[roadbook_ir::Field]) -> Option<String> {
+    (!params.is_empty()).then(|| format!("({})", fields_text(params)))
+}
+
+/// `sensitive var tries: int = 0`, a machine's or a state's.
+fn var_text(v: &roadbook_ir::Var) -> String {
+    let init = v
+        .init
+        .as_ref()
+        .map(|e| format!(" = {}", e.text))
+        .unwrap_or_default();
+    let sensitive = if v.sensitive { "sensitive " } else { "" };
+    format!("{sensitive}var {}: {}{init}", v.name, v.ty)
+}
+
+/// A target relative to its machine, with the arguments the transition passes to the states on
+/// its path: `Editing(doc).Changing`. A state's arguments are written once, on the first target
+/// whose path goes through it; `used` holds those already written.
+fn target_path(t: &Transition, target: &str, used: &mut Vec<String>) -> String {
+    let mut id = String::new();
+    let mut out: Vec<String> = Vec::new();
+    for (i, seg) in target.split('.').enumerate() {
+        if i > 0 {
+            id.push('.');
+        }
+        id.push_str(seg);
+        if i == 0 {
+            continue;
+        }
+        match t.args.iter().find(|a| a.state == id) {
+            Some(a) if !used.contains(&a.state) => {
+                used.push(a.state.clone());
+                let values: Vec<&str> = a.values.iter().map(|v| v.text.as_str()).collect();
+                out.push(format!("{seg}({})", values.join(", ")));
+            }
+            _ => out.push(seg.to_string()),
+        }
+    }
+    if out.is_empty() {
+        target.to_string()
+    } else {
+        out.join(".")
+    }
 }
 
 fn target_text(t: &Transition) -> String {
     if t.targets.is_empty() {
         return "(no target)".to_string();
     }
-    let targets: Vec<String> = t.targets.iter().map(|x| short(x)).collect();
+    let mut used = Vec::new();
+    let targets: Vec<String> = t
+        .targets
+        .iter()
+        .map(|x| target_path(t, x, &mut used))
+        .collect();
     let targets = targets.join(", ");
     if t.internal {
         format!("{targets} (internal: its state is not left)")
@@ -1033,20 +1094,11 @@ fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
     if b.doc != a.doc {
         out.push(change("doc", doc(&b.doc), doc(&a.doc)));
     }
-    let var = |v: &roadbook_ir::Var| {
-        let init = v
-            .init
-            .as_ref()
-            .map(|e| format!(" = {}", e.text))
-            .unwrap_or_default();
-        let sensitive = if v.sensitive { "sensitive " } else { "" };
-        format!("{sensitive}var {}: {}{init}", v.name, v.ty)
-    };
     keyed(
         &mut out,
         "var",
-        b.vars.iter().map(|v| (v.name.clone(), var(v))),
-        a.vars.iter().map(|v| (v.name.clone(), var(v))),
+        b.vars.iter().map(|v| (v.name.clone(), var_text(v))),
+        a.vars.iter().map(|v| (v.name.clone(), var_text(v))),
     );
     let event = |kw: &str, n: &str, e: &roadbook_ir::EventDecl| {
         let f = fields_text(&e.fields);
@@ -1269,6 +1321,32 @@ machine M(n: int) -> int ! Declined {
         let (m, s, t) = d.counts();
         assert_eq!((m.changed, s.added, t.added), (1, 1, 2));
         assert_eq!((s.removed, s.changed, t.removed, t.changed), (0, 0, 0, 0));
+    }
+
+    #[test]
+    fn state_parameters_variables_and_arguments() {
+        let before = BASE.replace("if n > 1 -> B ", "if n > 1 -> B(n)").replace(
+            "  state B {\n",
+            "  state B(m: int) {\n    var left: int = m\n",
+        );
+        let after = BASE
+            .replace("if n > 1 -> B ", "if n > 1 -> B(n + 1, 2)")
+            .replace(
+                "  state B {\n",
+                "  state B(m: int, sensitive k: int) {\n    var left: int = m + 1\n    var seen: bool = true\n",
+            );
+        let d = diff(Some(&ir(&before)), Some(&ir(&after)), "main");
+        let b = status_of(&d, "M.B").unwrap();
+        assert_eq!(whats(b), ["params", "var left", "var seen"]);
+        assert_eq!(
+            b.changes[0].after.as_deref(),
+            Some("(m: int, sensitive k: int)")
+        );
+        assert_eq!(b.changes[1].after.as_deref(), Some("var left: int = m + 1"));
+        let t = transition_of(&d, "M.A", 0).unwrap();
+        assert_eq!(whats(t), ["target"]);
+        assert_eq!(t.changes[0].before.as_deref(), Some("B(n)"));
+        assert_eq!(t.changes[0].after.as_deref(), Some("B(n + 1, 2)"));
     }
 
     #[test]

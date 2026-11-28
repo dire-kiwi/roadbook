@@ -2,7 +2,7 @@
 
 This page is the algorithm both runtimes implement: what the pure core does with a snapshot and an input, what it asks the driver to do, and how the driver carries that out. It is precise enough that two independent implementations produce the same [trace](trace.md) byte for byte, and the [conformance cases](conformance/) hold them to it. The design rationale is in [semantics](../docs/design/semantics.md); this page only says what happens.
 
-It covers atomic, compound, parallel and final states, events, guards, `invoke` of tasks and machines, `after`, `always` and `done`, [messages between runs](#messages-between-runs) (`send`, `emit`, `on name.Event` and `ref`, milestone 5), [calls between runs](#calls-between-runs) (`call`, `invoke name.call` and `reply`), [saving and restoring](#saving-and-restoring) a run (milestone 6) together with its [child runs](#saved-child-runs), [history states](#history-states), [spawned children](#spawned-children) (keyed `spawn`), [tasks that emit](#tasks-that-emit) (`emits` on a task, stream tasks and spawned tasks), and [events a machine raises](#raised-events) (`raise`, delayed `raise … after`, `cancel` and `internal event`). Parallel states, history states, spawned children, tasks that emit and raised events change nothing for a machine that has none: every rule below reduces to the one it replaced, and the traces of such machines are unchanged.
+It covers atomic, compound, parallel and final states, events, guards, `invoke` of tasks and machines, `after`, `always` and `done`, [messages between runs](#messages-between-runs) (`send`, `emit`, `on name.Event` and `ref`, milestone 5), [calls between runs](#calls-between-runs) (`call`, `invoke name.call` and `reply`), [saving and restoring](#saving-and-restoring) a run (milestone 6) together with its [child runs](#saved-child-runs), [history states](#history-states), [spawned children](#spawned-children) (keyed `spawn`), [tasks that emit](#tasks-that-emit) (`emits` on a task, stream tasks and spawned tasks), [events a machine raises](#raised-events) (`raise`, delayed `raise … after`, `cancel` and `internal event`), and [data local to a state](#data-local-to-a-state) (a state's parameters and variables). Parallel states, history states, spawned children, tasks that emit, raised events and state locals change nothing for a machine that has none: every rule below reduces to the one it replaced, and the traces of such machines are unchanged.
 
 ## Terms
 
@@ -14,6 +14,7 @@ It covers atomic, compound, parallel and final states, events, guards, `invoke` 
 - **Document order** is the order of a pre-order walk of the IR's state tree: a state comes before its children, and children are in `states` order. **Innermost first** means reverse document order; for a chain it is leaf to root.
 - An **internal event** is one of the machine's `internalEvents` (`internal event E`): an event the machine raises itself, which host code and other runs cannot send. The machine's **own events** are its `events` and its `internalEvents`.
 - A **raised event** is one of the machine's own events that a `raise` effect puts on the run's **internal queue**, to be taken before the step ends ([raised events](#raised-events)). A **delayed raise** (`raise E after d as n`) is a timer that belongs to the run, not to a state: when it expires its event is taken as an input. Its optional `name` lets a `cancel` effect stop it.
+- A state's **locals** are its parameters (`params` in the IR) and its variables (`vars`): data that exists only while the state is active. Each time the state is entered its parameters get the values the transition that enters it passes, its **arguments**, and its variables their initial values; when it is left they are gone ([data local to a state](#data-local-to-a-state)). The root has none: the machine's parameters and variables are `input` and `vars`.
 - An **input** is what the driver gives the core: an external event, a message, an emitted event or a call from another run, an event a task emitted, a peer's end, an invoke's or a spawned child's outcome, a timer's expiry (an `after` timer's or a delayed raise's), or a request to cancel or to fail with a defect.
 - A **top-level run** is one that host code started (`run`, `spawn`), as opposed to a **child run**, which an `invoke` or a `spawn` effect of its parent started ([child runs](#child-runs)). A **peer** of a run is a top-level run it holds a `ref` to.
 - A **spawned child** is a child run that a `spawn` effect started into one of the machine's `children` collections, under a key ([spawned children](#spawned-children)), or, for a collection of tasks, a **spawned task**: a task started the same way, which is not a run. Unlike an invoked child it belongs to the run, not to a state: it runs until it ends by itself, until a `stop` effect stops it, until a `spawn` with the same key replaces it, or until its parent ends.
@@ -52,6 +53,7 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
   "active": ["Checkout", "Checkout.Backoff"],    // active state ids, in document order
   "input": { "order": { /* … */ }, "user": { /* … */ } },
   "vars": { "attempts": 1 },                     // assigned variables only
+  "locals": {},                                  // the active states' parameters and variables
   "invokes": [],                                 // running invokes
   "calls": [],                                   // calls taken and not answered
   "spawned": [],                                 // running spawned children
@@ -61,6 +63,7 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
   "nextTimer": 2,
   "nextMessage": 1,
   "history": {},
+  "historyLocals": {},
   "result": null
 }
 ```
@@ -73,6 +76,7 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
 | `active` | The active states' ids in document order. `[]` once the run is `done`, `failed` or `cancelled`. When the run ends with a `defect`, left as it was in the snapshot the defect was applied to, to show roughly where it stopped (`[]` if that snapshot had already finished). |
 | `input` | The arguments, keyed by parameter name. Parameters are read from here. A `ref` is the id of the run it refers to ([values](#values)). |
 | `vars` | Every variable that has a value, keyed by name. A variable with no value yet has no member, which is different from an optional variable holding `null`. An optional variable always has a member, since it starts as `null` when it has no initial value. |
+| `locals` | The locals of the active states, keyed by state id, in document order: one member for each active state that declares a parameter or a variable, an object keyed by name holding those of its locals that have a value, as `vars` does (a parameter always has one). A state that declares none has no member. `{}` once the run is `done`, `failed` or `cancelled`; when it ends with a `defect`, left as it was, as `active` is ([data local to a state](#data-local-to-a-state)). |
 | `invokes` | `[{"id", "state", "src"}]`: the invokes that are running, in the order they were started. `state` is the id of the state that owns it, `src` the task's or machine's name, or for a call the address and the call, `inventory.reserve`. An entry whose state has several invokes also has `as`, the `as` of the one it runs: `{"id", "state", "src", "as"}`. The entry's **invoke** is the invoke of its state with that `as`, or the state's one invoke for an entry without `as`. |
 | `calls` | `[{"from", "invoke", "call"}]`: the calls the run has taken and not answered yet, its **pending calls**, in the order it took them. `from` is the caller's run id, `invoke` the id of the caller's invoke, and `call` the call's name ([calls between runs](#calls-between-runs)). |
 | `spawned` | `[{"id", "children", "key", "args"}]`: the spawned children that are running, spawned tasks among them, in the order they were started. `children` is the name of the collection, `key` the child's key and `args` its arguments, keyed by parameter name, as they were evaluated when it was spawned ([spawned children](#spawned-children)). |
@@ -81,6 +85,7 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
 | `nextInvoke`, `nextTimer` | The id the next invoke or timer will get. Both start at 1. Ids are never reused within a run, which is what lets the core recognise a stale outcome. `after` timers and delayed raises take their ids from the one sequence `nextTimer`, so a timer id names one or the other. Invokes and spawned children take their ids from the one sequence `nextInvoke`, so an id names one or the other, and the child run of either, when it runs a machine, is `<run>.<id>`. |
 | `nextMessage` | The id the next `send` or `emit` effect will get, from 1. A message is named in traces by its sender's run id and this id. |
 | `history` | What each history state has recorded ([history states](#history-states)), keyed by the history state's id: a list of state ids, in document order. A history state whose parent no microstep has exited yet has no member. Starts as `{}`. |
+| `historyLocals` | The locals each history state recorded with the states it will re-enter, keyed by the history state's id, then by the id of such a state that declares a local, then by name ([history states](#history-states)). A history state whose record holds no state with locals has no member. Starts as `{}`. |
 | `result` | `null` while running and when cancelled. `{"output": value}` when done (`value` is `null` for a machine that returns nothing), `{"error": value}` when failed, `{"defect": defect}` when the run ended with a [defect](#defects). |
 
 A **saved snapshot**, the form host code stores, is this snapshot with a format version and the due time of each timer and delayed raise added ([saving and restoring](#saving-and-restoring)).
@@ -139,20 +144,20 @@ Every `trace` command carries its record **redacted** ([trace.md](trace.md#redac
 ```
 start(ir, name, run, input, fns):
   m    = ir.machines[name]
-  snap = { machine: name, run, ir: m.hash, status: "running", active: [], input, vars: {},
+  snap = { machine: name, run, ir: m.hash, status: "running", active: [], input, vars: {}, locals: {},
            invokes: [], calls: [], spawned: [], timers: [], scheduled: [], nextInvoke: 1, nextTimer: 1, nextMessage: 1,
-           history: {}, result: null }
+           history: {}, historyLocals: {}, result: null }
   emit trace { kind: "started", machine: name, ir: m.hash, input }
   for v in m.vars, in order:
     if v.init != null:          snap.vars[v.name] = eval(v.init)
     elif v.type ends with "?":  snap.vars[v.name] = null
-  enterStates([m.root] + defaultEntry(m.root))
+  enterStates([m.root] + defaultEntry(m.root), {}, {})
   settle()
   if snap.status == "running": startWork()
   return (snap, commands)
 ```
 
-A variable's initial value may read the parameters and the variables declared before it; reading a later one is a runtime error (`unassigned`). A variable with no initial value starts unassigned, unless its type is optional (`string?`, whose IR type string ends in `?`, or an alias of an optional type, aliases expanded transitively): an optional variable with no initial value starts as `null`, as the [language](../docs/design/language.md#definite-assignment) says, and reading it is never `unassigned`. Initial values are not traced.
+A variable's initial value may read the parameters and the variables declared before it; reading a later one is a runtime error (`unassigned`). A variable with no initial value starts unassigned, unless its type is optional (`string?`, whose IR type string ends in `?`, or an alias of an optional type, aliases expanded transitively): an optional variable with no initial value starts as `null`, as the [language](../docs/design/language.md#definite-assignment) says, and reading it is never `unassigned`. Initial values are not traced (a state's variables' are: [data local to a state](#data-local-to-a-state)).
 
 `defaultEntry(s)` is the list of states entered below `s` when `s` is entered with no more specific target, in document order:
 
@@ -163,7 +168,7 @@ defaultEntry(s):
   return []
 ```
 
-So starting enters the root, then its initial child, and so on down, outermost first, entering every region of a parallel state on the way, the first region and everything below it before the second: the root's `entry` effects run before any other state's. Starting takes no transition, so it writes no `transition` record.
+So starting enters the root, then its initial child, and so on down, outermost first, entering every region of a parallel state on the way, the first region and everything below it before the second: the root's `entry` effects run before any other state's. Starting takes no transition, so it writes no `transition` record. Default entry never enters a state that has parameters (the compiler rejects one as an `initial` or as a region), so starting passes no arguments: the states it enters that declare variables get their initial values.
 
 ## Taking an input
 
@@ -329,7 +334,7 @@ The other inputs search one state and take at most one transition, so `T` is emp
 
 ## A microstep
 
-A microstep takes the transitions of `T` together, as SCXML's microstep does: first every exit they cause, then every transition's effects, then every entry.
+A microstep takes the transitions of `T` together, as SCXML's microstep does: first every exit they cause, then every transition's effects, then every entry. Between the effects and the entries it evaluates the transitions' arguments and discards the locals of the states it exited ([data local to a state](#data-local-to-a-state)).
 
 ```
 microstep(T):                         # each t in T belongs to a state, t.source
@@ -339,8 +344,14 @@ microstep(T):                         # each t in T belongs to a state, t.source
   recordHistory(exits)
   for s in exits, innermost first: exitState(s)
   for t in T, in order: runEffects(t.effects)
+  args = {}                                           # state id -> argument values
+  for t in T, in order:
+    for a in t.args, in order: args[a.state] = eval of a.values, left to right
+  for s in exits: remove the member s.id from snap.locals, if it has one
+  restored = the union of snap.historyLocals[x.id] for each target x of each t in T
+             that is a history state and has a member in snap.historyLocals
   entries = the union of entrySet(t) for t in T with targets
-  enterStates(entries, in document order)
+  enterStates(entries in document order, args, restored)
 
 domain(t):                            # for t with targets
   if t.source is the root: return the root
@@ -371,7 +382,7 @@ targets(t):
   and of what entering x restores if it is one (history states, below)
 ```
 
-With one transition and one target that is not a history state this is: the `transition` record; the exits, innermost first; the effects; the entries, outermost first, which are the path from just below the domain to the target, the target's default entry, and every other region of a parallel state on the path by default entry. A transition with no target contributes only its `transition` record and its effects. The transitions of `T` never conflict, so their exit sets are disjoint, and so are their entry sets. Exiting innermost first across regions exits the later region's states before the earlier region's ([exiting](#exiting-and-entering-a-state)), while the effects run in the order of `T`, the earlier region's first.
+With one transition and one target that is not a history state this is: the `transition` record; the exits, innermost first; the effects; the arguments, if the transition has any; the entries, outermost first, which are the path from just below the domain to the target, the target's default entry, and every other region of a parallel state on the path by default entry. A transition with no target contributes only its `transition` record and its effects. The transitions of `T` never conflict, so their exit sets are disjoint, and so are their entry sets. Exiting innermost first across regions exits the later region's states before the earlier region's ([exiting](#exiting-and-entering-a-state)), while the effects run in the order of `T`, the earlier region's first.
 
 **Several targets.** A transition can have more than one target (`-> P.A.X, P.B.Y`), to enter a parallel state with a chosen state in more than one region, as SCXML's `target="a b"` does. The compiler guarantees that no target is another's ancestor or descendant and that any two meet at a parallel state: their nearest common ancestor is parallel, so they are in different regions of it, at any depth (a history state counting as a child of its parent). The entry set is then the union of the paths to every target, and a region of a parallel state on those paths that none of them is in is entered by default. The `transition` record's `to` lists the targets in the order the IR does.
 
@@ -424,19 +435,37 @@ exitState(s):
     remove it; emit trace { kind: "timer.cancelled", timer: tm.id, state: s.id, index: tm.index }
     emit timer.cancel { timer: tm.id }
   runEffects(s.exit)
-  remove s from active
+  remove s from active                # its locals stay until the microstep discards them
   remove every completion of s, and of an ancestor of s, from the internal queue
   emit trace { kind: "exited", state: s.id }
 
-enterStates(list):
+enterStates(list, args, restored):
   for s in list, in order:
     add s to active (active stays in document order)
     emit trace { kind: "entered", state: s.id }
+    bindLocals(s, args, restored)
     runEffects(s.entry)
     add s to the states entered during this macrostep
     if s.kind == "final":
       if parent(s) is the root: finish(s); return
       complete(s)
+
+bindLocals(s, args, restored):        # s was just entered
+  if s.params == [] and s.vars == []: return
+  snap.locals[s.id] = {}              # a member in document order among snap.locals
+  if restored has a member s.id:      # entered again from a history record
+    for each local n of s, its parameters in order then its variables in order,
+        if restored[s.id] has a member n:
+      bind(s, n, restored[s.id][n])
+    return
+  for p in s.params, in order, and v in args[s.id], in order: bind(s, p.name, v)
+  for v in s.vars, in order:
+    if v.init != null:          bind(s, v.name, eval(v.init))
+    elif v's type is optional:  bind(s, v.name, null)     # as for a machine variable
+
+bind(s, n, v):
+  snap.locals[s.id][n] = v
+  emit trace { kind: "set", var: s.id + "." + n, value: v }
 
 complete(f):                          # a final state f was just entered; parent(f) is not the root
   s = f
@@ -449,8 +478,13 @@ complete(f):                          # a final state f was just entered; parent
 
 runEffects(effects):
   for e in effects with kind "set", in order:
-    v = eval(e.value); snap.vars[e.var] = v
-    emit trace { kind: "set", var: e.var, value: v }
+    v = eval(e.value)
+    if e.state == null:                           # a machine variable
+      snap.vars[e.var] = v
+      emit trace { kind: "set", var: e.var, value: v }
+    else:                                         # a variable of state e.state
+      snap.locals[e.state][e.var] = v
+      emit trace { kind: "set", var: e.state + "." + e.var, value: v }
   for e in effects with kind "do", "send", "emit", "reply", "spawn", "stop", "raise" or "cancel", in order:
     switch e.kind:
       "do":
@@ -482,7 +516,7 @@ runEffects(effects):
             continue
           to = snap.run + "." + ch.id; invoke = ch.id
         else:
-          to = eval({ kind: "ref", path: [e.to.name] }); invoke = null
+          to = eval({ kind: "ref", path: [e.to.name], state: null }); invoke = null
           v = eval(e.value)
         emit trace { kind: "sent", message: id, to, value: v }
         emit send { to, invoke, message: id, value: v }
@@ -550,18 +584,25 @@ So a state's work stops before its own exit effects run, and the `exited` record
 - **A send to a spawned child** by key evaluates the key, then the value, and goes to the running child of the collection with that key. If there is none, the message is **undelivered**, traced with `to` `null`: no child has that key, it was stopped, or it was spawned in this macrostep and has not started yet ([spawned children](#spawned-children)). **`send sessions.*.E`** evaluates the value once and sends it to every running child of the collection, in the order they were started, each as a message of its own with its own id and `sent` record. With no running child it writes nothing; it takes no message id then.
 - **`spawn` and `stop`** are described under [spawned children](#spawned-children), and **`raise` and `cancel`** under [raised events](#raised-events).
 
-In a microstep, then, the order is: the `transition` records, one per transition; for each state exited, innermost first, its invokes cancelled, its timers cancelled, its exit effects, `exited`; the transitions' effects, transition by transition; for each state entered, in document order, `entered` and its entry effects. No work is started during a microstep.
+In a microstep, then, the order is: the `transition` records, one per transition; for each state exited, innermost first, its invokes cancelled, its timers cancelled, its exit effects, `exited`; the transitions' effects, transition by transition; the transitions' arguments, transition by transition; for each state entered, in document order, `entered`, a `set` record for each of its locals that gets a value, and its entry effects. No work is started during a microstep.
 
 ### History states
 
-A history state `h` with parent `p` records where `p` was each time a microstep exits `p`, and a transition that targets `h` enters those states again.
+A history state `h` with parent `p` records where `p` was each time a microstep exits `p`, with the locals of the states it will re-enter, and a transition that targets `h` enters those states again, with those locals.
 
 ```
 recordHistory(exits):                 # before any state of exits is exited
   for s in exits, for each history state h in s.states:
-    if h.kind == "history":     snap.history[h.id] = the active children of s, in document order
-    if h.kind == "deepHistory": snap.history[h.id] = the active leaves that are proper descendants
-                                                     of s, in document order
+    if h.kind == "history":
+      snap.history[h.id] = the active children of s, in document order
+      kept = the active children of s
+    if h.kind == "deepHistory":
+      snap.history[h.id] = the active leaves that are proper descendants of s, in document order
+      kept = the active proper descendants of s
+    saved = { q.id: a copy of snap.locals[q.id] for q in kept, in document order,
+              if snap.locals has a member q.id }
+    if saved is empty: remove the member h.id from snap.historyLocals, if it has one
+    else:              snap.historyLocals[h.id] = saved
 
 restores(h):                          # for a history state h with parent p
   if snap.history has h.id: return snap.history[h.id]
@@ -569,12 +610,27 @@ restores(h):                          # for a history state h with parent p
   return the children of p                        # every region
 ```
 
-- **What is recorded.** A shallow history state records its parent's active children: one for a compound parent, every region for a parallel one. A deep one records the active leaves below its parent, atomic and final states, in every region. Each record replaces the one before. It is recorded from the active states as they are before the microstep exits anything, so the record is where `p` was at the end of the previous microstep. Only a microstep records: `finish` and `cancelRun` exit states without recording, and `failWithDefect` exits none. A runtime error in a step discards what the step recorded with the rest of the step.
+- **What is recorded.** A shallow history state records its parent's active children: one for a compound parent, every region for a parallel one. A deep one records the active leaves below its parent, atomic and final states, in every region. Each record replaces the one before, its locals with it.
+- **Locals.** With the states, a record keeps the locals of every state that entering it will re-enter from the record: for a shallow one the children it records, for a deep one every active state below its parent, the leaves and the states between them and the parent. They are copied as they are before the microstep exits anything, so an `exit` effect that assigns a local of its own state does not change the record. The states that entering the record enters below those by default entry (a shallow record's child's `initial` chain or regions) are not in it, and start afresh. It is recorded from the active states as they are before the microstep exits anything, so the record is where `p` was at the end of the previous microstep. Only a microstep records: `finish` and `cancelRun` exit states without recording, and `failWithDefect` exits none. A runtime error in a step discards what the step recorded with the rest of the step.
 - **Entering.** A target `h` stands for `restores(h)` in `entrySet`'s `targets(t)` ([a microstep](#a-microstep)). Entering `h` enters what it recorded, or, with no record, the states directly below `p` that `p`'s default entry starts with. Each of those states gets its default entry: a shallow record's child its `initial` chain or every region, a deep record's leaves nothing more. Every state between the domain and them is entered too, and a region of a parallel state on the way that none of them is in gets its default entry, as for any target. A deep record holds a leaf in every region below `p`, so no region below `p` is entered by default. `h` itself is never entered: there is no `entered` record for it, and it is never in `active`. The `transition` record's `to` has `h`'s id.
 - **The domain** is `domain(t)` with `h` as the target, as for any state: for an external transition, the nearest compound proper ancestor of the source that is a proper ancestor of `h`; for an internal one, the source. It does not depend on what `h` recorded. From outside `p` that is above `p`, so `p` is entered. From inside a compound `p` it is `p`, so `p` is neither exited nor recorded by this transition, and what is entered is what `p` recorded when it was last exited. (SCXML computes the domain from the states the history restores, which differs only for a transition from inside `p`.) From inside a parallel `p` the domain is above `p`, which is exited, recorded and entered again as recorded.
-- **Restored states are entered**, with their `entry` effects, their `entered` records and, once the step has settled, new invokes and timers, as on any entry. An entered final state completes its parent as usual (`complete`). Nothing else is restored: variables keep their values, and the work that ran in those states before, an invoked child run among it, is not resumed.
+- **Restored states are entered**, with their `entry` effects, their `entered` records and, once the step has settled, new invokes and timers, as on any entry. An entered final state completes its parent as usual (`complete`). A restored state that declares locals gets back the ones it had when it was recorded, each with a `set` record, in place of its arguments and initial values (`bindLocals`); a variable that had no value then has none now. Nothing else is restored: the machine's variables keep their values, and the work that ran in those states before, an invoked child run among it, is not resumed.
+- **With no record**, entering `h` enters `p`'s default entry, which never enters a state that has parameters, so nothing needs arguments: its variables get their initial values. `p` itself, when the transition enters it, gets its arguments from the transition like any state on a target's path.
 - **Order.** A microstep records before it computes its entries, so a transition that exits `p` and targets `h` (from outside `p`, or from inside a parallel `p`) enters what `p` was a moment before: the same states, entered again.
 - **An internal transition to a history state of its own source**, `C -> .H`, does not exit `C`, so `C` records nothing and what is entered is what `C` recorded when it was last exited. From a parallel source, `P -> .H` with `H` a history state of `P` exits and enters every region.
+
+### Data local to a state
+
+A state's parameters and variables, its [locals](#terms), live in `snap.locals[s.id]` while `s` is active. The compiler resolves every name, so a reader never looks a name up by scope: a `ref` expression or a `set` effect whose `state` is not `null` names a local of that state, and one whose `state` is `null` names the machine's parameter or variable (or, for a `ref`, an implicit name). The compiler guarantees that such a state is the expression's own state or one of its ancestors, so it is active, or is being exited in this microstep, whenever the expression is evaluated.
+
+- **Lifetime.** `bindLocals` creates a state's member of `snap.locals` when the state is entered, after its `entered` record and before its `entry` effects, and the microstep that exits it removes the member after the transitions' effects and arguments have been evaluated, just before the entries. So a state's `exit` effects read its locals, and so do the effects and arguments of the transitions that leave it: `-> Backoff(attempt + 1)` written in `Backoff` passes one more than the value it leaves with, and `-> Confirming(token)` passes a token on. `finish` and `cancelRun` exit states outside a microstep and clear `snap.locals` once every state is exited; `failWithDefect` exits nothing and leaves it as it is.
+- **Entering.** Parameters are bound first, in order, to the arguments, then each variable, in order, to its initial value, or to `null` if it has none and its type is optional (by the rule [starting a machine](#starting-a-machine) gives for the machine's variables); a variable with neither starts with no value, and has no member. An initial value is evaluated when it is bound, so it may read the state's parameters, its variables declared before it, the locals of the states around it (entered before it, outermost first) and the machine's parameters and variables. Each binding writes a `set` record whose `var` is the state's id, a dot and the local's name (`PasswordReset.Confirming.tries`): a variable's name is lower-case and has no dot, so it never collides with a machine variable's. Machine variables' initial values are not traced; a state's locals are, since its arguments come from the step.
+- **Arguments.** A transition's `args` holds, for each state it enters that has parameters, the expressions of its arguments, in the order the states are entered. They are evaluated after every transition of the microstep has run its effects, transition by transition in the order of `T`, each list left to right: so they see what the transitions' `set`s assigned, as a `send` does, and the locals of the states being exited. The compiler guarantees that a transition has arguments for exactly the states with parameters it enters along the paths written in its targets, and that default entry never enters a state with parameters (no `initial` and no region has any), so every state with parameters that is entered gets its arguments, either from the transition or from a history record ([history states](#history-states)).
+- **Assigning.** A `set` effect with a `state` assigns that state's local in `snap.locals[state]`, which exists: the compiler allows a `set` only of a variable of the state the effect list belongs to or of a state around it. An assignment in a transition to a local of a state the transition exits is discarded with that state's locals (the compiler warns, `RB0916`).
+- **Reading** a local with no value is the runtime error `unassigned`, whose `var` is the qualified name, `PasswordReset.Confirming.token`, as in the `set` record ([defects](#defects)). A runtime error or host defect while evaluating an argument or an initial value makes the step atomic, as any does.
+- **Re-entering** a state, by a transition that exits it and enters it again (`-> Self(n)`), discards its locals and binds new ones, its initial values evaluated again. An internal transition (`-> .Child(x)`) does not exit its source, which keeps its locals; only the states it enters get new ones.
+
+A machine whose states declare no locals has `locals` `{}` and `historyLocals` `{}` throughout, and its transitions have no `args`, so it writes the records it wrote before.
 
 ## Settling
 
@@ -643,7 +699,7 @@ startWork():
 
 startArgs(iv):
   if iv.kind == "call":                           # invoke inventory.reserve(…)
-    to = eval({ kind: "ref", path: [iv.to.name] })
+    to = eval({ kind: "ref", path: [iv.to.name], state: null })
     src = iv.to.name + "." + iv.src
     params = the parameters of the call iv.src of machine iv.to.machine
   else:
@@ -671,6 +727,7 @@ finish(f):
   elif f.fail != null: status = "failed"; value = eval(f.fail)
   else:                status = "done";   value = null
   for s in active, innermost first: exitState(s)        # f, then the root
+  snap.locals = {}
   stopChildren()
   cancelRaises()
   snap.result = status == "done" ? { output: value } : { error: value }
@@ -680,7 +737,7 @@ finish(f):
                               : { kind: "failed", state: f.id, error: value }
 ```
 
-The output or error is evaluated right after `f`'s entry effects, before any exit effect runs. Then every active state is exited, innermost first, with its exit effects, as on any exit (but no history is recorded: the run is over): this is when the root's `exit` effects run, and when timers on the root are cancelled. Then the spawned children still running are stopped, after every exit effect ([spawned children](#spawned-children)), and then the pending delayed raises are cancelled (`cancelRaises`, [raised events](#raised-events)), a delayed raise an exit effect started among them. A message an exit effect sends a child is queued before the stop, but the stop is a cancel request, which a run takes before anything queued, so whether the child takes the message first is up to the scheduler, as for any message to a run cancelled in the same step ([conformance](conformance/README.md#how-a-runner-works)); a chart cannot rely on it. Settling stops and no work is started. The run's result is the output (an Effect success, a Rust `Ok`) or the error (the Effect error channel, a Rust `Err` of the machine's error enum).
+The output or error is evaluated right after `f`'s entry effects, before any exit effect runs, so it may read `f`'s parameters (`final state Rejected(reason: string) { output problem(422, reason) }`). Then every active state is exited, innermost first, with its exit effects, as on any exit (but no history is recorded: the run is over): this is when the root's `exit` effects run, and when timers on the root are cancelled. Then the spawned children still running are stopped, after every exit effect ([spawned children](#spawned-children)), and then the pending delayed raises are cancelled (`cancelRaises`, [raised events](#raised-events)), a delayed raise an exit effect started among them. A message an exit effect sends a child is queued before the stop, but the stop is a cancel request, which a run takes before anything queued, so whether the child takes the message first is up to the scheduler, as for any message to a run cancelled in the same step ([conformance](conformance/README.md#how-a-runner-works)); a chart cannot rely on it. Settling stops and no work is started. The run's result is the output (an Effect success, a Rust `Ok`) or the error (the Effect error channel, a Rust `Err` of the machine's error enum).
 
 ## Cancelling from outside
 
@@ -689,6 +746,7 @@ The input `{"kind": "cancel"}` exits every active state, innermost first (in rev
 ```
 cancelRun():
   for s in active, innermost first: exitState(s)
+  snap.locals = {}
   stopChildren()
   cancelRaises()
   clear the internal queue
@@ -786,7 +844,7 @@ A defect ends the run at once. It is never routed to a `fail` branch, and no exi
 | Defect | Cause |
 | --- | --- |
 | `{"kind": "host", "message": "…"}` | Host code failed: a function, action or task threw or panicked, or returned a value that is not of its declared type (a negative `duration`, say), or a task emitted an event that does not encode ([the emitter](#the-emitter)). `message` is set as described under [catching host defects](#catching-host-defects); in conformance cases it is given by the script. |
-| `{"kind": "unassigned", "var": "receipt"}` | A variable was read before it had a value. The compiler rejects such a read (`RB0403`, definite assignment), so this is a runtime backstop, reachable only where that check is skipped, as for files listed in `allow-unassigned`. |
+| `{"kind": "unassigned", "var": "receipt"}` | A variable was read before it had a value. For a state's variable `var` is its qualified name, `Order.Confirming.code` ([data local to a state](#data-local-to-a-state)). The compiler rejects such a read (`RB0403`, definite assignment), so this is a runtime backstop, reachable only where that check is skipped, as for files listed in `allow-unassigned`. |
 | `{"kind": "overflow", "expr": "attempts + 1"}` | Integer arithmetic left the `int` range, or float arithmetic produced a value that is not finite. `expr` is the `text` of the operator's IR node. |
 | `{"kind": "undeclared", "error": "Oops"}` | A task or child machine failed with an error it does not declare. |
 | `{"kind": "limit"}` | Settling took more than 1000 microsteps. |
@@ -828,7 +886,7 @@ Expressions are evaluated by their IR node, recursively. Every node's `type` is 
 | Node | Value |
 | --- | --- |
 | `lit` | `value`, read according to `type` (an `int`, a float, a string, a bool, or a duration in milliseconds). |
-| `ref` | `path[0]` is a parameter (from `input`), a variable (from `vars`; reading one with no value is `unassigned`), or the implicit name `event`, `result`, `error`, `call` or `key`. Each further name reads that field of the value. A parameter or variable of a `ref` type reads as the run id it holds. |
+| `ref` | With `state` `null`, `path[0]` is a parameter (from `input`), a variable (from `vars`; reading one with no value is `unassigned`), or the implicit name `event`, `result`, `error`, `call` or `key`. With `state` a state's id, `path[0]` is a parameter or variable of that state, from `snap.locals[state]` (reading one with no value is `unassigned`, named `state + "." + path[0]`). Each further name reads that field of the value. A parameter or variable of a `ref` type reads as the run id it holds. |
 | `field` | Evaluate `of`, then read field `name`. |
 | `call` | Evaluate `args` left to right, then `fns(fn, args)`. |
 | `record` | An object with the fields in order. Its `type` may be an instance of a generic record (`Page<Order>`); the fields are the same. If `type` is an error, it also has `"_tag": type`. If `type` is an event (the value of a `send`, `emit` or `raise`: `Machine.Name`, or the name of one of the current machine's `emits`, `events` or `internalEvents`), it also has `"_tag"` with the event's name, the part after the dot: `send upload.Pause` sends `{"_tag": "Pause"}`. |
@@ -1040,7 +1098,7 @@ Host code saves only top-level runs, since it holds no handle to a child run; a 
 
 ### The saved snapshot
 
-A saved snapshot is the core's [snapshot](#snapshot), as the run's last step left it, with three additions: `snapshotVersion`, which is `4`; a `due` member on each timer and each delayed raise, from the driver ([time](#time)); and a `child` member on each entry of `invokes` and `spawned` whose child run is saved with it ([saved child runs](#saved-child-runs)). Its `calls` member is written only when the run has pending calls, and its `scheduled` member only when it has pending delayed raises, in any version, and a saved snapshot without one has none, so a snapshot saved before calls or delayed raises existed needs no new version. Its schema is [`snapshot.schema.json`](snapshot.schema.json). It holds the **real values**, those of `sensitive` parameters and variables and fields too: a restored run goes on with them, so nothing in a saved snapshot is [redacted](#redaction). Only the copy of it in a `restored` record is.
+A saved snapshot is the core's [snapshot](#snapshot), as the run's last step left it, with three additions: `snapshotVersion`, which is `4`; a `due` member on each timer and each delayed raise, from the driver ([time](#time)); and a `child` member on each entry of `invokes` and `spawned` whose child run is saved with it ([saved child runs](#saved-child-runs)). Its `calls` member is written only when the run has pending calls, its `scheduled` member only when it has pending delayed raises, its `locals` member only when it is not `{}` and its `historyLocals` member likewise, in any version, and a saved snapshot without one has none, so a snapshot saved before calls, delayed raises or state locals existed needs no new version. Its schema is [`snapshot.schema.json`](snapshot.schema.json). It holds the **real values**, those of `sensitive` parameters and variables and fields too: a restored run goes on with them, so nothing in a saved snapshot is [redacted](#redaction). Only the copy of it in a `restored` record is.
 
 ```jsonc
 {
@@ -1063,7 +1121,7 @@ A saved snapshot is the core's [snapshot](#snapshot), as the run's last step lef
 }
 ```
 
-- **Versions 1 to 3.** Version 3 is the same without any `child` member, as written before child runs were saved; version 2 is also without `spawned`, as written before keyed spawn; and version 1 is also without `history`, as written before history states. A runtime restores one as if it had `"spawned": []` (and `"history": {}`), every child run it started begins again, as when it was written, and the `restored` record holds it as it was given. Save and suspend always write version 4. `calls` and `scheduled` may be in any version: each is written only when not empty. A machine with no history state and no `children` keeps its hash from before both, so its older snapshots still restore.
+- **Versions 1 to 3.** Version 3 is the same without any `child` member, as written before child runs were saved; version 2 is also without `spawned`, as written before keyed spawn; and version 1 is also without `history`, as written before history states. A runtime restores one as if it had `"spawned": []` (and `"history": {}`), every child run it started begins again, as when it was written, and the `restored` record holds it as it was given. Save and suspend always write version 4. `calls`, `scheduled`, `locals` and `historyLocals` may be in any version: each is written only when not empty. A machine with no history state and no `children` keeps its hash from before both, so its older snapshots still restore.
 - **`due`** is an absolute time on the driver's clock, in integer milliseconds: since the Unix epoch in production, virtual time in conformance. A deadline is kept rather than the time remaining because the run is in its state the whole time it is saved: an order that waits three days for payment expires three days after it began waiting, however long it spent in a store. A host can also find when to wake a saved run from its earliest `due`.
 - **What is not in it.** Inputs queued but not yet taken, by any run of the tree, a task's emits among them (a request handler never has any, since it saves an idle tree); the state of work that is not a running child run (a task, a spawned task, a call, a stub, a machine whose implementation has not claimed its invoke yet, a child run that has ended), which starts again ([restoring](#restoring-a-snapshot)); messages kept for a child that has not claimed its invoke; subscriptions; and listeners.
 - **The same in both runtimes.** Values are in their JSON form ([values](#values)), `active` is in document order, and `invokes`, `spawned`, `timers` and `scheduled` are in the order they were started, so the two runtimes save the same run as the same document, and either restores what the other saved. Conformance compares saved snapshots as [canonical JSON](ir.md#canonical-json).
@@ -1103,7 +1161,7 @@ Restoring checks the saved snapshot against the IR the runtime was given, refuse
 | `ended` | Its `status` is not `running` (a nested snapshot that is not running is `invalid` instead). A run that ended with a defect is `ended` whatever its defect's `kind`: the schema requires only that it has one, so a kind this version does not name is not `invalid`. |
 | `ref` | The machine, or the machine an entry with a nested snapshot starts (as for `ir`), has a parameter of type `ref M`, `ref M?` or `ref M[]`, or an alias of one ([not yet specified](#not-yet-specified)). |
 | `calls` | Its `calls` is not empty (a nested snapshot with `calls` is `invalid` instead: a child run has no handle, so it takes no calls). The callers that wait for those calls belong to the process that saved it, and are gone. A run with pending calls is not idle, so suspend never gives such a snapshot; save can. |
-| `invalid` | It does not fit the machine: its `status` is `running` but its `result` is not `null` (a run has a result only once it has ended); `active` is not a configuration in document order (the root first, each other state's parent active, one active child for each active compound state, every child for each active parallel state, and no history state); an `invokes` entry's state is not active, or the entry has `as` though its state has at most one invoke, or has none though its state has several, or its state has no invoke with that `as` (for an entry without one, no invoke), or the entry's invoke is not of `src`, or two entries have the same state and invoke; a `timers` entry's state is not active, or its `index` is not the first transition of an `after` block of that state, or two entries have the same state and index; a `spawned` entry's `children` is not a collection of the machine, its `key` does not decode as the collection's key type, its `args` do not have exactly the parameters of the collection's machine or task or do not decode as their types, or two entries of one collection have the same key; a `scheduled` entry's `value` does not decode as one of the machine's own events (`events` or `internalEvents`), its `name` is neither `null` nor the `name` of a delayed `raise` effect of the machine, or two entries have the same name that is not `null`; an id is repeated (among `invokes` and `spawned` together, or among `timers` and `scheduled` together) or not below `nextInvoke` or `nextTimer`; `input` does not have exactly the machine's parameters, or `vars` has a name that is not one of its variables, or lacks an optional variable; a `history` key is not the id of one of its history states, or its value is not one that history state could have recorded (for a `history` state, one child of a compound parent or every child of a parallel parent; for a `deepHistory` state, the leaves of a configuration below its parent: atomic or final states which, with their ancestors up to and including the parent, have one child for each compound state and every child for each parallel state among them; in document order either way); or a value does not decode as its declared type, as a machine's arguments must. A record, an error or an event decodes only with exactly the members its type declares (and an error's or event's `_tag`): one with a member its type does not declare is `invalid`. And for each snapshot nested in it: its entry is an `invokes` entry whose `src` is not a machine (a task or a call), or a `spawned` entry of a collection of tasks; its `machine` is not the machine its entry starts; its `run` is not this snapshot's `run`, a dot and the entry's `id`; its `status` is not `running`; it has `calls`; or it does not fit its own machine by every rule of this row, the snapshots nested in it included. |
+| `invalid` | It does not fit the machine: its `status` is `running` but its `result` is not `null` (a run has a result only once it has ended); `active` is not a configuration in document order (the root first, each other state's parent active, one active child for each active compound state, every child for each active parallel state, and no history state); an `invokes` entry's state is not active, or the entry has `as` though its state has at most one invoke, or has none though its state has several, or its state has no invoke with that `as` (for an entry without one, no invoke), or the entry's invoke is not of `src`, or two entries have the same state and invoke; a `timers` entry's state is not active, or its `index` is not the first transition of an `after` block of that state, or two entries have the same state and index; a `spawned` entry's `children` is not a collection of the machine, its `key` does not decode as the collection's key type, its `args` do not have exactly the parameters of the collection's machine or task or do not decode as their types, or two entries of one collection have the same key; a `scheduled` entry's `value` does not decode as one of the machine's own events (`events` or `internalEvents`), its `name` is neither `null` nor the `name` of a delayed `raise` effect of the machine, or two entries have the same name that is not `null`; an id is repeated (among `invokes` and `spawned` together, or among `timers` and `scheduled` together) or not below `nextInvoke` or `nextTimer`; `input` does not have exactly the machine's parameters, or `vars` has a name that is not one of its variables, or lacks an optional variable; `locals` does not have exactly one member for each active state that declares a parameter or a variable, or one of its members has a name that is not a local of its state, lacks one of the state's parameters or lacks an optional variable of it; a `history` key is not the id of one of its history states, or its value is not one that history state could have recorded (for a `history` state, one child of a compound parent or every child of a parallel parent; for a `deepHistory` state, the leaves of a configuration below its parent: atomic or final states which, with their ancestors up to and including the parent, have one child for each compound state and every child for each parallel state among them; in document order either way); a `historyLocals` key is not the id of a history state with a member in `history`, or its value does not have exactly one member for each state that declares a local among those its record re-enters (for a `history` state, the children it recorded; for a `deepHistory` state, the leaves it recorded and their ancestors below its parent), or one of those members does not fit its state as a `locals` member must; or a `history` record re-enters a state that declares a local and `historyLocals` has no member for its history state; or a value does not decode as its declared type, as a machine's arguments must. A record, an error or an event decodes only with exactly the members its type declares (and an error's or event's `_tag`): one with a member its type does not declare is `invalid`. And for each snapshot nested in it: its entry is an `invokes` entry whose `src` is not a machine (a task or a call), or a `spawned` entry of a collection of tasks; its `machine` is not the machine its entry starts; its `run` is not this snapshot's `run`, a dot and the entry's `id`; its `status` is not `running`; it has `calls`; or it does not fit its own machine by every rule of this row, the snapshots nested in it included. |
 
 **Migration.** When the hashes differ, the host may give a **migration**: a function from the old saved snapshot to a new one, both plain JSON (TypeScript `(saved: Json) => Json`, Rust `Fn(serde_json::Value) -> Result<serde_json::Value, String>`). It is called once for the whole tree, and only when a hash in it differs. In a tree a runtime saved, the top-level snapshot's hash differs whenever a nested one's does, since a machine's hash covers every machine it invokes or spawns ([the machine hash](ir.md#the-machine-hash)); `migrated` is the top-level snapshot's hash before the migration either way. It is given the whole tree and gives the whole tree, rewriting the nested snapshots too. Its result is checked from the top as if it had been given instead, except that a second migration is never applied. It is how a deployment that changed a chart (renamed a variable, added a state) keeps its saved runs: the migration rewrites `ir`, the names, and whatever else must change. It needs no IR of the old chart; it sees only the data.
 
@@ -1114,8 +1172,9 @@ restore(ir, saved, run, now, migrated, fns):
   m    = ir.machines[saved.machine]           # every check above has passed
   shown = saved without the child members of its invokes and spawned entries
   snap = shown without snapshotVersion, with run = run, no due on the timers or the scheduled
-         raises, calls = [], scheduled = [] if it has none, history = {} if it has none
-         (version 1), and spawned = [] if it has none (versions 1 and 2)
+         raises, calls = [], scheduled = [] if it has none, locals = {} and historyLocals = {} if
+         it has none, history = {} if it has none (version 1), and spawned = [] if it has
+         none (versions 1 and 2)
   emit trace { kind: "restored", machine: saved.machine, ir: m.hash, migrated, snapshot: shown }
   for ch in saved.spawned, in order:
     c = the collection ch.children; src = c.src
@@ -1146,7 +1205,7 @@ restore(ir, saved, run, now, migrated, fns):
 `now` is the driver's clock, `run` the new run's id, and `migrated` the hash the snapshot had before a migration, or `null` when there was none. Each timer and delayed raise of the core snapshot keeps the `delay` it was saved with, the delay its `after` evaluated to, though a restarted timer's `timer.started` or `raise.scheduled` record and command give the time that remains. `snapshot` in the `restored` record is the saved snapshot as restored, after any migration, without the snapshots nested in it: each child run restored from one writes its own `restored` record.
 
 - **The spawned children go on.** Each child in `spawned` is started again, with its id and key and the arguments it was spawned with (they were evaluated from the event that spawned it, which is gone, so they are kept), as a new child run `<new run id>.<id>`, before the states' work, as in [starting work](#starting-work). One with a `child` snapshot is restored from it and goes on where it was ([restoring a child run](#restoring-a-child-run)); one without starts from the beginning, a spawned task always, with its saved arguments and a new emitter. A child that had ended when the run was saved, but whose outcome had not been taken yet, is still in `spawned`, has no `child`, and runs again, as an invoke in that position does.
-- **The work that was running restarts.** Each invoke in `invokes` is started again, with the same id and with its arguments evaluated now, from the snapshot's variables (a function in them is called again). A task runs again from the start, so a machine meant to be saved should wait in states with no `invoke`, or use tasks that are safe to repeat ([semantics](../docs/design/semantics.md#saving-and-restoring)). A task that emits gets a new emitter and emits again as it runs: what it emitted before the save, taken or not, is not given again. A child machine is a new child run `<new run id>.<invoke id>`: one with a `child` snapshot is restored from it and goes on where it was ([restoring a child run](#restoring-a-child-run)), with what its parent had sent it and it had taken; one without runs again from its `start`, its own progress and the messages its parent had sent it not saved. An invoke whose outcome had already been taken is not in `invokes` and is not restarted, though its state is active; in a state with several invokes, the others are restarted all the same.
+- **The work that was running restarts.** Each invoke in `invokes` is started again, with the same id and with its arguments evaluated now, from the snapshot's variables and locals (a function in them is called again). A task runs again from the start, so a machine meant to be saved should wait in states with no `invoke`, or use tasks that are safe to repeat ([semantics](../docs/design/semantics.md#saving-and-restoring)). A task that emits gets a new emitter and emits again as it runs: what it emitted before the save, taken or not, is not given again. A child machine is a new child run `<new run id>.<invoke id>`: one with a `child` snapshot is restored from it and goes on where it was ([restoring a child run](#restoring-a-child-run)), with what its parent had sent it and it had taken; one without runs again from its `start`, its own progress and the messages its parent had sent it not saved. An invoke whose outcome had already been taken is not in `invokes` and is not restarted, though its state is active; in a state with several invokes, the others are restarted all the same.
 - **Timers keep their deadlines.** A timer not yet due is started again, with the same id, for the time that remains, so it expires at its saved `due`. So is a delayed raise, after every state's work, with a `raise.scheduled` record; one already due joins the timers already due, in one order. A timer already due is not started: `timer.fire` queues its expiry at once, before anything else can reach the run's queue, the earliest due first. Its deadline passed while the run was saved, so it is taken before any event given after restoring: an order restored after its payment deadline expires before it sees the payment. Since ids are kept, `nextInvoke` and `nextTimer` do not change; they cannot collide with anything, since the run id is new. A restored child run's timers are restored the same way, by its own `restore`.
 - **Nothing else happens.** No state is entered or exited, no effect runs and the run does not settle: the snapshot was saved between steps, already settled. The run then takes inputs like any run.
 - **Defects.** A runtime error or a host defect while evaluating an invoke's arguments makes `restore` atomic, like `start`: it returns `failWithDefect(d)` applied to `snap`, with two commands, the `restored` record and the `defect` record. The `invoke.cancel`, `spawn.stop` and `timer.cancel` commands of `failWithDefect` are for work never started (the `spawn.start` commands before the defect are discarded with the rest), which the driver ignores. The run then ends with the defect like any run.

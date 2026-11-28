@@ -1,0 +1,56 @@
+{
+  "description": "A history state with no record enters its parent's default entry. A shallow record keeps the locals of the child it records, a deep one those of every state below the parent; entering them restores those locals with `set` records in place of the arguments and initial values, while the states entered below them by default start afresh.",
+  "requires": [
+    "locals",
+    "history"
+  ],
+  "chart": "charts/locals-history.road",
+  "machine": "Hist",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Resume"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Step"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Step"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Step"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Pause"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Rewind"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Pause"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Resume"
+      }
+    }
+  ],
+  "status": "running"
+}

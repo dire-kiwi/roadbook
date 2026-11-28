@@ -1,0 +1,21 @@
+{
+  "description": "A top-level final state's parameter and variable are bound before its output is evaluated, and the output reads them.",
+  "requires": [
+    "locals"
+  ],
+  "chart": "charts/locals.road",
+  "machine": "Verdict",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Judge",
+        "score": 3
+      }
+    }
+  ],
+  "status": "done"
+}

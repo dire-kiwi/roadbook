@@ -1,0 +1,101 @@
+---
+source: crates/roadbook-cli/tests/cli.rs
+expression: text(&out.stdout)
+---
+## Reset
+
+`crates/roadbook-compiler/tests/pass/locals.road:14`
+
+```text
+A password reset whose token lives only in the states that need it.
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> Reset_machine
+  state "Reset" as Reset_machine
+  state Reset_machine {
+    Requesting: invoke request(email)
+    state "Confirming(token#58; Token)" as Confirming
+    Confirming: var tries#58; int = 0
+    Confirming: var last#58; string?
+    Confirming: var shown#58; string = token.id
+    Confirming: on Submit [tries < 2] / set tries = tries + 1, set last = event.code
+    state "Resetting(token#58; Token, sensitive secret#58; string)" as Resetting
+    state Resetting {
+      state "Attempt" as Resetting_Attempt
+      Resetting_Attempt: invoke reset(token, secret)
+      state "Backoff" as Resetting_Backoff
+      [*] --> Resetting_Attempt
+      Resetting_Attempt --> Resetting_Backoff: fail Busy [resettingAttempt < 2] / set resettingAttempt = resettingAttempt + 1
+      Resetting_Backoff --> Resetting_Attempt: after backoff(resettingAttempt)
+    }
+    note right of Resetting
+      entry set resettingAttempt = 0
+      entry do log(token.user)
+    end note
+    state "Editing(user#58; string)" as Editing
+    state Editing {
+      state "H*" as Editing_Previous
+      state "Viewing" as Editing_Viewing
+      state "Changing(count#58; int)" as Editing_Changing
+      Editing_Changing: var total#58; int = count + 1
+      Editing_Changing: entry do log(note)
+      [*] --> Editing_Viewing
+      Editing_Viewing --> Editing_Changing: Edit -> Changing(0)
+      Editing_Changing --> Editing_Changing: Edit -> Changing(total)
+    }
+    note right of Editing
+      var note#58; string
+      entry set note = user
+    end note
+    state "Helping(user#58; string)" as Helping
+    state "Both(label#58; string)" as Both
+    state Both {
+      state "Left" as Both_Left
+      state Both_Left {
+        state "A" as Both_Left_A
+        state "B" as Both_Left_B
+        [*] --> Both_Left_A
+        Both_Left_A --> Both_Left_B: Edit
+        Both_Left_B --> [*]
+      }
+      note right of Both_Left
+        var n#58; int = 0
+      end note
+      --
+      state "Right" as Both_Right
+      state Both_Right {
+        state "C" as Both_Right_C
+        state "D" as Both_Right_D
+        [*] --> Both_Right_C
+        Both_Right_C --> Both_Right_D: Edit
+        Both_Right_D --> [*]
+      }
+      note right of Both_Right
+        var n#58; int = 1
+      end note
+    }
+    state "Done(value#58; string)" as Done
+    Done: output value
+    state "Rejected(reason#58; string)" as Rejected
+    Rejected: output reason
+    [*] --> Requesting
+    Requesting --> Confirming: done -> Confirming(result)
+    Confirming --> Resetting: Submit [matches(token, event.code)] -> Resetting(token, password)
+    Confirming --> Rejected: Submit [else] -> Rejected("too many tries")
+    Confirming --> Confirming: Skip -> Confirming(token)
+    Resetting_Attempt --> Editing_Changing: done -> Editing(token.user).Changing(1)
+    Resetting_Attempt --> Rejected: fail Busy [else] -> Rejected("busy")
+    Editing --> Helping: Help -> Helping(user)
+    Editing --> Editing_Changing: Skip -> .Changing(5)
+    Editing_Changing --> Done: Submit -> Done(note)
+    Helping --> Editing_Previous: Back -> Editing(user).Previous
+    Helping --> Both: Edit -> Both(user)
+    Both --> Done: done -> Done(label)
+    Done --> [*]
+    Rejected --> [*]
+  }
+  Reset_machine --> Both_Left_B: Back -> Both("both").Left.B, Both.Right.D
+  Reset_machine --> Both_Right_D: Back -> Both("both").Left.B, Both.Right.D
+```

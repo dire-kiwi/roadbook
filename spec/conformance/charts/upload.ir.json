@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/upload.road",
@@ -152,6 +152,8 @@
           "endLine": 31,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Upload.Sending",
         "states": [
           {
@@ -166,6 +168,8 @@
               "endLine": 26,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -182,6 +186,7 @@
                     "path": [
                       "offset"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "offset"
                   }
@@ -210,6 +215,7 @@
                       "path": [
                         "offset"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "offset"
                     },
@@ -218,6 +224,7 @@
                       "path": [
                         "size"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "size"
                     }
@@ -229,6 +236,7 @@
                   "Upload.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -249,15 +257,18 @@
                   "Upload.Sending"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "offset",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -275,6 +286,7 @@
                             "path": [
                               "result"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "result"
                           }
@@ -304,6 +316,7 @@
                   "Upload.Paused"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -329,6 +342,8 @@
               "endLine": 28,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -346,6 +361,7 @@
                   "Upload.Sending"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -371,6 +387,8 @@
               "endLine": 30,
               "endCol": 37
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -382,6 +400,7 @@
               "path": [
                 "offset"
               ],
+              "state": null,
               "type": "int",
               "text": "offset"
             },
@@ -492,6 +511,8 @@
           "endLine": 53,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Publish.Uploading",
         "states": [
           {
@@ -506,6 +527,8 @@
               "endLine": 50,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -522,6 +545,7 @@
                     "path": [
                       "size"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "size"
                   }
@@ -547,15 +571,18 @@
                   "Publish.Published"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "uploaded",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -578,6 +605,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -614,6 +642,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -656,16 +685,19 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "shown",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "offset"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.offset"
                     }
@@ -680,6 +712,7 @@
                           "event",
                           "offset"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "event.offset"
                       }
@@ -710,6 +743,8 @@
               "endLine": 52,
               "endCol": 44
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -721,6 +756,7 @@
               "path": [
                 "uploaded"
               ],
+              "state": null,
               "type": "int",
               "text": "uploaded"
             },
@@ -789,6 +825,8 @@
           "endLine": 68,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Quiet.Uploading",
         "states": [
           {
@@ -803,6 +841,8 @@
               "endLine": 65,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -819,6 +859,7 @@
                     "path": [
                       "size"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "size"
                   }
@@ -844,15 +885,18 @@
                   "Quiet.Over"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "uploaded",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -882,6 +926,8 @@
               "endLine": 67,
               "endCol": 39
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -893,6 +939,7 @@
               "path": [
                 "uploaded"
               ],
+              "state": null,
               "type": "int",
               "text": "uploaded"
             },
@@ -989,6 +1036,8 @@
           "endLine": 93,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Eager.Uploading",
         "states": [
           {
@@ -1003,6 +1052,8 @@
               "endLine": 90,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Eager.Uploading.Starting",
             "states": [
               {
@@ -1017,6 +1068,8 @@
                   "endLine": 89,
                   "endCol": 47
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -1059,6 +1112,7 @@
                     "path": [
                       "size"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "size"
                   }
@@ -1082,15 +1136,18 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "uploaded",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -1113,6 +1170,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1151,6 +1209,7 @@
                   "Eager.Over"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1176,6 +1235,8 @@
               "endLine": 92,
               "endCol": 39
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1187,6 +1248,7 @@
               "path": [
                 "uploaded"
               ],
+              "state": null,
               "type": "int",
               "text": "uploaded"
             },

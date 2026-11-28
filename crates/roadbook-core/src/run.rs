@@ -1,6 +1,6 @@
 //! `start` and `step`, exactly as `spec/execution.md` gives them.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 use roadbook_ir::{
     Address, AddressKind, ChildrenKind, Effect, Invoke, InvokeKind, Machine, ReplyOutcome, State,
@@ -11,8 +11,8 @@ use serde_json::{Map, Value};
 use crate::eval::{Fns, Scope, eval};
 use crate::program::{MachineIndex, Program};
 use crate::{
-    CallEntry, Command, Defect, Input, InvokeEntry, Object, Record, RunResult, SETTLE_LIMIT, Saved,
-    ScheduledEntry, Snapshot, SpawnedEntry, SrcKind, Status, TimerEntry,
+    CallEntry, Command, Defect, Input, InvokeEntry, Locals, Object, Record, RunResult,
+    SETTLE_LIMIT, Saved, ScheduledEntry, Snapshot, SpawnedEntry, SrcKind, Status, TimerEntry,
 };
 
 /// The built-in error every call can fail with: `{"_tag": "Unanswered"}`.
@@ -91,6 +91,7 @@ impl Program {
             active: Vec::new(),
             input,
             vars: Map::new(),
+            locals: Default::default(),
             invokes: Vec::new(),
             calls: Vec::new(),
             spawned: Vec::new(),
@@ -100,6 +101,7 @@ impl Program {
             next_timer: 1,
             next_message: 1,
             history: Default::default(),
+            history_locals: Default::default(),
             result: None,
         };
         let started = Record::Started {
@@ -268,6 +270,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             machine: self.m,
             input: &self.snap.input,
             vars: &self.snap.vars,
+            locals: &self.snap.locals,
             implicit,
             key: self.key.as_ref(),
         };
@@ -281,6 +284,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             machine: self.m,
             input: &self.snap.input,
             vars: &self.snap.vars,
+            locals: &self.snap.locals,
             implicit,
             key: self.key.as_ref(),
         };
@@ -307,7 +311,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         }
         let mut list = vec![0];
         list.extend(self.default_entry(0));
-        self.enter_states(&list, &[])?;
+        self.enter_states(&list, &HashMap::new(), &Locals::new())?;
         self.settle()?;
         if self.snap.status == Status::Running {
             self.start_work()?;
@@ -1157,12 +1161,38 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         exits.sort_unstable();
         exits.dedup();
         self.record_history(&exits);
-        for s in exits.into_iter().rev() {
+        for &s in exits.iter().rev() {
             self.exit_state(s)?;
         }
         for &(source, index) in t {
             let effects = &self.state(source).transitions[index].effects;
             self.run_effects(effects, implicit)?;
+        }
+        // The arguments, after every transition's effects and while the exited states' locals
+        // are still there to read: transition by transition, each list left to right.
+        let mut args: HashMap<&'p str, Vec<Value>> = HashMap::new();
+        for &(source, index) in t {
+            for a in &self.state(source).transitions[index].args {
+                let mut values = Vec::with_capacity(a.values.len());
+                for v in &a.values {
+                    values.push(self.eval(v, implicit)?);
+                }
+                args.insert(a.state.as_str(), values);
+            }
+        }
+        for &s in &exits {
+            self.snap.locals.remove(&self.state(s).id);
+        }
+        let mut restored = Locals::new();
+        for &x in t {
+            for &target in self.targets(x) {
+                let h = self.state(target);
+                if h.kind.is_history()
+                    && let Some(saved) = self.snap.history_locals.get(&h.id)
+                {
+                    restored.extend(saved.iter().map(|(k, v)| (k.clone(), v.clone())));
+                }
+            }
         }
         let mut entries: Vec<usize> = Vec::new();
         for &x in t {
@@ -1172,7 +1202,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         }
         entries.sort_unstable();
         entries.dedup();
-        self.enter_states(&entries, &[])
+        self.enter_states(&entries, &args, &restored)
     }
 
     /// `recordHistory`: for each state about to be exited, what each of its history states
@@ -1195,6 +1225,23 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 };
                 let ids = record.iter().map(|&i| self.state(i).id.clone()).collect();
                 self.snap.history.insert(h.id.clone(), ids);
+                // The locals of the states entering the record re-enters: the children it
+                // records, or every active state below `s` for a deep one.
+                let kept = self.active.iter().copied().filter(|&q| match h.kind {
+                    StateKind::History => self.idx.parents[q] == Some(s),
+                    _ => self.idx.is_ancestor(s, q),
+                });
+                let saved: Locals = kept
+                    .filter_map(|q| {
+                        let id = &self.state(q).id;
+                        self.snap.locals.get(id).map(|l| (id.clone(), l.clone()))
+                    })
+                    .collect();
+                if saved.is_empty() {
+                    self.snap.history_locals.remove(&h.id);
+                } else {
+                    self.snap.history_locals.insert(h.id.clone(), saved);
+                }
             }
         }
     }
@@ -1260,7 +1307,14 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         Ok(())
     }
 
-    fn enter_states(&mut self, list: &[usize], implicit: Implicit<'_>) -> R {
+    /// Enters the states of `list`, in order: each gets its `entered` record, its locals
+    /// ([`Ctx::bind_locals`]) and its entry effects.
+    fn enter_states(
+        &mut self,
+        list: &[usize],
+        args: &HashMap<&'p str, Vec<Value>>,
+        restored: &Locals,
+    ) -> R {
         for &s in list {
             if let Err(pos) = self.active.binary_search(&s) {
                 self.active.insert(pos, s);
@@ -1269,7 +1323,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             self.trace(Record::Entered {
                 state: state.id.clone(),
             });
-            self.run_effects(&state.entry, implicit)?;
+            self.bind_locals(state, args, restored)?;
+            self.run_effects(&state.entry, &[])?;
             self.entered[s] = true;
             if state.kind == StateKind::Final {
                 match self.idx.parents[s] {
@@ -1279,6 +1334,60 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             }
         }
         Ok(())
+    }
+
+    /// `bindLocals`: gives state `s`, just entered, its locals: those a history record
+    /// restores, or its parameters from `args` and its variables' initial values, each with a
+    /// `set` record named `<state id>.<name>` (`spec/execution.md#data-local-to-a-state`).
+    fn bind_locals(
+        &mut self,
+        s: &'p State,
+        args: &HashMap<&'p str, Vec<Value>>,
+        restored: &Locals,
+    ) -> R {
+        if s.params.is_empty() && s.vars.is_empty() {
+            return Ok(());
+        }
+        self.snap.locals.insert(s.id.clone(), Object::new());
+        if let Some(saved) = restored.get(&s.id) {
+            let names = s
+                .params
+                .iter()
+                .map(|p| &p.name)
+                .chain(s.vars.iter().map(|v| &v.name));
+            for n in names {
+                if let Some(v) = saved.get(n) {
+                    self.bind(s, n, v.clone());
+                }
+            }
+            return Ok(());
+        }
+        let given = args.get(s.id.as_str()).map_or(&[][..], Vec::as_slice);
+        for (p, v) in s.params.iter().zip(given) {
+            self.bind(s, &p.name, v.clone());
+        }
+        for v in &s.vars {
+            if let Some(init) = &v.init {
+                let value = self.eval(init, &[])?;
+                self.bind(s, &v.name, value);
+            } else if matches!(*self.program.resolve(&v.ty), TypeRef::Optional(_)) {
+                self.bind(s, &v.name, Value::Null);
+            }
+        }
+        Ok(())
+    }
+
+    /// Sets local `name` of state `s` and writes its `set` record.
+    fn bind(&mut self, s: &State, name: &str, value: Value) {
+        self.snap
+            .locals
+            .entry(s.id.clone())
+            .or_default()
+            .insert(name.to_owned(), value.clone());
+        self.trace(Record::Set {
+            var: format!("{}.{name}", s.id),
+            value,
+        });
     }
 
     /// Queues the completions that entering final state `f` causes: its compound parent's,
@@ -1322,13 +1431,23 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
 
     fn run_effects(&mut self, effects: &[Effect], implicit: Implicit<'_>) -> R {
         for e in effects {
-            if let Effect::Set { var, value } = e {
+            if let Effect::Set { var, state, value } = e {
                 let v = self.eval(value, implicit)?;
-                self.snap.vars.insert(var.clone(), v.clone());
-                self.trace(Record::Set {
-                    var: var.clone(),
-                    value: v,
-                });
+                let var = match state {
+                    None => {
+                        self.snap.vars.insert(var.clone(), v.clone());
+                        var.clone()
+                    }
+                    Some(state) => {
+                        self.snap
+                            .locals
+                            .entry(state.clone())
+                            .or_default()
+                            .insert(var.clone(), v.clone());
+                        format!("{state}.{var}")
+                    }
+                };
+                self.trace(Record::Set { var, value: v });
             }
         }
         for e in effects {
@@ -1853,6 +1972,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         for s in self.active.clone().into_iter().rev() {
             self.exit_state(s)?;
         }
+        self.snap.locals.clear();
         self.stop_children();
         self.cancel_raises();
         self.snap.result = Some(if status == Status::Done {
@@ -1881,6 +2001,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         for s in self.active.clone().into_iter().rev() {
             self.exit_state(s)?;
         }
+        self.snap.locals.clear();
         self.stop_children();
         self.cancel_raises();
         self.queue.clear();

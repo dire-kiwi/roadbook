@@ -1,0 +1,15 @@
+machine M() {
+  event Go
+
+  initial A
+  state A(n: int) {
+    on Go -> B
+  }
+  parallel state B {
+    state Left(label: string) {}
+    state Right {}
+  }
+}
+
+// expect: RB0223 at 4:11
+// expect: RB0223 at 9:11

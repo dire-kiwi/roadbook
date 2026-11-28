@@ -1,0 +1,19 @@
+// Conformance chart: a state variable read before it is assigned. Compiled without the
+// definite assignment check (`allow-unassigned` in roadbook.toml), as `defects.road` is.
+
+/// A state variable with no initial value, read by a guard before anything assigns it.
+machine Unset() {
+  event Go
+
+  initial A
+
+  state A {
+    var count: int
+    on Go {
+      if count > 0 -> B
+      else         -> B
+    }
+  }
+
+  state B { on Go -> A }
+}

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/pair.road",
@@ -84,6 +84,8 @@
           "endLine": 19,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Receiver.WaitingFirst",
         "states": [
           {
@@ -98,6 +100,8 @@
               "endLine": 14,
               "endCol": 51
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -115,6 +119,7 @@
                   "Receiver.WaitingSecond"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -140,6 +145,8 @@
               "endLine": 16,
               "endCol": 44
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -157,6 +164,7 @@
                   "Receiver.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -182,6 +190,8 @@
               "endLine": 18,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -231,6 +241,7 @@
             "path": [
               "peer"
             ],
+            "state": null,
             "type": "ref Receiver",
             "text": "peer"
           },
@@ -273,6 +284,8 @@
           "endLine": 33,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Sender.Idle",
         "states": [
           {
@@ -287,6 +300,8 @@
               "endLine": 30,
               "endCol": 83
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -304,6 +319,7 @@
                   "Sender.Sent"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -314,6 +330,7 @@
                         "path": [
                           "peer"
                         ],
+                        "state": null,
                         "type": "ref Receiver",
                         "text": "peer"
                       }
@@ -378,6 +395,8 @@
               "endLine": 32,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

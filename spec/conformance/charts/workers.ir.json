@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/workers.road",
@@ -91,6 +91,8 @@
           "endLine": 20,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Logbook.Open",
         "states": [
           {
@@ -105,6 +107,8 @@
               "endLine": 17,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -120,6 +124,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -131,6 +136,7 @@
                           "event",
                           "text"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.text"
                       }
@@ -156,6 +162,7 @@
                   "Logbook.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -181,6 +188,8 @@
               "endLine": 19,
               "endCol": 24
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -262,6 +271,8 @@
           "endLine": 34,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Worker.Working",
         "states": [
           {
@@ -276,6 +287,8 @@
               "endLine": 31,
               "endCol": 42
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -293,6 +306,7 @@
                   "Worker.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -318,6 +332,8 @@
               "endLine": 33,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -436,6 +452,8 @@
           "endLine": 55,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Boss.Watching",
         "states": [
           {
@@ -450,6 +468,8 @@
               "endLine": 52,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -466,6 +486,7 @@
                     "path": [
                       "book"
                     ],
+                    "state": null,
                     "type": "ref Logbook",
                     "text": "book"
                   }
@@ -491,6 +512,7 @@
                   "Boss.Idle"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -515,6 +537,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -548,6 +571,7 @@
                   "Boss.Watching"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -568,6 +592,7 @@
                   "Boss.Idle"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -593,6 +618,8 @@
               "endLine": 54,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -610,6 +637,7 @@
                   "Boss.Watching"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,

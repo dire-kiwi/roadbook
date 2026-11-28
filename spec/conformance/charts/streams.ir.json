@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/streams.road",
@@ -130,6 +130,8 @@
           "endLine": 29,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Clock.Waiting",
         "states": [
           {
@@ -144,6 +146,8 @@
               "endLine": 21,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -187,10 +191,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "seconds",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -200,6 +206,7 @@
                           "path": [
                             "seconds"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "seconds"
                         },
@@ -234,6 +241,7 @@
                   "Clock.Idle"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -259,6 +267,8 @@
               "endLine": 26,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -276,6 +286,7 @@
                   "Clock.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -296,6 +307,7 @@
                   "Clock.Over"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -321,6 +333,8 @@
               "endLine": 28,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -332,6 +346,7 @@
               "path": [
                 "seconds"
               ],
+              "state": null,
               "type": "int",
               "text": "seconds"
             },

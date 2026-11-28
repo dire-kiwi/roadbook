@@ -24,6 +24,18 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  event Go\n  internal  event Remind{attempt:int}\n  on Go raise Remind{attempt:1}after 24h  as  reminder  cancel  other raise Go\n}\n",
         "machine M() {\n  event Go\n  internal event Remind { attempt: int }\n  on Go raise Remind { attempt: 1 } after 24h as reminder  cancel other  raise Go\n}\n",
     ),
+    // A state's parameters follow its name as a machine's do; its variables line up as a
+    // machine's; a target's arguments follow the segment they belong to.
+    (
+        "machine M() {\n  state A{on Go->B( 1,x+1 ).C  set n=1}\n  state B( a:int ,sensitive  b : string) {\n    var  n:int=a\n    sensitive var s: string\n    on Go -> .C(a)\n    initial C\n    state C() {}\n  }\n  final state F(r:string) { output r }\n}\n",
+        "machine M() {\n  state A { on Go -> B(1, x + 1).C  set n = 1 }\n  state B(a: int, sensitive b: string) {\n    var n:           int = a\n    sensitive var s: string\n    on Go -> .C(a)\n    initial C\n    state C {}\n  }\n  final state F(r: string) { output r }\n}\n",
+    ),
+    // A parameter list written over several lines keeps one parameter per line, as a
+    // machine's does.
+    (
+        "machine M() {\n  state B(\n    a: int,\n    b: string,\n  ) {\n    on Go -> B(1, \"x\")\n  }\n}\n",
+        "machine M() {\n  state B(\n    a: int,\n    b: string\n  ) {\n    on Go -> B(1, \"x\")\n  }\n}\n",
+    ),
     // `sensitive` comes first, on fields, parameters and variables.
     (
         "type T {sensitive   a:int,b:int}\nmachine M( sensitive  k :string) {\n  sensitive   var t:int=1\n  var u: int\n}\n",

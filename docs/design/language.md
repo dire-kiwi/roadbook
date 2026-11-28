@@ -78,14 +78,14 @@ Host functions receive exactly the arguments the chart passes them. They never s
 
 | Item | Meaning |
 | --- | --- |
-| `var name: T [= expr]` | A machine variable. `sensitive var` keeps its value out of traces (see [sensitive values](#sensitive-values)). |
+| `var name: T [= expr]` | A machine variable. `sensitive var` keeps its value out of traces (see [sensitive values](#sensitive-values)). Written in a state, it is the state's own (see [data local to a state](#data-local-to-a-state)). |
 | `event Name [{ fields }]` | An event the machine accepts from outside. |
 | `internal event Name [{ fields }]` | An event only the machine itself produces, with `raise`: host code and other machines cannot send it (see [events a machine raises](#events-a-machine-raises)). |
 | `emits Name [{ fields }]` | An event the machine emits, to whoever invoked or spawned it and every machine holding a reference to it, of those that have an `on` for it. |
 | `call name(params) [-> T] [! E]` | A request the machine answers for any machine holding a reference to it (see [calls between machines](#calls-between-machines)). |
 | `children name: Machine by Key`, `children name: task by Key` | A keyed collection of child machines, or of tasks, started with `spawn` (see [many children](#many-children)). |
 | `initial Name` | The child state entered first. Required, once, in a state that has children, except a `parallel state`, which has none: all its children are entered. |
-| `state Name { ... }` | A state. Atomic if it has no children, compound if it does. |
+| `state Name { ... }` | A state. Atomic if it has no children, compound if it does. `state Name(params) { ... }` takes parameters, which every transition into it passes: `-> Name(args)` (see [data local to a state](#data-local-to-a-state)). |
 | `parallel state Name { ... }` | All children are active at once (regions). A region may be any kind of state. |
 | `final state Name { ... }` | Ends the enclosing compound state, or the machine at the top level. |
 | `history Name`, `deep history Name` | In a state with children: a [history state](#history-states), a target that returns to where the state was when it was last left. |
@@ -95,6 +95,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 
 | Item | Meaning |
 | --- | --- |
+| `var name: T [= expr]` | A state variable: it gets its initial value each time the state is entered and is gone when the state is left, and only the state and the states inside it can read it (see [data local to a state](#data-local-to-a-state)). |
 | `entry set ... ` / `entry do ...` | Run when the state is entered. |
 | `exit set ...` / `exit do ...` | Run when the state is left. |
 | `on Event ...` | Transition on one of the machine's own events: an external one, or one the machine [raises](#events-a-machine-raises). `on *` matches any of the machine's own events, internal ones included, that this state has no `on` for. |
@@ -119,9 +120,9 @@ on Submit if isValid(order) -> Paying  set attempts = 0  do audit("submitted", o
 
 With no `-> Target` the transition has no target: the state is not left and re-entered. The effects are `set` assignments, `do` actions, the messages `send name.Event { … }` and `emit Event { … }` (see [messages between machines](#messages-between-machines)), `reply name done [value]` and `reply name fail error`, which answer a call (see [calls between machines](#calls-between-machines)), `spawn` and `stop` (see [many children](#many-children)), and `raise` and `cancel`, which give the machine one of its own events, at once or after a delay (see [events a machine raises](#events-a-machine-raises)). `set` assignments run first: every `set`, in the order written, then the `do`, `send`, `emit`, `reply`, `spawn`, `stop`, `raise` and `cancel` effects, in the order written among themselves, wherever they are written, so an action or a message sees the values its transition's `set`s assign. The same goes for `entry` and `exit`. The formatter writes every `set` clause before the others, so the source shows the order they run in.
 
-Inside a transition, these names are in scope besides the machine's variables: `event` (in `on`, also `on name.Event`, `on name` and `on name.ended`), `result` (in an invoke's `done` and in `on name.done`), `error` (in an invoke's `fail` and in `on name.fail`), `call` (in `on name`, the call being taken) and `key` (in `on name.Event`, `on name.done` and `on name.fail` through a `children` collection).
+Inside a transition, these names are in scope besides the machine's parameters and variables and the [locals](#data-local-to-a-state) of its state and the states around it: `event` (in `on`, also `on name.Event`, `on name` and `on name.ended`), `result` (in an invoke's `done` and in `on name.done`), `error` (in an invoke's `fail` and in `on name.fail`), `call` (in `on name`, the call being taken) and `key` (in `on name.Event`, `on name.done` and `on name.fail` through a `children` collection).
 
-A target is resolved like a name in a block-structured language: first among the siblings of the state the transition is written in, then among its parent's siblings, and so on outward. A dotted path such as `Processing.Paying` then descends into a nested state, which is also how a state targets one of its own children. A transition written at machine level resolves among the top-level states. An unknown target is a compile error, and so is a duplicate state name among siblings.
+A target is resolved like a name in a block-structured language: first among the siblings of the state the transition is written in, then among its parent's siblings, and so on outward. A dotted path such as `Processing.Paying` then descends into a nested state, which is also how a state targets one of its own children. A transition written at machine level resolves among the top-level states. A state with parameters takes its arguments in the path, after its name: `-> Confirming(token)`, `-> Editing(doc).Changing` ([data local to a state](#data-local-to-a-state)). An unknown target is a compile error, and so is a duplicate state name among siblings.
 
 **A target with a leading dot keeps the source.** `-> .Browsing` resolves `Browsing` among the children of the state the transition is written in, and the transition is **internal**: that state is not left, so its `entry` and `exit` do not run and its `invoke` and `after` timers keep going; only the states below it change.
 
@@ -185,8 +186,9 @@ state Charging {
 - **How many times.** `N` is an integer literal of at least 1: the number of retries, so the task runs at most `N + 1` times. `retry 3` above makes up to four attempts.
 - **Which errors.** The errors listed after `on`, each one the task, machine or [call](#calls-between-machines) declares; without `on`, every error it declares. Nothing else is retried: not `done`, and not a host defect (a thrown exception, a panic), which is not flow and fails the run as it does without `retry`. Nor is a call's built-in `Unanswered`, with `on` or without: it is not a declared error, so it cannot be listed (`RB0207`), and it keeps its own `fail Unanswered` outcome, which a `fail *` that handles a retried error cannot be (`RB0218`). A callee that is not running or has ended would not answer the next attempt either; one that may be busy should answer with a declared error.
 - **When the retries run out.** A failure that is not retried, an error not in the list or the failure after the last retry, goes to its outcome as it would without `retry`, with `error` the last failure. Every declared error still needs an outcome (`RB0204`): it says what happens when retrying did not help.
-- **Delays.** `after delay` is how long to wait between a failure and the next attempt; without it, the next attempt starts at once. The delay is a `duration` expression, evaluated when the wait starts, like an `after` transition's. In it, `attempt` is the number of attempts that have failed so far, an `int`: 1 before the first retry, 2 before the second. So `after 2s` waits the same each time and `after retryDelay(attempt)` lets a host function grow the delay (doubling, a cap, jitter): the language has no arithmetic on durations, so backoff is the function's choice. `attempt` is in scope only in a retry's delay, and it is the only implicit name there: the delay cannot read `error`, so a wait chosen by the failure (a server's retry-after) needs the explicit form. `attempt` is not reserved, so a machine may have a parameter or variable named `attempt`, but then it cannot use `attempt` in a retry delay (`RB0120`).
+- **Delays.** `after delay` is how long to wait between a failure and the next attempt; without it, the next attempt starts at once. The delay is a `duration` expression, evaluated when the wait starts, like an `after` transition's. In it, `attempt` is the number of attempts that have failed so far, an `int`: 1 before the first retry, 2 before the second. So `after 2s` waits the same each time and `after retryDelay(attempt)` lets a host function grow the delay (doubling, a cap, jitter): the language has no arithmetic on durations, so backoff is the function's choice. `attempt` is in scope only in a retry's delay, and it is the only implicit name there: the delay cannot read `error`, so a wait chosen by the failure (a server's retry-after) needs the explicit form. `attempt` is not reserved, so a machine may have a parameter or variable named `attempt`, and a state a local of that name, but then it cannot use `attempt` in a retry delay where that name is in scope (`RB0120`).
 - **The state stays active.** While it retries, the invoking state is still active, through every attempt and every wait. Its own `on`, `after` and `always` transitions apply all the time, so `after 30s -> TimedOut` written in the state is a deadline for all the attempts together, and `on Cancel` stops a wait as well as an attempt. Its `entry` and `exit` run once, not once per attempt. Leaving the state and entering it again starts counting from zero.
+- **Locals.** In a state with [parameters or variables of its own](#data-local-to-a-state), they live through every attempt and every wait, since the state stays active, and the invoke's arguments and the delay can read them. They are reset when the state is entered again, as the count is.
 - **Where.** `retry` is allowed on the invoke of a state with no child states and no other invoke (`RB0215`), without `as` (`RB0216`): a retried machine is a new child run each attempt, so a name for it would address nothing during a wait. A retried error that `fail *` handles must not share that outcome with an error that is not retried (`RB0218`): give it an outcome of its own.
 
 ### What `retry` compiles to
@@ -592,11 +594,71 @@ From `Working.Previewing`, `Help` leaves `Working`, and `Back` returns to `Worki
 - **What is recorded** is where the parent was the last time a transition left it. Finishing the run and cancelling it leave states too, but record nothing: the run is over.
 - **Where.** In a state with child states, compound or parallel. Not in the machine body, which is never left; not in a final or atomic state (`RB0219`). A history state's name shares the namespace of its sibling states (`RB0108`), and it is targeted like one, `-> Working.Previous`, or `-> Previous` from a sibling. It cannot be the `initial`, and a path cannot go through it (`Working.Previous.Editing`). A state may have one history state of each kind, or several; they record the same exits.
 - **Which states a transition leaves** does not depend on what was recorded: it is decided as if the history state were an ordinary child of its parent. So a transition from inside the parent to its own history state (`on Reset -> Previous` in `Working.Previewing`) leaves the states below the parent but not the parent itself, and goes back to where the parent was when it was last left, which is not where it is now. (SCXML computes this from the states the history restores; the difference shows only in such transitions.)
-- **Restoring re-enters states.** The states a history state restores are entered like any others: their `entry` effects run, and their `invoke` and `after` timers start again from the beginning, so an invoked machine starts over. Variables are not restored: they keep the values they have.
+- **Restoring re-enters states.** The states a history state restores are entered like any others: their `entry` effects run, and their `invoke` and `after` timers start again from the beginning, so an invoked machine starts over. The machine's variables are not restored: they keep the values they have. A restored state's own [parameters and variables](#data-local-to-a-state) are: it gets back the ones it had when it was left.
 - **In a parallel state**, a shallow history state restores every region with its default entry, which is what a transition to the parallel state does; a deep one restores each region as it was.
 - **Saving.** What each history state recorded is part of a [saved snapshot](../../spec/execution.md#the-saved-snapshot), so a restored run returns to the same states.
 
 The [semantics](../../spec/execution.md#a-microstep) give the precise rules. The viewer draws a history state as a small circle marked `H`, or `H*` for a deep one, inside its parent.
+
+## Data local to a state
+
+A machine's `var` lives as long as the run. Data that only one part of the chart needs can belong to a state instead: a **state variable**, declared with `var` inside the state, or a **state parameter**, given by the transition that enters the state. Together they are the state's **locals**.
+
+```
+machine PasswordReset(email: string) -> ApiResponse {
+  event Submit { code: string }
+
+  initial Requesting
+
+  state Requesting {
+    invoke requestReset(email) {
+      done -> Confirming(result) // result is a ResetToken
+    }
+  }
+
+  /// The token is only needed while the code is being confirmed.
+  state Confirming(token: ResetToken) {
+    var tries: int = 0 // 0 each time Confirming is entered
+    on Submit {
+      if matches(token, event.code) -> Resetting(token)
+      if tries < 2                                                 set tries = tries + 1
+      else                          -> Rejected("too many tries")
+    }
+  }
+
+  state Resetting(token: ResetToken) {
+    invoke resetPassword(token) {
+      done -> Changed
+    }
+  }
+
+  final state Changed                  { output noContent() }
+  final state Rejected(reason: string) { output problem(422, reason) }
+}
+```
+
+- **Declaring.** `var name: T [= expr]` and `sensitive var` may be written in any state, as in a machine body. Parameters are written after the state's name, `state Confirming(token: ResetToken, sensitive code: string)`, on a `state`, a `parallel state` or a `final state`, as fields are: a `sensitive` mark, a name and a type. A state's parameters and variables share one namespace (`RB0108`).
+- **Entering with arguments.** A transition into a state with parameters passes them after the state's name, positionally, as `do` and `invoke` pass theirs: `-> Confirming(result)`. Every transition that enters the state passes them, with the declared types (`RB0224` if it does not, `RB0302` for the wrong number and `RB0301` for a wrong type), and one that does not enter it passes none (`RB0225`). A state with parameters cannot be a compound state's `initial` or a region of a parallel state (`RB0223`): those are entered by default, with no transition to pass anything. So every way into the state is a transition the compiler sees.
+- **Paths.** The arguments go on the segment of the target path that names the state, wherever it is in the path: `-> Editing(doc).Changing` enters `Editing` with `doc` and goes on to its child `Changing`. Arguments are written exactly for the states the transition enters: from inside `Editing`, `-> Changing` keeps `Editing` and its locals, and `-> Editing(doc).Changing` there is `RB0225`. `-> .Child(x)` passes arguments to a child the transition enters while its source is kept. With several targets, a state on more than one target's path (the parallel state they meet in, say) gets its arguments once, on any one of them.
+- **Scope.** A local can be read in the state that declares it and in every state inside it: their `entry`, `exit`, guards, effects and arguments, `invoke` arguments, `after` delays, `output` and `fail`, and the initial values of later variables. Outside them it does not exist (`RB0105`). A parameter is read-only (`RB0114`); a variable is assigned with `set` like a machine's.
+- **No shadowing.** A local cannot have the name of anything else that is in scope where it is, or that it would be in scope with: a machine parameter or variable, a `children` collection, the name of a delayed raise, an `as` name, or a local of a state around it or inside it (`RB0127`); nor `key` (`RB0122`). So a name means the same thing wherever it is read. States that are not nested may have locals of the same name: `tries` in two sibling states, or in two regions, are two variables.
+- **Types.** A local cannot have a `ref` or `call` type (`RB0328`): a handle to a peer or a pending call belongs to the machine.
+
+### When locals get their values
+
+A step runs as before: exits, innermost first; the transition's effects; entries, outermost first. Locals fit into it like this:
+
+1. **The arguments are evaluated after the transition's effects**, before any state is entered. They see what the transition's `set`s assigned, as a `send` does, and they can still read the locals of the states the transition leaves: `-> Confirming(token)` in `Confirming` passes its token on, and a state `Backoff(attempt: int)` can go on with `-> Backoff(attempt + 1)`.
+2. **The locals of the states it left are then discarded.** So their `exit` effects, and the transition's own effects and arguments, read them; nothing after does.
+3. **Each state entered gets its locals**, after it is entered and before its `entry` effects run: its parameters their arguments, then each variable, in order, its initial value (an optional variable with none starts as `null`, as a machine's does). An initial value can read the state's parameters, the variables before it, and the locals of the states around it, which are entered first. Then the `entry` effects run and see them all.
+
+Locals are reset on every entry. **Re-entering** a state, `-> Self(n)` or a transition from inside it to the state itself, discards its locals and gives it new ones, its initial values evaluated again; its old values can be read in the arguments. A transition that keeps the state, one with no target or an internal one written in it or above it (`-> .Child`), keeps its locals. An assignment in a transition to a local of a state that the transition leaves is discarded with it, which is a warning (`RB0916`): `on Retry -> Trying  set tries = tries + 1` written in `Trying` counts nothing. Use a transition with no target, a parameter (`-> Trying(tries + 1)`), or a machine variable.
+
+`retry` works unchanged in a state with locals: the retry's attempts and waits happen inside the state, which stays active, so its locals live through every attempt, and its invoke's arguments can read its parameters. The retry's counter is still a machine variable ([what retry compiles to](#what-retry-compiles-to)); making it a variable of the retrying state is left for later, since it would change the IR, the hash and the trace of every chart that uses `retry`.
+
+A **history state** restores locals with the states it restores: each state it enters again from its record gets back the parameters and variables it had when it was left, instead of new arguments and initial values. The states below them that are entered by default start afresh, as does everything when there is no record yet. Moving a variable from the machine into a state therefore does not change what a history state returns to. The parent itself, when the transition enters it, takes its arguments from the transition: `-> Editing(doc).Previous`.
+
+**In a trace** a state's locals are written as `set` records after its `entered` record, one for each parameter and each variable that starts with a value, and their name is the state's id, a dot and the local's name: `{"kind": "set", "var": "PasswordReset.Confirming.tries", "value": 0}`. A `set` of a state's variable is written the same way. A machine variable's initial value is not traced; a state's locals are, since they come from the step that enters the state. A snapshot holds the locals of the active states, and a saved snapshot saves them, so a restored run goes on with them ([`spec/execution.md`](../../spec/execution.md#data-local-to-a-state)).
 
 ## Sensitive values
 
@@ -614,10 +676,10 @@ machine Vault(login: Credentials, sensitive pin: int) -> Profile ! Locked {
 }
 ```
 
-- **Where.** On any field of a record, error, event or emitted event; any parameter of a machine, task, action, function or call; any `var`. In an `on name` transition that takes a call, `event.pin` is sensitive when the call's parameter `pin` is. The mark is part of the declaration, so it holds wherever the declaration is used: through aliases, in other files and in other packages.
+- **Where.** On any field of a record, error, event or emitted event; any parameter of a machine, state, task, action, function or call; any `var`, a state's among them. In an `on name` transition that takes a call, `event.pin` is sensitive when the call's parameter `pin` is. The mark is part of the declaration, so it holds wherever the declaration is used: through aliases, in other files and in other packages.
 - **What it does.** Every trace record shows the value of a marked field, parameter or variable as the string `"<redacted>"`, at any depth: a `Credentials` in a list in an optional shows `{"user": "ada", "password": "<redacted>"}` there. A variable marked `sensitive` is shown `"<redacted>"` whole. The records keep their form; only their values change. The rules, which both runtimes follow byte for byte, are in [`spec/trace.md`](../../spec/trace.md#redaction).
 - **What it does not.** Nothing but traces changes. The machine, host code and **saved snapshots see and keep the real values**: a restored run goes on with them, so a stored snapshot needs the protection the data needs. Types do not change either, in the generated TypeScript and Rust or anywhere else. On a function's parameter the mark changes nothing, since function calls are not traced; it can still say what the function handles. A marked field does not change a machine's [hash](../../spec/ir.md#the-machine-hash), so marking one later does not invalidate saved snapshots.
-- **Keeping it marked.** A runtime redacts a value by its declared type. So a value read from a sensitive place (`password`, `event.pin`, a field of a sensitive variable) can only go to a place that is also sensitive, or that no trace shows: a guard, a function's argument. Assigning it to a variable that is not sensitive, passing it to an action, task, machine or call parameter that is not, putting it in a field that is not, or making it an `output`, a `fail`, a call's reply (the value of `reply … done` or the error of `reply … fail`, which a `replied` record shows), an `after` delay, a retry's delay or a spawned child's key is an error (`RB0320`). So is an operator's result with a sensitive operand: `pin + 0`, `not flag` and `pin == 1234` are sensitive too. A value whose type has sensitive fields cannot go where `json` is expected, since `json` has no fields to redact by (`RB0321`), unless that place is itself sensitive; that includes a map or list of such values, an instance such as `Page<Login>`, and a `Page<Login>` where a `Page<json>` is expected. Redaction follows maps and type arguments: the `password` of every `Login` in a `map<string, Login>` or a `Page<Login>` is redacted. A function's result is not sensitive: a `fn` is how a chart derives what may be shown (`last4(card)`), on purpose.
+- **Keeping it marked.** A runtime redacts a value by its declared type. So a value read from a sensitive place (`password`, `event.pin`, a field of a sensitive variable) can only go to a place that is also sensitive, or that no trace shows: a guard, a function's argument. Assigning it to a variable that is not sensitive, passing it to an action, task, machine, call or state parameter that is not, putting it in a field that is not, or making it an `output`, a `fail`, a call's reply (the value of `reply … done` or the error of `reply … fail`, which a `replied` record shows), an `after` delay, a retry's delay or a spawned child's key is an error (`RB0320`). So is an operator's result with a sensitive operand: `pin + 0`, `not flag` and `pin == 1234` are sensitive too. A value whose type has sensitive fields cannot go where `json` is expected, since `json` has no fields to redact by (`RB0321`), unless that place is itself sensitive; that includes a map or list of such values, an instance such as `Page<Login>`, and a `Page<Login>` where a `Page<json>` is expected. Redaction follows maps and type arguments: the `password` of every `Login` in a `map<string, Login>` or a `Page<Login>` is redacted. A function's result is not sensitive: a `fn` is how a chart derives what may be shown (`last4(card)`), on purpose.
 - **What is never covered.** A host defect's message is whatever host code raised, and the trace shows it as it is: a function that is given a sensitive value should not put it in an exception (`JSON.parse` quotes its input). And a run redacts by the IR it was built from: runs that talk to each other should be built from the same charts, since a mark does not change the hash their handles are checked by.
 
 ## Checking properties
@@ -886,8 +948,9 @@ Errors (the build fails):
 - An `invoke` that does not handle every declared error of the task or machine, or that names an error the task or machine does not declare.
 - The same trigger written twice in one state. Several branches go in one block, where their order is explicit and only the last may be unguarded, so a branch can never be shadowed by an earlier one.
 - A read of a variable that might not be assigned yet, in an initial value or anywhere in the chart (see [definite assignment](#definite-assignment)).
+- A state's [parameters and variables](#data-local-to-a-state) used wrongly: one read outside the state and the states inside it; one whose name is already in scope there, or is a local of a state inside it; one of a `ref` or `call` type; a state with parameters as an `initial` or as a region of a parallel state; a transition that enters a state with parameters without passing its arguments, or with arguments of the wrong number or types; and arguments for a state that takes none or that the transition does not enter, or for one state twice.
 - A machine that returns `T` with a top-level final state that has no `output` or `fail`, and `output` or `fail` anywhere but a final state at the top level.
-- A transition or `invoke` in a final state. A final state ends its parent as soon as it is entered, so they could never run; it holds only `entry`, `exit`, `output` and `fail`.
+- A transition or `invoke` in a final state. A final state ends its parent as soon as it is entered, so they could never run; it holds only `entry`, `exit`, `output` and `fail`, and variables of its own.
 - A `done` transition in a state with no child states: it waits for a final child, so it could never be taken. (An invoke's `done` goes inside `invoke { }`.)
 - A history state in a state with no child states, or in a final state, and an `initial` that names a history state.
 - An unguarded cycle of `always` transitions: states each with an `always` whose first branch has no `if` (an `else` counts as guarded, since it runs only when the guards before it fail), each leading to the next, where entering a state also enters its `initial` chain (and every region of a parallel state), and a transition to a state's own ancestor leaves and re-enters it. A transition to a history state counts as entering any state it could restore: every child of its parent with that child's default entry for a shallow one, every state below the parent for a deep one. An unguarded `always` with no target is the shortest such cycle, and so is an unguarded internal one (`always -> .X`): it never leaves its state, so it is taken again after every step, even when it enters a final child, since an `always` is taken before a `done`. So is an unguarded `always` written in the machine body, whatever its target, unless that target is a top-level final state: the machine itself is never left, so its `always` would be taken again after every step.
@@ -910,6 +973,7 @@ Warnings:
 - An `emits E` that no `on name.E` in the checked files receives: a machine's, or a task's that no `on x.E` through an address of that task receives. As for unused declarations, a receiver in any file checked at the same time counts; host code holding a handle may still receive it.
 - A `call` that no `on name` of its machine takes, so every such call is answered `Unanswered`, and a `call name` variable that no `reply` answers.
 - A history state that no transition targets.
+- A `set` of a state's variable in a transition that leaves that state, so that the value is discarded with the state's locals before anything can read it.
 - An `internal event` that no `raise` of its machine raises, and a `raise` of an event that no `on E` and no `on *` of the machine takes.
 - A transition that leaves a parallel state it is written in, to a target inside it, and so starts some of its regions over by default entry: one from a region to another region, or from a region to a state inside itself. The message names the regions that restart; a transition that targets the parallel state itself, lists a target in every region, or is internal does not warn.
 
@@ -971,7 +1035,7 @@ Ranges are as in the IR: lines and columns are 1-based, columns count Unicode sc
 
 ### Definite assignment
 
-A `var` with no initial value and a type that is not optional starts unassigned. Every other variable always has a value: a parameter, a variable with an initial value, and an optional variable with none, which starts as `null`. The compiler proves that every read of a variable happens after the variable has a value, wherever the read is: a guard, a `set` value, the arguments of a `do`, the value of a `send` or `emit` and the `ref` variable a `send` goes through, the arguments of an `invoke`, an `after` delay, `output` and `fail`, and `entry` and `exit` effects. A read it cannot prove is an error (`RB0403`) at the read, with a label on a way in that leaves the variable unassigned. An `on name.Event` through a `ref` variable is not a read: an unassigned variable names no sender.
+A `var` with no initial value and a type that is not optional starts unassigned. Every other variable always has a value: a parameter, a variable with an initial value, and an optional variable with none, which starts as `null`. The same holds for a [state's](#data-local-to-a-state) parameters and variables, each time their state is entered: a parameter always has its argument, and a state variable with no initial value and a type that is not optional starts unassigned on every entry. The compiler proves that every read of a variable happens after the variable has a value, wherever the read is: a guard, a `set` value, the arguments of a `do`, the value of a `send` or `emit` and the `ref` variable a `send` goes through, the arguments of an `invoke`, an `after` delay, `output` and `fail`, and `entry` and `exit` effects. A read it cannot prove is an error (`RB0403`) at the read, with a label on a way in that leaves the variable unassigned. An `on name.Event` through a `ref` variable is not a read: an unassigned variable names no sender.
 
 The analysis is a forward dataflow over the chart. A variable is assigned when a state is entered if it is assigned on every way into the state. A way in is the start of the machine or a transition with a target, and along it, in the order a step runs them, these assign:
 
@@ -987,7 +1051,8 @@ What each read sees:
 - An `entry` sees what is assigned on every way into its state, and its own `set`s as above. `output` and `fail` see that and everything the final state's `entry` assigns.
 - A guard and the effects of a transition, the state's invoke arguments and `after` delays, and its `exit` run while the state is active, and see what is assigned whenever it is: for an atomic state, what its `entry` left; for a compound state, what is assigned in the state itself or in every child, since it is always in one of them; for a parallel state, what is assigned in the state itself or in any region, since it is in all of them. A transition's effects also see the `exit`s that run before them.
 - A `done` sees what is assigned in each final child it can complete through, and for a parallel state what is assigned in any region once every region has reached a final state.
-- A variable is never unassigned again, so the `always` and `done` transitions taken while a step settles, and the invokes and timers started after it, see at least this much.
+- A machine variable is never unassigned again, so the `always` and `done` transitions taken while a step settles, and the invokes and timers started after it, see at least this much. A state variable is unassigned again only by entering its state again, and is read only inside that state.
+- A state variable is analysed like a machine variable inside its state, with one difference: a way in that enters its state (one whose path from the domain to the target passes through it, or one that starts the machine) leaves it unassigned when its state is entered, whatever was assigned before, unless it has an initial value or an optional type. A way in that keeps its state active (a transition written inside the state, or an internal one written in it or above it, whose domain is the state or below it) carries what was assigned along it, as for a machine variable. So `set`s of a state variable in a transition that leaves its state assign nothing a later read can see (`RB0916` warns).
 - An initial value sees the parameters and the variables declared before it that have an initial value or an optional type: initial values are computed in the order the variables are declared.
 
 The analysis is conservative: it may reject a chart that never reads an unassigned variable when it runs. Where:
@@ -998,7 +1063,7 @@ The analysis is conservative: it may reject a chart that never reads an unassign
 - Inside a parallel state, a region relies on what was assigned before it was entered (by the states containing it and by the regions before it, in order) and on its own transitions. What another region assigns after that does not count, since the regions take their transitions independently. The transitions written on the parallel state itself and its `done` see every region.
 - Of the states a transition leaves, only the `exit`s of its source and the states containing it count, since which of the source's children is active is not known.
 - States that can never be entered are not checked; they are already warned about (`RB0901`).
-- A transition to a history state is a way into its parent's default entry, as if it targeted the parent (the parent itself is entered only if the transition leaves it). The states a history state restores add no way in: each was entered before, and a variable assigned then is still assigned.
+- A transition to a history state is a way into its parent's default entry, as if it targeted the parent (the parent itself is entered only if the transition leaves it). The states a history state restores add no way in: each was entered before, and a variable assigned then is still assigned. That holds for state variables too, since a restored state gets back the locals it had.
 
 It is fast: each state's facts only shrink, a state's transitions are looked at again only when they do, and the work grows with the size of the chart times the number of variables that start unassigned.
 
@@ -1063,7 +1128,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0012` | A name of the wrong case. | `type order`, `state idle` |
 | `RB0013` | A keyword, or `result`, used as a name, or a declaration or event named `Unanswered` or `Ended`. | `var on: int`, `var result: int`, `type Evt { type: string }`, `error Unanswered`, `enum Ended { A }` |
 | `RB0014` | `done`, `invoke`, `output`, `fail` or a history state directly in a machine body. | `machine M() { done -> A }`, `machine M() { history H }` |
-| `RB0015` | `var`, `event`, `internal event`, `emits`, `call`, `children` or `check` inside a state. | `state A { var x: int }`, `state A { check can finish }` |
+| `RB0015` | `event`, `internal event`, `emits`, `call`, `children` or `check` inside a state. (`var` is allowed there: a [state variable](#data-local-to-a-state).) | `state A { event Go }`, `state A { check can finish }` |
 | `RB0016` | A machine item at the top level of a file. | `state A {}` or `check can finish` outside a machine |
 | `RB0017` | A transition with no target, `set`, `do`, `send`, `emit`, `reply`, `spawn`, `stop`, `raise`, `cancel` or `ignore`. | `on Go` |
 | `RB0018` | A record value as an `after` delay, or a retry's delay, without parentheses. | `after Cfg { ms: 5 } -> A` |
@@ -1086,7 +1151,7 @@ The compiler's codes:
 | `RB0102` | An unknown task or machine in `invoke`. | `invoke chrgeCard(order)` |
 | `RB0103` | An unknown function. | `if isVald(order)` |
 | `RB0104` | An unknown action in `do`. | `do audt("x")` |
-| `RB0105` | An unknown variable. | `set attemps = 1` |
+| `RB0105` | An unknown variable, or a state's parameter or variable read outside that state. | `set attemps = 1`, `tries` in `B` for `var tries` in its sibling `A` |
 | `RB0106` | An event the machine does not declare. | `on Cancl -> Done` |
 | `RB0107` | Two declarations with the same name in one compilation, or an event or type parameter named like a type, error or machine. | `type Order` in two files, `event Order`, `type Page<Order>` |
 | `RB0108` | Two fields, parameters, type parameters, variants, variables, events or sibling states with the same name, or a name imported twice. A machine's `event`, `internal event` and `emits` names are one namespace, and the name of a delayed raise shares one with its parameters, variables, collections and `as` names. | `state A {}` twice in one parent, `import { B, B }`, `event Go` and `internal event Go`, `raise Go after 1s as attempts` beside `var attempts: int` |
@@ -1095,19 +1160,20 @@ The compiler's codes:
 | `RB0111` | An import of a file that cannot be read. | `import { A } from "./missing.road"` |
 | `RB0112` | An import of a name the file does not declare. | `import { Ordr } from "./types.road"` |
 | `RB0113` | An enum variant that does not exist. | `Role.Admn` |
-| `RB0114` | A `set` of a machine parameter. | `set token = ""` |
+| `RB0114` | A `set` of a machine's or a state's parameter. | `set token = ""` |
 | `RB0115` | A `send name.E` or `on name.E` whose `name` is not an `invoke … as name` in scope or a parameter or variable, or names a call, or an `invoke name.call(…)` or `on name.ended` whose `name` is not a parameter or variable. | `send uplod.Pause`, `upload` outside its invoking state, `invoke invntory.reserve()`, `on invntory.ended` |
 | `RB0116` | A `send` of an event the receiving machine does not declare with `event` (an `internal event` of it among them, which only it can raise), or a `send` to a task, which takes no events. | `send upload.Stop`, `send child.Ping` for `internal event Ping` in the child, `send up.Pause` for `invoke upload(f) as up`, `send uploads[k].Pause` for `children uploads: upload by string` |
 | `RB0117` | An `emit` of an event the machine does not declare with `emits`, or an `on name.E` of one its sender, a machine or a task, does not. | `emit Progres`, `on upload.Pause`, `on up.Progres` |
 | `RB0118` | A call the machine does not declare: in `invoke x.name`, `on name` or a `call name` type. | `invoke inventory.reserv(id)`, `on reserv` |
 | `RB0119` | `Unanswered` where it cannot be: in a `!` list, as a type or a value, or in a `fail` outcome of an invoke that is not a call. | `call reserve() ! Unanswered`, `fail Unanswered` after a task |
-| `RB0120` | `attempt` in a retry delay of a machine with a parameter or variable named `attempt`. | `retry 3 after backoff(attempt)` with `var attempt: int` |
+| `RB0120` | `attempt` in a retry delay of a machine with a parameter or variable named `attempt`, or of a state where a state's local of that name is in scope. | `retry 3 after backoff(attempt)` with `var attempt: int` |
 | `RB0121` | A `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` or `on name.fail` through a name that is not a `children` collection, or a `send name.E` to a collection without a key or `*`. | `stop upload[1]`, `send sessions.Notify` |
-| `RB0122` | `key` as the name of a machine parameter, variable, `as` name or collection. | `var key: string` |
+| `RB0122` | `key` as the name of a machine or state parameter, a variable, an `as` name or a collection. | `var key: string` |
 | `RB0123` | A state path in a `check` that names no state of the machine, or names a history state. | `check reachable Applyng`, `check never Work.Last` for `history Last` |
 | `RB0124` | `on name.ended` through an `invoke … as name` child or task, or a `children` collection, whose end is its outcome. | `on upload.ended`, `on up.ended`, `on sessions.ended` |
 | `RB0125` | A `raise` of an event that is not one of the machine's own events or internal events: an event it emits, another machine's, or an unknown one. | `raise Progress` for `emits Progress`, `raise Unknown` |
 | `RB0126` | A `cancel` of a name that no `raise … after … as name` of the machine uses. | `cancel reminder` with no `raise … as reminder` |
+| `RB0127` | A state's parameter or variable whose name is already in scope in the state, or is a local of a state inside it: a machine parameter or variable, a collection, the name of a delayed raise, an `as` name in scope, or a local of a state around it. | `state Retrying(attempts: int)` with `var attempts: int`, `var n` in both `A` and `A.B` |
 | `RB0201` | A transition target that does not resolve, or a path through a history state. | `-> Dne`, `-> Working.Previous.Editing` |
 | `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }`, `machine M() { initial A }` |
 | `RB0203` | An `initial` that is not a child state, is written twice, or is in a state without children. | `initial Strat`, `initial Previous` for `history Previous` |
@@ -1130,6 +1196,9 @@ The compiler's codes:
 | `RB0220` | A `spawn` of a machine or task that is not its collection's. | `spawn sessions[id] = Upload(f)` for `children sessions: Session by string`, `spawn uploads[id] = fetch()` for `children uploads: upload by string` |
 | `RB0221` | Several targets of which some have the leading dot and some do not. | `-> .Playback.Paused, Volume.Muted` |
 | `RB0222` | Several targets that are not each in a different region of a parallel state: two in one compound state, one inside another, or the same one twice. | `-> Cart.Editing, Cart.Reviewing` |
+| `RB0223` | A state with parameters as a compound state's `initial` or as a region of a parallel state, which are entered with no arguments. | `initial Confirming` for `state Confirming(token: ResetToken)` |
+| `RB0224` | A transition that enters a state with parameters without passing its arguments. | `-> Confirming`, `-> Editing.Changing` from outside `Editing(doc: Doc)` |
+| `RB0225` | Arguments for a state that takes none, for one the transition does not enter, or for one state twice. | `-> Idle(1)`, `-> Editing(doc).Changing` written inside `Editing` |
 | `RB0301` | A value of the wrong type. | `var ratio: float = 1` |
 | `RB0302` | The wrong number of arguments. | `retryDelay(1, 2)` |
 | `RB0303` | An operator on operands it is not defined on. | `attempts + 1.5`, `order == other` |
@@ -1149,7 +1218,7 @@ The compiler's codes:
 | `RB0317` | A `call name` type anywhere but a machine variable's, or a variable of it with an initial value. | `var p: call reserve?`, `fn f(p: call reserve) -> int` |
 | `RB0318` | A `reply` to something that is not a pending call. | `reply count done` for `count: int` |
 | `RB0319` | A `reply` that does not answer as its call is declared. | `reply call done` for a call that returns `int`, `reply call fail Gone` |
-| `RB0320` | A value read from a sensitive field, parameter or variable (or computed from one by an operator), going where a trace shows it: a variable, a parameter of an action, task, machine or call, or a field that is not `sensitive`, or an `output`, a `fail`, a call's reply, an `after` delay or a retry's delay. | `set note = event.password` for `var note: string` |
+| `RB0320` | A value read from a sensitive field, parameter or variable (or computed from one by an operator), going where a trace shows it: a variable, a parameter of an action, task, machine, call or state, or a field that is not `sensitive`, or an `output`, a `fail`, a call's reply, an `after` delay or a retry's delay. | `set note = event.password` for `var note: string` |
 | `RB0321` | A value whose type has `sensitive` fields, going where `json` is expected in a place a trace shows. | `do log(creds)` for `action log(what: json)` |
 | `RB0322` | A `children` key type that is not `string`, `int` or an enum (or an alias of one). | `children s: Session by float` |
 | `RB0323` | A `map` whose key type is not `string` or an alias of it. | `map<int, Order>` |
@@ -1157,6 +1226,7 @@ The compiler's codes:
 | `RB0325` | A type parameter its declaration does not use. | `type Id<T> = string` |
 | `RB0326` | A generic type that refers to itself, directly or through other types, with other arguments than its own parameters. | `type Nested<T> { inner: Nested<T[]>? }` |
 | `RB0327` | A record value of a generic type whose type arguments neither the expected type nor its fields tell. | `describe(Pair { first: 1, second: "one" })` |
+| `RB0328` | A state's parameter or variable of a `ref` or `call` type, which only the machine's can have. | `state Talking(peer: ref Inventory)` |
 | `RB0401` | An unguarded cycle of `always` transitions. | `A { always -> B }`, `B { always -> A }`, `always -> .Child` |
 | `RB0402` | A machine that invokes or spawns itself without waiting. | `state A { invoke M() { … } }` as `M`'s initial state |
 | `RB0403` | A read of a variable that might not be assigned yet. | `entry do log(n)` in the initial state, for `var n: int` |
@@ -1179,6 +1249,7 @@ The compiler's codes:
 | `RB0913` | A transition that leaves a parallel state and enters it again, starting regions over that it does not target (warning). | `on Cross -> P.B.Y` in region `A` of `P` |
 | `RB0914` | An `internal event` that no `raise` of the machine raises, so it can never happen (warning). | `internal event Ping` with no `raise Ping` |
 | `RB0915` | A `raise E` where no `on E` and no `on *` of the machine takes `E`, so it is always dropped, or `unhandled` in a strict machine (warning). | `raise Ping` with no `on Ping` |
+| `RB0916` | A `set` of a state's variable in a transition that leaves that state, so the value is discarded with it (warning). | `on Retry -> Trying  set tries = tries + 1` written in `Trying` |
 
 ## Grammar
 
@@ -1220,8 +1291,9 @@ property    = "never" statePath { "and" statePath }
             | "can" "finish" ;
 statePath   = Upper { "." Upper } ;
 
-stateDecl   = [ "final" | "parallel" ] "state" Upper "{" { stateItem } "}" ;
+stateDecl   = [ "final" | "parallel" ] "state" Upper [ params ] "{" { stateItem } "}" ;
 stateItem   = commonItem
+            | varDecl
             | [ "deep" ] "history" Upper
             | "done" branches
             | "invoke" [ lower "." ] name "(" [ expr { "," expr } ] ")" [ "as" lower ] [ retry ]
@@ -1258,7 +1330,8 @@ recordBody  = "{" [ lower ":" expr { "," lower ":" expr } ] "}" ;
 assign      = lower "=" expr ;
 call        = lower "(" [ expr { "," expr } ] ")" ;
 targets     = target { "," target } ;
-target      = [ "." ] Upper { "." Upper } ;
+target      = [ "." ] segment { "." segment } ;
+segment     = Upper [ "(" [ expr { "," expr } ] ")" ] ;
 
 expr        = orExpr ;
 orExpr      = andExpr { "or" andExpr } ;
@@ -1299,7 +1372,8 @@ Rules the grammar does not express:
 - Two `after` transitions in one state are the same trigger only if their delays are the same expression, written the same way once formatted: `after 1s` and `after 1000ms` are different triggers.
 - A type is optional at most once: `T??` is an error.
 - Nesting is at most 64 levels deep, counting states, parentheses, operators (each `+` in `a + b + c` is a level), field reads and type suffixes (`[]`, `?`), so every tool that walks the tree stays within its stack.
-- A final state holds only `entry`, `exit`, `output` and `fail`.
+- A final state holds only `entry`, `exit`, `output`, `fail` and variables.
+- A target's arguments follow the state's name directly; the `(` after a target's name always starts them, since effects start with a keyword.
 - `ignore` is an action only in an `on` transition (`on Event`, `on *`, `on name.Event`).
 - Declaration names are unique among the files compiled together: an entry file and everything it imports, directly or not, because the IR is keyed by name. Two charts that do not import one another may use the same names. A file can use only what it declares or imports. An event cannot have the name of a type, error or machine either, because the IR names the type of `event` in `on Name` by the event's name.
 

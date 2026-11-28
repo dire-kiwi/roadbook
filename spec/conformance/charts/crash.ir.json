@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/crash.road",
@@ -76,6 +76,8 @@
           "endLine": 32,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Crash.Busy",
         "states": [
           {
@@ -90,6 +92,8 @@
               "endLine": 29,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -104,6 +108,8 @@
                   "endLine": 16,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -143,6 +149,7 @@
                       "Crash.Over"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -168,6 +175,8 @@
                   "endLine": 22,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -207,6 +216,7 @@
                       "Crash.Over"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -232,6 +242,8 @@
                   "endLine": 28,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -264,6 +276,7 @@
                       "Crash.Over"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -297,6 +310,8 @@
               "endLine": 31,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -366,6 +381,8 @@
           "endLine": 47,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Child.Waiting",
         "states": [
           {
@@ -380,6 +397,8 @@
               "endLine": 44,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -393,6 +412,7 @@
                     "path": [
                       "name"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "name"
                   }
@@ -412,6 +432,7 @@
                   "Child.Stopped"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -437,6 +458,8 @@
               "endLine": 46,
               "endCol": 25
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

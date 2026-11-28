@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/shop/place_order.road",
@@ -620,6 +620,8 @@
           "endLine": 73,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "PlaceOrder.Authenticating",
         "states": [
           {
@@ -634,6 +636,8 @@
               "endLine": 28,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -650,6 +654,7 @@
                     "path": [
                       "token"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "token"
                   }
@@ -675,15 +680,18 @@
                   "PlaceOrder.Processing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "user",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "User",
                       "text": "result"
                     }
@@ -709,6 +717,7 @@
                   "PlaceOrder.Unauthorized"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -734,6 +743,8 @@
               "endLine": 65,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "PlaceOrder.Processing.Validating",
             "states": [
               {
@@ -748,6 +759,8 @@
                   "endLine": 43,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -764,6 +777,7 @@
                         "path": [
                           "draft"
                         ],
+                        "state": null,
                         "type": "OrderDraft",
                         "text": "draft"
                       }
@@ -789,15 +803,18 @@
                       "PlaceOrder.Processing.Pricing"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "order",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "Order",
                           "text": "result"
                         }
@@ -823,16 +840,19 @@
                       "PlaceOrder.Invalid"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "issues",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "error",
                             "issues"
                           ],
+                          "state": null,
                           "type": "string[]",
                           "text": "error.issues"
                         }
@@ -862,6 +882,8 @@
                   "endLine": 50,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -878,6 +900,7 @@
                         "path": [
                           "order"
                         ],
+                        "state": null,
                         "type": "Order",
                         "text": "order"
                       },
@@ -886,6 +909,7 @@
                         "path": [
                           "user"
                         ],
+                        "state": null,
                         "type": "User",
                         "text": "user"
                       }
@@ -911,15 +935,18 @@
                       "PlaceOrder.Processing.Paying"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "order",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "Order",
                           "text": "result"
                         }
@@ -949,6 +976,8 @@
                   "endLine": 59,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -965,6 +994,7 @@
                         "path": [
                           "order"
                         ],
+                        "state": null,
                         "type": "Order",
                         "text": "order"
                       },
@@ -973,6 +1003,7 @@
                         "path": [
                           "user"
                         ],
+                        "state": null,
                         "type": "User",
                         "text": "user"
                       }
@@ -998,15 +1029,18 @@
                       "PlaceOrder.Processing.Confirming"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "receipt",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "Receipt",
                           "text": "result"
                         }
@@ -1032,6 +1066,7 @@
                       "PlaceOrder.PaymentFailed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -1048,6 +1083,7 @@
                             "path": [
                               "order"
                             ],
+                            "state": null,
                             "type": "Order",
                             "text": "order"
                           }
@@ -1074,6 +1110,7 @@
                       "PlaceOrder.PaymentFailed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -1090,6 +1127,7 @@
                             "path": [
                               "order"
                             ],
+                            "state": null,
                             "type": "Order",
                             "text": "order"
                           }
@@ -1120,6 +1158,8 @@
                   "endLine": 64,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -1132,6 +1172,7 @@
                         "path": [
                           "user"
                         ],
+                        "state": null,
                         "type": "User",
                         "text": "user"
                       },
@@ -1140,6 +1181,7 @@
                         "path": [
                           "order"
                         ],
+                        "state": null,
                         "type": "Order",
                         "text": "order"
                       },
@@ -1148,6 +1190,7 @@
                         "path": [
                           "receipt"
                         ],
+                        "state": null,
                         "type": "Receipt",
                         "text": "receipt"
                       }
@@ -1167,6 +1210,7 @@
                       "PlaceOrder.Confirmed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1196,6 +1240,7 @@
                   "PlaceOrder.Cancelled"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1221,6 +1266,7 @@
                   "PlaceOrder.TimedOut"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1246,6 +1292,8 @@
               "endLine": 67,
               "endCol": 68
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1261,6 +1309,7 @@
                   "path": [
                     "order"
                   ],
+                  "state": null,
                   "type": "Order",
                   "text": "order"
                 },
@@ -1269,6 +1318,7 @@
                   "path": [
                     "receipt"
                   ],
+                  "state": null,
                   "type": "Receipt",
                   "text": "receipt"
                 }
@@ -1290,6 +1340,8 @@
               "endLine": 68,
               "endCol": 71
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1330,6 +1382,8 @@
               "endLine": 69,
               "endCol": 55
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1345,6 +1399,7 @@
                   "path": [
                     "issues"
                   ],
+                  "state": null,
                   "type": "string[]",
                   "text": "issues"
                 }
@@ -1366,6 +1421,8 @@
               "endLine": 70,
               "endCol": 70
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1406,6 +1463,8 @@
               "endLine": 71,
               "endCol": 65
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1446,6 +1505,8 @@
               "endLine": 72,
               "endCol": 63
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1579,6 +1640,8 @@
           "endLine": 32,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Checkout.Charging",
         "states": [
           {
@@ -1593,6 +1656,8 @@
               "endLine": 21,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1609,6 +1674,7 @@
                     "path": [
                       "order"
                     ],
+                    "state": null,
                     "type": "Order",
                     "text": "order"
                   },
@@ -1617,6 +1683,7 @@
                     "path": [
                       "user"
                     ],
+                    "state": null,
                     "type": "User",
                     "text": "user"
                   }
@@ -1642,15 +1709,18 @@
                   "Checkout.Charged"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "receipt",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Receipt",
                       "text": "result"
                     }
@@ -1676,15 +1746,18 @@
                   "Checkout.Declined"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "declined",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "CardDeclined",
                       "text": "error"
                     }
@@ -1714,6 +1787,7 @@
                       "path": [
                         "attempts"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "attempts"
                     },
@@ -1731,6 +1805,7 @@
                   "Checkout.Backoff"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -1752,6 +1827,7 @@
                   "Checkout.GaveUp"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -1777,12 +1853,15 @@
               "endLine": 27,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
               {
                 "kind": "set",
                 "var": "attempts",
+                "state": null,
                 "value": {
                   "kind": "op",
                   "op": "+",
@@ -1792,6 +1871,7 @@
                       "path": [
                         "attempts"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "attempts"
                     },
@@ -1822,6 +1902,7 @@
                         "path": [
                           "attempts"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "attempts"
                       }
@@ -1836,6 +1917,7 @@
                   "Checkout.Charging"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -1861,6 +1943,8 @@
               "endLine": 29,
               "endCol": 42
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1872,6 +1956,7 @@
               "path": [
                 "receipt"
               ],
+              "state": null,
               "type": "Receipt",
               "text": "receipt"
             },
@@ -1889,6 +1974,8 @@
               "endLine": 30,
               "endCol": 41
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1901,6 +1988,7 @@
               "path": [
                 "declined"
               ],
+              "state": null,
               "type": "CardDeclined",
               "text": "declined"
             }
@@ -1917,6 +2005,8 @@
               "endLine": 31,
               "endCol": 51
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/calls.road",
@@ -306,6 +306,8 @@
           "endLine": 61,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Inventory.Ready",
         "states": [
           {
@@ -320,6 +322,8 @@
               "endLine": 44,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -337,15 +341,18 @@
                   "Inventory.Reserving"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "pending",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "call"
                       ],
+                      "state": null,
                       "type": "call reserve",
                       "text": "call"
                     }
@@ -353,12 +360,14 @@
                   {
                     "kind": "set",
                     "var": "orderId",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "orderId"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.orderId"
                     }
@@ -366,12 +375,14 @@
                   {
                     "kind": "set",
                     "var": "items",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "items"
                       ],
+                      "state": null,
                       "type": "Item[]",
                       "text": "event.items"
                     }
@@ -396,6 +407,7 @@
                   "Inventory.Paused"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -416,6 +428,7 @@
                   "Inventory.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -441,6 +454,8 @@
               "endLine": 55,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -457,6 +472,7 @@
                     "path": [
                       "warehouse"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "warehouse"
                   },
@@ -465,6 +481,7 @@
                     "path": [
                       "orderId"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "orderId"
                   },
@@ -473,6 +490,7 @@
                     "path": [
                       "items"
                     ],
+                    "state": null,
                     "type": "Item[]",
                     "text": "items"
                   }
@@ -498,10 +516,12 @@
                   "Inventory.Ready"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "held",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -511,6 +531,7 @@
                           "path": [
                             "held"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "held"
                         },
@@ -532,6 +553,7 @@
                       "path": [
                         "pending"
                       ],
+                      "state": null,
                       "type": "call reserve",
                       "text": "pending"
                     },
@@ -546,6 +568,7 @@
                             "path": [
                               "orderId"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "orderId"
                           }
@@ -557,6 +580,7 @@
                             "path": [
                               "result"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "result"
                           }
@@ -587,6 +611,7 @@
                   "Inventory.Ready"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "reply",
@@ -595,6 +620,7 @@
                       "path": [
                         "pending"
                       ],
+                      "state": null,
                       "type": "call reserve",
                       "text": "pending"
                     },
@@ -604,6 +630,7 @@
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "OutOfStock",
                       "text": "error"
                     }
@@ -626,6 +653,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "reply",
@@ -634,6 +662,7 @@
                       "path": [
                         "call"
                       ],
+                      "state": null,
                       "type": "call reserve",
                       "text": "call"
                     },
@@ -673,6 +702,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "reply",
@@ -681,6 +711,7 @@
                       "path": [
                         "pending"
                       ],
+                      "state": null,
                       "type": "call reserve",
                       "text": "pending"
                     },
@@ -709,6 +740,7 @@
                       "path": [
                         "pending"
                       ],
+                      "state": null,
                       "type": "call reserve",
                       "text": "pending"
                     },
@@ -750,6 +782,7 @@
                   "Inventory.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -775,6 +808,8 @@
               "endLine": 58,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -792,6 +827,7 @@
                   "Inventory.Ready"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -817,6 +853,8 @@
               "endLine": 60,
               "endCol": 24
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -840,6 +878,7 @@
             "guard": null,
             "targets": [],
             "internal": false,
+            "args": [],
             "effects": [
               {
                 "kind": "reply",
@@ -848,6 +887,7 @@
                   "path": [
                     "call"
                   ],
+                  "state": null,
                   "type": "call count",
                   "text": "call"
                 },
@@ -857,6 +897,7 @@
                   "path": [
                     "held"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "held"
                 }
@@ -957,6 +998,8 @@
           "endLine": 81,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Order.Reserving",
         "states": [
           {
@@ -971,6 +1014,8 @@
               "endLine": 77,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -992,6 +1037,7 @@
                     "path": [
                       "id"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "id"
                   },
@@ -1000,6 +1046,7 @@
                     "path": [
                       "items"
                     ],
+                    "state": null,
                     "type": "Item[]",
                     "text": "items"
                   }
@@ -1025,15 +1072,18 @@
                   "Order.Reserved"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "reservation",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Reservation",
                       "text": "result"
                     }
@@ -1059,15 +1109,18 @@
                   "Order.Failed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "problem",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "OutOfStock",
                       "text": "error"
                     }
@@ -1093,10 +1146,12 @@
                   "Order.Failed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "problem",
+                    "state": null,
                     "value": {
                       "kind": "record",
                       "fields": [
@@ -1139,10 +1194,12 @@
                   "Order.Failed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "problem",
+                    "state": null,
                     "value": {
                       "kind": "record",
                       "fields": [
@@ -1185,6 +1242,8 @@
               "endLine": 79,
               "endCol": 46
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1196,6 +1255,7 @@
               "path": [
                 "reservation"
               ],
+              "state": null,
               "type": "Reservation",
               "text": "reservation"
             },
@@ -1213,6 +1273,8 @@
               "endLine": 80,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1225,6 +1287,7 @@
               "path": [
                 "problem"
               ],
+              "state": null,
               "type": "OutOfStock",
               "text": "problem"
             }
@@ -1292,6 +1355,8 @@
           "endLine": 98,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Counter.Asking",
         "states": [
           {
@@ -1306,6 +1371,8 @@
               "endLine": 94,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1343,15 +1410,18 @@
                   "Counter.Got"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -1377,6 +1447,7 @@
                   "Counter.Gave"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1402,6 +1473,8 @@
               "endLine": 96,
               "endCol": 32
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1413,6 +1486,7 @@
               "path": [
                 "n"
               ],
+              "state": null,
               "type": "int",
               "text": "n"
             },
@@ -1430,6 +1504,8 @@
               "endLine": 97,
               "endCol": 32
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

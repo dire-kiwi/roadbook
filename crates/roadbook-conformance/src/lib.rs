@@ -53,6 +53,7 @@ pub const FEATURES: &[&str] = &[
     "task-emits",
     "raise",
     "invokes",
+    "locals",
 ];
 
 /// `spec/conformance` in this repository.

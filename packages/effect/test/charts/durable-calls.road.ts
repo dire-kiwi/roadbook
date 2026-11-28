@@ -32,7 +32,7 @@ export interface DeskDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable-calls.road",
@@ -215,6 +215,8 @@ const ir: unknown = {
           "endLine": 39,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Desk.Open",
         "states": [
           {
@@ -229,6 +231,8 @@ const ir: unknown = {
               "endLine": 28,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -246,15 +250,18 @@ const ir: unknown = {
                   "Desk.Holding"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "pending",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "call"
                       ],
+                      "state": null,
                       "type": "call hold",
                       "text": "call"
                     }
@@ -262,12 +269,14 @@ const ir: unknown = {
                   {
                     "kind": "set",
                     "var": "n",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     }
@@ -304,6 +313,7 @@ const ir: unknown = {
                   "Desk.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -329,6 +339,8 @@ const ir: unknown = {
               "endLine": 34,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -344,6 +356,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -377,6 +390,7 @@ const ir: unknown = {
                   "Desk.Open"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "reply",
@@ -385,6 +399,7 @@ const ir: unknown = {
                       "path": [
                         "pending"
                       ],
+                      "state": null,
                       "type": "call hold",
                       "text": "pending"
                     },
@@ -398,6 +413,7 @@ const ir: unknown = {
                           "path": [
                             "n"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "n"
                         },
@@ -407,6 +423,7 @@ const ir: unknown = {
                             "event",
                             "by"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "event.by"
                         }
@@ -435,6 +452,7 @@ const ir: unknown = {
                   "Desk.Closing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -473,6 +491,8 @@ const ir: unknown = {
               "endLine": 36,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -490,6 +510,7 @@ const ir: unknown = {
                   "Desk.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -515,6 +536,8 @@ const ir: unknown = {
               "endLine": 38,
               "endCol": 24
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -604,6 +627,8 @@ const ir: unknown = {
           "endLine": 55,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Asker.Asking",
         "states": [
           {
@@ -618,6 +643,8 @@ const ir: unknown = {
               "endLine": 52,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -639,6 +666,7 @@ const ir: unknown = {
                     "path": [
                       "n"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "n"
                   }
@@ -664,15 +692,18 @@ const ir: unknown = {
                   "Asker.Got"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "got",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -698,10 +729,12 @@ const ir: unknown = {
                   "Asker.Got"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "got",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "neg",
@@ -742,6 +775,8 @@ const ir: unknown = {
               "endLine": 54,
               "endCol": 33
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -753,6 +788,7 @@ const ir: unknown = {
               "path": [
                 "got"
               ],
+              "state": null,
               "type": "int",
               "text": "got"
             },
@@ -838,6 +874,8 @@ const ir: unknown = {
           "endLine": 70,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Host.Running",
         "states": [
           {
@@ -852,6 +890,8 @@ const ir: unknown = {
               "endLine": 67,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -868,6 +908,7 @@ const ir: unknown = {
                     "path": [
                       "desk"
                     ],
+                    "state": null,
                     "type": "ref Desk",
                     "text": "desk"
                   },
@@ -876,6 +917,7 @@ const ir: unknown = {
                     "path": [
                       "id"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "id"
                   },
@@ -884,6 +926,7 @@ const ir: unknown = {
                     "path": [
                       "n"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "n"
                   }
@@ -909,15 +952,18 @@ const ir: unknown = {
                   "Host.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "got",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -947,6 +993,8 @@ const ir: unknown = {
               "endLine": 69,
               "endCol": 34
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -958,6 +1006,7 @@ const ir: unknown = {
               "path": [
                 "got"
               ],
+              "state": null,
               "type": "int",
               "text": "got"
             },

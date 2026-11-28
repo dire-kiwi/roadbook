@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/wizard.road",
@@ -93,6 +93,8 @@
           "endLine": 28,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Wizard.Form",
         "states": [
           {
@@ -107,6 +109,8 @@
               "endLine": 23,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Wizard.Form.Name",
             "states": [
               {
@@ -121,6 +125,8 @@
                   "endLine": 19,
                   "endCol": 60
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -138,10 +144,12 @@
                       "Wizard.Form.Email"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "steps",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -151,6 +159,7 @@
                               "path": [
                                 "steps"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "steps"
                             },
@@ -190,6 +199,8 @@
                   "endLine": 20,
                   "endCol": 63
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -207,10 +218,12 @@
                       "Wizard.Form.Complete"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "steps",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -220,6 +233,7 @@
                               "path": [
                                 "steps"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "steps"
                             },
@@ -259,6 +273,8 @@
                   "endLine": 22,
                   "endCol": 54
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -296,6 +312,7 @@
                   "Wizard.Review"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -334,6 +351,8 @@
               "endLine": 25,
               "endCol": 62
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -350,10 +369,12 @@
                   "Wizard.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "steps",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "*",
@@ -363,6 +384,7 @@
                           "path": [
                             "steps"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "steps"
                         },
@@ -402,6 +424,8 @@
               "endLine": 27,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -413,6 +437,7 @@
               "path": [
                 "steps"
               ],
+              "state": null,
               "type": "int",
               "text": "steps"
             },

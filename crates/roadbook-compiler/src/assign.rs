@@ -98,6 +98,13 @@ impl Bits {
         changed
     }
 
+    /// Removes every member of `o`.
+    fn remove(&mut self, o: &Bits) {
+        for (a, b) in self.0.iter_mut().zip(&o.0) {
+            *a &= !b;
+        }
+    }
+
     fn with(&self, o: &Bits) -> Bits {
         let mut b = self.clone();
         b.union(o);
@@ -319,16 +326,32 @@ impl<'a> Chart<'a> {
 /// Runs the analysis on one machine and reports every read that might see no value.
 pub(crate) fn check(m: &ir::Machine, info: &MachineInfo, diags: &mut Vec<Diagnostic>) {
     initialisers(info, diags);
-    let tracked: HashMap<&str, usize> = info
+    local_initialisers(info, diags);
+    // The tracked variables: the machine's, by name, then each state's, by `<state id>.<name>`,
+    // with the name to show and the declaration.
+    let mut names: Vec<(String, String, Span)> = info
         .vars
         .iter()
         .filter(|v| !v.init && !v.optional)
-        .enumerate()
-        .map(|(i, v)| (v.name.as_str(), i))
+        .map(|v| (v.name.clone(), v.name.clone(), v.span))
         .collect();
-    if tracked.is_empty() {
+    let mut ids: Vec<&String> = info.states.keys().collect();
+    ids.sort();
+    for id in ids {
+        for l in &info.states[id].locals {
+            if !l.param && !l.init && !l.optional {
+                names.push((format!("{id}.{}", l.name), l.name.clone(), l.span));
+            }
+        }
+    }
+    if names.is_empty() {
         return;
     }
+    let tracked: HashMap<&str, usize> = names
+        .iter()
+        .enumerate()
+        .map(|(i, (k, _, _))| (k.as_str(), i))
+        .collect();
     let chart = Chart::new(&m.root);
     let state_infos: Vec<Option<&StateInfo>> = chart
         .states
@@ -339,8 +362,18 @@ pub(crate) fn check(m: &ir::Machine, info: &MachineInfo, diags: &mut Vec<Diagnos
         return;
     }
     let mut flow = Flow::new(&chart, &tracked);
+    flow.names = names.iter().map(|(_, n, sp)| (n.clone(), *sp)).collect();
     flow.solve();
     flow.report(info, &state_infos, diags);
+}
+
+/// The key of the variable a `set` assigns: its name, or for a state's local
+/// `<state id>.<name>`.
+fn set_key(var: &str, state: &Option<String>) -> String {
+    match state {
+        Some(s) => format!("{s}.{var}"),
+        None => var.to_string(),
+    }
 }
 
 /// An initial value may read the parameters and the variables declared before it that have a
@@ -352,34 +385,78 @@ fn initialisers(info: &MachineInfo, diags: &mut Vec<Diagnostic>) {
                 continue;
             };
             let w = &info.vars[j];
-            if j < i && (w.init || w.optional) {
-                continue;
+            if let Some(d) = order(i, j, w.init || w.optional, name, &v.name, *span, w.span) {
+                diags.push(d);
             }
-            let (label, help) = if j >= i {
-                (
-                    "declared here, after the variable whose initial value reads it",
-                    "initial values are computed in the order the variables are declared; declare it first, or assign this variable in an `entry` instead",
-                )
-            } else {
-                (
-                    "declared here with no initial value",
-                    "give it an initial value, or assign this variable in an `entry` instead",
-                )
-            };
-            diags.push(
-                Diagnostic::error(
-                    codes::UNASSIGNED_READ,
-                    *span,
-                    format!(
-                        "`{name}` has no value yet when the initial value of `{}` is computed",
-                        v.name
-                    ),
-                )
-                .with_secondary(w.span, label)
-                .with_help(help),
-            );
         }
     }
+}
+
+/// The same for a state's variables, among the locals of their state: its parameters always
+/// have a value, and its variables get theirs in order.
+fn local_initialisers(info: &MachineInfo, diags: &mut Vec<Diagnostic>) {
+    let mut ids: Vec<&String> = info.states.keys().collect();
+    ids.sort();
+    for id in ids {
+        let locals = &info.states[id].locals;
+        for (i, v) in locals.iter().enumerate() {
+            for (key, span) in &v.init_reads {
+                let Some(name) = own_local(key, id) else {
+                    continue;
+                };
+                let Some(j) = locals.iter().position(|x| x.name == name) else {
+                    continue;
+                };
+                let w = &locals[j];
+                if let Some(d) = order(i, j, w.init || w.optional, name, &v.name, *span, w.span) {
+                    diags.push(d);
+                }
+            }
+        }
+    }
+}
+
+/// For a read keyed `key`, the name of the local of state `id` it reads, if it reads one.
+fn own_local<'k>(key: &'k str, id: &str) -> Option<&'k str> {
+    key.strip_prefix(id)?
+        .strip_prefix('.')
+        .filter(|n| !n.contains('.'))
+}
+
+/// The diagnostic for the initial value of variable `i` (`of`) reading variable `j`
+/// (`name`, declared at `decl`) at `span`, if `j` has no value by then.
+fn order(
+    i: usize,
+    j: usize,
+    has_value: bool,
+    name: &str,
+    of: &str,
+    span: Span,
+    decl: Span,
+) -> Option<Diagnostic> {
+    if j < i && has_value {
+        return None;
+    }
+    let (label, help) = if j >= i {
+        (
+            "declared here, after the variable whose initial value reads it",
+            "initial values are computed in the order the variables are declared; declare it first, or assign this variable in an `entry` instead",
+        )
+    } else {
+        (
+            "declared here with no initial value",
+            "give it an initial value, or assign this variable in an `entry` instead",
+        )
+    };
+    Some(
+        Diagnostic::error(
+            codes::UNASSIGNED_READ,
+            span,
+            format!("`{name}` has no value yet when the initial value of `{of}` is computed"),
+        )
+        .with_secondary(decl, label)
+        .with_help(help),
+    )
 }
 
 struct Flow<'c, 'a> {
@@ -396,6 +473,10 @@ struct Flow<'c, 'a> {
     /// For a compound state, the intersection of its final children's `entered`.
     finals: Vec<Bits>,
     entry_gen: Vec<Bits>,
+    /// For each state, its tracked locals: entering it leaves them unassigned.
+    kill: Vec<Bits>,
+    /// Each tracked variable's name, as diagnostics show it, and its declaration.
+    names: Vec<(String, Span)>,
     /// The start, then every transition with a target, by source.
     edges: Vec<Edge>,
     /// For each state's transitions, by index, the index of its edge if it has a target.
@@ -411,8 +492,8 @@ impl<'c, 'a> Flow<'c, 'a> {
         let gen_of = |effects: &[ir::Effect]| {
             let mut b = Bits::empty(n);
             for e in effects {
-                if let ir::Effect::Set { var, .. } = e
-                    && let Some(&i) = tracked.get(var.as_str())
+                if let ir::Effect::Set { var, state, .. } = e
+                    && let Some(&i) = tracked.get(set_key(var, state).as_str())
                 {
                     b.insert(i);
                 }
@@ -420,6 +501,19 @@ impl<'c, 'a> Flow<'c, 'a> {
             b
         };
         let entry_gen: Vec<Bits> = chart.states.iter().map(|s| gen_of(&s.entry)).collect();
+        let kill: Vec<Bits> = chart
+            .states
+            .iter()
+            .map(|s| {
+                let mut b = Bits::empty(n);
+                for v in &s.vars {
+                    if let Some(&i) = tracked.get(format!("{}.{}", s.id, v.name).as_str()) {
+                        b.insert(i);
+                    }
+                }
+                b
+            })
+            .collect();
         let exit_gen: Vec<Bits> = chart.states.iter().map(|s| gen_of(&s.exit)).collect();
         let ids: HashMap<&str, usize> = chart
             .states
@@ -486,6 +580,8 @@ impl<'c, 'a> Flow<'c, 'a> {
             children_at: vec![full.clone(); count],
             finals: vec![full; count],
             entry_gen,
+            kill,
+            names: Vec::new(),
             edges,
             out,
             work: Vec::new(),
@@ -532,6 +628,7 @@ impl<'c, 'a> Flow<'c, 'a> {
             let s = self.edges[k].chain[i];
             let first = !self.reached[s];
             self.reached[s] = true;
+            f.remove(&self.kill[s]);
             if self.in_[s].meet(&f) || first {
                 self.update(s, first);
             }
@@ -660,6 +757,7 @@ impl<'c, 'a> Flow<'c, 'a> {
             }
             let mut f = self.edge_fact(e);
             for &s in &e.chain {
+                f.remove(&self.kill[s]);
                 if !f.has(v) && first[s].is_none() {
                     first[s] = Some(k);
                 }
@@ -697,9 +795,9 @@ impl<'c, 'a> Flow<'c, 'a> {
     ) {
         let mut f = base.clone();
         for (e, r) in list.iter().zip(reads) {
-            if let ir::Effect::Set { var, .. } = e {
+            if let ir::Effect::Set { var, state, .. } = e {
                 self.check(r, &f, ctx, part, out);
-                if let Some(&i) = self.tracked.get(var.as_str()) {
+                if let Some(&i) = self.tracked.get(set_key(var, state).as_str()) {
                     f.insert(i);
                 }
             }
@@ -725,6 +823,17 @@ impl<'c, 'a> Flow<'c, 'a> {
             let Some(si) = states[s] else { continue };
             let at = Ctx::At(s);
             let out = &mut found;
+            // A variable's initial value, before the `entry`: what is assigned on every way
+            // in. Reads of the state's own locals are checked by their order.
+            for l in &si.locals {
+                let reads: Reads = l
+                    .init_reads
+                    .iter()
+                    .filter(|(k, _)| own_local(k, &st.id).is_none())
+                    .cloned()
+                    .collect();
+                self.check(&reads, &self.in_[s], Ctx::In(s), Part::Entry, out);
+            }
             self.check_effects(
                 (&st.entry, &si.entry_reads),
                 &self.in_[s],
@@ -760,6 +869,11 @@ impl<'c, 'a> Flow<'c, 'a> {
                     base.union(&self.edges[k].exits);
                 }
                 self.check_effects((&t.effects, &tr.effects), &base, ctx, Part::Other, out);
+                // The arguments are evaluated after every effect.
+                if let Some(k) = self.out[s][ti] {
+                    base.union(&self.edges[k].sets);
+                }
+                self.check(&tr.args, &base, ctx, Part::Other, out);
             }
         }
         let mut witnesses: HashMap<usize, Vec<Option<usize>>> = HashMap::new();
@@ -779,12 +893,7 @@ impl<'c, 'a> Flow<'c, 'a> {
         witnesses: &[Option<usize>],
     ) -> Diagnostic {
         let (v, span, ctx) = (f.var, f.span, f.ctx);
-        let name = info
-            .vars
-            .iter()
-            .map(|x| x.name.as_str())
-            .find(|x| self.tracked.get(x) == Some(&v))
-            .unwrap_or_default();
+        let (name, decl) = (self.names[v].0.as_str(), Some(self.names[v].1));
         let (Ctx::In(s) | Ctx::Entered(s) | Ctx::At(s) | Ctx::Done(s)) = ctx;
         let id = &self.chart.states[s].id;
         let mut d = Diagnostic::error(
@@ -794,7 +903,6 @@ impl<'c, 'a> Flow<'c, 'a> {
         );
         let culprit = self.culprit(ctx, v);
         let cid = &self.chart.states[culprit].id;
-        let decl = info.vars.iter().find(|x| x.name == name).map(|x| x.span);
         match witnesses[culprit] {
             Some(k) if k > 0 => {
                 let src = self.edges[k].source.unwrap_or(0);

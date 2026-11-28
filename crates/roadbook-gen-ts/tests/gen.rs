@@ -684,3 +684,27 @@ fn tasks_that_emit() {
     );
     snapshot("task_emits_used", &watch);
 }
+
+/// A type used only by a state's parameter or variable, and a function called only in a
+/// target's arguments or a state variable's initial value, are the module's too.
+#[test]
+fn state_parameters_and_variables_are_walked() {
+    let loader = MemoryLoader::new()
+        .with(
+            "b.road",
+            "type Tok { id: string }\ntype Count { n: int }\n\
+             fn mint(code: string) -> Tok\nfn zero() -> Count\n",
+        )
+        .with(
+            "a.road",
+            "import { Tok, Count, mint, zero } from \"./b.road\"\n\n\
+             machine A() {\n  event Go { code: string }\n  initial Idle\n  \
+             state Idle {\n    on Go -> Holding(mint(event.code))\n  }\n  \
+             state Holding(tok: Tok) {\n    var count: Count = zero()\n    on Go -> Done\n  }\n  \
+             final state Done {}\n}\n",
+        );
+    let a = gen_ok(&ir(&mut loader.clone(), "a.road"));
+    assert!(a.contains("\"./b.road.js\""), "{a}");
+    assert!(a.contains("mint"), "{a}");
+    assert!(a.contains("zero"), "{a}");
+}

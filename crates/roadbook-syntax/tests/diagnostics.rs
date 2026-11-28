@@ -90,7 +90,10 @@ fn each_syntax_error_has_its_code() {
         (m("  deep history H"), "RB0014"),
         (s("    deep H"), "RB0010"),
         (s("    deep history h"), "RB0012"),
-        (s("    var x: int"), "RB0015"),
+        (s("    call go()"), "RB0015"),
+        (s("    on Go -> B(1 2)"), "RB0010"),
+        (m("  state S(n) {}"), "RB0010"),
+        (m("  state S(N: int) {}"), "RB0012"),
         (s("    event Go"), "RB0015"),
         (s("    emits Go"), "RB0015"),
         (s("    check never S"), "RB0015"),
@@ -226,7 +229,7 @@ fn an_unclosed_machine_keeps_its_items() {
 
 #[test]
 fn misplaced_items_are_reported_and_dropped() {
-    let src = m("  var a: int\n  state S {\n    var b: int\n  }\n  done -> S");
+    let src = m("  var a: int\n  state S {\n    event B\n  }\n  done -> S");
     let (file, diags) = parse_file(FileId(0), &src);
     assert_eq!(diags.len(), 2);
     let (_, machine) = file.machines().next().unwrap();

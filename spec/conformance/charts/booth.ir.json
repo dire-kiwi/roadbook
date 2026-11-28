@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/booth.road",
@@ -105,6 +105,8 @@
           "endLine": 22,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Booth.Open",
         "states": [
           {
@@ -119,6 +121,8 @@
               "endLine": 21,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -140,6 +144,7 @@
                       "path": [
                         "tries"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "tries"
                     },
@@ -155,10 +160,12 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "tries",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -168,6 +175,7 @@
                           "path": [
                             "tries"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "tries"
                         },
@@ -189,6 +197,7 @@
                       "path": [
                         "call"
                       ],
+                      "state": null,
                       "type": "call reserve",
                       "text": "call"
                     },
@@ -203,6 +212,7 @@
                             "path": [
                               "tries"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "tries"
                           }
@@ -230,6 +240,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "reply",
@@ -238,6 +249,7 @@
                       "path": [
                         "call"
                       ],
+                      "state": null,
                       "type": "call reserve",
                       "text": "call"
                     },
@@ -248,6 +260,7 @@
                         "event",
                         "seat"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.seat"
                     }
@@ -352,6 +365,8 @@
           "endLine": 40,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Guest.Booking",
         "states": [
           {
@@ -366,6 +381,8 @@
               "endLine": 36,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Guest.Booking.Attempt",
             "states": [
               {
@@ -380,6 +397,8 @@
                   "endLine": 35,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -424,15 +443,18 @@
                       "Guest.Booked"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "seat",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "string",
                           "text": "result"
                         }
@@ -462,6 +484,7 @@
                           "path": [
                             "bookingAttempt"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "bookingAttempt"
                         },
@@ -479,10 +502,12 @@
                       "Guest.Booking.Backoff"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "bookingAttempt",
+                        "state": null,
                         "value": {
                           "kind": "op",
                           "op": "+",
@@ -492,6 +517,7 @@
                               "path": [
                                 "bookingAttempt"
                               ],
+                              "state": null,
                               "type": "int",
                               "text": "bookingAttempt"
                             },
@@ -527,6 +553,7 @@
                       "Guest.Gave"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -548,6 +575,7 @@
                       "Guest.Gave"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -573,6 +601,8 @@
                   "endLine": 31,
                   "endCol": 57
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -595,6 +625,7 @@
                       "Guest.Booking.Attempt"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -613,6 +644,7 @@
               {
                 "kind": "set",
                 "var": "bookingAttempt",
+                "state": null,
                 "value": {
                   "kind": "lit",
                   "value": 0,
@@ -639,6 +671,8 @@
               "endLine": 38,
               "endCol": 37
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -650,6 +684,7 @@
               "path": [
                 "seat"
               ],
+              "state": null,
               "type": "string",
               "text": "seat"
             },
@@ -667,6 +702,8 @@
               "endLine": 39,
               "endCol": 35
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

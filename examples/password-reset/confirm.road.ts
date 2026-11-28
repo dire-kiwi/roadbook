@@ -77,7 +77,7 @@ export interface ConfirmPasswordResetDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "examples/password-reset/confirm.road",
@@ -408,7 +408,7 @@ const ir: unknown = {
         "file": 0,
         "line": 11,
         "col": 1,
-        "endLine": 69,
+        "endLine": 66,
         "endCol": 2
       },
       "strict": false,
@@ -428,50 +428,7 @@ const ir: unknown = {
       ],
       "returns": "ApiResponse",
       "errors": [],
-      "vars": [
-        {
-          "name": "reset",
-          "type": "ResetToken",
-          "sensitive": false,
-          "init": null,
-          "doc": "",
-          "span": {
-            "file": 0,
-            "line": 12,
-            "col": 3,
-            "endLine": 12,
-            "endCol": 27
-          }
-        },
-        {
-          "name": "problems",
-          "type": "string[]",
-          "sensitive": false,
-          "init": null,
-          "doc": "",
-          "span": {
-            "file": 0,
-            "line": 13,
-            "col": 3,
-            "endLine": 13,
-            "endCol": 25
-          }
-        },
-        {
-          "name": "hash",
-          "type": "string",
-          "sensitive": false,
-          "init": null,
-          "doc": "",
-          "span": {
-            "file": 0,
-            "line": 14,
-            "col": 3,
-            "endLine": 14,
-            "endCol": 23
-          }
-        }
-      ],
+      "vars": [],
       "events": {},
       "internalEvents": {},
       "emits": {},
@@ -486,9 +443,11 @@ const ir: unknown = {
           "file": 0,
           "line": 11,
           "col": 1,
-          "endLine": 69,
+          "endLine": 66,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "ConfirmPasswordReset.Working",
         "states": [
           {
@@ -498,11 +457,13 @@ const ir: unknown = {
             "doc": "Everything the request does. The 5 second budget covers all of it.",
             "span": {
               "file": 0,
-              "line": 19,
+              "line": 15,
               "col": 3,
-              "endLine": 61,
+              "endLine": 58,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "ConfirmPasswordReset.Working.LookingUp",
             "states": [
               {
@@ -512,11 +473,13 @@ const ir: unknown = {
                 "doc": "The task reports unknown and expired tokens as errors.",
                 "span": {
                   "file": 0,
-                  "line": 25,
+                  "line": 21,
                   "col": 5,
-                  "endLine": 31,
+                  "endLine": 27,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -533,15 +496,16 @@ const ir: unknown = {
                         "path": [
                           "token"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "token"
                       }
                     ],
                     "span": {
                       "file": 0,
-                      "line": 26,
+                      "line": 22,
                       "col": 7,
-                      "endLine": 30,
+                      "endLine": 26,
                       "endCol": 8
                     }
                   }
@@ -558,26 +522,29 @@ const ir: unknown = {
                       "ConfirmPasswordReset.Working.CheckingPolicy"
                     ],
                     "internal": false,
-                    "effects": [
+                    "args": [
                       {
-                        "kind": "set",
-                        "var": "reset",
-                        "value": {
-                          "kind": "ref",
-                          "path": [
-                            "result"
-                          ],
-                          "type": "ResetToken",
-                          "text": "result"
-                        }
+                        "state": "ConfirmPasswordReset.Working.CheckingPolicy",
+                        "values": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "result"
+                            ],
+                            "state": null,
+                            "type": "ResetToken",
+                            "text": "result"
+                          }
+                        ]
                       }
                     ],
+                    "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 27,
+                      "line": 23,
                       "col": 9,
-                      "endLine": 27,
-                      "endCol": 65
+                      "endLine": 23,
+                      "endCol": 53
                     }
                   },
                   {
@@ -592,12 +559,13 @@ const ir: unknown = {
                       "ConfirmPasswordReset.UnknownToken"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 28,
+                      "line": 24,
                       "col": 9,
-                      "endLine": 28,
+                      "endLine": 24,
                       "endCol": 43
                     }
                   },
@@ -613,12 +581,13 @@ const ir: unknown = {
                       "ConfirmPasswordReset.ExpiredToken"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 29,
+                      "line": 25,
                       "col": 9,
-                      "endLine": 29,
+                      "endLine": 25,
                       "endCol": 43
                     }
                   }
@@ -633,18 +602,25 @@ const ir: unknown = {
                 "doc": "The policy is a pure function: an empty list means the password is fine.",
                 "span": {
                   "file": 0,
-                  "line": 34,
+                  "line": 30,
                   "col": 5,
-                  "endLine": 40,
+                  "endLine": 37,
                   "endCol": 6
                 },
-                "initial": null,
-                "states": [],
-                "entry": [
+                "params": [
                   {
-                    "kind": "set",
-                    "var": "problems",
-                    "value": {
+                    "name": "reset",
+                    "type": "ResetToken",
+                    "sensitive": false,
+                    "doc": ""
+                  }
+                ],
+                "vars": [
+                  {
+                    "name": "problems",
+                    "type": "string[]",
+                    "sensitive": false,
+                    "init": {
                       "kind": "call",
                       "fn": "passwordProblems",
                       "args": [
@@ -653,15 +629,27 @@ const ir: unknown = {
                           "path": [
                             "newPassword"
                           ],
+                          "state": null,
                           "type": "string",
                           "text": "newPassword"
                         }
                       ],
                       "type": "string[]",
                       "text": "passwordProblems(newPassword)"
+                    },
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 31,
+                      "col": 7,
+                      "endLine": 31,
+                      "endCol": 61
                     }
                   }
                 ],
+                "initial": null,
+                "states": [],
+                "entry": [],
                 "exit": [],
                 "invokes": [],
                 "transitions": [
@@ -679,6 +667,7 @@ const ir: unknown = {
                           "path": [
                             "problems"
                           ],
+                          "state": "ConfirmPasswordReset.Working.CheckingPolicy",
                           "type": "string[]",
                           "text": "problems"
                         }
@@ -690,13 +679,29 @@ const ir: unknown = {
                       "ConfirmPasswordReset.Working.Hashing"
                     ],
                     "internal": false,
+                    "args": [
+                      {
+                        "state": "ConfirmPasswordReset.Working.Hashing",
+                        "values": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "reset"
+                            ],
+                            "state": "ConfirmPasswordReset.Working.CheckingPolicy",
+                            "type": "ResetToken",
+                            "text": "reset"
+                          }
+                        ]
+                      }
+                    ],
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 37,
+                      "line": 34,
                       "col": 9,
-                      "endLine": 37,
-                      "endCol": 40
+                      "endLine": 34,
+                      "endCol": 47
                     }
                   },
                   {
@@ -709,13 +714,29 @@ const ir: unknown = {
                       "ConfirmPasswordReset.WeakPassword"
                     ],
                     "internal": false,
+                    "args": [
+                      {
+                        "state": "ConfirmPasswordReset.WeakPassword",
+                        "values": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "problems"
+                            ],
+                            "state": "ConfirmPasswordReset.Working.CheckingPolicy",
+                            "type": "string[]",
+                            "text": "problems"
+                          }
+                        ]
+                      }
+                    ],
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 38,
+                      "line": 35,
                       "col": 9,
-                      "endLine": 38,
-                      "endCol": 45
+                      "endLine": 35,
+                      "endCol": 55
                     }
                   }
                 ],
@@ -729,11 +750,20 @@ const ir: unknown = {
                 "doc": "",
                 "span": {
                   "file": 0,
-                  "line": 42,
+                  "line": 39,
                   "col": 5,
-                  "endLine": 46,
+                  "endLine": 43,
                   "endCol": 6
                 },
+                "params": [
+                  {
+                    "name": "reset",
+                    "type": "ResetToken",
+                    "sensitive": false,
+                    "doc": ""
+                  }
+                ],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -750,15 +780,16 @@ const ir: unknown = {
                         "path": [
                           "newPassword"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "newPassword"
                       }
                     ],
                     "span": {
                       "file": 0,
-                      "line": 43,
+                      "line": 40,
                       "col": 7,
-                      "endLine": 45,
+                      "endLine": 42,
                       "endCol": 8
                     }
                   }
@@ -775,26 +806,38 @@ const ir: unknown = {
                       "ConfirmPasswordReset.Working.Updating"
                     ],
                     "internal": false,
-                    "effects": [
+                    "args": [
                       {
-                        "kind": "set",
-                        "var": "hash",
-                        "value": {
-                          "kind": "ref",
-                          "path": [
-                            "result"
-                          ],
-                          "type": "string",
-                          "text": "result"
-                        }
+                        "state": "ConfirmPasswordReset.Working.Updating",
+                        "values": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "reset"
+                            ],
+                            "state": "ConfirmPasswordReset.Working.Hashing",
+                            "type": "ResetToken",
+                            "text": "reset"
+                          },
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "result"
+                            ],
+                            "state": null,
+                            "type": "string",
+                            "text": "result"
+                          }
+                        ]
                       }
                     ],
+                    "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 44,
+                      "line": 41,
                       "col": 9,
-                      "endLine": 44,
-                      "endCol": 44
+                      "endLine": 41,
+                      "endCol": 40
                     }
                   }
                 ],
@@ -808,11 +851,26 @@ const ir: unknown = {
                 "doc": "The user can be deleted between the lookup and the update.",
                 "span": {
                   "file": 0,
-                  "line": 49,
+                  "line": 46,
                   "col": 5,
-                  "endLine": 54,
+                  "endLine": 51,
                   "endCol": 6
                 },
+                "params": [
+                  {
+                    "name": "reset",
+                    "type": "ResetToken",
+                    "sensitive": false,
+                    "doc": ""
+                  },
+                  {
+                    "name": "hash",
+                    "type": "string",
+                    "sensitive": false,
+                    "doc": ""
+                  }
+                ],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -830,6 +888,7 @@ const ir: unknown = {
                           "reset",
                           "userId"
                         ],
+                        "state": "ConfirmPasswordReset.Working.Updating",
                         "type": "UserId",
                         "text": "reset.userId"
                       },
@@ -838,15 +897,16 @@ const ir: unknown = {
                         "path": [
                           "hash"
                         ],
+                        "state": "ConfirmPasswordReset.Working.Updating",
                         "type": "string",
                         "text": "hash"
                       }
                     ],
                     "span": {
                       "file": 0,
-                      "line": 50,
+                      "line": 47,
                       "col": 7,
-                      "endLine": 53,
+                      "endLine": 50,
                       "endCol": 8
                     }
                   }
@@ -863,13 +923,30 @@ const ir: unknown = {
                       "ConfirmPasswordReset.Working.Notifying"
                     ],
                     "internal": false,
+                    "args": [
+                      {
+                        "state": "ConfirmPasswordReset.Working.Notifying",
+                        "values": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "reset",
+                              "userId"
+                            ],
+                            "state": "ConfirmPasswordReset.Working.Updating",
+                            "type": "UserId",
+                            "text": "reset.userId"
+                          }
+                        ]
+                      }
+                    ],
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 51,
+                      "line": 48,
                       "col": 9,
-                      "endLine": 51,
-                      "endCol": 35
+                      "endLine": 48,
+                      "endCol": 49
                     }
                   },
                   {
@@ -884,12 +961,13 @@ const ir: unknown = {
                       "ConfirmPasswordReset.UserVanished"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 52,
+                      "line": 49,
                       "col": 9,
-                      "endLine": 52,
+                      "endLine": 49,
                       "endCol": 38
                     }
                   }
@@ -904,11 +982,20 @@ const ir: unknown = {
                 "doc": "Both side effects cannot fail.",
                 "span": {
                   "file": 0,
-                  "line": 57,
+                  "line": 54,
                   "col": 5,
-                  "endLine": 60,
+                  "endLine": 57,
                   "endCol": 6
                 },
+                "params": [
+                  {
+                    "name": "userId",
+                    "type": "UserId",
+                    "sensitive": false,
+                    "doc": ""
+                  }
+                ],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -919,11 +1006,11 @@ const ir: unknown = {
                       {
                         "kind": "ref",
                         "path": [
-                          "reset",
                           "userId"
                         ],
+                        "state": "ConfirmPasswordReset.Working.Notifying",
                         "type": "UserId",
-                        "text": "reset.userId"
+                        "text": "userId"
                       }
                     ]
                   },
@@ -934,11 +1021,11 @@ const ir: unknown = {
                       {
                         "kind": "ref",
                         "path": [
-                          "reset",
                           "userId"
                         ],
+                        "state": "ConfirmPasswordReset.Working.Notifying",
                         "type": "UserId",
-                        "text": "reset.userId"
+                        "text": "userId"
                       }
                     ]
                   }
@@ -956,12 +1043,13 @@ const ir: unknown = {
                       "ConfirmPasswordReset.Changed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 59,
+                      "line": 56,
                       "col": 7,
-                      "endLine": 59,
+                      "endLine": 56,
                       "endCol": 24
                     }
                   }
@@ -990,12 +1078,13 @@ const ir: unknown = {
                   "ConfirmPasswordReset.TimedOut"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 22,
+                  "line": 18,
                   "col": 5,
-                  "endLine": 22,
+                  "endLine": 18,
                   "endCol": 25
                 }
               }
@@ -1010,11 +1099,13 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 63,
+              "line": 60,
               "col": 3,
-              "endLine": 63,
-              "endCol": 50
+              "endLine": 60,
+              "endCol": 70
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1037,11 +1128,13 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 64,
+              "line": 61,
               "col": 3,
-              "endLine": 64,
-              "endCol": 68
+              "endLine": 61,
+              "endCol": 88
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1077,11 +1170,13 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 65,
+              "line": 62,
               "col": 3,
-              "endLine": 65,
-              "endCol": 68
+              "endLine": 62,
+              "endCol": 88
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1117,11 +1212,20 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 66,
+              "line": 63,
               "col": 3,
-              "endLine": 66,
-              "endCol": 61
+              "endLine": 63,
+              "endCol": 81
             },
+            "params": [
+              {
+                "name": "problems",
+                "type": "string[]",
+                "sensitive": false,
+                "doc": ""
+              }
+            ],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1137,6 +1241,7 @@ const ir: unknown = {
                   "path": [
                     "problems"
                   ],
+                  "state": "ConfirmPasswordReset.WeakPassword",
                   "type": "string[]",
                   "text": "problems"
                 }
@@ -1153,11 +1258,13 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 67,
+              "line": 64,
               "col": 3,
-              "endLine": 67,
-              "endCol": 64
+              "endLine": 64,
+              "endCol": 84
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1193,11 +1300,13 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 68,
+              "line": 65,
               "col": 3,
-              "endLine": 68,
-              "endCol": 62
+              "endLine": 65,
+              "endCol": 82
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1234,7 +1343,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:bcfdba99eb3e41381ec269a581de43f01c0c34e9e9692f5ff917bb11c39574f3"
+      "hash": "sha256:c958a6db3635550a8bf0001323a02363bf4e6edcf1dd93b26e7b8196b9637d2d"
     }
   }
 }

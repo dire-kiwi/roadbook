@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/spawn-tasks.road",
@@ -266,6 +266,8 @@
           "endLine": 35,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Batch.Open",
         "states": [
           {
@@ -280,6 +282,8 @@
               "endLine": 32,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -295,6 +299,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -306,6 +311,7 @@
                         "event",
                         "name"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.name"
                     },
@@ -316,6 +322,7 @@
                           "event",
                           "size"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "event.size"
                       }
@@ -339,6 +346,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "stop",
@@ -349,6 +357,7 @@
                         "event",
                         "name"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.name"
                     }
@@ -377,6 +386,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -387,6 +397,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "key"
                       },
@@ -396,6 +407,7 @@
                           "event",
                           "percent"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "event.percent"
                       }
@@ -419,10 +431,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "stored",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -432,6 +446,7 @@
                           "path": [
                             "stored"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "stored"
                         },
@@ -455,6 +470,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "key"
                       },
@@ -463,6 +479,7 @@
                         "path": [
                           "result"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "result"
                       }
@@ -487,6 +504,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -497,6 +515,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "key"
                       },
@@ -506,6 +525,7 @@
                           "error",
                           "reason"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "error.reason"
                       }
@@ -531,6 +551,7 @@
                   "Batch.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -556,6 +577,8 @@
               "endLine": 34,
               "endCol": 39
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -567,6 +590,7 @@
               "path": [
                 "stored"
               ],
+              "state": null,
               "type": "int",
               "text": "stored"
             },

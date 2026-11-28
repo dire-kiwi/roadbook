@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/task-emits.road",
@@ -246,6 +246,8 @@
           "endLine": 44,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Publish.Uploading",
         "states": [
           {
@@ -260,6 +262,8 @@
               "endLine": 34,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -276,6 +280,7 @@
                     "path": [
                       "size"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "size"
                   }
@@ -301,10 +306,12 @@
                   "Publish.Stored"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "stored",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -314,6 +321,7 @@
                           "path": [
                             "stored"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "stored"
                         },
@@ -322,6 +330,7 @@
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "result"
                         }
@@ -354,16 +363,19 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "percent",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.percent"
                     }
@@ -378,6 +390,7 @@
                           "event",
                           "percent"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "event.percent"
                       }
@@ -403,6 +416,7 @@
                   "Publish.Paused"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -428,6 +442,8 @@
               "endLine": 36,
               "endCol": 42
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -445,6 +461,7 @@
                   "Publish.Uploading"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -470,6 +487,8 @@
               "endLine": 41,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -487,6 +506,7 @@
                   "Publish.Uploading"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -507,6 +527,7 @@
                   "Publish.Published"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -532,6 +553,8 @@
               "endLine": 43,
               "endCol": 42
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -543,6 +566,7 @@
               "path": [
                 "stored"
               ],
+              "state": null,
               "type": "int",
               "text": "stored"
             },
@@ -658,6 +682,8 @@
           "endLine": 72,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Eager.Uploading",
         "states": [
           {
@@ -672,6 +698,8 @@
               "endLine": 64,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -688,6 +716,7 @@
                     "path": [
                       "size"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "size"
                   }
@@ -713,10 +742,12 @@
                   "Eager.Stored"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "stored",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -726,6 +757,7 @@
                           "path": [
                             "stored"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "stored"
                         },
@@ -734,6 +766,7 @@
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "result"
                         }
@@ -773,6 +806,7 @@
                         "event",
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.percent"
                     },
@@ -790,16 +824,19 @@
                   "Eager.Stored"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "percent",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.percent"
                     }
@@ -828,16 +865,19 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "percent",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.percent"
                     }
@@ -867,6 +907,8 @@
               "endLine": 69,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -884,6 +926,7 @@
                   "Eager.Uploading"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -904,6 +947,7 @@
                   "Eager.Published"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -929,6 +973,8 @@
               "endLine": 71,
               "endCol": 42
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -940,6 +986,7 @@
               "path": [
                 "stored"
               ],
+              "state": null,
               "type": "int",
               "text": "stored"
             },
@@ -1013,6 +1060,8 @@
           "endLine": 95,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Quiet.Heard",
         "states": [
           {
@@ -1027,6 +1076,8 @@
               "endLine": 86,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1043,6 +1094,7 @@
                     "path": [
                       "size"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "size"
                   }
@@ -1068,15 +1120,18 @@
                   "Quiet.Unnamed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "stored",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -1105,16 +1160,19 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "stored",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.percent"
                     }
@@ -1144,6 +1202,8 @@
               "endLine": 92,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1160,6 +1220,7 @@
                     "path": [
                       "size"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "size"
                   }
@@ -1185,10 +1246,12 @@
                   "Quiet.Over"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "stored",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -1198,6 +1261,7 @@
                           "path": [
                             "stored"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "stored"
                         },
@@ -1206,6 +1270,7 @@
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "result"
                         }
@@ -1239,6 +1304,8 @@
               "endLine": 94,
               "endCol": 37
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1250,6 +1317,7 @@
               "path": [
                 "stored"
               ],
+              "state": null,
               "type": "int",
               "text": "stored"
             },
@@ -1323,6 +1391,8 @@
           "endLine": 112,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Gauge.Uploading",
         "states": [
           {
@@ -1337,6 +1407,8 @@
               "endLine": 109,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1353,6 +1425,7 @@
                     "path": [
                       "size"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "size"
                   }
@@ -1378,15 +1451,18 @@
                   "Gauge.Stored"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "percent",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -1422,6 +1498,7 @@
                         "event",
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.percent"
                     },
@@ -1430,6 +1507,7 @@
                       "path": [
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "percent"
                     }
@@ -1439,16 +1517,19 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "percent",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.percent"
                     }
@@ -1478,6 +1559,8 @@
               "endLine": 111,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1489,6 +1572,7 @@
               "path": [
                 "percent"
               ],
+              "state": null,
               "type": "int",
               "text": "percent"
             },
@@ -1574,6 +1658,8 @@
           "endLine": 135,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Nested.Working",
         "states": [
           {
@@ -1588,6 +1674,8 @@
               "endLine": 132,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Nested.Working.First",
             "states": [
               {
@@ -1602,6 +1690,8 @@
                   "endLine": 130,
                   "endCol": 64
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1623,16 +1713,19 @@
                     "guard": null,
                     "targets": [],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "percent",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "event",
                             "percent"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "event.percent"
                         }
@@ -1662,6 +1755,8 @@
                   "endLine": 131,
                   "endCol": 67
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1683,6 +1778,7 @@
                     "guard": null,
                     "targets": [],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -1694,6 +1790,7 @@
                               "event",
                               "percent"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "event.percent"
                           }
@@ -1727,6 +1824,7 @@
                     "path": [
                       "size"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "size"
                   }
@@ -1752,15 +1850,18 @@
                   "Nested.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "percent",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -1785,6 +1886,7 @@
                   "Nested.Working.Second"
                 ],
                 "internal": true,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1810,6 +1912,8 @@
               "endLine": 134,
               "endCol": 42
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1821,6 +1925,7 @@
               "path": [
                 "percent"
               ],
+              "state": null,
               "type": "int",
               "text": "percent"
             },
@@ -1894,6 +1999,8 @@
           "endLine": 151,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Login.Signing",
         "states": [
           {
@@ -1908,6 +2015,8 @@
               "endLine": 148,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1924,6 +2033,7 @@
                     "path": [
                       "user"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "user"
                   }
@@ -1949,15 +2059,18 @@
                   "Login.Signed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "step",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "result"
                     }
@@ -1986,16 +2099,19 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "step",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "name"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.name"
                     }
@@ -2025,6 +2141,8 @@
               "endLine": 150,
               "endCol": 37
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -2036,6 +2154,7 @@
               "path": [
                 "step"
               ],
+              "state": null,
               "type": "string",
               "text": "step"
             },

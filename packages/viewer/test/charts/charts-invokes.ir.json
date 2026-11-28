@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "packages/viewer/test/charts/invokes.road",
@@ -149,6 +149,8 @@
           "endLine": 26,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Helper.Idle",
         "states": [
           {
@@ -163,6 +165,8 @@
               "endLine": 23,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -178,6 +182,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "emit",
@@ -209,6 +214,7 @@
                   "Helper.Gone"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -234,6 +240,8 @@
               "endLine": 25,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -329,6 +337,8 @@
           "endLine": 51,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Watch.Watching",
         "states": [
           {
@@ -343,6 +353,8 @@
               "endLine": 47,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -359,6 +371,7 @@
                     "path": [
                       "server"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "server"
                   }
@@ -382,6 +395,7 @@
                     "path": [
                       "folder"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "folder"
                   }
@@ -422,6 +436,7 @@
                   "Watch.Offline"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -442,15 +457,18 @@
                   "Watch.Synced"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "synced",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -476,6 +494,7 @@
                   "Watch.Offline"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -500,10 +519,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "synced",
+                    "state": null,
                     "value": {
                       "kind": "lit",
                       "value": 0,
@@ -531,6 +552,7 @@
                   "Watch.Offline"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -556,6 +578,8 @@
               "endLine": 49,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -567,6 +591,7 @@
               "path": [
                 "synced"
               ],
+              "state": null,
               "type": "int",
               "text": "synced"
             },
@@ -584,6 +609,8 @@
               "endLine": 50,
               "endCol": 35
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

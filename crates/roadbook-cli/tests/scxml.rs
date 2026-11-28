@@ -206,6 +206,23 @@ fn export_scxml_snapshots_internal_transitions_and_several_targets() {
     }
 }
 
+/// State parameters and variables: `<data>` in their state's `<datamodel>`, named
+/// `<state>.<name>`; initial values as `<assign>`s on entry, arguments as `<assign>`s in the
+/// transition, and a `set` of a local by that name.
+#[test]
+fn export_scxml_snapshots_state_locals() {
+    let chart = "crates/roadbook-compiler/tests/pass/locals.road";
+    let out = roadbook(&repo(), &["export", "scxml", chart, "--machine", "Reset"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let xml = text(&out.stdout);
+    roxmltree::Document::parse(&xml).unwrap();
+    assert!(
+        xml.contains("<assign location=\"Reset_Confirming.tries\" expr=\"tries + 1\"/>"),
+        "{xml}"
+    );
+    insta::assert_snapshot!("locals_reset_scxml", xml);
+}
+
 /// History states are `<history type="shallow|deep">` in their parent, with the default
 /// transition SCXML requires: the parent's default entry, its `initial` or every region.
 #[test]

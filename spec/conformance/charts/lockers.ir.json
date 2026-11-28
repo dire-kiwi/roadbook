@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/lockers.road",
@@ -164,6 +164,8 @@
           "endLine": 26,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Locker.Shut",
         "states": [
           {
@@ -178,6 +180,8 @@
               "endLine": 23,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -200,6 +204,7 @@
                         "event",
                         "pin"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.pin"
                     },
@@ -208,6 +213,7 @@
                       "path": [
                         "pin"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "pin"
                     }
@@ -219,6 +225,7 @@
                   "Locker.Opened"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -239,6 +246,7 @@
                   "Locker.Jammed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -264,6 +272,8 @@
               "endLine": 24,
               "endCol": 64
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -280,6 +290,7 @@
                     "path": [
                       "owner"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "owner"
                   }
@@ -291,6 +302,7 @@
                     "path": [
                       "pin"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "pin"
                   }
@@ -313,6 +325,8 @@
               "endLine": 25,
               "endCol": 64
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -330,6 +344,7 @@
                     "path": [
                       "owner"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "owner"
                   }
@@ -341,6 +356,7 @@
                     "path": [
                       "pin"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "pin"
                   }
@@ -489,6 +505,8 @@
           "endLine": 47,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Lockers.Open",
         "states": [
           {
@@ -503,6 +521,8 @@
               "endLine": 45,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -518,6 +538,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -529,6 +550,7 @@
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     },
@@ -539,6 +561,7 @@
                           "event",
                           "owner"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.owner"
                       },
@@ -548,6 +571,7 @@
                           "event",
                           "pin"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.pin"
                       }
@@ -571,6 +595,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -586,6 +611,7 @@
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     },
@@ -601,6 +627,7 @@
                               "event",
                               "pin"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.pin"
                           }
@@ -628,6 +655,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -643,6 +671,7 @@
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     },
@@ -672,6 +701,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -682,6 +712,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "key"
                       },
@@ -691,6 +722,7 @@
                           "result",
                           "label"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "result.label"
                       }
@@ -715,6 +747,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -725,6 +758,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "key"
                       },
@@ -734,6 +768,7 @@
                           "error",
                           "owner"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "error.owner"
                       }
@@ -759,6 +794,7 @@
                   "Lockers.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -784,6 +820,8 @@
               "endLine": 46,
               "endCol": 24
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/strict.road",
@@ -118,6 +118,8 @@
           "endLine": 35,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Lock.Closed",
         "states": [
           {
@@ -132,6 +134,8 @@
               "endLine": 29,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -164,6 +168,7 @@
                   "Lock.Opened"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -182,6 +187,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -211,6 +217,7 @@
                       "path": [
                         "tries"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "tries"
                     },
@@ -228,6 +235,7 @@
                   "Lock.Opened"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -252,6 +260,7 @@
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     },
@@ -269,6 +278,7 @@
                   "Lock.Opened"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -294,6 +304,8 @@
               "endLine": 34,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -311,6 +323,7 @@
                   "Lock.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -329,6 +342,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -359,11 +373,13 @@
                 "event",
                 "loud"
               ],
+              "state": null,
               "type": "bool",
               "text": "event.loud"
             },
             "targets": [],
             "internal": false,
+            "args": [],
             "effects": [],
             "span": {
               "file": 0,

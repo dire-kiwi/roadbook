@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/teller.road",
@@ -288,6 +288,8 @@
           "endLine": 20,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Teller.Listening",
         "states": [
           {
@@ -302,6 +304,8 @@
               "endLine": 17,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -317,6 +321,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "emit",
@@ -332,6 +337,7 @@
                               "event",
                               "question"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.question"
                           }
@@ -344,6 +350,7 @@
                               "owner",
                               "user"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "owner.user"
                           }
@@ -373,6 +380,7 @@
                   "Teller.Gone"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -398,6 +406,8 @@
               "endLine": 19,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -511,6 +521,8 @@
           "endLine": 45,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Keeper.Asking",
         "states": [
           {
@@ -525,6 +537,8 @@
               "endLine": 42,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Keeper.Asking.Ready",
             "states": [
               {
@@ -539,6 +553,8 @@
                   "endLine": 39,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -562,6 +578,7 @@
                             "path": [
                               "code"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "code"
                           }
@@ -584,6 +601,7 @@
                     "guard": null,
                     "targets": [],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "send",
@@ -606,6 +624,7 @@
                                   "event",
                                   "question"
                                 ],
+                                "state": null,
                                 "type": "string",
                                 "text": "event.question"
                               }
@@ -643,6 +662,7 @@
                     "path": [
                       "code"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "code"
                   },
@@ -651,6 +671,7 @@
                     "path": [
                       "owner"
                     ],
+                    "state": null,
                     "type": "Credentials",
                     "text": "owner"
                   }
@@ -676,6 +697,7 @@
                   "Keeper.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -700,16 +722,19 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "answer",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "answer"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.answer"
                     }
@@ -734,6 +759,7 @@
                   "Keeper.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -759,6 +785,8 @@
               "endLine": 44,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -865,6 +893,8 @@
           "endLine": 64,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Caller.Asking",
         "states": [
           {
@@ -879,6 +909,8 @@
               "endLine": 61,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -902,6 +934,7 @@
                         "path": [
                           "secret"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "secret"
                       }
@@ -930,16 +963,19 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "heard",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "answer"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.answer"
                     }
@@ -962,6 +998,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -983,6 +1020,7 @@
                             "path": [
                               "secret"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "secret"
                           }
@@ -1012,6 +1050,7 @@
                   "Caller.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1037,6 +1076,8 @@
               "endLine": 63,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

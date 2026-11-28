@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.12) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.13) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -144,7 +144,8 @@ export type Trigger =
   | { kind: 'ended'; from: Address }
 
 export type Effect =
-  | { kind: 'set'; var: string; value: Expr }
+  /** `state`: the id of the state whose variable `var` is, or null for the machine's. */
+  | { kind: 'set'; var: string; state: string | null; value: Expr }
   | { kind: 'do'; action: string; args: Expr[] }
   /** `key`: for a `children` address, the key (`send name[key].E`), or null for every child (`send name.*.E`); null otherwise. */
   | { kind: 'send'; to: Address; key: Expr | null; event: string; value: Expr }
@@ -171,8 +172,17 @@ export interface Transition {
   targets: string[]
   /** An internal transition (`-> .X`): its own state is not left. */
   internal: boolean
+  /** The arguments of each state with parameters it enters, in the order they are entered. */
+  args: StateArgs[]
   effects: Effect[]
   span: Span
+}
+
+/** The arguments a transition passes to one state with parameters that it enters. */
+export interface StateArgs {
+  state: string
+  /** One per parameter, in parameter order. */
+  values: Expr[]
 }
 
 export interface State {
@@ -181,6 +191,10 @@ export interface State {
   kind: StateKind
   doc: string
   span: Span
+  /** The state's parameters, in order: `[]` for a state written without them. */
+  params: Field[]
+  /** The state's variables, in order: `[]` for a state that declares none. */
+  vars: Var[]
   initial: string | null
   states: State[]
   entry: Effect[]
@@ -244,4 +258,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.12'
+export const IR_VERSION = '0.13'

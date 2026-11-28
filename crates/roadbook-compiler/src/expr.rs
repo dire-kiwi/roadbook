@@ -134,6 +134,7 @@ impl Cx<'_, '_> {
             }
             ExprKind::Bool(b) => (node(K::Lit(Literal::Bool(*b)), &BOOL, e), BOOL),
             ExprKind::Var(n) => {
+                let mut local = None;
                 let implicit = match n.name.as_str() {
                     "event" => Some((&scope.event, "an `on` transition")),
                     "result" => Some((&scope.result, "an invoke's `done` outcome")),
@@ -195,24 +196,43 @@ impl Cx<'_, '_> {
                         );
                         Ty::Unknown
                     }
-                    None => match self.vars.get(&n.name) {
-                        Some(v) => {
-                            self.sens = v.sensitive;
-                            self.ck.refer_member(self.file, self.symbol, n);
-                            if !v.param {
-                                self.reads.push((n.name.clone(), n.span));
+                    None => {
+                        if let Some((owner, l)) = self.local(&n.name) {
+                            let (ty, sensitive, param, symbol) =
+                                (l.ty.clone(), l.sensitive, l.param, l.symbol);
+                            let id = self.node_id(owner).to_string();
+                            self.sens = sensitive;
+                            if let Some(sym) = symbol
+                                && !self.ck.is_compiled(self.file)
+                            {
+                                self.ck.index.refer(sym, n.span);
                             }
-                            v.ty.clone()
+                            if !param {
+                                self.reads.push((format!("{id}.{}", n.name), n.span));
+                            }
+                            local = Some(id);
+                            ty
+                        } else {
+                            match self.vars.get(&n.name) {
+                                Some(v) => {
+                                    self.sens = v.sensitive;
+                                    self.ck.refer_member(self.file, self.symbol, n);
+                                    if !v.param {
+                                        self.reads.push((n.name.clone(), n.span));
+                                    }
+                                    v.ty.clone()
+                                }
+                                None => {
+                                    let d = self.unknown_variable(n, true);
+                                    self.ck.diags.push(d);
+                                    Ty::Unknown
+                                }
+                            }
                         }
-                        None => {
-                            let d = self.unknown_variable(n, true);
-                            self.ck.diags.push(d);
-                            Ty::Unknown
-                        }
-                    },
+                    }
                 };
                 let path = vec![n.name.clone()];
-                (node(K::Ref { path }, &ty, e), ty)
+                (node(K::Ref { path, state: local }, &ty, e), ty)
             }
             ExprKind::Field(base, f)
                 if matches!(&base.kind, ExprKind::Var(n) if n.name == "event")
@@ -227,7 +247,7 @@ impl Cx<'_, '_> {
                     .sensitive
                     .is(&Sensitive::call(&self.machine, c), &f.name);
                 let path = vec!["event".to_string(), f.name.clone()];
-                (node(K::Ref { path }, &ty, e), ty)
+                (node(K::Ref { path, state: None }, &ty, e), ty)
             }
             ExprKind::Field(base, f)
                 if matches!(&base.kind, ExprKind::Var(n) if n.name == "event")
@@ -258,7 +278,7 @@ impl Cx<'_, '_> {
                     Ty::Unknown
                 };
                 let path = vec!["event".to_string(), f.name.clone()];
-                (node(K::Ref { path }, &ty, e), ty)
+                (node(K::Ref { path, state: None }, &ty, e), ty)
             }
             ExprKind::Field(base, f) => {
                 let (be, bt) = self.expr(base, scope);
@@ -266,9 +286,9 @@ impl Cx<'_, '_> {
                 let ty = self.field(&bt, f);
                 self.sens = sens;
                 let kind = match be.kind {
-                    K::Ref { mut path } => {
+                    K::Ref { mut path, state } => {
                         path.push(f.name.clone());
-                        K::Ref { path }
+                        K::Ref { path, state }
                     }
                     other => K::Field {
                         of: Box::new(ir::Expr {

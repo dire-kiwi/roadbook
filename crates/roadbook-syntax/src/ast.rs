@@ -417,9 +417,9 @@ impl Body {
     }
 }
 
-/// An item of a machine or state body. `Var`, `Event`, `InternalEvent`, `Emits`, `Call`, `Children` and `Check`
-/// occur only in a machine body; `Invoke`, `Output`, `Fail` and `done` transitions only in a
-/// state.
+/// An item of a machine or state body. `Event`, `InternalEvent`, `Emits`, `Call`, `Children`
+/// and `Check` occur only in a machine body, and `Var` in either; `Invoke`, `Output`, `Fail` and
+/// `done` transitions only in a state.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Item {
@@ -547,6 +547,10 @@ pub struct State {
     pub doc: Option<Doc>,
     pub kind: StateKind,
     pub name: Ident,
+    /// `state Name(params)`: the state's parameters, given by the transitions that enter it.
+    /// Empty when there are none (`state Name()` is the same as `state Name`).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub params: Vec<Field>,
     pub body: Body,
     #[serde(skip)]
     pub span: Span,
@@ -567,7 +571,7 @@ pub struct History {
 
 /// `check property`: an assertion about the machine's states, which `roadbook check`
 /// verifies by exploring the chart. Only directly in a machine body.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Check {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub doc: Option<Doc>,
@@ -579,7 +583,7 @@ pub struct Check {
 
 /// What a `check` asserts. A state path is written like a target, `Name { . Name }`, and
 /// resolved from the machine body.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Property {
     /// `never A and B`: the states are never active at the same time (one state: never
@@ -719,13 +723,42 @@ pub struct Branch {
     pub span: Span,
 }
 
-/// `[ . ] Name { . Name }`
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+/// `[ . ] Name [ ( args ) ] { . Name [ ( args ) ] }`
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Target {
     /// Written with a leading dot, `.Name`: resolved among the children of the state the
     /// transition is written in, which the transition does not leave.
     pub dot: bool,
     pub path: Vec<Ident>,
+    /// The arguments written after each segment of `path`, by index: `-> Editing(doc).Changing`
+    /// has `Some` for `Editing` and `None` for `Changing`. Always as long as `path`.
+    #[serde(skip_serializing_if = "no_args")]
+    pub args: Vec<Option<TargetArgs>>,
+    #[serde(skip)]
+    pub span: Span,
+}
+
+impl Target {
+    /// The arguments written after segment `i`, if any.
+    pub fn args_of(&self, i: usize) -> Option<&TargetArgs> {
+        self.args.get(i).and_then(Option::as_ref)
+    }
+
+    /// Whether any segment has arguments.
+    pub fn has_args(&self) -> bool {
+        !no_args(&self.args)
+    }
+}
+
+fn no_args(args: &[Option<TargetArgs>]) -> bool {
+    args.iter().all(Option::is_none)
+}
+
+/// `( expr, … )` after a segment of a target path: the arguments of the state it names.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct TargetArgs {
+    pub args: Vec<Expr>,
+    /// From `(` to `)`.
     #[serde(skip)]
     pub span: Span,
 }

@@ -45,7 +45,7 @@ export interface SatisfactionSurveyDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "examples/large/survey.road",
@@ -864,6 +864,8 @@ const ir: unknown = {
           "endLine": 33,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "SatisfactionSurvey.Sending",
         "states": [
           {
@@ -878,6 +880,8 @@ const ir: unknown = {
               "endLine": 16,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -894,6 +898,7 @@ const ir: unknown = {
                     "path": [
                       "ticket"
                     ],
+                    "state": null,
                     "type": "Ticket",
                     "text": "ticket"
                   }
@@ -919,15 +924,18 @@ const ir: unknown = {
                   "SatisfactionSurvey.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "surveyId",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "result"
                     }
@@ -953,6 +961,7 @@ const ir: unknown = {
                   "SatisfactionSurvey.NoAnswer"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -978,6 +987,8 @@ const ir: unknown = {
               "endLine": 19,
               "endCol": 41
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1000,6 +1011,7 @@ const ir: unknown = {
                   "SatisfactionSurvey.Polling"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1025,6 +1037,8 @@ const ir: unknown = {
               "endLine": 29,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1041,6 +1055,7 @@ const ir: unknown = {
                     "path": [
                       "surveyId"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "surveyId"
                   }
@@ -1066,15 +1081,18 @@ const ir: unknown = {
                   "SatisfactionSurvey.Answered"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "score",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -1104,6 +1122,7 @@ const ir: unknown = {
                       "path": [
                         "polls"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "polls"
                     },
@@ -1121,10 +1140,12 @@ const ir: unknown = {
                   "SatisfactionSurvey.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "polls",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -1134,6 +1155,7 @@ const ir: unknown = {
                           "path": [
                             "polls"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "polls"
                         },
@@ -1169,6 +1191,7 @@ const ir: unknown = {
                   "SatisfactionSurvey.NoAnswer"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1194,6 +1217,8 @@ const ir: unknown = {
               "endLine": 31,
               "endCol": 80
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1219,6 +1244,7 @@ const ir: unknown = {
                     "path": [
                       "score"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "score"
                   }
@@ -1241,6 +1267,8 @@ const ir: unknown = {
               "endLine": 32,
               "endCol": 77
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

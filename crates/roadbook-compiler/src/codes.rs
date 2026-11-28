@@ -76,6 +76,10 @@ pub const ENDED_NOT_A_PEER: Code = Code(124);
 pub const NOT_RAISABLE: Code = Code(125);
 /// A `cancel name` where no `raise … as name` of the machine uses `name`.
 pub const UNKNOWN_RAISE_NAME: Code = Code(126);
+/// A state's parameter or variable whose name is already in scope in the state (a machine
+/// parameter or variable, a collection, a delayed raise's name, an `as` name, a local of a
+/// state around it), or is a local of a state inside it.
+pub const LOCAL_SHADOWS: Code = Code(127);
 
 // ───────────── structure ─────────────
 
@@ -138,6 +142,14 @@ pub const SPAWN_MACHINE_MISMATCH: Code = Code(220);
 pub const MIXED_TARGETS: Code = Code(221);
 /// Several targets that are not each in a different region of a parallel state.
 pub const TARGETS_CLASH: Code = Code(222);
+/// A state with parameters as a compound state's `initial` or as a region of a parallel
+/// state, which are entered with no arguments.
+pub const PARAMETERS_ON_DEFAULT_ENTRY: Code = Code(223);
+/// A transition that enters a state with parameters without passing its arguments.
+pub const MISSING_STATE_ARGUMENTS: Code = Code(224);
+/// Arguments for a state that takes none, for one the transition does not enter, or for one
+/// state twice.
+pub const UNEXPECTED_STATE_ARGUMENTS: Code = Code(225);
 
 // ───────────── types ─────────────
 
@@ -222,6 +234,8 @@ pub const IRREGULAR_RECURSION: Code = Code(326);
 /// A record value of a generic type whose type arguments cannot be told from the expected
 /// type or the field values.
 pub const UNINFERRED_TYPE_ARGUMENT: Code = Code(327);
+/// A state's parameter or variable of a `ref` or `call` type.
+pub const LOCAL_TYPE_NOT_ALLOWED: Code = Code(328);
 
 // ───────────── analyses ─────────────
 
@@ -283,6 +297,9 @@ pub const REGIONS_RESET: Code = Code(913);
 pub const NEVER_RAISED: Code = Code(914);
 /// A `raise E` where no `on E` or `on *` of the machine takes `E`.
 pub const RAISED_NOT_TAKEN: Code = Code(915);
+/// A `set` of a state's variable in a transition that leaves that state, so the value is
+/// discarded with it.
+pub const LOCAL_SET_LOST: Code = Code(916);
 
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
@@ -312,6 +329,7 @@ pub const ALL: &[Code] = &[
     ENDED_NOT_A_PEER,
     NOT_RAISABLE,
     UNKNOWN_RAISE_NAME,
+    LOCAL_SHADOWS,
     UNKNOWN_TARGET,
     MISSING_INITIAL,
     BAD_INITIAL,
@@ -334,6 +352,9 @@ pub const ALL: &[Code] = &[
     SPAWN_MACHINE_MISMATCH,
     MIXED_TARGETS,
     TARGETS_CLASH,
+    PARAMETERS_ON_DEFAULT_ENTRY,
+    MISSING_STATE_ARGUMENTS,
+    UNEXPECTED_STATE_ARGUMENTS,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
     BAD_OPERANDS,
@@ -361,6 +382,7 @@ pub const ALL: &[Code] = &[
     UNUSED_TYPE_PARAMETER,
     IRREGULAR_RECURSION,
     UNINFERRED_TYPE_ARGUMENT,
+    LOCAL_TYPE_NOT_ALLOWED,
     ALWAYS_CYCLE,
     UNBOUNDED_RECURSION,
     UNASSIGNED_READ,
@@ -383,6 +405,7 @@ pub const ALL: &[Code] = &[
     REGIONS_RESET,
     NEVER_RAISED,
     RAISED_NOT_TAKEN,
+    LOCAL_SET_LOST,
 ];
 
 #[cfg(test)]

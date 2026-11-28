@@ -10,10 +10,10 @@
  * generic type substituted. A member a type does not declare is left as it is. Values are never
  * changed in place: what is redacted is a copy.
  */
-import { type CallDecl, type Field, type Ir, type Machine, ownEvent, type TaskDecl } from "./ir.ts"
+import { type CallDecl, type Field, type Ir, type Machine, ownEvent, type State, type TaskDecl } from "./ir.ts"
 import { expandType, fieldsOf, parseTypeRef, type TypeRef } from "./typeref.ts"
 import type { Json } from "./json.ts"
-import type { CoreRecord, Defect, Input, InvokeEntry, Saved, SpawnedEntry, Tagged } from "./types.ts"
+import type { CoreRecord, Defect, Input, InvokeEntry, Locals, Saved, SpawnedEntry, Tagged } from "./types.ts"
 
 /** What a redacted value is written as. */
 export const REDACTED = "<redacted>"
@@ -31,6 +31,31 @@ interface Marks {
 
 const marksOf = new WeakMap<Ir, Marks>()
 
+/** Every state of a machine, by id. */
+const statesOf = new WeakMap<Machine, ReadonlyMap<string, State>>()
+
+const stateById = (m: Machine, id: string): State | undefined => {
+  let states = statesOf.get(m)
+  if (states === undefined) {
+    const map = new Map<string, State>()
+    const walk = (s: State) => {
+      map.set(s.id, s)
+      for (const c of s.states) walk(c)
+    }
+    walk(m.root)
+    states = map
+    statesOf.set(m, states)
+  }
+  return states.get(id)
+}
+
+/** A state's locals as fields: its parameters, then its variables. */
+const localsOf = (state: State): ReadonlyArray<Field> => [...(state.params ?? []), ...(state.vars ?? [])]
+
+/** Whether `state` or a state inside it marks a parameter or variable sensitive. */
+const marksLocals = (state: State): boolean =>
+  localsOf(state).some((l) => l.sensitive) || state.states.some(marksLocals)
+
 const own = <T>(map: Readonly<Record<string, T>>, key: string): T | undefined =>
   Object.hasOwn(map, key) ? map[key] : undefined
 
@@ -43,7 +68,7 @@ const marks = (ir: Ir): Marks => {
     Object.values(ir.actions).some((a) => marked(a.params)) ||
     Object.values(ir.tasks).some((t) => marked(t.params) || Object.values(t.emits).some((e) => marked(e.fields))) ||
     Object.values(ir.machines).some((m) =>
-      marked(m.params) || m.vars.some((v) => v.sensitive) ||
+      marked(m.params) || m.vars.some((v) => v.sensitive) || marksLocals(m.root) ||
       Object.values(m.calls).some((c) => marked(c.params)) ||
       [...Object.values(m.events), ...Object.values(m.internalEvents), ...Object.values(m.emits)].some((e) =>
         marked(e.fields)
@@ -361,8 +386,26 @@ class Redactor {
 
   /** `value`, the value of variable `name` of `m`: whole if it is sensitive, or if `m` has none. */
   private variable(m: Machine, name: string, value: Json): Json {
-    const v = m.vars.find((x) => x.name === name)
+    // A state's parameter or variable is named `<state id>.<name>`: a machine variable's name has no dot.
+    const dot = name.lastIndexOf(".")
+    const v = dot === -1
+      ? m.vars.find((x) => x.name === name)
+      : (() => {
+        const state = stateById(m, name.slice(0, dot))
+        const local = name.slice(dot + 1)
+        return state === undefined ? undefined : localsOf(state).find((x) => x.name === local)
+      })()
     return v === undefined || v.sensitive ? REDACTED : this.value(v.type, value)
+  }
+
+  /** `locals`, a snapshot's `locals` (or one history state's member of `historyLocals`), redacted state by state. */
+  private locals(m: Machine, locals: Locals): Locals {
+    const out: Record<string, Obj> = {}
+    for (const id of Object.keys(locals)) {
+      const state = stateById(m, id)
+      out[id] = this.object(state === undefined ? [] : localsOf(state), locals[id]!)
+    }
+    return out
   }
 
   /**
@@ -445,12 +488,17 @@ class Redactor {
     if (result !== null && "output" in result) result = { output: this.result(m.returns, result.output) }
     else if (result !== null && "error" in result) result = { error: this.error(result.error) as typeof result.error }
     const scheduled = saved.scheduled?.map((sc) => ({ ...sc, value: this.event(m, false, sc.value) as typeof sc.value }))
+    const historyLocals = saved.historyLocals === undefined ? undefined : Object.fromEntries(
+      Object.entries(saved.historyLocals).map(([h, kept]) => [h, this.locals(m, kept)])
+    )
     const redacted = {
       ...saved,
       input: this.object(m.params, saved.input),
       vars,
+      ...(saved.locals === undefined ? {} : { locals: this.locals(m, saved.locals) }),
       result,
-      ...(scheduled === undefined ? {} : { scheduled })
+      ...(scheduled === undefined ? {} : { scheduled }),
+      ...(historyLocals === undefined ? {} : { historyLocals })
     }
     // A version 1 or 2 snapshot has no `spawned`, and the record holds it as it was given.
     if (saved.spawned === undefined) return redacted

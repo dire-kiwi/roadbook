@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/hub.road",
@@ -217,6 +217,8 @@
           "endLine": 30,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Session.Open",
         "states": [
           {
@@ -231,6 +233,8 @@
               "endLine": 27,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -246,10 +250,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "count",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -259,6 +265,7 @@
                           "path": [
                             "count"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "count"
                         },
@@ -291,6 +298,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "emit",
@@ -306,6 +314,7 @@
                               "event",
                               "text"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.text"
                           }
@@ -335,6 +344,7 @@
                   "Session.Left"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -355,6 +365,7 @@
                   "Session.Dropped"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -373,6 +384,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -383,6 +395,7 @@
                         "path": [
                           "name"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "name"
                       }
@@ -413,6 +426,8 @@
               "endLine": 28,
               "endCol": 39
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -424,6 +439,7 @@
               "path": [
                 "count"
               ],
+              "state": null,
               "type": "int",
               "text": "count"
             },
@@ -441,6 +457,8 @@
               "endLine": 29,
               "endCol": 53
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -458,6 +476,7 @@
                     "path": [
                       "name"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "name"
                   }
@@ -779,6 +798,8 @@
           "endLine": 69,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Hub.Serving",
         "states": [
           {
@@ -793,6 +814,8 @@
               "endLine": 67,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -808,6 +831,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -819,6 +843,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -829,6 +854,7 @@
                           "event",
                           "name"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.name"
                       }
@@ -852,6 +878,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -863,6 +890,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -873,6 +901,7 @@
                           "event",
                           "name"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.name"
                       }
@@ -892,6 +921,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -907,6 +937,7 @@
                               "event",
                               "text"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.text"
                           }
@@ -934,6 +965,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -945,6 +977,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -967,6 +1000,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -997,6 +1031,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "stop",
@@ -1007,6 +1042,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     }
@@ -1029,6 +1065,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1044,6 +1081,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -1059,6 +1097,7 @@
                               "event",
                               "text"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.text"
                           }
@@ -1086,6 +1125,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1108,6 +1148,7 @@
                               "event",
                               "text"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.text"
                           }
@@ -1135,6 +1176,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1150,6 +1192,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -1179,6 +1222,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1194,6 +1238,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -1223,6 +1268,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1238,6 +1284,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -1273,10 +1320,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "said",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -1286,6 +1335,7 @@
                           "path": [
                             "said"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "said"
                         },
@@ -1309,6 +1359,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "key"
                       }
@@ -1332,6 +1383,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1342,6 +1394,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "key"
                       }
@@ -1366,6 +1419,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1377,6 +1431,7 @@
                           "error",
                           "reason"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "error.reason"
                       }
@@ -1402,6 +1457,7 @@
                   "Hub.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1422,6 +1478,7 @@
                   "Hub.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -1433,6 +1490,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.id"
                     },
@@ -1470,6 +1528,8 @@
               "endLine": 68,
               "endCol": 37
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1481,6 +1541,7 @@
               "path": [
                 "said"
               ],
+              "state": null,
               "type": "int",
               "text": "said"
             },
@@ -1644,6 +1705,8 @@
           "endLine": 93,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Pool.Running",
         "states": [
           {
@@ -1658,6 +1721,8 @@
               "endLine": 91,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1673,6 +1738,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -1684,6 +1750,7 @@
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     },
@@ -1694,6 +1761,7 @@
                           "event",
                           "name"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.name"
                       }
@@ -1717,6 +1785,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "stop",
@@ -1727,6 +1796,7 @@
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     }
@@ -1749,6 +1819,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1764,6 +1835,7 @@
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     },
@@ -1793,6 +1865,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1808,6 +1881,7 @@
                         "event",
                         "n"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.n"
                     },
@@ -1837,6 +1911,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1870,6 +1945,7 @@
                   "Pool.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1900,6 +1976,7 @@
                       "path": [
                         "key"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "key"
                     },
@@ -1915,6 +1992,7 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1953,6 +2031,8 @@
               "endLine": 92,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

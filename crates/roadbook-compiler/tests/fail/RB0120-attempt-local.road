@@ -1,0 +1,22 @@
+error Busy
+
+fn backoff(attempt: int) -> duration
+task fetch() ! Busy
+
+machine M() {
+  event Go
+
+  initial Idle
+  state Idle {
+    on Go -> Loading(1)
+  }
+  state Loading(attempt: int) {
+    invoke fetch() retry 2 after backoff(attempt) {
+      done      -> Done
+      fail Busy -> Done
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0120 at 14:42

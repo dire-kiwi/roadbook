@@ -232,7 +232,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -1445,6 +1445,8 @@ const ir: unknown = {
           "endLine": 284,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "SupportTicket.Intake",
         "states": [
           {
@@ -1459,6 +1461,8 @@ const ir: unknown = {
               "endLine": 83,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "SupportTicket.Intake.Classifying",
             "states": [
               {
@@ -1473,6 +1477,8 @@ const ir: unknown = {
                   "endLine": 64,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1489,6 +1495,7 @@ const ir: unknown = {
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       }
@@ -1514,15 +1521,18 @@ const ir: unknown = {
                       "SupportTicket.Intake.Screening"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "classification",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "Classification",
                           "text": "result"
                         }
@@ -1530,12 +1540,14 @@ const ir: unknown = {
                       {
                         "kind": "set",
                         "var": "priority",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result",
                             "priority"
                           ],
+                          "state": null,
                           "type": "Priority",
                           "text": "result.priority"
                         }
@@ -1543,12 +1555,14 @@ const ir: unknown = {
                       {
                         "kind": "set",
                         "var": "category",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result",
                             "category"
                           ],
+                          "state": null,
                           "type": "Category",
                           "text": "result.category"
                         }
@@ -1578,6 +1592,7 @@ const ir: unknown = {
                           "path": [
                             "classifyAttempts"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "classifyAttempts"
                         },
@@ -1595,6 +1610,7 @@ const ir: unknown = {
                       "SupportTicket.Intake.ClassifyBackoff"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1616,6 +1632,7 @@ const ir: unknown = {
                       "SupportTicket.Intake.Unclassified"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1641,12 +1658,15 @@ const ir: unknown = {
                   "endLine": 70,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
                   {
                     "kind": "set",
                     "var": "classifyAttempts",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -1656,6 +1676,7 @@ const ir: unknown = {
                           "path": [
                             "classifyAttempts"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "classifyAttempts"
                         },
@@ -1686,6 +1707,7 @@ const ir: unknown = {
                             "path": [
                               "classifyAttempts"
                             ],
+                            "state": null,
                             "type": "int",
                             "text": "classifyAttempts"
                           }
@@ -1700,6 +1722,7 @@ const ir: unknown = {
                       "SupportTicket.Intake.Classifying"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1725,6 +1748,8 @@ const ir: unknown = {
                   "endLine": 78,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1745,6 +1770,7 @@ const ir: unknown = {
                           "path": [
                             "classification"
                           ],
+                          "state": null,
                           "type": "Classification",
                           "text": "classification"
                         }
@@ -1756,6 +1782,7 @@ const ir: unknown = {
                       "SupportTicket.Spam"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1779,6 +1806,7 @@ const ir: unknown = {
                           "path": [
                             "classification"
                           ],
+                          "state": null,
                           "type": "Classification",
                           "text": "classification"
                         }
@@ -1790,6 +1818,7 @@ const ir: unknown = {
                       "SupportTicket.Duplicate"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1809,6 +1838,7 @@ const ir: unknown = {
                       "SupportTicket.Intake.Accepted"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -1834,6 +1864,8 @@ const ir: unknown = {
                   "endLine": 81,
                   "endCol": 32
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1855,6 +1887,8 @@ const ir: unknown = {
                   "endLine": 82,
                   "endCol": 77
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -1867,6 +1901,7 @@ const ir: unknown = {
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -1900,6 +1935,7 @@ const ir: unknown = {
                   "SupportTicket.Triage"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1925,6 +1961,8 @@ const ir: unknown = {
               "endLine": 107,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "SupportTicket.Triage.Routing",
             "states": [
               {
@@ -1939,6 +1977,8 @@ const ir: unknown = {
                   "endLine": 101,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -1955,6 +1995,7 @@ const ir: unknown = {
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -1963,6 +2004,7 @@ const ir: unknown = {
                         "path": [
                           "category"
                         ],
+                        "state": null,
                         "type": "Category",
                         "text": "category"
                       }
@@ -1988,15 +2030,18 @@ const ir: unknown = {
                       "SupportTicket.Triage.Assigned"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "agentId",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "string",
                           "text": "result"
                         }
@@ -2022,6 +2067,7 @@ const ir: unknown = {
                       "SupportTicket.Triage.Queued"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -2047,6 +2093,8 @@ const ir: unknown = {
                   "endLine": 104,
                   "endCol": 42
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -2069,6 +2117,7 @@ const ir: unknown = {
                       "SupportTicket.Triage.Routing"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -2094,6 +2143,8 @@ const ir: unknown = {
                   "endLine": 106,
                   "endCol": 79
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
@@ -2106,6 +2157,7 @@ const ir: unknown = {
                         "path": [
                           "agentId"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "agentId"
                       },
@@ -2114,6 +2166,7 @@ const ir: unknown = {
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -2149,6 +2202,7 @@ const ir: unknown = {
                         "path": [
                           "priority"
                         ],
+                        "state": null,
                         "type": "Priority",
                         "text": "priority"
                       }
@@ -2161,6 +2215,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -2171,6 +2226,7 @@ const ir: unknown = {
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -2202,16 +2258,19 @@ const ir: unknown = {
                   "SupportTicket.Triage.Assigned"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "agentId",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "agentId"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.agentId"
                     }
@@ -2236,6 +2295,7 @@ const ir: unknown = {
                   "SupportTicket.OutOfScope"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2256,6 +2316,7 @@ const ir: unknown = {
                   "SupportTicket.Withdrawn"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2275,6 +2336,7 @@ const ir: unknown = {
                   "SupportTicket.Active"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -2300,6 +2362,8 @@ const ir: unknown = {
               "endLine": 252,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "SupportTicket.Active.Working",
             "states": [
               {
@@ -2314,6 +2378,8 @@ const ir: unknown = {
                   "endLine": 156,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "SupportTicket.Active.Working.WithAgent",
                 "states": [
                   {
@@ -2328,6 +2394,8 @@ const ir: unknown = {
                       "endLine": 135,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -2350,6 +2418,7 @@ const ir: unknown = {
                           "SupportTicket.Active.Working.WithAgent"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -2360,6 +2429,7 @@ const ir: unknown = {
                                 "path": [
                                   "agentId"
                                 ],
+                                "state": null,
                                 "type": "string",
                                 "text": "agentId"
                               },
@@ -2368,6 +2438,7 @@ const ir: unknown = {
                                 "path": [
                                   "ticket"
                                 ],
+                                "state": null,
                                 "type": "Ticket",
                                 "text": "ticket"
                               },
@@ -2399,6 +2470,7 @@ const ir: unknown = {
                           "SupportTicket.Active.Working.WaitingOnCustomer"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -2409,6 +2481,7 @@ const ir: unknown = {
                                 "path": [
                                   "ticket"
                                 ],
+                                "state": null,
                                 "type": "Ticket",
                                 "text": "ticket"
                               },
@@ -2418,6 +2491,7 @@ const ir: unknown = {
                                   "event",
                                   "body"
                                 ],
+                                "state": null,
                                 "type": "string",
                                 "text": "event.body"
                               }
@@ -2443,6 +2517,7 @@ const ir: unknown = {
                           "SupportTicket.Active.Working.OnHold"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2463,6 +2538,7 @@ const ir: unknown = {
                           "SupportTicket.Active.Resolving"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2483,6 +2559,7 @@ const ir: unknown = {
                           "SupportTicket.Duplicate"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2508,6 +2585,8 @@ const ir: unknown = {
                       "endLine": 149,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
                     "states": [
                       {
@@ -2522,6 +2601,8 @@ const ir: unknown = {
                           "endLine": 144,
                           "endCol": 87
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -2544,6 +2625,7 @@ const ir: unknown = {
                               "SupportTicket.Active.Working.WaitingOnCustomer.Reminded"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "do",
@@ -2554,6 +2636,7 @@ const ir: unknown = {
                                     "path": [
                                       "ticket"
                                     ],
+                                    "state": null,
                                     "type": "Ticket",
                                     "text": "ticket"
                                   },
@@ -2590,6 +2673,8 @@ const ir: unknown = {
                           "endLine": 146,
                           "endCol": 89
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -2612,6 +2697,7 @@ const ir: unknown = {
                               "SupportTicket.Active.Working.WaitingOnCustomer.LastCall"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "do",
@@ -2622,6 +2708,7 @@ const ir: unknown = {
                                     "path": [
                                       "ticket"
                                     ],
+                                    "state": null,
                                     "type": "Ticket",
                                     "text": "ticket"
                                   },
@@ -2658,6 +2745,8 @@ const ir: unknown = {
                           "endLine": 148,
                           "endCol": 26
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -2688,6 +2777,7 @@ const ir: unknown = {
                           "SupportTicket.AutoClosed"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2708,6 +2798,7 @@ const ir: unknown = {
                           "SupportTicket.Active.Working.WithAgent"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2733,6 +2824,8 @@ const ir: unknown = {
                       "endLine": 155,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -2750,6 +2843,7 @@ const ir: unknown = {
                           "SupportTicket.Active.Working.WithAgent"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2775,6 +2869,7 @@ const ir: unknown = {
                           "SupportTicket.Active.Working.WithAgent"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [
                           {
                             "kind": "do",
@@ -2785,6 +2880,7 @@ const ir: unknown = {
                                 "path": [
                                   "agentId"
                                 ],
+                                "state": null,
                                 "type": "string",
                                 "text": "agentId"
                               },
@@ -2793,6 +2889,7 @@ const ir: unknown = {
                                 "path": [
                                   "ticket"
                                 ],
+                                "state": null,
                                 "type": "Ticket",
                                 "text": "ticket"
                               },
@@ -2833,6 +2930,7 @@ const ir: unknown = {
                       "SupportTicket.Active.Escalation"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -2858,6 +2956,8 @@ const ir: unknown = {
                   "endLine": 203,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": "SupportTicket.Active.Escalation.Tier2",
                 "states": [
                   {
@@ -2872,6 +2972,8 @@ const ir: unknown = {
                       "endLine": 168,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [
@@ -2884,6 +2986,7 @@ const ir: unknown = {
                             "path": [
                               "ticket"
                             ],
+                            "state": null,
                             "type": "Ticket",
                             "text": "ticket"
                           },
@@ -2915,6 +3018,7 @@ const ir: unknown = {
                           "SupportTicket.Active.Escalation.Tier3"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -2940,6 +3044,8 @@ const ir: unknown = {
                       "endLine": 173,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [
@@ -2952,6 +3058,7 @@ const ir: unknown = {
                             "path": [
                               "ticket"
                             ],
+                            "state": null,
                             "type": "Ticket",
                             "text": "ticket"
                           },
@@ -2983,6 +3090,7 @@ const ir: unknown = {
                           "SupportTicket.Active.Escalation.Engineering"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -3008,6 +3116,8 @@ const ir: unknown = {
                       "endLine": 202,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": "SupportTicket.Active.Escalation.Engineering.FilingBug",
                     "states": [
                       {
@@ -3022,6 +3132,8 @@ const ir: unknown = {
                           "endLine": 189,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3038,6 +3150,7 @@ const ir: unknown = {
                                 "path": [
                                   "ticket"
                                 ],
+                                "state": null,
                                 "type": "Ticket",
                                 "text": "ticket"
                               }
@@ -3063,15 +3176,18 @@ const ir: unknown = {
                               "SupportTicket.Active.Escalation.Engineering.AwaitingFix"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "set",
                                 "var": "bugId",
+                                "state": null,
                                 "value": {
                                   "kind": "ref",
                                   "path": [
                                     "result"
                                   ],
+                                  "state": null,
                                   "type": "string",
                                   "text": "result"
                                 }
@@ -3101,6 +3217,7 @@ const ir: unknown = {
                                   "path": [
                                     "bugAttempts"
                                   ],
+                                  "state": null,
                                   "type": "int",
                                   "text": "bugAttempts"
                                 },
@@ -3118,16 +3235,19 @@ const ir: unknown = {
                               "SupportTicket.Active.Escalation.Engineering.BugBackoff"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "set",
                                 "var": "retryWait",
+                                "state": null,
                                 "value": {
                                   "kind": "ref",
                                   "path": [
                                     "error",
                                     "retryAfter"
                                   ],
+                                  "state": null,
                                   "type": "duration",
                                   "text": "error.retryAfter"
                                 }
@@ -3153,6 +3273,7 @@ const ir: unknown = {
                               "SupportTicket.Active.Escalation.Engineering.AwaitingFix"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "do",
@@ -3163,6 +3284,7 @@ const ir: unknown = {
                                     "path": [
                                       "agentId"
                                     ],
+                                    "state": null,
                                     "type": "string",
                                     "text": "agentId"
                                   },
@@ -3171,6 +3293,7 @@ const ir: unknown = {
                                     "path": [
                                       "ticket"
                                     ],
+                                    "state": null,
                                     "type": "Ticket",
                                     "text": "ticket"
                                   },
@@ -3207,12 +3330,15 @@ const ir: unknown = {
                           "endLine": 194,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [
                           {
                             "kind": "set",
                             "var": "bugAttempts",
+                            "state": null,
                             "value": {
                               "kind": "op",
                               "op": "+",
@@ -3222,6 +3348,7 @@ const ir: unknown = {
                                   "path": [
                                     "bugAttempts"
                                   ],
+                                  "state": null,
                                   "type": "int",
                                   "text": "bugAttempts"
                                 },
@@ -3248,6 +3375,7 @@ const ir: unknown = {
                                 "path": [
                                   "retryWait"
                                 ],
+                                "state": null,
                                 "type": "duration",
                                 "text": "retryWait"
                               }
@@ -3258,6 +3386,7 @@ const ir: unknown = {
                               "SupportTicket.Active.Escalation.Engineering.FilingBug"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -3283,6 +3412,8 @@ const ir: unknown = {
                           "endLine": 199,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3300,6 +3431,7 @@ const ir: unknown = {
                               "SupportTicket.Active.Escalation.Engineering.FixShipped"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -3320,6 +3452,7 @@ const ir: unknown = {
                               "SupportTicket.Unresolvable"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -3345,6 +3478,8 @@ const ir: unknown = {
                           "endLine": 201,
                           "endCol": 34
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3369,6 +3504,7 @@ const ir: unknown = {
                           "SupportTicket.Active.Resolving"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -3398,6 +3534,7 @@ const ir: unknown = {
                       "SupportTicket.Active.Working"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3418,6 +3555,7 @@ const ir: unknown = {
                       "SupportTicket.Active.Resolving"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3443,6 +3581,8 @@ const ir: unknown = {
                   "endLine": 235,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [
                   {
@@ -3457,6 +3597,8 @@ const ir: unknown = {
                       "endLine": 222,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": "SupportTicket.Active.Resolving.FixCheck.Verifying",
                     "states": [
                       {
@@ -3471,6 +3613,8 @@ const ir: unknown = {
                           "endLine": 219,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3487,6 +3631,7 @@ const ir: unknown = {
                                 "path": [
                                   "ticket"
                                 ],
+                                "state": null,
                                 "type": "Ticket",
                                 "text": "ticket"
                               }
@@ -3512,6 +3657,7 @@ const ir: unknown = {
                               "path": [
                                 "result"
                               ],
+                              "state": null,
                               "type": "bool",
                               "text": "result"
                             },
@@ -3519,6 +3665,7 @@ const ir: unknown = {
                               "SupportTicket.Active.Resolving.FixCheck.Verified"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [],
                             "span": {
                               "file": 0,
@@ -3539,6 +3686,7 @@ const ir: unknown = {
                               "SupportTicket.Active.Working"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "do",
@@ -3549,6 +3697,7 @@ const ir: unknown = {
                                     "path": [
                                       "agentId"
                                     ],
+                                    "state": null,
                                     "type": "string",
                                     "text": "agentId"
                                   },
@@ -3557,6 +3706,7 @@ const ir: unknown = {
                                     "path": [
                                       "ticket"
                                     ],
+                                    "state": null,
                                     "type": "Ticket",
                                     "text": "ticket"
                                   },
@@ -3593,6 +3743,8 @@ const ir: unknown = {
                           "endLine": 221,
                           "endCol": 32
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3622,6 +3774,8 @@ const ir: unknown = {
                       "endLine": 234,
                       "endCol": 8
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
                     "states": [
                       {
@@ -3636,6 +3790,8 @@ const ir: unknown = {
                           "endLine": 231,
                           "endCol": 10
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3652,6 +3808,7 @@ const ir: unknown = {
                                 "path": [
                                   "ticket"
                                 ],
+                                "state": null,
                                 "type": "Ticket",
                                 "text": "ticket"
                               }
@@ -3677,15 +3834,18 @@ const ir: unknown = {
                               "SupportTicket.Active.Resolving.CustomerNotice.Drafted"
                             ],
                             "internal": false,
+                            "args": [],
                             "effects": [
                               {
                                 "kind": "set",
                                 "var": "resolution",
+                                "state": null,
                                 "value": {
                                   "kind": "ref",
                                   "path": [
                                     "result"
                                   ],
+                                  "state": null,
                                   "type": "string",
                                   "text": "result"
                                 }
@@ -3715,6 +3875,8 @@ const ir: unknown = {
                           "endLine": 233,
                           "endCol": 31
                         },
+                        "params": [],
+                        "vars": [],
                         "initial": null,
                         "states": [],
                         "entry": [],
@@ -3747,6 +3909,7 @@ const ir: unknown = {
                       "SupportTicket.Active.AwaitingConfirmation"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "do",
@@ -3757,6 +3920,7 @@ const ir: unknown = {
                             "path": [
                               "ticket"
                             ],
+                            "state": null,
                             "type": "Ticket",
                             "text": "ticket"
                           },
@@ -3765,6 +3929,7 @@ const ir: unknown = {
                             "path": [
                               "resolution"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "resolution"
                           }
@@ -3795,6 +3960,8 @@ const ir: unknown = {
                   "endLine": 242,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -3812,6 +3979,7 @@ const ir: unknown = {
                       "SupportTicket.Closing"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3832,6 +4000,7 @@ const ir: unknown = {
                       "SupportTicket.Active.Reopened"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3857,6 +4026,7 @@ const ir: unknown = {
                       "SupportTicket.Closing"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3882,12 +4052,15 @@ const ir: unknown = {
                   "endLine": 251,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [
                   {
                     "kind": "set",
                     "var": "reopens",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -3897,6 +4070,7 @@ const ir: unknown = {
                           "path": [
                             "reopens"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "reopens"
                         },
@@ -3929,6 +4103,7 @@ const ir: unknown = {
                           "path": [
                             "reopens"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "reopens"
                         },
@@ -3946,6 +4121,7 @@ const ir: unknown = {
                       "SupportTicket.Active.Working"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3965,6 +4141,7 @@ const ir: unknown = {
                       "SupportTicket.Active.Escalation"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -3995,6 +4172,7 @@ const ir: unknown = {
                         "path": [
                           "priority"
                         ],
+                        "state": null,
                         "type": "Priority",
                         "text": "priority"
                       }
@@ -4007,6 +4185,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -4017,6 +4196,7 @@ const ir: unknown = {
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -4046,6 +4226,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -4056,6 +4237,7 @@ const ir: unknown = {
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -4065,6 +4247,7 @@ const ir: unknown = {
                           "event",
                           "text"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "event.text"
                       }
@@ -4090,6 +4273,7 @@ const ir: unknown = {
                   "SupportTicket.Withdrawn"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -4110,6 +4294,7 @@ const ir: unknown = {
                   "SupportTicket.Merged"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -4128,6 +4313,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "raise",
@@ -4144,6 +4330,7 @@ const ir: unknown = {
                         "event",
                         "delay"
                       ],
+                      "state": null,
                       "type": "duration",
                       "text": "event.delay"
                     },
@@ -4167,6 +4354,7 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -4177,6 +4365,7 @@ const ir: unknown = {
                         "path": [
                           "agentId"
                         ],
+                        "state": null,
                         "type": "string",
                         "text": "agentId"
                       },
@@ -4185,6 +4374,7 @@ const ir: unknown = {
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       },
@@ -4221,6 +4411,8 @@ const ir: unknown = {
               "endLine": 268,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "SupportTicket.Closing.Surveying",
             "states": [
               {
@@ -4235,6 +4427,8 @@ const ir: unknown = {
                   "endLine": 265,
                   "endCol": 6
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -4251,6 +4445,7 @@ const ir: unknown = {
                         "path": [
                           "ticket"
                         ],
+                        "state": null,
                         "type": "Ticket",
                         "text": "ticket"
                       }
@@ -4276,15 +4471,18 @@ const ir: unknown = {
                       "SupportTicket.Closing.Surveyed"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "survey",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "result"
                           ],
+                          "state": null,
                           "type": "SurveyResult",
                           "text": "result"
                         }
@@ -4314,6 +4512,8 @@ const ir: unknown = {
                   "endLine": 267,
                   "endCol": 28
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -4343,6 +4543,7 @@ const ir: unknown = {
                   "SupportTicket.Resolved"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -4368,6 +4569,8 @@ const ir: unknown = {
               "endLine": 270,
               "endCol": 76
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4383,6 +4586,7 @@ const ir: unknown = {
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4391,6 +4595,7 @@ const ir: unknown = {
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 },
@@ -4399,6 +4604,7 @@ const ir: unknown = {
                   "path": [
                     "survey"
                   ],
+                  "state": null,
                   "type": "SurveyResult",
                   "text": "survey"
                 }
@@ -4420,6 +4626,8 @@ const ir: unknown = {
               "endLine": 271,
               "endCol": 87
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4435,6 +4643,7 @@ const ir: unknown = {
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4449,6 +4658,7 @@ const ir: unknown = {
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4470,6 +4680,8 @@ const ir: unknown = {
               "endLine": 272,
               "endCol": 81
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4485,6 +4697,7 @@ const ir: unknown = {
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4499,6 +4712,7 @@ const ir: unknown = {
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4520,6 +4734,8 @@ const ir: unknown = {
               "endLine": 273,
               "endCol": 86
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4535,6 +4751,7 @@ const ir: unknown = {
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4549,6 +4766,7 @@ const ir: unknown = {
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4570,6 +4788,8 @@ const ir: unknown = {
               "endLine": 274,
               "endCol": 86
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4585,6 +4805,7 @@ const ir: unknown = {
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4599,6 +4820,7 @@ const ir: unknown = {
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4620,6 +4842,8 @@ const ir: unknown = {
               "endLine": 275,
               "endCol": 87
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4635,6 +4859,7 @@ const ir: unknown = {
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4649,6 +4874,7 @@ const ir: unknown = {
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4670,6 +4896,8 @@ const ir: unknown = {
               "endLine": 276,
               "endCol": 83
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4685,6 +4913,7 @@ const ir: unknown = {
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4699,6 +4928,7 @@ const ir: unknown = {
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4720,6 +4950,8 @@ const ir: unknown = {
               "endLine": 277,
               "endCol": 89
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4735,6 +4967,7 @@ const ir: unknown = {
                   "path": [
                     "ticket"
                   ],
+                  "state": null,
                   "type": "Ticket",
                   "text": "ticket"
                 },
@@ -4749,6 +4982,7 @@ const ir: unknown = {
                   "path": [
                     "reopens"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "reopens"
                 }
@@ -4859,6 +5093,8 @@ const ir: unknown = {
           "endLine": 33,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "SatisfactionSurvey.Sending",
         "states": [
           {
@@ -4873,6 +5109,8 @@ const ir: unknown = {
               "endLine": 16,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4889,6 +5127,7 @@ const ir: unknown = {
                     "path": [
                       "ticket"
                     ],
+                    "state": null,
                     "type": "Ticket",
                     "text": "ticket"
                   }
@@ -4914,15 +5153,18 @@ const ir: unknown = {
                   "SatisfactionSurvey.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "surveyId",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "result"
                     }
@@ -4948,6 +5190,7 @@ const ir: unknown = {
                   "SatisfactionSurvey.NoAnswer"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -4973,6 +5216,8 @@ const ir: unknown = {
               "endLine": 19,
               "endCol": 41
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -4995,6 +5240,7 @@ const ir: unknown = {
                   "SatisfactionSurvey.Polling"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -5020,6 +5266,8 @@ const ir: unknown = {
               "endLine": 29,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -5036,6 +5284,7 @@ const ir: unknown = {
                     "path": [
                       "surveyId"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "surveyId"
                   }
@@ -5061,15 +5310,18 @@ const ir: unknown = {
                   "SatisfactionSurvey.Answered"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "score",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -5099,6 +5351,7 @@ const ir: unknown = {
                       "path": [
                         "polls"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "polls"
                     },
@@ -5116,10 +5369,12 @@ const ir: unknown = {
                   "SatisfactionSurvey.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "polls",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -5129,6 +5384,7 @@ const ir: unknown = {
                           "path": [
                             "polls"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "polls"
                         },
@@ -5164,6 +5420,7 @@ const ir: unknown = {
                   "SatisfactionSurvey.NoAnswer"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 2,
@@ -5189,6 +5446,8 @@ const ir: unknown = {
               "endLine": 31,
               "endCol": 80
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -5214,6 +5473,7 @@ const ir: unknown = {
                     "path": [
                       "score"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "score"
                   }
@@ -5236,6 +5496,8 @@ const ir: unknown = {
               "endLine": 32,
               "endCol": 77
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

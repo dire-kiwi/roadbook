@@ -61,20 +61,27 @@ impl<'p> Cx<'_, 'p> {
         // The delay is checked whatever else is wrong, so that its errors are reported.
         let var = self.retry_var(idx, r.delay.as_ref());
         let delay = r.delay.as_ref().map(|d| {
-            if self.vars.contains_key("attempt") {
+            let owner = match self.local("attempt") {
+                Some((n, l)) => Some((
+                    self.node_id(n).to_string(),
+                    if l.param { "a parameter" } else { "a variable" },
+                )),
+                None => self.vars.get("attempt").map(|v| {
+                    (
+                        self.machine.clone(),
+                        if v.param { "a parameter" } else { "a variable" },
+                    )
+                }),
+            };
+            if let Some((owner, what)) = owner {
                 let mut uses = Vec::new();
                 var_uses(d, "attempt", &mut uses);
-                let what = if self.vars["attempt"].param {
-                    "a parameter"
-                } else {
-                    "a variable"
-                };
                 for span in uses {
                     self.ck.diags.push(
                         Diagnostic::error(
                             codes::ATTEMPT_SHADOWED,
                             span,
-                            format!("`attempt` is ambiguous: `{}` has {what} named `attempt`", self.machine),
+                            format!("`attempt` is ambiguous: `{owner}` has {what} named `attempt`"),
                         )
                         .with_help("in a retry's delay `attempt` counts the failed attempts; rename the parameter or variable, or write the retry out as explicit states"),
                     );
@@ -316,6 +323,7 @@ impl<'p> Cx<'_, 'p> {
         }
         let taken = |n: &str| {
             self.vars.contains_key(n)
+                || self.locals.iter().flatten().any(|l| l.name == n)
                 || self
                     .nodes
                     .iter()
@@ -386,6 +394,7 @@ impl<'p> Cx<'_, 'p> {
         let counter = || ir::Expr {
             kind: ir::ExprKind::Ref {
                 path: vec![var.clone()],
+                state: None,
             },
             ty: INT.to_ir(),
             text: var.clone(),
@@ -428,8 +437,10 @@ impl<'p> Cx<'_, 'p> {
                         )),
                         targets: vec![retry_target.clone()],
                         internal: false,
+                        args: Vec::new(),
                         effects: vec![ir::Effect::Set {
                             var: var.clone(),
+                            state: None,
                             value: binary(Op::Add, "+", INT, counter(), int(1)),
                         }],
                         span: ir_span(span),
@@ -438,6 +449,7 @@ impl<'p> Cx<'_, 'p> {
                         delay: Vec::new(),
                         guard: read.clone(),
                         effects: vec![read.clone()],
+                        args: Vec::new(),
                         span,
                     },
                     span,
@@ -468,6 +480,8 @@ impl<'p> Cx<'_, 'p> {
             kind: ir::StateKind::Atomic,
             doc: String::new(),
             span: ir_span(plan.inv.span),
+            params: Vec::new(),
+            vars: Vec::new(),
             initial: None,
             states: Vec::new(),
             entry: Vec::new(),
@@ -491,6 +505,7 @@ impl<'p> Cx<'_, 'p> {
                 transition_reads: attempt_reads,
                 retry_branches,
                 written_as: Some(st.id.clone()),
+                locals: Vec::new(),
             },
         );
         if let Some((delay, delay_reads)) = delay {
@@ -500,6 +515,8 @@ impl<'p> Cx<'_, 'p> {
                 kind: ir::StateKind::Atomic,
                 doc: String::new(),
                 span: ir_span(span),
+                params: Vec::new(),
+                vars: Vec::new(),
                 initial: None,
                 states: Vec::new(),
                 entry: Vec::new(),
@@ -511,6 +528,7 @@ impl<'p> Cx<'_, 'p> {
                     guard: None,
                     targets: vec![attempt_id.clone()],
                     internal: false,
+                    args: Vec::new(),
                     effects: Vec::new(),
                     span: ir_span(span),
                 }],
@@ -532,10 +550,12 @@ impl<'p> Cx<'_, 'p> {
                         delay: delay_reads,
                         guard: Vec::new(),
                         effects: Vec::new(),
+                        args: Vec::new(),
                         span,
                     }],
                     retry_branches: Vec::new(),
                     written_as: Some(st.id.clone()),
+                    locals: Vec::new(),
                 },
             );
         }
@@ -548,6 +568,7 @@ impl<'p> Cx<'_, 'p> {
             0,
             ir::Effect::Set {
                 var: var.clone(),
+                state: None,
                 value: int(0),
             },
         );

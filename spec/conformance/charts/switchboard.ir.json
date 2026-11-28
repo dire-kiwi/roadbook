@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/switchboard.road",
@@ -61,6 +61,8 @@
           "endLine": 15,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Line.Up",
         "states": [
           {
@@ -75,6 +77,8 @@
               "endLine": 12,
               "endCol": 31
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -92,6 +96,7 @@
                   "Line.Down"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -117,6 +122,8 @@
               "endLine": 14,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -299,6 +306,8 @@
           "endLine": 49,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Switchboard.Working",
         "states": [
           {
@@ -313,6 +322,8 @@
               "endLine": 45,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Switchboard.Working.Day",
             "states": [
               {
@@ -327,6 +338,8 @@
                   "endLine": 40,
                   "endCol": 17
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -348,6 +361,8 @@
                   "endLine": 42,
                   "endCol": 38
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -365,6 +380,7 @@
                       "Switchboard.Working.Night"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -390,6 +406,8 @@
                   "endLine": 43,
                   "endCol": 78
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -407,15 +425,18 @@
                       "Switchboard.Working.Held"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [
                       {
                         "kind": "set",
                         "var": "pending",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "call"
                           ],
+                          "state": null,
                           "type": "call lookup",
                           "text": "call"
                         }
@@ -423,12 +444,14 @@
                       {
                         "kind": "set",
                         "var": "asked",
+                        "state": null,
                         "value": {
                           "kind": "ref",
                           "path": [
                             "event",
                             "name"
                           ],
+                          "state": null,
                           "type": "string",
                           "text": "event.name"
                         }
@@ -458,6 +481,8 @@
                   "endLine": 44,
                   "endCol": 39
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -475,6 +500,7 @@
                       "Switchboard.Paused"
                     ],
                     "internal": false,
+                    "args": [],
                     "effects": [],
                     "span": {
                       "file": 0,
@@ -508,6 +534,8 @@
               "endLine": 47,
               "endCol": 65
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -525,6 +553,7 @@
                   "Switchboard.Answered"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "reply",
@@ -533,6 +562,7 @@
                       "path": [
                         "pending"
                       ],
+                      "state": null,
                       "type": "call lookup",
                       "text": "pending"
                     },
@@ -569,6 +599,8 @@
               "endLine": 48,
               "endCol": 47
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -586,6 +618,7 @@
                   "Switchboard.Working.Last"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -613,6 +646,7 @@
             "guard": null,
             "targets": [],
             "internal": false,
+            "args": [],
             "effects": [
               {
                 "kind": "spawn",
@@ -624,6 +658,7 @@
                     "event",
                     "n"
                   ],
+                  "state": null,
                   "type": "int",
                   "text": "event.n"
                 },
@@ -634,6 +669,7 @@
                       "event",
                       "n"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "event.n"
                   }
@@ -712,6 +748,8 @@
           "endLine": 65,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Caller.Asking",
         "states": [
           {
@@ -726,6 +764,8 @@
               "endLine": 62,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -770,15 +810,18 @@
                   "Caller.Got"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "number",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -804,6 +847,7 @@
                   "Caller.Got"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -829,6 +873,8 @@
               "endLine": 64,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -840,6 +886,7 @@
               "path": [
                 "number"
               ],
+              "state": null,
               "type": "int",
               "text": "number"
             },

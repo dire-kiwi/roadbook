@@ -1,0 +1,24 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0224]: this transition enters `M.Editing`, which takes `d: Doc`, without passing its arguments
+  --> RB0224-missing-state-arguments.road:9:16
+   |
+ 9 |     on Go   -> Editing
+   |                ^^^^^^^
+...
+12 |   state Editing(d: Doc) {
+   |         ------- declared here
+   |
+   = help: write the arguments after the state's name in the path: `-> Editing(…)`
+
+error[RB0224]: this transition enters `M.Editing`, which takes `d: Doc`, without passing its arguments
+  --> RB0224-missing-state-arguments.road:10:16
+   |
+10 |     on Edit -> Editing.Changing
+   |                ^^^^^^^^^^^^^^^^
+...
+12 |   state Editing(d: Doc) {
+   |         ------- declared here
+   |
+   = help: write the arguments after the state's name in the path: `-> Editing(…).Changing`

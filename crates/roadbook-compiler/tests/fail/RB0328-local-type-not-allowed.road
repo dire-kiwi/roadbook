@@ -1,0 +1,21 @@
+machine Peer() {
+  initial Done
+  final state Done {}
+}
+
+machine M(peer: ref Peer) {
+  call reserve()
+  event Go
+
+  initial Idle
+  state Idle {
+    on Go -> A(peer)
+  }
+  state A(other: ref Peer) {
+    var pending: call reserve
+    on reserve set pending = call
+  }
+}
+
+// expect: RB0328 at 14:18
+// expect: RB0328 at 15:18

@@ -209,6 +209,18 @@
           }
         },
         {
+          "comment": "A state with parameters: `state Confirming(token: ResetToken)`.",
+          "name": "meta.declaration.state.roadbook",
+          "begin": "\\b(?:(final|parallel)\\s+)?(state)\\s+([A-Z][A-Za-z0-9]*)\\s*(?=\\()",
+          "beginCaptures": {
+            "1": { "name": "storage.modifier.$1.roadbook" },
+            "2": { "name": "storage.type.state.roadbook" },
+            "3": { "name": "entity.name.type.state.roadbook" }
+          },
+          "end": "(?<=\\))",
+          "patterns": [{ "include": "#signature-rest" }]
+        },
+        {
           "match": "\\b(?:(final|parallel)\\s+)?(state)\\s+([A-Z][A-Za-z0-9]*)",
           "captures": {
             "1": { "name": "storage.modifier.$1.roadbook" },
@@ -343,15 +355,44 @@
     },
 
     "target": {
-      "comment": "One target or several, separated by commas, each with an optional leading dot (an internal transition).",
-      "match": "(->)\\s*(\\.?[A-Z][A-Za-z0-9]*(?:\\.[A-Z][A-Za-z0-9]*)*(?:\\s*,\\s*\\.?[A-Z][A-Za-z0-9]*(?:\\.[A-Z][A-Za-z0-9]*)*)*)",
-      "captures": {
-        "1": { "name": "keyword.operator.arrow.roadbook" },
-        "2": {
-          "name": "entity.name.type.state.roadbook",
-          "patterns": [{ "match": ",", "name": "punctuation.separator.comma.roadbook" }]
+      "comment": "One target or several, separated by commas, each with an optional leading dot (an internal transition), and arguments after the states that take them.",
+      "patterns": [
+        {
+          "comment": "A target list in which a state takes arguments, `-> Editing(doc).Changing`: the arguments are expressions.",
+          "begin": "(->)\\s*(?=(?:\\.?[A-Z][A-Za-z0-9]*(?:\\.[A-Z][A-Za-z0-9]*)*\\s*,\\s*)*\\.?[A-Z][A-Za-z0-9]*(?:\\.[A-Z][A-Za-z0-9]*)*\\()",
+          "beginCaptures": { "1": { "name": "keyword.operator.arrow.roadbook" } },
+          "end": "(?![.(A-Z]|\\s*,\\s*\\.?[A-Z])",
+          "patterns": [
+            {
+              "name": "meta.arguments.roadbook",
+              "begin": "\\(",
+              "beginCaptures": { "0": { "name": "punctuation.definition.arguments.begin.roadbook" } },
+              "end": "\\)",
+              "endCaptures": { "0": { "name": "punctuation.definition.arguments.end.roadbook" } },
+              "patterns": [{ "include": "#parenthesized" }, { "include": "#code" }]
+            },
+            { "match": "\\.?[A-Z][A-Za-z0-9]*", "name": "entity.name.type.state.roadbook" },
+            { "match": "\\s*,\\s*", "name": "punctuation.separator.comma.roadbook" }
+          ]
+        },
+        {
+                    "match": "(->)\\s*(\\.?[A-Z][A-Za-z0-9]*(?:\\.[A-Z][A-Za-z0-9]*)*(?:\\s*,\\s*\\.?[A-Z][A-Za-z0-9]*(?:\\.[A-Z][A-Za-z0-9]*)*)*)",
+          "captures": {
+            "1": { "name": "keyword.operator.arrow.roadbook" },
+            "2": {
+              "name": "entity.name.type.state.roadbook",
+              "patterns": [{ "match": ",", "name": "punctuation.separator.comma.roadbook" }]
+            }
+          }
         }
-      }
+      ]
+    },
+
+    "parenthesized": {
+      "comment": "Parentheses inside a target's arguments, so that the first `)` does not end them.",
+      "begin": "\\(",
+      "end": "\\)",
+      "patterns": [{ "include": "#parenthesized" }, { "include": "#code" }]
     },
 
     "check": {

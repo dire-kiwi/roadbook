@@ -1,0 +1,36 @@
+{
+  "description": "A parallel state with parameters: its regions' variables have the same name and are separate, read the parallel state's parameters, and are assigned by one event taken in both regions in one microstep. Two targets through the parallel state give its arguments once.",
+  "requires": [
+    "locals",
+    "parallel"
+  ],
+  "chart": "charts/locals-regions.road",
+  "machine": "Panels",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Tick"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Both"
+      }
+    }
+  ],
+  "status": "running"
+}

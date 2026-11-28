@@ -115,3 +115,24 @@ machine Watch(server: string, folder: string) {
   final state Offline {}
 }
 "unterminated
+
+// State parameters, state variables and target arguments.
+machine Locals() {
+  state A {
+    on Go -> B(1, f(event.code)).C, .D(Role.Admin)  set n = 1
+    on Back -> B(
+      2,
+      "x",
+    )
+  }
+  state B(n: int, sensitive code: string) {
+    var tries: int = n
+    sensitive var secret: string
+    on Go -> B(n + 1)  do log(tries)
+    initial C
+    state C {}
+  }
+  final state F(
+    reason: string,
+  ) { output reason }
+}

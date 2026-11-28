@@ -1,0 +1,572 @@
+{
+  "irVersion": "0.13",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/locals-regions.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Panels": {
+      "doc": "Regions with variables of the same name, a parallel state with parameters, and two\ntargets through it.",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 36,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 6,
+            "col": 3,
+            "endLine": 6,
+            "endCol": 11
+          }
+        },
+        "Tick": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 7,
+            "col": 3,
+            "endLine": 7,
+            "endCol": 13
+          }
+        },
+        "Both": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Panels",
+        "name": "Panels",
+        "kind": "compound",
+        "doc": "Regions with variables of the same name, a parallel state with parameters, and two\ntargets through it.",
+        "span": {
+          "file": 0,
+          "line": 5,
+          "col": 1,
+          "endLine": 36,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Panels.Idle",
+        "states": [
+          {
+            "id": "Panels.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 12,
+              "col": 3,
+              "endLine": 15,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Panels.Panes"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Panels.Panes",
+                    "values": [
+                      {
+                        "kind": "lit",
+                        "value": "p",
+                        "type": "string",
+                        "text": "\"p\""
+                      },
+                      {
+                        "kind": "lit",
+                        "value": 1,
+                        "type": "int",
+                        "text": "1"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 13,
+                  "col": 5,
+                  "endLine": 13,
+                  "endCol": 29
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Both"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Panels.Panes.Left.B",
+                  "Panels.Panes.Right.D"
+                ],
+                "internal": false,
+                "args": [
+                  {
+                    "state": "Panels.Panes",
+                    "values": [
+                      {
+                        "kind": "lit",
+                        "value": "q",
+                        "type": "string",
+                        "text": "\"q\""
+                      },
+                      {
+                        "kind": "lit",
+                        "value": 2,
+                        "type": "int",
+                        "text": "2"
+                      }
+                    ]
+                  },
+                  {
+                    "state": "Panels.Panes.Left.B",
+                    "values": [
+                      {
+                        "kind": "lit",
+                        "value": 7,
+                        "type": "int",
+                        "text": "7"
+                      }
+                    ]
+                  }
+                ],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 14,
+                  "col": 5,
+                  "endLine": 14,
+                  "endCol": 54
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Panels.Panes",
+            "name": "Panes",
+            "kind": "parallel",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 17,
+              "col": 3,
+              "endLine": 35,
+              "endCol": 4
+            },
+            "params": [
+              {
+                "name": "label",
+                "type": "string",
+                "sensitive": false,
+                "doc": ""
+              },
+              {
+                "name": "k",
+                "type": "int",
+                "sensitive": false,
+                "doc": ""
+              }
+            ],
+            "vars": [],
+            "initial": null,
+            "states": [
+              {
+                "id": "Panels.Panes.Left",
+                "name": "Left",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 20,
+                  "col": 5,
+                  "endLine": 26,
+                  "endCol": 6
+                },
+                "params": [],
+                "vars": [
+                  {
+                    "name": "n",
+                    "type": "int",
+                    "sensitive": false,
+                    "init": {
+                      "kind": "ref",
+                      "path": [
+                        "k"
+                      ],
+                      "state": "Panels.Panes",
+                      "type": "int",
+                      "text": "k"
+                    },
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 21,
+                      "col": 7,
+                      "endLine": 21,
+                      "endCol": 21
+                    }
+                  }
+                ],
+                "initial": "Panels.Panes.Left.A",
+                "states": [
+                  {
+                    "id": "Panels.Panes.Left.A",
+                    "name": "A",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 24,
+                      "col": 7,
+                      "endLine": 24,
+                      "endCol": 48
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Tick"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [],
+                        "internal": false,
+                        "args": [],
+                        "effects": [
+                          {
+                            "kind": "set",
+                            "var": "n",
+                            "state": "Panels.Panes.Left",
+                            "value": {
+                              "kind": "op",
+                              "op": "+",
+                              "args": [
+                                {
+                                  "kind": "ref",
+                                  "path": [
+                                    "n"
+                                  ],
+                                  "state": "Panels.Panes.Left",
+                                  "type": "int",
+                                  "text": "n"
+                                },
+                                {
+                                  "kind": "lit",
+                                  "value": 1,
+                                  "type": "int",
+                                  "text": "1"
+                                }
+                              ],
+                              "type": "int",
+                              "text": "n + 1"
+                            }
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 24,
+                          "col": 25,
+                          "endLine": 24,
+                          "endCol": 46
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Panels.Panes.Left.B",
+                    "name": "B",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 25,
+                      "col": 7,
+                      "endLine": 25,
+                      "endCol": 25
+                    },
+                    "params": [
+                      {
+                        "name": "x",
+                        "type": "int",
+                        "sensitive": false,
+                        "doc": ""
+                      }
+                    ],
+                    "vars": [],
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Panels.Panes.Right",
+                "name": "Right",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 5,
+                  "endLine": 34,
+                  "endCol": 6
+                },
+                "params": [],
+                "vars": [
+                  {
+                    "name": "n",
+                    "type": "int",
+                    "sensitive": false,
+                    "init": {
+                      "kind": "op",
+                      "op": "*",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "k"
+                          ],
+                          "state": "Panels.Panes",
+                          "type": "int",
+                          "text": "k"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 10,
+                          "type": "int",
+                          "text": "10"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "k * 10"
+                    },
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 29,
+                      "col": 7,
+                      "endLine": 29,
+                      "endCol": 26
+                    }
+                  }
+                ],
+                "initial": "Panels.Panes.Right.C",
+                "states": [
+                  {
+                    "id": "Panels.Panes.Right.C",
+                    "name": "C",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 32,
+                      "col": 7,
+                      "endLine": 32,
+                      "endCol": 40
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Tick"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [],
+                        "internal": false,
+                        "args": [],
+                        "effects": [
+                          {
+                            "kind": "set",
+                            "var": "n",
+                            "state": "Panels.Panes.Right",
+                            "value": {
+                              "kind": "op",
+                              "op": "+",
+                              "args": [
+                                {
+                                  "kind": "ref",
+                                  "path": [
+                                    "n"
+                                  ],
+                                  "state": "Panels.Panes.Right",
+                                  "type": "int",
+                                  "text": "n"
+                                },
+                                {
+                                  "kind": "lit",
+                                  "value": 1,
+                                  "type": "int",
+                                  "text": "1"
+                                }
+                              ],
+                              "type": "int",
+                              "text": "n + 1"
+                            }
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 32,
+                          "col": 17,
+                          "endLine": 32,
+                          "endCol": 38
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Panels.Panes.Right.D",
+                    "name": "D",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 33,
+                      "col": 7,
+                      "endLine": 33,
+                      "endCol": 17
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Panels.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 5,
+                  "endLine": 18,
+                  "endCol": 18
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:85ce2fd25045420d36abf4c1a125094cda908fb13d917cc04723d8f148845a5c"
+    }
+  }
+}

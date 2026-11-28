@@ -1,0 +1,12 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0108]: `n` is already a parameter of `M.A`
+ --> RB0108-duplicate-local.road:9:9
+  |
+8 |   final state A(n: int) {
+  |                 - first declared here
+9 |     var n: int = 0
+  |         ^
+  |
+  = help: a state's parameters and variables share one set of names

@@ -17,6 +17,14 @@
 //!   `result` and `error` as the IR says. Parameters and variables are `<data>`, with their
 //!   types, and the machine's result type, errors and `strict`, in attributes of the `rb:`
 //!   namespace.
+//! - **State parameters and variables** are `<data>` in the `<datamodel>` of their state, with
+//!   the id `<state>.<name>` (`Reset_Confirming.tries`), which is also the `location` of a `set`
+//!   of one, so that same-named locals of two states stay apart; a parameter has
+//!   `rb:param="true"`. A variable's initial value is an `<assign>` at the start of the state's
+//!   `<onentry>`, and a transition's arguments are `<assign>`s after its effects, since Roadbook
+//!   gives a state its locals each time it is entered: SCXML's data is bound once per session
+//!   (early or late), has no parameters, and is not dropped when its state is left or restored
+//!   by a history state. Expressions still read a local by its name, as the chart writes it.
 //! - **The machine** is the `<scxml>` element, unless its body has `entry`, `exit`, an invoke
 //!   or transitions: then a `<state>` with the machine's id inside it holds them, and its
 //!   transitions with a target inside it are `type="internal"`, so they do not leave the
@@ -160,6 +168,11 @@ pub fn run(args: Args) -> Exit {
 /// The SCXML id of a Roadbook state id: `.` replaced by `_`, which no name contains.
 pub fn xml_id(state_id: &str) -> String {
     state_id.replace('.', "_")
+}
+
+/// The `<data>` id of a state's parameter or variable: `Reset_Confirming.tries`.
+fn local_id(state_id: &str, name: &str) -> String {
+    format!("{}.{name}", xml_id(state_id))
 }
 
 /// The SCXML id of the invoke of `s` named `alias`: `<state>_invoke`, or with several invokes
@@ -359,9 +372,12 @@ impl Writer<'_> {
                 timers.push((t.group, delay));
             }
         }
+        let inits: Vec<&roadbook_ir::Var> = s.vars.iter().filter(|v| v.init.is_some()).collect();
         let empty = s.entry.is_empty()
             && s.exit.is_empty()
             && timers.is_empty()
+            && s.params.is_empty()
+            && s.vars.is_empty()
             && s.invokes.is_empty()
             && s.transitions.is_empty()
             && s.states.is_empty()
@@ -371,8 +387,38 @@ impl Writer<'_> {
             return;
         }
         let d = depth + 1;
-        if !s.entry.is_empty() || !timers.is_empty() {
+        if !s.params.is_empty() || !s.vars.is_empty() {
+            self.open(d, "datamodel", &[], false);
+            self.comment(
+                d + 1,
+                "Roadbook gives these their values each time the state is entered and drops them when it is left",
+            );
+            for p in &s.params {
+                self.comment(d + 1, &p.doc);
+                let attrs = [
+                    ("id", local_id(&s.id, &p.name)),
+                    ("rb:type", p.ty.to_string()),
+                    ("rb:param", "true".into()),
+                ];
+                self.open(d + 1, "data", &attrs, true);
+            }
+            for v in &s.vars {
+                self.comment(d + 1, &v.doc);
+                let attrs = [
+                    ("id", local_id(&s.id, &v.name)),
+                    ("rb:type", v.ty.to_string()),
+                ];
+                self.open(d + 1, "data", &attrs, true);
+            }
+            self.close(d, "datamodel");
+        }
+        if !s.entry.is_empty() || !timers.is_empty() || !inits.is_empty() {
             self.open(d, "onentry", &[], false);
+            for v in &inits {
+                let init = v.init.as_ref().map_or(String::new(), |e| e.text.clone());
+                let attrs = [("location", local_id(&s.id, &v.name)), ("expr", init)];
+                self.open(d + 1, "assign", &attrs, true);
+            }
             self.effects(&s.entry, d + 1);
             for (group, delay) in &timers {
                 let mut attrs = vec![
@@ -654,10 +700,25 @@ impl Writer<'_> {
                 );
             }
         }
-        let empty = t.effects.is_empty();
+        let empty = t.effects.is_empty() && t.args.is_empty();
         self.open(depth, "transition", &attrs, empty);
         if !empty {
             self.effects(&t.effects, depth + 1);
+            // The arguments, after the effects, as Roadbook evaluates them: each into the
+            // parameter of the state it enters.
+            for a in &t.args {
+                let params = find_state(&self.m.root, &a.state).map(|s| s.params.as_slice());
+                for (i, v) in a.values.iter().enumerate() {
+                    let name = params
+                        .and_then(|ps| ps.get(i))
+                        .map_or_else(|| i.to_string(), |p| p.name.clone());
+                    let attrs = [
+                        ("location", local_id(&a.state, &name)),
+                        ("expr", v.text.clone()),
+                    ];
+                    self.open(depth + 1, "assign", &attrs, true);
+                }
+            }
             self.close(depth, "transition");
         }
     }
@@ -665,8 +726,12 @@ impl Writer<'_> {
     fn effects(&mut self, effects: &[Effect], depth: usize) {
         for e in effects {
             match e {
-                Effect::Set { var, value } => {
-                    let attrs = [("location", var.clone()), ("expr", value.text.clone())];
+                Effect::Set { var, state, value } => {
+                    let location = match state {
+                        Some(state) => local_id(state, var),
+                        None => var.clone(),
+                    };
+                    let attrs = [("location", location), ("expr", value.text.clone())];
                     self.open(depth, "assign", &attrs, true);
                 }
                 Effect::Do { action, args } => {

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "packages/viewer/test/charts/escape.road",
@@ -176,6 +176,8 @@
           "endLine": 60,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Escape.A",
         "states": [
           {
@@ -190,12 +192,15 @@
               "endLine": 39,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
               {
                 "kind": "set",
                 "var": "t",
+                "state": null,
                 "value": {
                   "kind": "lit",
                   "value": "a\"b&c<d>",
@@ -263,6 +268,7 @@
                         "event",
                         "who"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.who"
                     },
@@ -280,6 +286,7 @@
                   "Escape.B"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -313,6 +320,7 @@
                   "Escape.A"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -330,6 +338,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -366,6 +375,7 @@
                       "path": [
                         "t"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "t"
                     },
@@ -383,6 +393,7 @@
                   "Escape.B"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -406,6 +417,7 @@
                       "path": [
                         "t"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "t"
                     },
@@ -423,6 +435,7 @@
                   "Escape.K"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -454,6 +467,7 @@
                         "event",
                         "text"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.text"
                     },
@@ -471,6 +485,7 @@
                   "Escape.B"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -524,6 +539,8 @@
               "endLine": 45,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -546,6 +563,7 @@
                     "path": [
                       "peer"
                     ],
+                    "state": null,
                     "type": "ref EscapePeer",
                     "text": "peer"
                   }
@@ -571,6 +589,7 @@
                   "Escape.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -595,6 +614,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -648,6 +668,8 @@
               "endLine": 52,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -687,15 +709,18 @@
                   "Escape.P"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "t",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "result"
                     }
@@ -721,6 +746,7 @@
                   "Escape.Failed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -742,6 +768,7 @@
                   "Escape.Failed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -767,6 +794,8 @@
               "endLine": 57,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [
               {
@@ -781,6 +810,8 @@
                   "endLine": 55,
                   "endCol": 72
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Escape.P.R1.X",
                 "states": [
                   {
@@ -795,6 +826,8 @@
                       "endLine": 55,
                       "endCol": 51
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -811,6 +844,7 @@
                           "Escape.P.R1.XF"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -836,6 +870,8 @@
                       "endLine": 55,
                       "endCol": 70
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -865,6 +901,8 @@
                   "endLine": 56,
                   "endCol": 71
                 },
+                "params": [],
+                "vars": [],
                 "initial": "Escape.P.R2.Y",
                 "states": [
                   {
@@ -879,6 +917,8 @@
                       "endLine": 56,
                       "endCol": 50
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -896,6 +936,7 @@
                           "Escape.P.R2.YF"
                         ],
                         "internal": false,
+                        "args": [],
                         "effects": [],
                         "span": {
                           "file": 0,
@@ -921,6 +962,8 @@
                       "endLine": 56,
                       "endCol": 69
                     },
+                    "params": [],
+                    "vars": [],
                     "initial": null,
                     "states": [],
                     "entry": [],
@@ -953,6 +996,7 @@
                   "Escape.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -978,6 +1022,8 @@
               "endLine": 58,
               "endCol": 32
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -989,6 +1035,7 @@
               "path": [
                 "t"
               ],
+              "state": null,
               "type": "string",
               "text": "t"
             },
@@ -1006,6 +1053,8 @@
               "endLine": 59,
               "endCol": 34
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1062,6 +1111,7 @@
               "Escape.Done"
             ],
             "internal": false,
+            "args": [],
             "effects": [],
             "span": {
               "file": 0,
@@ -1087,6 +1137,7 @@
               "Escape.Done"
             ],
             "internal": false,
+            "args": [],
             "effects": [],
             "span": {
               "file": 0,
@@ -1184,6 +1235,8 @@
           "endLine": 74,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "EscapePeer.P",
         "states": [
           {
@@ -1198,6 +1251,8 @@
               "endLine": 72,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1215,6 +1270,7 @@
                   "EscapePeer.End"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "emit",
@@ -1261,6 +1317,8 @@
               "endLine": 73,
               "endCol": 21
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

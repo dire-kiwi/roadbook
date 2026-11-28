@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/internal-child.road",
@@ -77,6 +77,8 @@
           "endLine": 17,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Echo.Ready",
         "states": [
           {
@@ -91,6 +93,8 @@
               "endLine": 14,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -106,6 +110,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "emit",
@@ -137,6 +142,7 @@
                   "Echo.Stopped"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -162,6 +168,8 @@
               "endLine": 16,
               "endCol": 25
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -224,6 +232,8 @@
           "endLine": 40,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Caller.Talking",
         "states": [
           {
@@ -238,6 +248,8 @@
               "endLine": 37,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": "Caller.Talking.Waiting",
             "states": [
               {
@@ -252,6 +264,8 @@
                   "endLine": 35,
                   "endCol": 21
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -273,6 +287,8 @@
                   "endLine": 36,
                   "endCol": 21
                 },
+                "params": [],
+                "vars": [],
                 "initial": null,
                 "states": [],
                 "entry": [],
@@ -313,6 +329,7 @@
                   "Caller.Over"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -333,6 +350,7 @@
                   "Caller.Talking.Waiting"
                 ],
                 "internal": true,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -377,6 +395,7 @@
                   "Caller.Talking.Heard"
                 ],
                 "internal": true,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -402,6 +421,8 @@
               "endLine": 39,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

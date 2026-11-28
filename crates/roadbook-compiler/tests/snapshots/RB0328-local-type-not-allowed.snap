@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0328]: `other`, a local of `M.A`, cannot hold a `ref`
+  --> RB0328-local-type-not-allowed.road:14:18
+   |
+14 |   state A(other: ref Peer) {
+   |                  ^^^^^^^^
+   |
+   = help: a handle to a peer and a pending call belong to the machine: declare it as a machine parameter or variable
+
+error[RB0328]: `pending`, a local of `M.A`, cannot hold a pending call
+  --> RB0328-local-type-not-allowed.road:15:18
+   |
+15 |     var pending: call reserve
+   |                  ^^^^^^^^^^^^
+   |
+   = help: a handle to a peer and a pending call belong to the machine: declare it as a machine parameter or variable

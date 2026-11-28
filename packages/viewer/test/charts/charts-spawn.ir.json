@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "packages/viewer/test/charts/spawn.road",
@@ -230,6 +230,8 @@
           "endLine": 31,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Session.Open",
         "states": [
           {
@@ -244,6 +246,8 @@
               "endLine": 28,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -261,10 +265,12 @@
                   "Session.Open"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "seen",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -274,6 +280,7 @@
                           "path": [
                             "seen"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "seen"
                         },
@@ -302,6 +309,7 @@
                               "event",
                               "text"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.text"
                           }
@@ -331,6 +339,7 @@
                   "Session.Left"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -356,6 +365,7 @@
                   "Session.Dropped"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -381,6 +391,8 @@
               "endLine": 29,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -392,6 +404,7 @@
               "path": [
                 "seen"
               ],
+              "state": null,
               "type": "int",
               "text": "seen"
             },
@@ -409,6 +422,8 @@
               "endLine": 30,
               "endCol": 55
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -481,6 +496,8 @@
           "endLine": 38,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Job.Running",
         "states": [
           {
@@ -495,6 +512,8 @@
               "endLine": 36,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -517,6 +536,7 @@
                   "Job.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -542,6 +562,8 @@
               "endLine": 37,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -735,6 +757,8 @@
           "endLine": 71,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Hub.Idle",
         "states": [
           {
@@ -749,6 +773,8 @@
               "endLine": 57,
               "endCol": 76
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -766,6 +792,7 @@
                   "Hub.Serving"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "spawn",
@@ -811,6 +838,8 @@
               "endLine": 69,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -846,10 +875,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "open",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -859,6 +890,7 @@
                           "path": [
                             "open"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "open"
                         },
@@ -883,6 +915,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "SessionId",
                       "text": "event.id"
                     },
@@ -893,6 +926,7 @@
                           "event",
                           "id"
                         ],
+                        "state": null,
                         "type": "SessionId",
                         "text": "event.id"
                       },
@@ -918,6 +952,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "SessionId",
                       "text": "event.id"
                     },
@@ -957,6 +992,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "stop",
@@ -967,6 +1003,7 @@
                         "event",
                         "id"
                       ],
+                      "state": null,
                       "type": "SessionId",
                       "text": "event.id"
                     }
@@ -989,6 +1026,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -1011,6 +1049,7 @@
                               "event",
                               "text"
                             ],
+                            "state": null,
                             "type": "string",
                             "text": "event.text"
                           }
@@ -1044,16 +1083,19 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "last",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "text"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "event.text"
                     }
@@ -1067,6 +1109,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "SessionId",
                         "text": "key"
                       },
@@ -1075,6 +1118,7 @@
                         "path": [
                           "open"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "open"
                       }
@@ -1098,10 +1142,12 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "open",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "-",
@@ -1111,6 +1157,7 @@
                           "path": [
                             "open"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "open"
                         },
@@ -1134,6 +1181,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "SessionId",
                         "text": "key"
                       },
@@ -1142,6 +1190,7 @@
                         "path": [
                           "result"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "result"
                       }
@@ -1173,6 +1222,7 @@
                         "error",
                         "reason"
                       ],
+                      "state": null,
                       "type": "string",
                       "text": "error.reason"
                     },
@@ -1188,6 +1238,7 @@
                 },
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1198,6 +1249,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "SessionId",
                         "text": "key"
                       }
@@ -1222,6 +1274,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "do",
@@ -1232,6 +1285,7 @@
                         "path": [
                           "key"
                         ],
+                        "state": null,
                         "type": "SessionId",
                         "text": "key"
                       }
@@ -1255,6 +1309,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "stop",
@@ -1264,6 +1319,7 @@
                       "path": [
                         "key"
                       ],
+                      "state": null,
                       "type": "Lane",
                       "text": "key"
                     }
@@ -1288,6 +1344,7 @@
                   "Hub.Closed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -1313,6 +1370,8 @@
               "endLine": 70,
               "endCol": 37
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1324,6 +1383,7 @@
               "path": [
                 "open"
               ],
+              "state": null,
               "type": "int",
               "text": "open"
             },

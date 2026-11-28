@@ -4,6 +4,7 @@
 import { REDACTED } from '@dire-kiwi/roadbook-core'
 import type { Ir, Machine } from '../ir.ts'
 import type { Selection } from '../panel.ts'
+import { findState } from '../model.ts'
 import { jsonText, recordText, stateName } from '../replay.ts'
 import { esc } from '../render.ts'
 import type { Annotations } from '../render.ts'
@@ -63,21 +64,47 @@ export const pretty = (v: unknown) => JSON.stringify(v, null, 2) ?? 'null'
  */
 const valueHtml = (v: unknown) => (v === REDACTED ? '<span class="rb-redacted" title="sensitive: the trace does not show it">redacted</span>' : esc(jsonText(v, 400)))
 
-/** The parameters and variables of `m`: their values, or why there is none. */
-export function variablesHtml(m: Machine, input: { [k: string]: unknown }, vars: { [k: string]: unknown }, untracedInit: boolean): string {
+/**
+ * The parameters and variables of `m`: their values, or why there is none. Then, for each state
+ * of `active` that declares parameters or variables, its own (`locals`, by state id), which exist
+ * only while it is active.
+ */
+export function variablesHtml(
+  m: Machine,
+  input: { [k: string]: unknown },
+  vars: { [k: string]: unknown },
+  untracedInit: boolean,
+  active: readonly string[] = [],
+  locals: { readonly [state: string]: { readonly [name: string]: unknown } } = {},
+): string {
   const rows: string[] = []
   const note = (x: { sensitive: boolean }, what: string) => `<span class="rb-vnote"> ${x.sensitive ? `sensitive ${what}` : what}</span>`
+  const has = (o: { readonly [k: string]: unknown } | undefined, k: string) => o !== undefined && Object.prototype.hasOwnProperty.call(o, k)
   for (const p of m.params) rows.push(`<dt>${esc(p.name)}</dt><dd>${valueHtml(input[p.name])}${note(p, 'param')}</dd>`)
   for (const v of m.vars) {
-    const has = Object.prototype.hasOwnProperty.call(vars, v.name)
-    const value = has
+    const value = has(vars, v.name)
       ? `${valueHtml(vars[v.name])}${v.sensitive ? note(v, 'var') : ''}`
       : untracedInit && v.init
         ? `<span class="rb-vnote">= ${esc(v.init.text)} (initial value; not in the trace)</span>`
         : `<span class="rb-vnote">no value yet</span>`
     rows.push(`<dt>${esc(v.name)}</dt><dd>${value}</dd>`)
   }
-  return rows.length ? `<dl class="rb-kv rb-vars">${rows.join('')}</dl>` : '<p class="rb-empty">No parameters or variables.</p>'
+  let own = rows.length ? `<dl class="rb-kv rb-vars">${rows.join('')}</dl>` : ''
+  // A state's locals are set in the trace when it is entered, so there is no untraced initial value.
+  for (const id of active) {
+    const s = findState(m, id)
+    if (!s || (!s.params.length && !s.vars.length)) continue
+    const mine = locals[id]
+    const lrows: string[] = []
+    for (const p of s.params)
+      lrows.push(`<dt>${esc(p.name)}</dt><dd>${has(mine, p.name) ? valueHtml(mine![p.name]) : '<span class="rb-vnote">no value yet</span>'}${note(p, 'param')}</dd>`)
+    for (const v of s.vars) {
+      const value = has(mine, v.name) ? `${valueHtml(mine![v.name])}${v.sensitive ? note(v, 'var') : ''}` : `<span class="rb-vnote">no value yet</span>`
+      lrows.push(`<dt>${esc(v.name)}</dt><dd>${value}</dd>`)
+    }
+    own += `<p class="rb-vstate">of <button class="rb-link rb-mono" type="button" data-m-state="${esc(id)}">${esc(stateName(id) || id)}</button></p><dl class="rb-kv rb-vars">${lrows.join('')}</dl>`
+  }
+  return own || '<p class="rb-empty">No parameters or variables.</p>'
 }
 
 /** The active states as a path, innermost last. */

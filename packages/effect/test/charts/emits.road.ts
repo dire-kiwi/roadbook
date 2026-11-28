@@ -57,7 +57,7 @@ export interface UploaderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "packages/effect/test/charts/emits.road",
@@ -275,6 +275,8 @@ const ir: unknown = {
           "endLine": 42,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Uploader.Uploading",
         "states": [
           {
@@ -289,6 +291,8 @@ const ir: unknown = {
               "endLine": 29,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -305,6 +309,7 @@ const ir: unknown = {
                     "path": [
                       "size"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "size"
                   },
@@ -336,15 +341,18 @@ const ir: unknown = {
                   "Uploader.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "stored",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -373,16 +381,19 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "percent",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.percent"
                     }
@@ -412,6 +423,8 @@ const ir: unknown = {
               "endLine": 35,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -455,10 +468,12 @@ const ir: unknown = {
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "seconds",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -468,6 +483,7 @@ const ir: unknown = {
                           "path": [
                             "seconds"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "seconds"
                         },
@@ -502,6 +518,7 @@ const ir: unknown = {
                   "Uploader.Stopped"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -527,6 +544,8 @@ const ir: unknown = {
               "endLine": 39,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -544,6 +563,7 @@ const ir: unknown = {
                   "Uploader.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -569,6 +589,8 @@ const ir: unknown = {
               "endLine": 41,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -580,6 +602,7 @@ const ir: unknown = {
               "path": [
                 "seconds"
               ],
+              "state": null,
               "type": "int",
               "text": "seconds"
             },

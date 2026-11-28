@@ -1,0 +1,16 @@
+action log(n: int)
+
+machine M() {
+  event Go
+
+  initial A
+  state A {
+    var tries: int = 0
+    on Go -> B
+  }
+  state B {
+    entry do log(tries)
+  }
+}
+
+// expect: RB0105 at 12:18

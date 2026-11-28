@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0120]: `attempt` is ambiguous: `M.Loading` has a parameter named `attempt`
+  --> RB0120-attempt-local.road:14:42
+   |
+14 |     invoke fetch() retry 2 after backoff(attempt) {
+   |                                          ^^^^^^^
+   |
+   = help: in a retry's delay `attempt` counts the failed attempts; rename the parameter or variable, or write the retry out as explicit states

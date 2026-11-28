@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -401,6 +401,8 @@
           "endLine": 47,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Publish.Uploading",
         "states": [
           {
@@ -415,6 +417,8 @@
               "endLine": 37,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -432,6 +436,7 @@
                       "draft",
                       "file"
                     ],
+                    "state": null,
                     "type": "File",
                     "text": "draft.file"
                   }
@@ -457,15 +462,18 @@
                   "Publish.Publishing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "url",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Url",
                       "text": "result"
                     }
@@ -491,15 +499,18 @@
                   "Publish.Failed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "failure",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "UploadFailed",
                       "text": "error"
                     }
@@ -522,6 +533,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -558,6 +570,7 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "send",
@@ -600,16 +613,19 @@
                 "guard": null,
                 "targets": [],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "percent",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "percent"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.percent"
                     }
@@ -624,6 +640,7 @@
                           "event",
                           "percent"
                         ],
+                        "state": null,
                         "type": "int",
                         "text": "event.percent"
                       }
@@ -654,6 +671,8 @@
               "endLine": 43,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -671,6 +690,7 @@
                       "draft",
                       "title"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "draft.title"
                   },
@@ -679,6 +699,7 @@
                     "path": [
                       "url"
                     ],
+                    "state": null,
                     "type": "Url",
                     "text": "url"
                   }
@@ -704,15 +725,18 @@
                   "Publish.Published"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "post",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Post",
                       "text": "result"
                     }
@@ -742,6 +766,8 @@
               "endLine": 45,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -753,6 +779,7 @@
               "path": [
                 "post"
               ],
+              "state": null,
               "type": "Post",
               "text": "post"
             },
@@ -770,6 +797,8 @@
               "endLine": 46,
               "endCol": 41
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -782,6 +811,7 @@
               "path": [
                 "failure"
               ],
+              "state": null,
               "type": "UploadFailed",
               "text": "failure"
             }
@@ -926,6 +956,8 @@
           "endLine": 56,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Upload.Sending",
         "states": [
           {
@@ -940,6 +972,8 @@
               "endLine": 42,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -956,6 +990,7 @@
                     "path": [
                       "file"
                     ],
+                    "state": null,
                     "type": "File",
                     "text": "file"
                   },
@@ -964,6 +999,7 @@
                     "path": [
                       "offset"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "offset"
                   }
@@ -992,6 +1028,7 @@
                       "path": [
                         "file"
                       ],
+                      "state": null,
                       "type": "File",
                       "text": "file"
                     },
@@ -1000,6 +1037,7 @@
                       "path": [
                         "offset"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "offset"
                     }
@@ -1011,6 +1049,7 @@
                   "Upload.Finishing"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 1,
@@ -1031,15 +1070,18 @@
                   "Upload.Sending"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "offset",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "result"
                     }
@@ -1061,6 +1103,7 @@
                                 "path": [
                                   "file"
                                 ],
+                                "state": null,
                                 "type": "File",
                                 "text": "file"
                               },
@@ -1069,6 +1112,7 @@
                                 "path": [
                                   "result"
                                 ],
+                                "state": null,
                                 "type": "int",
                                 "text": "result"
                               }
@@ -1103,15 +1147,18 @@
                   "Upload.Failed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "failure",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "UploadFailed",
                       "text": "error"
                     }
@@ -1136,6 +1183,7 @@
                   "Upload.Paused"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 1,
@@ -1161,6 +1209,8 @@
               "endLine": 45,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1178,6 +1228,7 @@
                   "Upload.Sending"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 1,
@@ -1203,6 +1254,8 @@
               "endLine": 52,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1219,6 +1272,7 @@
                     "path": [
                       "file"
                     ],
+                    "state": null,
                     "type": "File",
                     "text": "file"
                   }
@@ -1244,15 +1298,18 @@
                   "Upload.Done"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "url",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Url",
                       "text": "result"
                     }
@@ -1278,15 +1335,18 @@
                   "Upload.Failed"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "failure",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "UploadFailed",
                       "text": "error"
                     }
@@ -1316,6 +1376,8 @@
               "endLine": 54,
               "endCol": 36
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1327,6 +1389,7 @@
               "path": [
                 "url"
               ],
+              "state": null,
               "type": "Url",
               "text": "url"
             },
@@ -1344,6 +1407,8 @@
               "endLine": 55,
               "endCol": 38
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -1356,6 +1421,7 @@
               "path": [
                 "failure"
               ],
+              "state": null,
               "type": "UploadFailed",
               "text": "failure"
             }

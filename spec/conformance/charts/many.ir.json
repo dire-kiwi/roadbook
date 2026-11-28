@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/many.road",
@@ -62,6 +62,8 @@
           "endLine": 20,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Many.Spawning",
         "states": [
           {
@@ -76,6 +78,8 @@
               "endLine": 17,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -112,6 +116,7 @@
                       "path": [
                         "count"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "count"
                     },
@@ -129,10 +134,12 @@
                   "Many.Spawning"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "count",
+                    "state": null,
                     "value": {
                       "kind": "op",
                       "op": "+",
@@ -142,6 +149,7 @@
                           "path": [
                             "count"
                           ],
+                          "state": null,
                           "type": "int",
                           "text": "count"
                         },
@@ -176,6 +184,7 @@
                   "Many.Finished"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -201,6 +210,8 @@
               "endLine": 19,
               "endCol": 26
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -251,6 +262,8 @@
           "endLine": 27,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Leaf.Over",
         "states": [
           {
@@ -265,6 +278,8 @@
               "endLine": 26,
               "endCol": 22
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],

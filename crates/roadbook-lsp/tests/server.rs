@@ -1841,3 +1841,170 @@ fn raised_events_and_delayed_raises() {
     }
     c.shutdown();
 }
+
+const LOCALS: &str = r#"type Token { id: string }
+
+action log(text: string)
+
+machine Reset(email: string) {
+  event Submit { code: string }
+  event Edit
+  event Skip
+
+  initial Asking
+
+  state Asking {
+    on Submit -> Confirming(Token { id: event.code })
+    on Edit   -> Editing(email)
+  }
+
+  /// Waits for the code.
+  state Confirming(token: Token) {
+    /// How many codes were wrong.
+    var tries: int = 0
+    on Submit {
+      if tries < 2 set tries = tries + 1
+      else         -> Editing(token.id).Changing(tries)
+    }
+  }
+
+  state Editing(user: string) {
+    initial Viewing
+    on Skip -> .Changing(1)
+    state Viewing {
+      var tries: int = 0
+      on Edit -> Changing(tries)
+    }
+    state Changing(count: int) {
+      entry do log(user)
+      on Edit -> Changing(count + 1)
+    }
+  }
+}
+"#;
+
+#[test]
+fn state_parameters_and_state_variables() {
+    error_free(&[("c.road", LOCALS)]);
+    let p = Project::new("locals", &[("c.road", LOCALS)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, LOCALS);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // A use leads to the declaration in its own state, not to a same-named one elsewhere.
+    for (from, to) in [
+        ("if ^tries < 2", "var ^tries: int = 0\n    on Submit"),
+        (
+            "set tries = ^tries + 1",
+            "var ^tries: int = 0\n    on Submit",
+        ),
+        (
+            "Changing(^tries)\n    }\n  }",
+            "var ^tries: int = 0\n    on Submit",
+        ),
+        ("-> Changing(^tries)", "var ^tries: int = 0\n      on Edit"),
+        ("Editing(^token.id)", "Confirming(^token: Token)"),
+        ("do log(^user)", "Editing(^user: string)"),
+        ("Changing(^count + 1)", "Changing(^count: int)"),
+        // The segments of a target with arguments still name their states.
+        ("-> ^Editing(token.id)", "state ^Editing"),
+        ("Editing(token.id).^Changing", "state ^Changing"),
+        ("-> .^Changing(1)", "state ^Changing"),
+    ] {
+        let loc = c
+            .request("textDocument/definition", at(&uri, LOCALS, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(LOCALS, to),
+            "{from} -> {to}"
+        );
+    }
+
+    // Hover: the declaration, the state it belongs to and its doc comment.
+    let hover = c
+        .request("textDocument/hover", at(&uri, LOCALS, "if ^tries < 2"))
+        .unwrap();
+    let value = hover["contents"]["value"].as_str().unwrap();
+    assert!(value.starts_with("```roadbook\nvar tries: int"), "{value}");
+    assert!(value.contains("of `Reset.Confirming`"), "{value}");
+    assert!(value.contains("How many codes were wrong."), "{value}");
+    let hover = c
+        .request("textDocument/hover", at(&uri, LOCALS, "Editing(^token.id)"))
+        .unwrap();
+    let value = hover["contents"]["value"].as_str().unwrap();
+    assert!(value.contains("token"), "{value}");
+    assert!(value.contains("of `Reset.Confirming`"), "{value}");
+
+    // References stay in the variable's own state.
+    let mut params = at(&uri, LOCALS, "var ^tries: int = 0\n    on Submit");
+    params["context"] = json!({ "includeDeclaration": false });
+    let found = c.request("textDocument/references", params).unwrap();
+    let lines: Vec<u64> = found
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["range"]["start"]["line"].as_u64().unwrap() + 1)
+        .collect();
+    assert_eq!(lines, [22, 22, 22, 23]);
+
+    // Rename: only the one state's variable changes.
+    let out = rename(
+        &mut c,
+        &uri,
+        LOCALS,
+        "var ^tries: int = 0\n    on Submit",
+        "wrong",
+    );
+    assert!(out.contains("if wrong < 2 set wrong = wrong + 1"), "{out}");
+    assert!(out.contains("Changing(wrong)\n    }\n  }"), "{out}");
+    assert!(out.contains("-> Changing(tries)"), "{out}");
+    // States side by side may use the same name, but a state's local cannot take the name of
+    // a local around it or of the machine's.
+    let out = rename(
+        &mut c,
+        &uri,
+        LOCALS,
+        "var ^tries: int = 0\n      on Edit",
+        "token",
+    );
+    assert!(out.contains("-> Changing(token)"), "{out}");
+    let why = rename_error(
+        &mut c,
+        &uri,
+        LOCALS,
+        "var ^tries: int = 0\n      on Edit",
+        "user",
+    );
+    assert!(why.contains("already the name of"), "{why}");
+    let why = rename_error(&mut c, &uri, LOCALS, "Changing(^count: int)", "email");
+    assert!(why.contains("already the name of"), "{why}");
+    let why = rename_error(&mut c, &uri, LOCALS, "Editing(^user: string)", "count");
+    assert!(why.contains("already the name of"), "{why}");
+
+    // The outline lists a state's parameters, then its variables, under it.
+    let symbols = c
+        .request(
+            "textDocument/documentSymbol",
+            json!({ "textDocument": { "uri": uri } }),
+        )
+        .unwrap();
+    let machine = &symbols[2];
+    assert_eq!(machine["name"], "Reset");
+    let confirming = machine["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["name"] == "Confirming")
+        .unwrap();
+    let names: Vec<&str> = confirming["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["token", "tries"]);
+    assert_eq!(confirming["children"][0]["detail"], "Token");
+    c.shutdown();
+}

@@ -7,10 +7,10 @@
 use std::collections::HashSet;
 use std::fmt;
 
-use roadbook_ir::{Builtin, ChildrenKind, Field, StateKind, Trigger, TypeDef, TypeRef};
+use roadbook_ir::{Builtin, ChildrenKind, Field, Machine, StateKind, Trigger, TypeDef, TypeRef};
 use serde_json::{Map, Value};
 
-use crate::program::Program;
+use crate::program::{MachineIndex, Program};
 use crate::{RunResult, Saved};
 
 /// Why a saved snapshot was refused.
@@ -587,6 +587,125 @@ impl Program {
                 return Err(format!("`vars` lacks the optional variable `{}`", var.name));
             }
         }
+        // Locals: one member for each active state that declares any.
+        let with_locals = |i: usize| {
+            let st = idx.state(m, i);
+            !st.params.is_empty() || !st.vars.is_empty()
+        };
+        let want: Vec<usize> = active.iter().copied().filter(|&i| with_locals(i)).collect();
+        self.locals_fit(m, idx, &s.machine, &want, &s.locals, "locals")?;
+        // History locals: for a history state with a record, those of the states with locals
+        // the record re-enters. A record that re-enters such a state needs its member, or
+        // entering the history state would leave their parameters unbound.
+        for h in s.history_locals.keys() {
+            if !s.history.as_ref().is_some_and(|r| r.contains_key(h)) {
+                return Err(format!(
+                    "`historyLocals` has `{h}`, which has no member in `history`"
+                ));
+            }
+        }
+        let empty = crate::Locals::new();
+        for (h, record) in s.history.iter().flatten() {
+            let hi = idx.by_id[h];
+            let p = idx.parents[hi].ok_or("a history state has no parent")?;
+            let mut kept: Vec<usize> = Vec::new();
+            for id in record {
+                let r = idx.by_id[id];
+                if idx.state(m, hi).kind == StateKind::History {
+                    kept.push(r);
+                    continue;
+                }
+                let mut cur = Some(r);
+                while let Some(c) = cur.filter(|&c| c != p) {
+                    kept.push(c);
+                    cur = idx.parents[c];
+                }
+            }
+            kept.sort_unstable();
+            kept.dedup();
+            kept.retain(|&i| with_locals(i));
+            let locals = match s.history_locals.get(h) {
+                Some(l) => l,
+                None if kept.is_empty() => &empty,
+                None => {
+                    return Err(format!(
+                        "`historyLocals` lacks `{h}`, whose record re-enters `{}`, which has parameters or variables",
+                        idx.state(m, kept[0]).id
+                    ));
+                }
+            };
+            self.locals_fit(
+                m,
+                idx,
+                &s.machine,
+                &kept,
+                locals,
+                &format!("historyLocals.{h}"),
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Whether `locals` has exactly one member for each of the states `want`, each holding
+    /// only that state's locals, every parameter and every optional variable, each a value of
+    /// its declared type.
+    fn locals_fit(
+        &self,
+        m: &Machine,
+        idx: &MachineIndex,
+        machine: &str,
+        want: &[usize],
+        locals: &crate::Locals,
+        what: &str,
+    ) -> Result<(), String> {
+        for id in locals.keys() {
+            if !want.iter().any(|&i| idx.state(m, i).id == *id) {
+                return Err(format!(
+                    "`{what}` has `{id}`, which is not an active state with parameters or variables"
+                ));
+            }
+        }
+        for &i in want {
+            let st = idx.state(m, i);
+            let l = locals
+                .get(&st.id)
+                .ok_or_else(|| format!("`{what}` lacks `{}`", st.id))?;
+            for (name, v) in l {
+                let ty = st
+                    .params
+                    .iter()
+                    .find(|p| p.name == *name)
+                    .map(|p| &p.ty)
+                    .or_else(|| st.vars.iter().find(|x| x.name == *name).map(|x| &x.ty))
+                    .ok_or_else(|| {
+                        format!(
+                            "`{what}.{}` has `{name}`, which is not a local of it",
+                            st.id
+                        )
+                    })?;
+                if !self.value_fits(machine, ty, v) {
+                    return Err(format!("the local `{}.{name}` is not a {ty}", st.id));
+                }
+            }
+            for p in &st.params {
+                if !l.contains_key(&p.name) {
+                    return Err(format!(
+                        "`{what}.{}` lacks the parameter `{}`",
+                        st.id, p.name
+                    ));
+                }
+            }
+            for var in &st.vars {
+                if matches!(*self.resolve(&var.ty), TypeRef::Optional(_))
+                    && !l.contains_key(&var.name)
+                {
+                    return Err(format!(
+                        "`{what}.{}` lacks the optional variable `{}`",
+                        st.id, var.name
+                    ));
+                }
+            }
+        }
         Ok(())
     }
 
@@ -750,6 +869,14 @@ pub(crate) fn integral_numbers_in(saved: &mut Saved) {
         .input
         .values_mut()
         .chain(saved.vars.values_mut())
+        .chain(saved.locals.values_mut().flat_map(|l| l.values_mut()))
+        .chain(
+            saved
+                .history_locals
+                .values_mut()
+                .flat_map(|h| h.values_mut())
+                .flat_map(|l| l.values_mut()),
+        )
         .chain(
             saved
                 .spawned
@@ -821,6 +948,8 @@ fn schema_at(v: &Value, nested: bool) -> Result<(), String> {
     let mut required = o.clone();
     let calls = required.remove("calls");
     let scheduled = required.remove("scheduled");
+    let locals = required.remove("locals");
+    let history_locals = required.remove("historyLocals");
     exactly(&required, &members, &what)?;
     if !matches!(version, Some(1..=4)) {
         return Err(format!(
@@ -882,6 +1011,24 @@ fn schema_at(v: &Value, nested: bool) -> Result<(), String> {
     }
     args(&o["input"], "input")?;
     args(&o["vars"], "vars")?;
+    if let Some(l) = &locals {
+        states_locals(l, "locals")?;
+    }
+    if let Some(h) = &history_locals {
+        let h = h.as_object().ok_or("`historyLocals` is not an object")?;
+        for (k, l) in h {
+            if !state_id(k) {
+                return Err(format!(
+                    "`historyLocals` has the member `{k}`, which is not a state id"
+                ));
+            }
+            let what = format!("historyLocals.{k}");
+            if l.as_object().is_some_and(Map::is_empty) {
+                return Err(format!("`{what}` is empty"));
+            }
+            states_locals(l, &what)?;
+        }
+    }
     for inv in o["invokes"].as_array().ok_or("`invokes` is not an array")? {
         let mut inv = inv.as_object().ok_or("an invoke is not an object")?.clone();
         child(&mut inv, "an invoke")?;
@@ -1010,6 +1157,22 @@ fn natural(v: &Value, what: &str, min: u64) -> Result<(), String> {
         Some(n) if n >= min && n <= MAX_SAFE => Ok(()),
         _ => Err(format!("{what} is {v}, which the schema does not allow")),
     }
+}
+
+/// `locals`, or a member of `historyLocals`: objects of locals keyed by state id.
+fn states_locals(v: &Value, what: &str) -> Result<(), String> {
+    let o = v
+        .as_object()
+        .ok_or_else(|| format!("`{what}` is not an object"))?;
+    for (k, l) in o {
+        if !state_id(k) {
+            return Err(format!(
+                "`{what}` has the member `{k}`, which is not a state id"
+            ));
+        }
+        args(l, &format!("{what}.{k}"))?;
+    }
+    Ok(())
 }
 
 fn args(v: &Value, what: &str) -> Result<(), String> {

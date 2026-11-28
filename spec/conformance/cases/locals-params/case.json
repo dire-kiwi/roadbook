@@ -1,0 +1,31 @@
+{
+  "description": "State parameters get their arguments from the transition that enters the state: from `result`; on re-entry from the locals of the state being left, which its exit effects and the transition still read; and after the transition's own `set`, which the arguments see. Each entry binds the parameters, then the variables.",
+  "requires": [
+    "locals"
+  ],
+  "chart": "charts/locals.road",
+  "machine": "Fetch",
+  "input": {
+    "id": "a"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "fetch",
+      "done": "hello"
+    },
+    {
+      "event": {
+        "_tag": "Again"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Grow"
+      }
+    }
+  ],
+  "status": "running"
+}

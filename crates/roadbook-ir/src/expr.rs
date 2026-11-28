@@ -38,6 +38,9 @@ pub enum ExprKind {
     Ref {
         /// The name, then each field accessed on it. Never empty.
         path: Vec<String>,
+        /// The id of the state whose parameter or variable `path[0]` names, or
+        /// `None` for a machine parameter or variable, or an implicit name.
+        state: Option<String>,
     },
     /// A field of a base that is not a variable, such as a call's result:
     /// `{"kind": "field", "of": Expr, "name": …}`.
@@ -230,6 +233,7 @@ enum ExprSer<'a> {
     },
     Ref {
         path: &'a [String],
+        state: &'a Option<String>,
         #[serde(rename = "type")]
         ty: &'a TypeRef,
         text: &'a str,
@@ -281,6 +285,7 @@ enum ExprDe {
     },
     Ref {
         path: Vec<String>,
+        state: Option<String>,
         #[serde(rename = "type")]
         ty: TypeRef,
         text: String,
@@ -330,7 +335,12 @@ impl Serialize for Expr {
                 ty,
                 text,
             },
-            ExprKind::Ref { path } => ExprSer::Ref { path, ty, text },
+            ExprKind::Ref { path, state } => ExprSer::Ref {
+                path,
+                state,
+                ty,
+                text,
+            },
             ExprKind::Field { of, name } => ExprSer::Field { of, name, ty, text },
             ExprKind::Call { func, args } => ExprSer::Call {
                 func,
@@ -365,12 +375,17 @@ impl<'de> Deserialize<'de> for Expr {
                 ty,
                 text,
             },
-            ExprDe::Ref { path, ty, text } => {
+            ExprDe::Ref {
+                path,
+                state,
+                ty,
+                text,
+            } => {
                 if path.is_empty() {
                     return Err(D::Error::custom("a `ref` expression's path is empty"));
                 }
                 Expr {
-                    kind: ExprKind::Ref { path },
+                    kind: ExprKind::Ref { path, state },
                     ty,
                     text,
                 }
@@ -445,9 +460,13 @@ mod tests {
         round_trip(r#"{"kind":"lit","value":30000,"type":"duration","text":"30s"}"#);
         round_trip(r#"{"kind":"enum","variant":"Admin","type":"Role","text":"Role.Admin"}"#);
         let e = round_trip(
-            r#"{"kind":"op","op":"<","args":[{"kind":"ref","path":["attempts"],"type":"int","text":"attempts"},{"kind":"lit","value":3,"type":"int","text":"3"}],"type":"bool","text":"attempts < 3"}"#,
+            r#"{"kind":"op","op":"<","args":[{"kind":"ref","path":["attempts"],"state":null,"type":"int","text":"attempts"},{"kind":"lit","value":3,"type":"int","text":"3"}],"type":"bool","text":"attempts < 3"}"#,
         );
         assert!(matches!(e.kind, ExprKind::Op { op: Op::Lt, .. }));
+        let e = round_trip(
+            r#"{"kind":"ref","path":["tries"],"state":"M.Confirming","type":"int","text":"tries"}"#,
+        );
+        assert!(matches!(e.kind, ExprKind::Ref { state: Some(s), .. } if s == "M.Confirming"));
     }
 
     #[test]

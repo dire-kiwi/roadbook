@@ -6,7 +6,7 @@ import { aliasCycle } from "./typeref.ts"
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.12"
+export const IR_VERSION = "0.13"
 
 export interface Span {
   readonly file: number
@@ -155,6 +155,10 @@ export interface State {
   readonly kind: StateKind
   readonly doc: string
   readonly span: Span
+  /** The state's parameters, in order: `[]` for a state written without them. */
+  readonly params: ReadonlyArray<Field>
+  /** The state's variables, in order: `[]` for a state that declares none. */
+  readonly vars: ReadonlyArray<Variable>
   readonly initial: string | null
   readonly states: ReadonlyArray<State>
   readonly entry: ReadonlyArray<Effect>
@@ -232,12 +236,22 @@ export interface Transition {
   readonly targets: ReadonlyArray<string>
   /** An internal transition (`-> .X`): its domain is its own state, which it does not leave. */
   readonly internal: boolean
+  /** The arguments of each state with parameters it enters, in the order they are entered. */
+  readonly args: ReadonlyArray<StateArgs>
   readonly effects: ReadonlyArray<Effect>
   readonly span: Span
 }
 
+/** The arguments a transition passes to one state with parameters that it enters. */
+export interface StateArgs {
+  readonly state: string
+  /** One per parameter, in parameter order. */
+  readonly values: ReadonlyArray<Expr>
+}
+
 export type Effect =
-  | { readonly kind: "set"; readonly var: string; readonly value: Expr }
+  /** `state`: the id of the state whose variable `var` is, or `null` for the machine's. */
+  | { readonly kind: "set"; readonly var: string; readonly state: string | null; readonly value: Expr }
   | { readonly kind: "do"; readonly action: string; readonly args: ReadonlyArray<Expr> }
   | {
     readonly kind: "send"
@@ -282,7 +296,8 @@ interface ExprBase {
 
 export type Expr =
   | (ExprBase & { readonly kind: "lit"; readonly value: Json })
-  | (ExprBase & { readonly kind: "ref"; readonly path: ReadonlyArray<string> })
+  /** `state`: the id of the state whose parameter or variable `path[0]` is, or `null` for the machine's or an implicit name. */
+  | (ExprBase & { readonly kind: "ref"; readonly path: ReadonlyArray<string>; readonly state: string | null })
   | (ExprBase & { readonly kind: "field"; readonly of: Expr; readonly name: string })
   | (ExprBase & { readonly kind: "call"; readonly fn: string; readonly args: ReadonlyArray<Expr> })
   | (ExprBase & { readonly kind: "op"; readonly op: Op; readonly args: ReadonlyArray<Expr> })

@@ -1,0 +1,32 @@
+machine M() {
+  event Go
+  event Edit
+  event Both
+
+  initial Idle
+  state Idle {
+    on Go   -> Idle(1)
+    on Both -> P(1).A.X, P(2).B.Y
+  }
+  state Editing(n: int) {
+    initial Viewing
+    state Viewing {
+      on Edit -> Editing(n).Changing
+    }
+    state Changing {}
+  }
+  parallel state P(n: int) {
+    state A {
+      initial X
+      state X {}
+    }
+    state B {
+      initial Y
+      state Y {}
+    }
+  }
+}
+
+// expect: RB0225 at 8:20
+// expect: RB0225 at 9:27
+// expect: RB0225 at 14:25

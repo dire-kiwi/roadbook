@@ -1086,12 +1086,12 @@ impl Parser<'_> {
                     "a machine item (`var`, `event`, `internal event`, `emits`, `call`, `children`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
                 }
                 BodyKind::State => {
-                    "a state item (`initial`, `state`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
+                    "a state item (`var`, `initial`, `state`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
                 }
             };
             return Err(self.unexpected(expected));
         };
-        let machine_only = matches!(k, K::Var | K::Event | K::Emits | K::Call);
+        let machine_only = matches!(k, K::Event | K::Emits | K::Call);
         let state_only = matches!(k, K::Done | K::Invoke | K::Output | K::Fail);
         let item = match k {
             K::Var => Item::Var(self.var()?),
@@ -1221,7 +1221,7 @@ impl Parser<'_> {
         let word = self.text(t).to_string();
         if kind == BodyKind::State && machine_only {
             let d = Diagnostic::error(codes::NOT_IN_STATE, t.span, format!("`{word}` is only allowed directly in a machine body"))
-                .with_help(format!("move the `{word}` to the top of the machine; a machine's variables, events and calls belong to all its states"));
+                .with_help(format!("move the `{word}` to the top of the machine; a machine's events and calls belong to all its states"));
             self.error(d);
             return Ok(None);
         }
@@ -1337,9 +1337,11 @@ impl Parser<'_> {
             path.push(self.upper("a state name")?);
         }
         let span = path[0].span.to(path[path.len() - 1].span);
+        let args = vec![None; path.len()];
         Ok(Target {
             dot: false,
             path,
+            args,
             span,
         })
     }
@@ -1496,12 +1498,18 @@ impl Parser<'_> {
             return Err(self.unexpected("`state`"));
         }
         let name = self.upper("a state name")?;
+        let params = if self.at_p(P::LParen) {
+            self.params()?
+        } else {
+            Vec::new()
+        };
         let body = self.body(BodyKind::State, &format!("state `{}`", name.name))?;
         self.depth -= 1;
         Ok(State {
             doc,
             kind,
             name,
+            params,
             body,
             span: self.since(start),
         })
@@ -1729,7 +1737,9 @@ impl Parser<'_> {
         })
     }
 
-    /// `[ . ] Upper { . Upper }`: a leading dot names a child of the transition's own state.
+    /// `[ . ] segment { . segment }`, each segment `Upper [ ( args ) ]`: a leading dot names a
+    /// child of the transition's own state, and the arguments are those of the state the
+    /// segment names.
     fn target(&mut self) -> PResult<Target> {
         let dot = self.eat_p(P::Dot);
         let mut path = vec![self.upper(if dot.is_some() {
@@ -1737,16 +1747,32 @@ impl Parser<'_> {
         } else {
             "a target state"
         })?];
+        let mut args = vec![self.target_args()?];
         while self.eat_p(P::Dot).is_some() {
             path.push(self.upper("a state name")?);
+            args.push(self.target_args()?);
         }
         let first = dot.map_or(path[0].span, |d| d.span);
-        let span = first.to(path[path.len() - 1].span);
+        let last = match &args[args.len() - 1] {
+            Some(a) => a.span,
+            None => path[path.len() - 1].span,
+        };
         Ok(Target {
             dot: dot.is_some(),
             path,
-            span,
+            args,
+            span: first.to(last),
         })
+    }
+
+    /// The arguments after a target's segment, `( expr, … )`, if a `(` follows it: effects
+    /// start with a keyword, so a `(` there always starts them.
+    fn target_args(&mut self) -> PResult<Option<TargetArgs>> {
+        if !self.at_p(P::LParen) {
+            return Ok(None);
+        }
+        let (args, span) = self.list(P::LParen, "the argument list", |p| p.expr(false))?;
+        Ok(Some(TargetArgs { args, span }))
     }
 
     /// Zero or more `set …`, `do …`, `send …`, `emit …`, `reply …`, `spawn …`, `stop …`,

@@ -1,0 +1,13 @@
+machine M() {
+  event Retry
+  event Count
+
+  initial Trying
+  state Trying {
+    var tries: int = 0
+    on Retry -> Trying  set tries = tries + 1
+    on Count set tries = tries + 1
+  }
+}
+
+// expect: RB0916 at 8:29

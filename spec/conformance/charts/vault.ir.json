@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/vault.road",
@@ -359,6 +359,7 @@
             "path": [
               "pin"
             ],
+            "state": null,
             "type": "int",
             "text": "pin"
           },
@@ -474,6 +475,8 @@
           "endLine": 59,
           "endCol": 2
         },
+        "params": [],
+        "vars": [],
         "initial": "Vault.SigningIn",
         "states": [
           {
@@ -488,6 +491,8 @@
               "endLine": 41,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -501,6 +506,7 @@
                       "login",
                       "user"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "login.user"
                   },
@@ -509,6 +515,7 @@
                     "path": [
                       "login"
                     ],
+                    "state": null,
                     "type": "Login",
                     "text": "login"
                   }
@@ -528,6 +535,7 @@
                     "path": [
                       "login"
                     ],
+                    "state": null,
                     "type": "Login",
                     "text": "login"
                   },
@@ -536,6 +544,7 @@
                     "path": [
                       "current"
                     ],
+                    "state": null,
                     "type": "int",
                     "text": "current"
                   }
@@ -561,15 +570,18 @@
                   "Vault.Loading"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "session",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Session",
                       "text": "result"
                     }
@@ -595,15 +607,18 @@
                   "Vault.Waiting"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "locked",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "error"
                       ],
+                      "state": null,
                       "type": "Locked",
                       "text": "error"
                     }
@@ -633,6 +648,8 @@
               "endLine": 47,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -650,16 +667,19 @@
                   "Vault.SigningIn"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "current",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "event",
                         "pin"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "event.pin"
                     }
@@ -688,6 +708,7 @@
                       "path": [
                         "current"
                       ],
+                      "state": null,
                       "type": "int",
                       "text": "current"
                     },
@@ -705,6 +726,7 @@
                   "Vault.GaveUp"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -730,6 +752,7 @@
                   "Vault.GaveUp"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -755,6 +778,8 @@
               "endLine": 55,
               "endCol": 4
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [
@@ -768,6 +793,7 @@
                       "session",
                       "token"
                     ],
+                    "state": null,
                     "type": "string",
                     "text": "session.token"
                   },
@@ -780,6 +806,7 @@
                         "path": [
                           "session"
                         ],
+                        "state": null,
                         "type": "Session",
                         "text": "session"
                       }
@@ -803,6 +830,7 @@
                     "path": [
                       "session"
                     ],
+                    "state": null,
                     "type": "Session",
                     "text": "session"
                   }
@@ -828,15 +856,18 @@
                   "Vault.Loaded"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [
                   {
                     "kind": "set",
                     "var": "profile",
+                    "state": null,
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
+                      "state": null,
                       "type": "Profile",
                       "text": "result"
                     }
@@ -861,6 +892,7 @@
                   "Vault.Loading"
                 ],
                 "internal": false,
+                "args": [],
                 "effects": [],
                 "span": {
                   "file": 0,
@@ -886,6 +918,8 @@
               "endLine": 57,
               "endCol": 40
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -897,6 +931,7 @@
               "path": [
                 "profile"
               ],
+              "state": null,
               "type": "Profile",
               "text": "profile"
             },
@@ -914,6 +949,8 @@
               "endLine": 58,
               "endCol": 37
             },
+            "params": [],
+            "vars": [],
             "initial": null,
             "states": [],
             "entry": [],
@@ -926,6 +963,7 @@
               "path": [
                 "locked"
               ],
+              "state": null,
               "type": "Locked",
               "text": "locked"
             }
