@@ -271,18 +271,18 @@ fn clash(index: &SymbolIndex, id: SymbolId, new: &str) -> Option<String> {
                 || typeish(o.kind)
         }
         K::State | K::Field | K::Variant => o.kind == s.kind && o.parent == s.parent,
-        // Two `as` names clash only when one invoking state contains the other: states
-        // side by side may use the same one.
-        K::InvokeName if o.kind == K::InvokeName => {
-            machine_of(oid) == machine_of(id)
-                && (contains(s.parent, o.parent) || contains(o.parent, s.parent))
-        }
+        // The names a machine's expressions read share one namespace, scoped by where they
+        // are declared: the machine's own (parameters, variables, collections, delayed
+        // raises) everywhere in it, an `as` name in its invoking state, and a state's
+        // parameters and variables in that state. Two clash when one scope contains the
+        // other, so states side by side may use the same name.
         K::Parameter | K::Variable | K::InvokeName | K::Children | K::RaiseName => {
             matches!(
                 o.kind,
                 K::Parameter | K::Variable | K::InvokeName | K::Children | K::RaiseName
             ) && !of_call(o)
                 && machine_of(oid) == machine_of(id)
+                && (contains(s.parent, o.parent) || contains(o.parent, s.parent))
         }
         _ => false,
     };

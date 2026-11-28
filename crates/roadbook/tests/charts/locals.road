@@ -1,0 +1,31 @@
+// State parameters and state variables through `roadbook::include!`: a function called only
+// in a target's arguments, one called only in a state variable's initial value, and a type
+// only a state's parameter has are all the module's.
+
+type Tok { id: string }
+
+action log(text: string)
+fn mint(code: string) -> Tok
+fn start(tok: Tok) -> int
+
+machine Count() -> string {
+  event Go { code: string }
+  event Tick
+
+  initial Idle
+
+  state Idle {
+    on Go -> Holding(mint(event.code))
+  }
+
+  state Holding(tok: Tok) {
+    var n: int = start(tok)
+    entry do log(tok.id)
+    on Tick {
+      if n < 3 set n = n + 1
+      else     -> Done(tok.id)
+    }
+  }
+
+  final state Done(id: string) { output id }
+}

@@ -996,6 +996,11 @@ impl<'a> Uses<'a> {
     }
 
     fn state(&mut self, s: &'a State) {
+        for v in &s.vars {
+            if let Some(e) = &v.init {
+                self.expr(e);
+            }
+        }
         for e in s.entry.iter().chain(&s.exit) {
             self.effect(e);
         }
@@ -1023,6 +1028,9 @@ impl<'a> Uses<'a> {
             }
             for e in &t.effects {
                 self.effect(e);
+            }
+            for a in t.args.iter().flat_map(|a| &a.values) {
+                self.expr(a);
             }
         }
         for e in s.output.iter().chain(&s.fail) {
@@ -1231,6 +1239,12 @@ fn file_refs(ir: &Ir) -> Vec<BTreeSet<u32>> {
         add(file, m.returns.iter().flat_map(ty).collect());
         add(file, errors(&m.errors));
         add(file, m.vars.iter().flat_map(|v| ty(&v.ty)).collect());
+        let mut locals = Vec::new();
+        state_locals(&m.root, &mut |s| {
+            locals.extend(fields(&s.params));
+            locals.extend(s.vars.iter().flat_map(|v| ty(&v.ty)));
+        });
+        add(file, locals);
         for e in m.events.values().chain(m.emits.values()) {
             add(file, fields(&e.fields));
         }
@@ -1261,6 +1275,14 @@ fn file_refs(ir: &Ir) -> Vec<BTreeSet<u32>> {
         add(file, used.collect());
     }
     out
+}
+
+/// Calls `f` with `s` and every state below it.
+fn state_locals<'a>(s: &'a State, f: &mut impl FnMut(&'a State)) {
+    f(s);
+    for c in &s.states {
+        state_locals(c, f);
+    }
 }
 
 /// Calls `f` with the machine of every `ref` in `t`.

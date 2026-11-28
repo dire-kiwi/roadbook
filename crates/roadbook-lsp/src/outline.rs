@@ -173,13 +173,16 @@ impl Outline<'_> {
             StateKind::Final => "final state",
             StateKind::Parallel => "parallel state",
         };
+        // A state's parameters come first, as a machine's do.
+        let mut children = self.fields(&s.params);
+        children.extend(self.body(&s.body));
         self.symbol(
             &s.name.name,
             Kind::OBJECT,
             Some(detail.into()),
             s.span,
             s.name.span,
-            self.body(&s.body),
+            children,
         )
     }
 }
