@@ -1,0 +1,15 @@
+machine M(ping: int) {
+  event Go
+  internal event Go
+  var pong: int = 0
+  initial A
+  state A {
+    on Go raise Go after 1s as ping  raise Go after 2s as pong  raise Go after 3s as ok
+    on Go -> A  raise Go after 4s as ok
+  }
+}
+
+// expect: RB0108 at 3:18
+// expect: RB0108 at 7:32
+// expect: RB0108 at 7:59
+// expect: RB0205 at 8:5

@@ -1,0 +1,20 @@
+{
+  "description": "A strict machine raises `Ping` in a state that takes no `Ping`: the raised event is the runtime error `unhandled`, whose `event` is the input `raised`. The step is atomic, so its `raised` record goes with it.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Picky",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    }
+  ],
+  "status": "defect"
+}

@@ -1,0 +1,34 @@
+{
+  "description": "A host defect in an action ends the run with a defect: `failWithDefect` cancels the pending delayed raise with no record, as it does the state's timer.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Reminder",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {
+    "log": [
+      {
+        "args": {
+          "what": "boom"
+        },
+        "defect": "boom"
+      }
+    ]
+  },
+  "script": [
+    {
+      "event": {
+        "_tag": "Start"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Boom"
+      }
+    }
+  ],
+  "status": "defect"
+}

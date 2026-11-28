@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0125]: `M` has no event `Progress` to raise
+ --> RB0125-not-raisable.road:6:17
+  |
+6 |     on Go raise Progress
+  |                 ^^^^^^^^
+  |
+  = help: `Progress` is an event `M` emits for others; a machine raises only its own events (`event` or `internal event`): `emit Progress` sends it
+
+error[RB0125]: `M` has no event `Gone` to raise
+ --> RB0125-not-raisable.road:7:17
+  |
+7 |     entry raise Gone
+  |                 ^^^^
+  |
+  = help: declare it in the machine body: `internal event Gone` for an event only the machine raises, or `event Gone`

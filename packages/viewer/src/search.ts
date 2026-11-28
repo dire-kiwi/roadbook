@@ -23,6 +23,7 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
   for (const [machine, m] of Object.entries(ir.machines)) {
     out.push({ kind: 'machine', name: machine, label: `machine ${machine}`, machine, target: null })
     for (const name of Object.keys(m.events)) out.push({ kind: 'event', name, label: `event ${name} of ${machine}`, machine, target: { type: 'event', name } })
+    for (const name of Object.keys(m.internalEvents ?? {})) out.push({ kind: 'event', name, label: `internal event ${name} of ${machine}`, machine, target: { type: 'event', name } })
     for (const name of Object.keys(m.emits)) out.push({ kind: 'event', name, label: `emits ${name} of ${machine}`, machine, target: { type: 'event', name } })
     for (const name of Object.keys(m.calls)) out.push({ kind: 'call', name, label: `call ${name} of ${machine}`, machine, target: { type: 'event', name } })
     for (const [name, c] of Object.entries(m.children)) {
@@ -43,7 +44,7 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
     const effects = (list: Effect[], where: string, target: SearchEntry['target']) => {
       for (const e of list) {
         if (e.kind === 'do') out.push({ kind: 'action', name: e.action, label: `${effectText(e)}: ${where}`, machine, target })
-        if (e.kind === 'send' || e.kind === 'emit') out.push({ kind: 'event', name: e.event, label: `${effectText(e)}: ${where}`, machine, target })
+        if (e.kind === 'send' || e.kind === 'emit' || e.kind === 'raise') out.push({ kind: 'event', name: e.event, label: `${effectText(e)}: ${where}`, machine, target })
         const call = e.kind === 'reply' ? callOfType(e.call.type) : null
         if (call) out.push({ kind: 'call', name: call, label: `${effectText(e)}: ${where}`, machine, target })
         if (e.kind === 'spawn') out.push({ kind: isTaskName(e.src) ? 'task' : 'machine', name: e.src, label: `${effectText(e)}: ${where}`, machine, target })

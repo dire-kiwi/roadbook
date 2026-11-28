@@ -681,6 +681,12 @@ impl<'a> Eval<'a> {
                 ),
                 self.relative(self.graph.state_id(*state))
             ),
+            Assumption::RaiseFirst {
+                name: Some(name), ..
+            } => format!("the delayed raise `{name}` expires before the other running timers"),
+            Assumption::RaiseFirst { name: None, event } => {
+                format!("a delayed `raise {event}` expires before the other running timers")
+            }
             Assumption::Machine(input) => match input {
                 Input::InvokeDone { state, invoke } => match self.call(state, *invoke) {
                     Some((peer, call)) => format!("peer `{peer}` answers `{call}` with `done`"),

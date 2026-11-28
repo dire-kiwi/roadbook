@@ -10,10 +10,10 @@ import { own } from './ir.ts'
 /** The largest integer the TypeScript runtime holds exactly, and so the `int` range here. */
 const INT_MAX = Number.MAX_SAFE_INTEGER
 
-/** The fields of an event type `Machine.Name`, or undefined. */
+/** The fields of an event type `Machine.Name` (accepted, internal or emitted), or undefined. */
 function eventFields(ir: Ir, machine: string, event: string): Field[] | undefined {
   const m = own(ir.machines, machine)
-  return (m && (own(m.events, event) ?? own(m.emits, event)))?.fields
+  return (m && (own(m.events, event) ?? own(m.internalEvents ?? {}, event) ?? own(m.emits, event)))?.fields
 }
 
 /**

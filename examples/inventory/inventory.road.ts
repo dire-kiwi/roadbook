@@ -53,7 +53,7 @@ export interface InventoryDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/inventory/inventory.road",
@@ -321,6 +321,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {
         "reserve": {

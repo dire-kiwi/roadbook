@@ -459,6 +459,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       calls: [],
       spawned: [],
       timers: [],
+      scheduled: [],
       nextInvoke: 1,
       nextTimer: 1,
       nextMessage: 1,
@@ -487,7 +488,9 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
     // it carried out `timer.start` plus the delay, or, for a restored timer, its saved due.
     const dues = new Map<number, number>()
     const restoredDues = new Map<number, number>(
-      begin.kind === "restore" ? begin.saved.timers.map((t) => [t.id, t.due]) : []
+      begin.kind === "restore"
+        ? [...begin.saved.timers, ...(begin.saved.scheduled ?? [])].map((t) => [t.id, t.due])
+        : []
     )
     let saved: Core.Saved = Core.toSaved(snapshot, () => 0)
     // The tokens of the invokes and spawned children this run started, by id: a child run's

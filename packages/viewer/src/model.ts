@@ -79,7 +79,9 @@ function breakable(code: string): number[] {
 /**
  * `set a = 1`, `do f(x)`, `send upload.Pause`, `send inventory.Reserve { orderId: id }`,
  * `send sessions[id].Notify { text: t }`, `send sessions.*.Leave`, `emit Progress { percent: p }`,
- * `spawn sessions[id] = Session(id)`, `stop sessions[id]`
+ * `spawn sessions[id] = Session(id)`, `stop sessions[id]`, `raise Ping { n: 1 }`,
+ * `raise Remind { attempt: 1 } after 1s as reminder`, `cancel reminder`. The same text as
+ * `effect_text` of `roadbook viz --diff` (crates/roadbook-cli/src/commands/viz/diff.rs).
  */
 export function effectText(e: Effect): string {
   switch (e.kind) {
@@ -98,6 +100,10 @@ export function effectText(e: Effect): string {
       return `spawn ${e.children}[${e.key.text}] = ${e.src}(${e.args.map((a) => a.text).join(', ')})`
     case 'stop':
       return `stop ${e.children}[${e.key.text}]`
+    case 'raise':
+      return `raise ${e.value.text}${e.delay ? ` after ${e.delay.text}` : ''}${e.name !== null ? ` as ${e.name}` : ''}`
+    case 'cancel':
+      return `cancel ${e.name}`
   }
 }
 
@@ -150,12 +156,12 @@ export function callOfType(type: string): string | null {
 
 /**
  * The event a messaging effect carries, in the machine that declares it: the receiver's for
- * a `send`, the machine's own (`machine`) for an `emit`; for a `reply`, the machine's own call
- * it answers. Null for `set` and `do`.
+ * a `send`, the machine's own (`machine`) for an `emit` and a `raise`; for a `reply`, the
+ * machine's own call it answers. Null for the others.
  */
 export function effectEvent(machine: string, e: Effect): EventRef | null {
   if (e.kind === 'send') return { machine: peer(e.to), event: e.event }
-  if (e.kind === 'emit') return { machine, event: e.event }
+  if (e.kind === 'emit' || e.kind === 'raise') return { machine, event: e.event }
   if (e.kind === 'reply') {
     const call = callOfType(e.call.type)
     return call ? { machine, event: call } : null
@@ -298,7 +304,7 @@ export interface LabelLine {
   guard: string
   /**
    * The line names another machine's event or a call: the trigger of `on upload.Progress` or
-   * `on reserve`, or a `send`, `emit` or `reply` effect. Clicking it opens that event or call.
+   * `on reserve`, or a `send`, `emit`, `raise` or `reply` effect. Clicking it opens that event or call.
    */
   event?: EventRef
   /** The line is (part of) a `spawn` effect: clicking it opens this machine, the child's. */
@@ -336,7 +342,7 @@ export function transitionLines(state: State, index: number): LabelLine[] {
   return lines
 }
 
-/** What the lines of an effect link to: the event of a `send` or `emit`, the machine of a `spawn` (a task's has none). */
+/** What the lines of an effect link to: the event of a `send`, `emit` or `raise`, the machine of a `spawn` (a task's has none). */
 function effectLink(machine: string, e: Effect): { event?: EventRef; spawn?: string } {
   const event = effectEvent(machine, e)
   if (event) return { event }
@@ -358,7 +364,7 @@ export interface Row {
   transition?: number
   /** `kw` ends with another machine's event (`on upload.Progress`) or a call (`on reserve`): clicking it opens it. */
   kwEvent?: EventRef
-  /** `text` is (part of) a `send`, `emit` or `reply` effect, or a call invoke: clicking it opens the event or call. */
+  /** `text` is (part of) a `send`, `emit`, `raise` or `reply` effect, or a call invoke: clicking it opens the event or call. */
   event?: EventRef
   /** `text` is (part of) a `spawn` effect: clicking it opens this machine, the child's. */
   spawn?: string
@@ -443,7 +449,7 @@ export function stateRows(state: State, collapsed = false): Row[] {
   for (const e of state.exit) add('exit', effectText(e), effectExtra(e))
   state.transitions.forEach((t, index) => {
     if (t.targets.length > 0) return
-    // The trigger, then the guard and each effect: one effect per line, so a `send`, `emit` or
+    // The trigger, then the guard and each effect: one effect per line, so a `send`, `emit`, `raise` or
     // `reply` is a line of its own that can be clicked.
     const kw = triggerSource(t.trigger)
     const from = triggerEvent(t.trigger, machine)
@@ -628,11 +634,11 @@ export function refMachine(ir: Ir, type: string): string | null {
 }
 
 /**
- * Where a `send`, an `emit` or an `on name.Event` is written; or, for calls, a call invoke
- * (`call`), an `on c` that takes a call (`take`) and a `reply` (`reply`).
+ * Where a `send`, an `emit`, a `raise` or an `on name.Event` is written; or, for calls, a call
+ * invoke (`call`), an `on c` that takes a call (`take`) and a `reply` (`reply`).
  */
 export interface MessageSite {
-  dir: 'send' | 'emit' | 'receive' | 'call' | 'take' | 'reply'
+  dir: 'send' | 'emit' | 'raise' | 'receive' | 'call' | 'take' | 'reply'
   /** The state it is written in. */
   state: string
   /** The index of its transition in the state's `transitions`, or the state's `entry`, `exit` or `invoke`. */
@@ -647,7 +653,7 @@ export interface MessageSite {
 }
 
 /**
- * Every message a machine sends, emits and receives, and every call it makes, takes and
+ * Every message a machine sends, emits, raises and receives, and every call it makes, takes and
  * answers, in document order: state by state (outermost first), its call invoke, its `entry`,
  * its `exit`, then each transition's trigger and effects.
  */
@@ -657,6 +663,7 @@ export function messageSites(machineName: string, machine: Machine): MessageSite
     for (const e of list) {
       if (e.kind === 'send') out.push({ dir: 'send', state, at, address: e.to, event: { machine: peer(e.to), event: e.event } })
       else if (e.kind === 'emit') out.push({ dir: 'emit', state, at, address: null, event: { machine: machineName, event: e.event } })
+      else if (e.kind === 'raise') out.push({ dir: 'raise', state, at, address: null, event: { machine: machineName, event: e.event } })
       else if (e.kind === 'reply') {
         const event = effectEvent(machineName, e)
         if (event) out.push({ dir: 'reply', state, at, address: null, event })
@@ -775,23 +782,33 @@ export function talks(ir: Ir, machineName: string): Talks {
   }
 }
 
-/** A machine's event, accepted (`event`) or emitted (`emits`), with which it is; or one a task emits. */
-export function eventDecl(ir: Ir, ref: EventRef): { decl: EventDecl; emitted: boolean } | null {
+/**
+ * A machine's event, accepted (`event`), internal (`internal event`, only the machine raises
+ * it) or emitted (`emits`), with which it is; or one a task emits.
+ */
+export function eventDecl(ir: Ir, ref: EventRef): { decl: EventDecl; emitted: boolean; internal: boolean } | null {
   if (isTaskEvent(ref)) {
     const emitted = own(own(ir.tasks, ref.machine)?.emits ?? {}, ref.event)
-    return emitted ? { decl: emitted, emitted: true } : null
+    return emitted ? { decl: emitted, emitted: true, internal: false } : null
   }
   const m = own(ir.machines, ref.machine)
   if (!m) return null
   const accepted = own(m.events, ref.event)
-  if (accepted) return { decl: accepted, emitted: false }
+  if (accepted) return { decl: accepted, emitted: false, internal: false }
+  const internal = own(m.internalEvents ?? {}, ref.event)
+  if (internal) return { decl: internal, emitted: false, internal: true }
   const emitted = own(m.emits, ref.event)
-  return emitted ? { decl: emitted, emitted: true } : null
+  return emitted ? { decl: emitted, emitted: true, internal: false } : null
 }
 
-/** `event Reserve { orderId: string, items: Item[] }`, `emits Progress { percent: int }` */
-export function eventDeclText(name: string, decl: { fields: Field[] }, emitted: boolean): string {
-  return `${emitted ? 'emits' : 'event'} ${name}${decl.fields.length ? ` { ${paramsText(decl.fields)} }` : ''}`
+/** One of the machine's own events, accepted or internal: what an `on E` and a `raise` name. */
+export function ownEvent(m: Machine, name: string): EventDecl | undefined {
+  return own(m.events, name) ?? own(m.internalEvents ?? {}, name)
+}
+
+/** `event Reserve { orderId: string, items: Item[] }`, `emits Progress { percent: int }`, `internal event Ping` */
+export function eventDeclText(name: string, decl: { fields: Field[] }, emitted: boolean, internal = false): string {
+  return `${emitted ? 'emits' : internal ? 'internal event' : 'event'} ${name}${decl.fields.length ? ` { ${paramsText(decl.fields)} }` : ''}`
 }
 
 /** `reserve(orderId: string, items: Item[]) ! OutOfStock`: a call's signature without its keyword. */

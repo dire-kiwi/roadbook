@@ -360,7 +360,18 @@ typing: {
 
 **XState v6** writes the same with `enq.raise(event, { delay, id })` and `enq.cancel(id)`, and can declare `internalEvents` that host code cannot send.
 
-**Roadbook** writes a debounce as a self-transition. A self-transition re-enters the state, which restarts its timer:
+**Roadbook** (SM-28) writes the same with a delayed raise. A raise whose name is pending replaces the pending one, so each key starts the delay again, and `Typing` is never left:
+
+```
+internal event Search   // only the machine raises it
+
+state Typing {
+  on Key    set query = event.text  raise Search after 500ms as debounce
+  on Search -> Searching
+}
+```
+
+Before SM-28 a debounce was a self-transition, which re-enters the state and so restarts its timer, as well as its `entry`, `exit` and invoke:
 
 ```
 state Typing {
@@ -369,10 +380,9 @@ state Typing {
 }
 ```
 
-What it cannot write is a timer that outlives the state that started it, short of moving the `after` up to a parent state. Two examples are "remind the customer in 24 hours unless they confirm, whatever else happens" and "after setting up, tell the other region to start".
+Nor could a chart write a timer that outlives the state that started it, short of moving the `after` up to a parent state. Two examples are "remind the customer in 24 hours unless they confirm, whatever else happens" and "after setting up, tell the other region to start". A delayed raise is a timer of the run, not of a state, and an immediate one is taken before the step ends, by every region that has an `on` for it ([events a machine raises](language.md#events-a-machine-raises)):
 
 ```
-// proposed
 internal event Remind         // cannot be sent from outside
 
 state Ordered {
@@ -381,6 +391,8 @@ state Ordered {
 on Confirm cancel reminder
 on Remind do sendReminder(order)
 ```
+
+XState's delayed `sendTo` has no counterpart: a delayed raise whose transition sends does the same.
 
 ## Asking what state the machine is in from a guard
 

@@ -47,7 +47,7 @@ export interface OverflowDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "packages/effect/test/charts/runtime.road",
@@ -286,6 +286,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -390,6 +391,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -571,6 +573,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -653,6 +656,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -828,6 +832,7 @@ const ir: unknown = {
       "errors": [],
       "vars": [],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -909,6 +914,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {
         "ask": {
@@ -1118,6 +1124,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1332,6 +1339,7 @@ const ir: unknown = {
       "errors": [],
       "vars": [],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1504,6 +1512,7 @@ const ir: unknown = {
       "errors": [],
       "vars": [],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

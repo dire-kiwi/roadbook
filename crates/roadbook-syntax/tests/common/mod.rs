@@ -79,6 +79,10 @@ pub const CASES: &[(&str, &str)] = &[
         "task upload(file: string) -> string ! Failed\n  /// How far.\n  emits Progress { percent: int }\n  emits Stage { sensitive name: string }\ntask ticks(every: duration) emits Tick\nmachine M() {\n  children uploads: upload by string\n  on Add spawn uploads[event.name] = upload(event.name)\n  on uploads.Progress do show(key, event.percent)\n  state A {\n    invoke upload(\"x\") as up {\n      done -> A\n    }\n    on up.Progress set p = event.percent\n  }\n  state B {\n    invoke ticks(1s) as clock\n    on clock.Tick set n = n + 1\n  }\n}\n",
     ),
     (
+        "raise",
+        "machine M() {\n  event Go\n  /// Sent by the machine to itself.\n  internal event Remind { attempt: int }\n  internal event Ping\n  var raise: int = 0\n  on Go raise Ping  raise Remind { attempt: 1 } after 24h as reminder\n  on Ping cancel reminder  set raise = raise + 1\n  state A {\n    entry raise Remind { attempt: 2 } after delay(raise)\n    exit cancel reminder  do log()\n    on Remind raise Ping\n    after 5s -> A\n  }\n}\n",
+    ),
+    (
         "ended",
         "machine M(peer: ref Peer) {\n  var ended: int = 0\n  on peer.ended if event.status == Ended.Defect -> A\n  state A {\n    on peer.ended {\n      if event.status == Ended.Done -> A  set ended = ended + 1\n      else -> A\n    }\n  }\n}\n",
     ),

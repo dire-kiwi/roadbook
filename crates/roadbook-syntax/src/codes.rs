@@ -52,6 +52,8 @@ pub const NESTED_TOO_DEEPLY: Code = Code(25);
 pub const MISPLACED_IGNORE: Code = Code(26);
 /// `on name.word` with a lower-case `word` other than `done`, `fail` and `ended`.
 pub const UNKNOWN_LIFECYCLE_TRIGGER: Code = Code(27);
+/// `raise E as name` without `after`: only a delayed raise has a name.
+pub const RAISE_NAME_WITHOUT_DELAY: Code = Code(28);
 
 #[cfg(test)]
 mod tests {

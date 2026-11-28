@@ -297,6 +297,9 @@ impl Project {
                 for (e, d) in &m.events {
                     items.push(ast::Item::Event(ast_event(e, d)));
                 }
+                for (e, d) in &m.internal_events {
+                    items.push(ast::Item::InternalEvent(ast_event(e, d)));
+                }
                 for (e, d) in &m.emits {
                     items.push(ast::Item::Emits(ast_event(e, d)));
                 }
@@ -530,7 +533,12 @@ fn remap_machine(m: &mut ir::Machine, f: &impl Fn(&mut ir::Span)) {
     for v in &mut m.vars {
         f(&mut v.span);
     }
-    for e in m.events.values_mut().chain(m.emits.values_mut()) {
+    for e in m
+        .events
+        .values_mut()
+        .chain(m.internal_events.values_mut())
+        .chain(m.emits.values_mut())
+    {
         f(&mut e.span);
     }
     for c in m.calls.values_mut() {

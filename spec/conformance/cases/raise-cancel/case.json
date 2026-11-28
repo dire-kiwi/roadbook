@@ -1,0 +1,50 @@
+{
+  "description": "`cancel reminder` with nothing pending does nothing and writes nothing. In `Waiting`, `Stop` cancels the pending reminder, so nothing fires. Then `Stop` and the reminder's expiry are queued together: `Stop` cancels it, and its expiry, already queued, is `stale`.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Reminder",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Stop"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Start"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Stop"
+      }
+    },
+    {
+      "advance": 2000
+    },
+    {
+      "event": {
+        "_tag": "Start"
+      }
+    },
+    {
+      "together": [
+        {
+          "event": {
+            "_tag": "Stop"
+          }
+        },
+        {
+          "advance": 1000
+        }
+      ]
+    }
+  ],
+  "status": "running"
+}

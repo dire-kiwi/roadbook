@@ -49,7 +49,7 @@ fn saved(p: &Program) -> Value {
     let (snap, _) = p
         .start("M", "r1", input.as_object().unwrap().clone(), &mut no_fns)
         .unwrap();
-    Saved::new(&snap, |t| t.delay).to_value()
+    Saved::new(&snap, |_, delay| delay).to_value()
 }
 
 /// A way to break a snapshot.
@@ -136,7 +136,7 @@ fn a_machine_with_a_ref_parameter_is_refused() {
             &mut no_fns,
         )
         .unwrap();
-    let v = Saved::new(&snap, |t| t.delay).to_value();
+    let v = Saved::new(&snap, |_, delay| delay).to_value();
     assert_eq!(reason(&p, v), "ref");
 }
 
@@ -342,7 +342,7 @@ fn a_defect_restarting_an_invoke_makes_restore_atomic() {
         &mut price,
     );
     assert_eq!(snap.invokes.len(), 1);
-    let s = Saved::new(&snap, |t| t.delay);
+    let s = Saved::new(&snap, |_, delay| delay);
     let (s, _) = p.check_saved(s.to_value(), None, None).unwrap();
     let (after, cmds) = p.restore(&s, "r2", 0, None, &mut no_fns).unwrap();
     assert_eq!(after.status, Status::Defect);
@@ -413,7 +413,7 @@ fn a_number_s_form_does_not_matter() {
         .unwrap();
     snap.vars.insert("n".into(), json!(2.0));
     snap.vars.insert("note".into(), json!(-0.0));
-    let text = serde_json::to_string(&Saved::new(&snap, |t| t.delay)).unwrap();
+    let text = serde_json::to_string(&Saved::new(&snap, |_, delay| delay)).unwrap();
     assert!(text.contains(r#""n":2,"note":0"#), "{text}");
     // A fraction is not an integer.
     let mut v = saved(&p);
@@ -481,7 +481,7 @@ fn a_snapshot_with_pending_calls_is_refused_after_ref() {
         .unwrap();
     // No pending call: no `calls` member.
     assert!(
-        Saved::new(&s, |t| t.delay)
+        Saved::new(&s, |_, delay| delay)
             .to_value()
             .get("calls")
             .is_none()
@@ -493,7 +493,7 @@ fn a_snapshot_with_pending_calls_is_refused_after_ref() {
         args: serde_json::Map::new(),
     };
     let (s, _) = p.step(&s, call, &mut no_fns);
-    let pending = Saved::new(&s, |t| t.delay).to_value();
+    let pending = Saved::new(&s, |_, delay| delay).to_value();
     assert_eq!(
         pending["calls"],
         json!([{"from": "r2", "invoke": 1, "call": "ask"}])
@@ -539,7 +539,7 @@ fn a_snapshot_with_pending_calls_is_refused_after_ref() {
             &mut no_fns,
         )
         .unwrap();
-    let mut caller = Saved::new(&s, |t| t.delay).to_value();
+    let mut caller = Saved::new(&s, |_, delay| delay).to_value();
     assert_eq!(caller["invokes"][0]["src"], "s.ask");
     caller["calls"] = pending["calls"].clone();
     assert_eq!(reason(&p, caller), "ref");
@@ -587,7 +587,7 @@ machine H() {
 /// A saved snapshot of a fresh run of `H`, in `P.A`, with nothing recorded.
 fn history_saved(p: &Program) -> Value {
     let (snap, _) = p.start("H", "r1", Default::default(), &mut no_fns).unwrap();
-    Saved::new(&snap, |t| t.delay).to_value()
+    Saved::new(&snap, |_, delay| delay).to_value()
 }
 
 #[test]
@@ -681,7 +681,7 @@ fn a_version_1_snapshot_restores_and_is_saved_again_as_version_4() {
     };
     assert_eq!(snapshot.to_value(), v1);
     assert!(snap.history.is_empty());
-    let again = Saved::new(&snap, |t| t.delay).to_value();
+    let again = Saved::new(&snap, |_, delay| delay).to_value();
     assert_eq!(again["snapshotVersion"], 4);
     assert_eq!(again["history"], json!({}));
     assert_eq!(again["spawned"], json!([]));
@@ -738,8 +738,8 @@ fn desk() -> (Program, Value) {
     let input = json!({"start": 1}).as_object().unwrap().clone();
     let (desk, _) = p.start("Desk", "r1", input.clone(), &mut no_fns).unwrap();
     let (tally, _) = p.start("Tally", "r1.1", input, &mut no_fns).unwrap();
-    let mut v = Saved::new(&desk, |t| t.delay).to_value();
-    v["invokes"][0]["child"] = Saved::new(&tally, |t| t.delay + 100).to_value();
+    let mut v = Saved::new(&desk, |_, delay| delay).to_value();
+    v["invokes"][0]["child"] = Saved::new(&tally, |_, delay| delay + 100).to_value();
     (p, v)
 }
 
@@ -842,7 +842,7 @@ fn a_child_on_a_task_or_holding_a_ref_is_refused() {
     let (p, base) = desk();
     let input = json!({}).as_object().unwrap().clone();
     let (fetcher, _) = p.start("Fetcher", "r1", input, &mut no_fns).unwrap();
-    let mut v = Saved::new(&fetcher, |t| t.delay).to_value();
+    let mut v = Saved::new(&fetcher, |_, delay| delay).to_value();
     v["invokes"][0]["child"] = base["invokes"][0]["child"].clone();
     assert_eq!(reason(&p, v), "invalid");
     // An entry that starts a machine with a `ref` parameter, with a snapshot nested in it, is
@@ -851,15 +851,15 @@ fn a_child_on_a_task_or_holding_a_ref_is_refused() {
     let (lobby, _) = p.start("Lobby", "r1", none, &mut no_fns).unwrap();
     let other = json!({"other": null}).as_object().unwrap().clone();
     let (peer, _) = p.start("Peer", "r1.1", other, &mut no_fns).unwrap();
-    let mut v = Saved::new(&lobby, |t| t.delay).to_value();
-    v["invokes"][0]["child"] = Saved::new(&peer, |t| t.delay).to_value();
+    let mut v = Saved::new(&lobby, |_, delay| delay).to_value();
+    v["invokes"][0]["child"] = Saved::new(&peer, |_, delay| delay).to_value();
     assert_eq!(reason(&p, v.clone()), "ref");
     v["invokes"][0]["child"] = base["invokes"][0]["child"].clone();
-    v["invokes"][0]["child"]["ir"] = Saved::new(&peer, |t| t.delay).to_value()["ir"].clone();
+    v["invokes"][0]["child"]["ir"] = Saved::new(&peer, |_, delay| delay).to_value()["ir"].clone();
     assert_eq!(reason(&p, v), "ref");
     // A `Peer` nested in the entry of a `Tally` is of another machine: `invalid`, not `ref`.
     let mut v = base.clone();
-    let mut nested = Saved::new(&peer, |t| t.delay).to_value();
+    let mut nested = Saved::new(&peer, |_, delay| delay).to_value();
     nested["ir"] = base["invokes"][0]["child"]["ir"].clone();
     v["invokes"][0]["child"] = nested;
     assert_eq!(reason(&p, v), "invalid");
@@ -893,7 +893,7 @@ fn restore_passes_each_nested_snapshot_to_its_start_command() {
     // A spawned child's too.
     let input = json!({}).as_object().unwrap().clone();
     let (pool, _) = p.start("Pool", "r1", input, &mut no_fns).unwrap();
-    let mut v = Saved::new(&pool, |t| t.delay).to_value();
+    let mut v = Saved::new(&pool, |_, delay| delay).to_value();
     let mut child = base["invokes"][0]["child"].clone();
     child["run"] = json!("r1.3");
     v["nextInvoke"] = json!(4);

@@ -213,6 +213,7 @@ pub fn valid_name(kind: SymbolKind, name: &str) -> Result<(), String> {
             | SymbolKind::Variable
             | SymbolKind::InvokeName
             | SymbolKind::Children
+            | SymbolKind::RaiseName
     );
     if name == "key" && in_machine_namespace {
         return Err(format!(
@@ -276,10 +277,10 @@ fn clash(index: &SymbolIndex, id: SymbolId, new: &str) -> Option<String> {
             machine_of(oid) == machine_of(id)
                 && (contains(s.parent, o.parent) || contains(o.parent, s.parent))
         }
-        K::Parameter | K::Variable | K::InvokeName | K::Children => {
+        K::Parameter | K::Variable | K::InvokeName | K::Children | K::RaiseName => {
             matches!(
                 o.kind,
-                K::Parameter | K::Variable | K::InvokeName | K::Children
+                K::Parameter | K::Variable | K::InvokeName | K::Children | K::RaiseName
             ) && !of_call(o)
                 && machine_of(oid) == machine_of(id)
         }

@@ -51,6 +51,7 @@ pub const FEATURES: &[&str] = &[
     "spawn",
     "ended",
     "task-emits",
+    "raise",
     "invokes",
 ];
 

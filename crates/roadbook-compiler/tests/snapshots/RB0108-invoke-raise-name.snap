@@ -1,0 +1,22 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0108]: `reminder` is already the name of a delayed raise of `M`
+  --> RB0108-invoke-raise-name.road:12:21
+   |
+12 |     invoke one() as reminder
+   |                     ^^^^^^^^
+13 |     on Go raise Ping after 1s as reminder
+   |                                  -------- named here
+   |
+   = help: an `as` name shares the machine's names with its delayed raises; choose another
+
+error[RB0108]: `nudge` is already the name of a delayed raise of `M`
+  --> RB0108-invoke-raise-name.road:18:21
+   |
+18 |     invoke two() as nudge
+   |                     ^^^^^
+19 |     on Go raise Ping after 1s as nudge
+   |                                  ----- named here
+   |
+   = help: an `as` name shares the machine's names with its delayed raises; choose another

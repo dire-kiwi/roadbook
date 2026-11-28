@@ -67,7 +67,7 @@ export interface AttachDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/upload/attach.road",
@@ -545,6 +545,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1109,6 +1110,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {
@@ -1525,6 +1527,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {
         "Progress": {
           "fields": [

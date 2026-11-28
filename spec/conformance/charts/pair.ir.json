@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/pair.road",
@@ -68,6 +68,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -256,6 +257,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

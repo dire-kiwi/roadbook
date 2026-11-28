@@ -49,8 +49,12 @@
 //!   collection of machines is written in IR 0.9's form, `{"machine", "key"}`
 //!   without `kind` and `src`, and a `spawn` effect of one has `machine` in
 //!   place of `src`; a task's `emits` is removed when it is `{}`. So a machine
-//!   that uses no task emits and spawns no tasks keeps its 0.9 hash. `calls`
-//!   and `strict` are always kept.
+//!   that uses no task emits and spawns no tasks keeps its 0.9 hash. A
+//!   machine's `internalEvents` is removed when it is `{}`, so a machine with no
+//!   internal event keeps its 0.10 hash. A state with at most one invoke is written
+//!   with `invoke` in place of `invokes`, and its outcome triggers without `as`, so a
+//!   machine with no state of several invokes keeps its 0.11 hash. `calls` and `strict`
+//!   are always kept.
 //!
 //! Comments, formatting, source positions, `sensitive` marks and unused
 //! declarations therefore do not change a hash (a mark changes only what
@@ -245,7 +249,13 @@ impl Walker<'_> {
 
     fn machine(&mut self, name: &str, m: &Machine) -> Result<(), HashError> {
         self.machine = name.to_owned();
-        self.events = m.events.keys().chain(m.emits.keys()).cloned().collect();
+        self.events = m
+            .events
+            .keys()
+            .chain(m.internal_events.keys())
+            .chain(m.emits.keys())
+            .cloned()
+            .collect();
         self.fields(&m.params)?;
         if let Some(t) = &m.returns {
             self.type_ref(t)?;
@@ -259,7 +269,12 @@ impl Walker<'_> {
                 self.expr(e)?;
             }
         }
-        for e in m.events.values().chain(m.emits.values()) {
+        for e in m
+            .events
+            .values()
+            .chain(m.internal_events.values())
+            .chain(m.emits.values())
+        {
             self.fields(&e.fields)?;
         }
         self.calls(m.calls.values())?;
@@ -360,6 +375,13 @@ impl Walker<'_> {
                     args.iter().try_for_each(|a| self.expr(a))?;
                 }
                 Effect::Stop { key, .. } => self.expr(key)?,
+                Effect::Raise { value, delay, .. } => {
+                    self.expr(value)?;
+                    if let Some(d) = delay {
+                        self.expr(d)?;
+                    }
+                }
+                Effect::Cancel { .. } => {}
             }
         }
         Ok(())
@@ -493,6 +515,12 @@ fn strip(v: &mut Value) {
             {
                 m.remove("children");
             }
+            if m.contains_key("root")
+                && m.get("internalEvents")
+                    .is_some_and(|c| c.as_object().is_some_and(Map::is_empty))
+            {
+                m.remove("internalEvents");
+            }
             if m.get("kind").and_then(Value::as_str) == Some("send")
                 && m.get("key").is_some_and(Value::is_null)
             {
@@ -537,9 +565,9 @@ fn transition_as_before(m: &mut Map<String, Value>) {
     }
 }
 
-/// Writes a state with at most one invoke as IR 0.10 did: `invoke`, the one invoke or `null`,
+/// Writes a state with at most one invoke as IR 0.11 did: `invoke`, the one invoke or `null`,
 /// in place of `invokes`, and its `invoke.done` and `invoke.fail` triggers without `as`. A
-/// machine with no state of several invokes keeps its 0.10 hash.
+/// machine with no state of several invokes keeps its 0.11 hash.
 fn state_as_before(m: &mut Map<String, Value>) {
     let Some(Value::Array(invokes)) = m.get("invokes") else {
         return;

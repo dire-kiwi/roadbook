@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Roadbook IR 0.11",
+  "title": "Roadbook IR 0.12",
   "description": "The compiled form of a Roadbook project: one document per entry file. See spec/ir.md for what each member means. Every member listed is required; absent values are null, missing docs are \"\", and empty lists and maps are [] and {}.",
   "type": "object",
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.11" },
+    "irVersion": { "const": "0.12" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -246,16 +246,22 @@
     "machine": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["doc", "span", "strict", "params", "returns", "errors", "vars", "events", "emits", "calls", "children", "root", "hash"],
+      "required": ["doc", "span", "strict", "params", "returns", "errors", "vars", "events", "internalEvents", "emits", "calls", "children", "root", "hash"],
       "properties": {
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" },
-        "strict": { "type": "boolean", "description": "Written strict machine: an event of its own, a message or a call that enables no transition is an unhandled defect instead of being dropped." },
+        "strict": { "type": "boolean", "description": "Written strict machine: an event of its own, a message, a call or a raised event that enables no transition is an unhandled defect instead of being dropped." },
         "params": { "$ref": "#/$defs/fields" },
         "returns": { "oneOf": [{ "$ref": "#/$defs/typeRef" }, { "type": "null" }] },
         "errors": { "$ref": "#/$defs/errors" },
         "vars": { "type": "array", "items": { "$ref": "#/$defs/var" } },
         "events": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/upperName" },
+          "additionalProperties": { "$ref": "#/$defs/eventDecl" }
+        },
+        "internalEvents": {
+          "description": "Events only the machine raises itself (internal event Name), by name. Not part of its interface.",
           "type": "object",
           "propertyNames": { "$ref": "#/$defs/upperName" },
           "additionalProperties": { "$ref": "#/$defs/eventDecl" }
@@ -662,6 +668,29 @@
             "kind": { "const": "stop" },
             "children": { "$ref": "#/$defs/lowerName" },
             "key": { "$ref": "#/$defs/expr" }
+          }
+        },
+        {
+          "description": "raise Name [{ fields }] [after delay [as name]]: an event of the machine's own, on its internal queue, or after a delay as a timer of the run.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "event", "value", "delay", "name"],
+          "properties": {
+            "kind": { "const": "raise" },
+            "event": { "$ref": "#/$defs/upperName" },
+            "value": { "$ref": "#/$defs/eventValue" },
+            "delay": { "oneOf": [{ "$ref": "#/$defs/expr" }, { "type": "null" }] },
+            "name": { "oneOf": [{ "$ref": "#/$defs/lowerName" }, { "type": "null" }] }
+          }
+        },
+        {
+          "description": "cancel name: cancel the pending delayed raise of that name, if any.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "name"],
+          "properties": {
+            "kind": { "const": "cancel" },
+            "name": { "$ref": "#/$defs/lowerName" }
           }
         }
       ]

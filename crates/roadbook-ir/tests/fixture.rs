@@ -165,6 +165,13 @@ fn state_exprs_mut(s: &mut State, f: &mut impl FnMut(&mut Expr)) {
                     args.iter_mut().for_each(|a| exprs_mut(a, &mut |x| f(x)))
                 }
                 Effect::Stop { key, .. } => exprs_mut(key, &mut |x| f(x)),
+                Effect::Raise { value, delay, .. } => {
+                    exprs_mut(value, &mut |x| f(x));
+                    if let Some(d) = delay {
+                        exprs_mut(d, &mut |x| f(x));
+                    }
+                }
+                Effect::Cancel { .. } => {}
             }
         }
     };
@@ -315,11 +322,11 @@ fn hash_writes_one_target_as_before() {
     assert!(t["target"].is_string(), "{t}");
 }
 
-/// IR 0.11's `invokes` and the `as` of outcome triggers leave the hash of a machine with no
-/// state of several invokes as it was in 0.10: its view writes such a state's `invoke` and its
+/// IR 0.12's `invokes` and the `as` of outcome triggers leave the hash of a machine with no
+/// state of several invokes as it was in 0.11: its view writes such a state's `invoke` and its
 /// triggers without `as`. A second invoke is written as it is, and changes the hash.
 #[test]
-fn hash_writes_a_state_with_one_invoke_as_0_10_did() {
+fn hash_writes_a_state_with_one_invoke_as_0_11_did() {
     let ir = fixture();
     let view = roadbook_ir::semantic_view(&ir, "Checkout").unwrap();
     let charging = &view["machines"]["Checkout"]["root"]["states"][0];
@@ -356,6 +363,41 @@ fn hash_writes_a_state_with_one_invoke_as_0_10_did() {
         *alias = Some("again".into());
     }
     assert_ne!(machine_hash(&swapped, "Checkout").unwrap(), several);
+}
+
+/// IR 0.11's `internalEvents` is left out of the view when it is empty, so a machine with no
+/// internal event keeps its 0.10 hash; one with an internal event, or a `raise`, hashes
+/// differently.
+#[test]
+fn hash_leaves_out_empty_internal_events() {
+    let ir = fixture();
+    let checkout = machine_hash(&ir, "Checkout").unwrap();
+    let view = roadbook_ir::semantic_view(&ir, "Checkout").unwrap();
+    assert!(view["machines"]["Checkout"].get("internalEvents").is_none());
+    let mut changed = ir.clone();
+    let span = changed.machines["Checkout"].span;
+    changed.machines["Checkout"].internal_events.insert(
+        "Ping".into(),
+        roadbook_ir::EventDecl {
+            fields: vec![],
+            doc: String::new(),
+            span,
+        },
+    );
+    assert_ne!(machine_hash(&changed, "Checkout").unwrap(), checkout);
+    let ping = Expr {
+        ty: "Ping".parse().unwrap(),
+        kind: ExprKind::Record { fields: vec![] },
+        text: "Ping".into(),
+    };
+    let with_ping = machine_hash(&changed, "Checkout").unwrap();
+    changed.machines["Checkout"].root.entry.push(Effect::Raise {
+        event: "Ping".into(),
+        value: ping,
+        delay: None,
+        name: None,
+    });
+    assert_ne!(machine_hash(&changed, "Checkout").unwrap(), with_ping);
 }
 
 /// The hash of a machine that uses none of IR 0.10's additions (task emits, task addresses,
@@ -603,7 +645,7 @@ fn messaging_fixture_round_trips_and_matches_the_schema() {
         ),
         ("/sources/1/package".into(), "".into()),
         // `as` on a call, the state's one invoke; on a task it is allowed from IR 0.10 (for a
-        // task that emits), and on either from 0.11 in a state with several invokes.
+        // task that emits), and on either from 0.12 in a state with several invokes.
         (format!("{call}/as"), "reserving".into()),
     ];
     for (pointer, value) in cases {

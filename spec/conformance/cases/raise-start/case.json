@@ -1,0 +1,20 @@
+{
+  "description": "A raise in the entry of the initial state is taken while the run starts: `start` settles, takes `Ping` and goes to `B`. Going back to `A` raises it again, taken in the same step.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Starter",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Back"
+      }
+    }
+  ],
+  "status": "running"
+}

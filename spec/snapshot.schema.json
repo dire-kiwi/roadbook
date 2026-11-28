@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Roadbook saved snapshot",
-  "description": "A saved snapshot of a top-level run: the core's snapshot (spec/execution.md#snapshot) with the format version and each timer's due time, and, in version 4, the saved snapshot of each child run that was running, nested in its invoke or spawned entry (child). See spec/execution.md#saving-and-restoring for what each member means and how a runtime restores one. It holds real values, those of sensitive parameters and variables too: nothing in it is redacted (spec/trace.md#redaction). Every member is required but calls, history and spawned, and no other member is allowed. Version 1, written before history states, has neither history nor spawned; version 2 has history; version 3 has both; version 4 has both and may have child members. calls, written only when not empty, may be in any version.",
+  "description": "A saved snapshot of a top-level run: the core's snapshot (spec/execution.md#snapshot) with the format version and each timer's due time, and, in version 4, the saved snapshot of each child run that was running, nested in its invoke or spawned entry (child). See spec/execution.md#saving-and-restoring for what each member means and how a runtime restores one. It holds real values, those of sensitive parameters and variables too: nothing in it is redacted (spec/trace.md#redaction). Every member is required but calls, scheduled, history and spawned, and no other member is allowed. Version 1, written before history states, has neither history nor spawned; version 2 has history; version 3 has both; version 4 has both and may have child members. calls and scheduled, each written only when not empty, may be in any version.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -136,6 +136,32 @@
           "delay": { "description": "The evaluated delay, in milliseconds.", "$ref": "#/$defs/safeNatural" },
           "due": {
             "description": "When the timer expires, on the driver's clock, in integer milliseconds: since the Unix epoch in production, virtual time in conformance.",
+            "$ref": "#/$defs/safeNatural"
+          }
+        }
+      }
+    },
+    "scheduled": {
+      "description": "The pending delayed raises (raise E after d as n), in the order they were started. Written only when not empty; a snapshot without it has none.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "delay", "value", "due"],
+        "properties": {
+          "id": { "description": "The raise's timer id, from the sequence after timers take theirs from.", "$ref": "#/$defs/id" },
+          "name": {
+            "description": "The raise's as name, or null.",
+            "oneOf": [{ "$ref": "#/$defs/lowerName" }, { "type": "null" }]
+          },
+          "delay": { "description": "The evaluated delay, in milliseconds.", "$ref": "#/$defs/safeNatural" },
+          "value": {
+            "description": "The event to raise, a tagged record of one of the machine's events or internal events.",
+            "$ref": "#/$defs/tagged"
+          },
+          "due": {
+            "description": "When it expires, on the driver's clock, in integer milliseconds.",
             "$ref": "#/$defs/safeNatural"
           }
         }

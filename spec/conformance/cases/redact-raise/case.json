@@ -1,0 +1,36 @@
+{
+  "description": "A sensitive field of an internal event is redacted in the `raised` and `raise.scheduled` records, in the inputs that take it, and in the `restored` record's snapshot; the saved snapshot keeps the real value.",
+  "requires": [
+    "raise",
+    "snapshots"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Vault",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Lock",
+        "code": "1234"
+      }
+    },
+    {
+      "snapshot": "closed"
+    },
+    {
+      "advance": 500
+    },
+    {
+      "restore": "closed",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "advance": 500
+    }
+  ],
+  "status": "running"
+}

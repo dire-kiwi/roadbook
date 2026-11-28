@@ -1,0 +1,62 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A raise in a transition, one in an entry and one in a final state's entry, with an
+  always and a completion in play: all are taken in the step, in the order queued.
+-->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Order" datamodel="roadbook" initial="Order_Idle">
+  <datamodel>
+    <data id="n" expr="0" rb:type="int"/>
+  </datamodel>
+  <state id="Order_Idle">
+    <transition event="Go" target="Order_Work">
+      <send event="Ping" target="#_internal">
+        <param name="n" expr="1"/>
+      </send>
+      <rb:do action="log">
+        <param name="what" expr="&quot;go&quot;"/>
+      </rb:do>
+    </transition>
+  </state>
+  <state id="Order_Work" initial="Order_Work_Inner">
+    <transition event="Ping" type="internal">
+      <assign location="n" expr="n + event.n"/>
+      <rb:do action="log">
+        <param name="what" expr="&quot;ping&quot;"/>
+      </rb:do>
+    </transition>
+    <transition event="Pong" type="internal">
+      <rb:do action="log">
+        <param name="what" expr="&quot;pong&quot;"/>
+      </rb:do>
+    </transition>
+    <transition event="done.state.Order_Work" target="Order_After">
+      <rb:do action="log">
+        <param name="what" expr="&quot;done&quot;"/>
+      </rb:do>
+    </transition>
+    <state id="Order_Work_Inner">
+      <onentry>
+        <raise event="Pong"/>
+      </onentry>
+      <transition target="Order_Work_Finished"/>
+    </state>
+    <final id="Order_Work_Finished">
+      <onentry>
+        <send event="Ping" target="#_internal">
+          <param name="n" expr="2"/>
+        </send>
+      </onentry>
+    </final>
+  </state>
+  <state id="Order_After">
+    <transition event="Next" type="internal">
+      <rb:do action="log">
+        <param name="what" expr="&quot;next&quot;"/>
+      </rb:do>
+    </transition>
+  </state>
+</scxml>

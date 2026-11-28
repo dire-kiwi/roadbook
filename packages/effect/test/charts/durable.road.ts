@@ -41,7 +41,7 @@ export interface PipelineDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable.road",
@@ -238,6 +238,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -757,6 +758,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1129,6 +1131,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {
         "Total": {
           "fields": [
@@ -1336,6 +1339,7 @@ const ir: unknown = {
       "errors": [],
       "vars": [],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1599,6 +1603,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1878,6 +1883,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -2350,6 +2356,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {
@@ -2772,6 +2779,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -2956,6 +2964,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -3219,6 +3228,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {
@@ -3309,7 +3319,7 @@ const ir: unknown = {
                   "line": 235,
                   "col": 5,
                   "endLine": 235,
-                  "endCol": 66
+                  "endCol": 71
                 }
               },
               {
@@ -3349,7 +3359,7 @@ const ir: unknown = {
                   "line": 236,
                   "col": 5,
                   "endLine": 236,
-                  "endCol": 47
+                  "endCol": 52
                 }
               },
               {
@@ -3396,7 +3406,7 @@ const ir: unknown = {
                   "line": 237,
                   "col": 5,
                   "endLine": 237,
-                  "endCol": 51
+                  "endCol": 56
                 }
               },
               {
@@ -3416,7 +3426,7 @@ const ir: unknown = {
                   "line": 238,
                   "col": 5,
                   "endLine": 238,
-                  "endCol": 22
+                  "endCol": 28
                 }
               }
             ],
@@ -3460,6 +3470,270 @@ const ir: unknown = {
         "fail": null
       },
       "hash": "sha256:54b9564ac1a34004e7ba65cb1b02ee4646f2cfa7ec1cb2b850e3eb9f19eed3be"
+    },
+    "Nagger": {
+      "doc": "A reminder that belongs to the run: a delayed raise, which leaving `Asleep` does not cancel,\ncounted when it fires.",
+      "span": {
+        "file": 0,
+        "line": 246,
+        "col": 1,
+        "endLine": 262,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "nags",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 247,
+            "col": 3,
+            "endLine": 247,
+            "endCol": 20
+          }
+        }
+      ],
+      "events": {
+        "Wake": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 249,
+            "col": 3,
+            "endLine": 249,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {
+        "Nag": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 250,
+            "col": 3,
+            "endLine": 250,
+            "endCol": 21
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Nagger",
+        "name": "Nagger",
+        "kind": "compound",
+        "doc": "A reminder that belongs to the run: a delayed raise, which leaving `Asleep` does not cancel,\ncounted when it fires.",
+        "span": {
+          "file": 0,
+          "line": 246,
+          "col": 1,
+          "endLine": 262,
+          "endCol": 2
+        },
+        "initial": "Nagger.Asleep",
+        "states": [
+          {
+            "id": "Nagger.Asleep",
+            "name": "Asleep",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 254,
+              "col": 3,
+              "endLine": 257,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "raise",
+                "event": "Nag",
+                "value": {
+                  "kind": "record",
+                  "fields": [],
+                  "type": "Nag",
+                  "text": "Nag"
+                },
+                "delay": {
+                  "kind": "call",
+                  "fn": "patience",
+                  "args": [],
+                  "type": "duration",
+                  "text": "patience()"
+                },
+                "name": "nag"
+              }
+            ],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Wake"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Nagger.Awake"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 256,
+                  "col": 5,
+                  "endLine": 256,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Nagger.Awake",
+            "name": "Awake",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 259,
+              "col": 3,
+              "endLine": 259,
+              "endCol": 69
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Nag"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Nagger.Done"
+                ],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "nags",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "nags"
+                          ],
+                          "type": "int",
+                          "text": "nags"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "nags + 1"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "nag",
+                        "type": "string",
+                        "text": "\"nag\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 259,
+                  "col": 17,
+                  "endLine": 259,
+                  "endCol": 67
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Nagger.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 261,
+              "col": 3,
+              "endLine": 261,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "nags"
+              ],
+              "type": "int",
+              "text": "nags"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:740a98dc23cb7483947e7dedb0b18ad80046ae463357c640b1cfad23888c5ba6"
     }
   }
 }
@@ -3754,3 +4028,28 @@ export interface CrewDef extends Roadbook.MachineDef {
 
 /** Spawns a `progress` task per key, notes what they say, and adds up what they give. */
 export const Crew = Roadbook.make<CrewDef>(ir, "Crew", errors)
+
+// ---- machine: Nagger ----
+
+export const Wake = Schema.TaggedStruct("Wake", {})
+export type Wake = typeof Wake.Type
+
+export interface NaggerDef extends Roadbook.MachineDef {
+  readonly name: "Nagger"
+  readonly input: { readonly id: string }
+  readonly output: number
+  readonly error: never
+  readonly event: Wake
+  readonly emits: never
+  readonly state: "Nagger" | "Nagger.Asleep" | "Nagger.Awake" | "Nagger.Done"
+  readonly fns: { readonly patience: { readonly args: {}; readonly returns: Duration.Duration } }
+  readonly actions: { readonly log: { readonly text: string } }
+  readonly tasks: {}
+  readonly machines: {}
+}
+
+/**
+ * A reminder that belongs to the run: a delayed raise, which leaving `Asleep` does not cancel,
+ * counted when it fires.
+ */
+export const Nagger = Roadbook.make<NaggerDef>(ir, "Nagger", errors)

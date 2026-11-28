@@ -293,6 +293,24 @@ fn top_level_runs_are_started_in_order() {
             if ended {
                 assert!(messaging, "{}: `ended` needs `messaging` too", c.name);
             }
+            fn has_raise(s: &roadbook_ir::State) -> bool {
+                s.entry
+                    .iter()
+                    .chain(&s.exit)
+                    .chain(s.transitions.iter().flat_map(|t| &t.effects))
+                    .any(|e| matches!(e, roadbook_ir::Effect::Raise { .. }))
+                    || s.states.iter().any(has_raise)
+            }
+            let raise = ir
+                .machines
+                .values()
+                .any(|m| has_raise(&m.root) || !m.internal_events.is_empty());
+            assert_eq!(
+                raise,
+                requires("raise"),
+                "{}: `requires` must list `raise` exactly when a machine of its chart raises an event or declares an internal one",
+                c.name
+            );
         }
     }
 }
@@ -409,6 +427,9 @@ fn every_status_and_record_kind_is_covered() {
         "restored",
         "suspended",
         "replied",
+        "raised",
+        "raise.scheduled",
+        "raise.cancelled",
     ] {
         assert!(kinds.contains(k), "no expected trace has a `{k}` record");
     }
@@ -417,7 +438,7 @@ fn every_status_and_record_kind_is_covered() {
         .flat_map(|c| c.records.iter())
         .filter_map(|r| r["event"]["kind"].as_str())
         .collect();
-    for k in ["message", "emitted", "call"] {
+    for k in ["message", "emitted", "call", "raised"] {
         assert!(inputs.contains(k), "no expected trace takes a `{k}` input");
     }
 }

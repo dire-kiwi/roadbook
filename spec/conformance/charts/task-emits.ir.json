@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/task-emits.road",
@@ -230,6 +230,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -641,6 +642,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -995,6 +997,7 @@
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1304,6 +1307,7 @@
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1554,6 +1558,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1873,6 +1878,7 @@
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

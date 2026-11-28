@@ -1,0 +1,24 @@
+task one() emits Tick
+task two()
+
+// An `as` name and the name of a delayed raise share the machine's namespace, whether the
+// state has one invoke or several.
+machine M() {
+  event Go
+  event Ping
+
+  initial A
+  state A {
+    invoke one() as reminder
+    on Go raise Ping after 1s as reminder
+    on Ping -> B
+  }
+  state B {
+    invoke one() as first
+    invoke two() as nudge
+    on Go raise Ping after 1s as nudge
+  }
+}
+
+// expect: RB0108 at 12:21
+// expect: RB0108 at 18:21

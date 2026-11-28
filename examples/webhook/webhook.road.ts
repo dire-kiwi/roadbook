@@ -84,7 +84,7 @@ export interface PaymentWebhookDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/webhook/webhook.road",
@@ -551,6 +551,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

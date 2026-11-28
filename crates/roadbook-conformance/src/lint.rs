@@ -49,6 +49,11 @@ struct Run {
     spawn_ids: std::collections::HashSet<u64>,
     next_invoke: u64,
     timers: BTreeMap<u64, (String, u64)>,
+    /// The pending delayed raises, by timer id: their names.
+    scheduled: BTreeMap<u64, Option<String>>,
+    /// The events a `raised` record put on the internal queue and no `event` or `dropped`
+    /// record has taken yet, in order.
+    raised: std::collections::VecDeque<Value>,
     next_timer: u64,
     last_t: u64,
     end: Option<Value>,
@@ -239,6 +244,12 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     run.timers
                         .insert(n, (str_of(&tm, "state").to_owned(), u64_of(&tm, "index")));
                     run.restarts.push(("timer", n));
+                }
+                for sc in list("scheduled") {
+                    let n = u64_of(&sc, "id");
+                    run.scheduled
+                        .insert(n, sc["name"].as_str().map(str::to_owned));
+                    run.restarts.push(("raise", n));
                 }
                 run.next_invoke = u64_of(snap, "nextInvoke");
                 run.next_timer = u64_of(snap, "nextTimer");
@@ -462,8 +473,13 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                             .unwrap_or(Value::Null);
                         run.invoke_ends.insert(n, (ekind.clone(), payload));
                     }
+                } else if ekind == "raised" {
+                    let v = e.get("value").cloned().unwrap_or(Value::Null);
+                    if run.raised.pop_front() != Some(v) {
+                        bad("a raised event taken that is not the next one raised".to_owned());
+                    }
                 } else if let Some(n) = e.get("timer").and_then(Value::as_u64) {
-                    let live = run.timers.contains_key(&n);
+                    let live = run.timers.contains_key(&n) || run.scheduled.contains_key(&n);
                     if kind == "stale" {
                         if live || n >= run.next_timer {
                             bad(format!(
@@ -474,6 +490,7 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                         bad(format!("expiry of timer {n}, which is not running"));
                     } else {
                         run.timers.remove(&n);
+                        run.scheduled.remove(&n);
                     }
                 } else if kind == "stale" {
                     bad("only outcomes and expiries can be stale".to_owned());
@@ -688,6 +705,37 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 }
                 run.timers.insert(n, (s, u64_of(r, "index")));
             }
+            "raised" => run
+                .raised
+                .push_back(r.get("value").cloned().unwrap_or(Value::Null)),
+            "raise.scheduled" => {
+                let n = u64_of(r, "timer");
+                let name = r["name"].as_str().map(str::to_owned);
+                if let Some(i) = run.restarts.iter().position(|x| *x == ("raise", n)) {
+                    run.restarts.remove(i);
+                    if run.scheduled.remove(&n) != Some(name.clone()) {
+                        bad(format!("restarted delayed raise {n} is not the snapshot's"));
+                    }
+                } else {
+                    if n != run.next_timer {
+                        bad(format!("timer id {n}, expected {}", run.next_timer));
+                    }
+                    run.next_timer = n + 1;
+                }
+                if name.is_some() && run.scheduled.values().any(|x| *x == name) {
+                    bad(format!("two delayed raises named {name:?} are pending"));
+                }
+                run.scheduled.insert(n, name);
+            }
+            "raise.cancelled" => {
+                let n = u64_of(r, "timer");
+                let name = r["name"].as_str().map(str::to_owned);
+                if run.scheduled.remove(&n) != Some(name) {
+                    bad(format!(
+                        "cancelled delayed raise {n}, which is not pending as written"
+                    ));
+                }
+            }
             "timer.cancelled" => {
                 let n = u64_of(r, "timer");
                 let want = (str_of(r, "state").to_owned(), u64_of(r, "index"));
@@ -716,7 +764,10 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     if !run.stack.is_empty() {
                         bad(format!("run {id} ended with states still active"));
                     }
-                    if !run.invokes.is_empty() || !run.timers.is_empty() || !run.spawned.is_empty()
+                    if !run.invokes.is_empty()
+                        || !run.timers.is_empty()
+                        || !run.spawned.is_empty()
+                        || !run.scheduled.is_empty()
                     {
                         bad(format!("run {id} ended with work still running"));
                     }

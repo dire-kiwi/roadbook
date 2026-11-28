@@ -1,0 +1,31 @@
+{
+  "description": "A delayed raise whose name is pending replaces it: `Again` cancels the reminder `Start` scheduled (`raise.cancelled`, a cancelled timer) and schedules its own for 500 ms, with a new id. Only the new one fires.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Reminder",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Start"
+      }
+    },
+    {
+      "advance": 500
+    },
+    {
+      "event": {
+        "_tag": "Again"
+      }
+    },
+    {
+      "advance": 500
+    }
+  ],
+  "status": "running"
+}

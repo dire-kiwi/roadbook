@@ -1,0 +1,20 @@
+{
+  "description": "The root's `exit` effects run as the run finishes: the immediate `Bye` they raise is written as `raised` and thrown away with the internal queue, and the delayed one they start is cancelled after the exits, before the `done` record.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Ending",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Finish"
+      }
+    }
+  ],
+  "status": "done"
+}

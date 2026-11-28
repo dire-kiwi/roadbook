@@ -1,0 +1,185 @@
+// Conformance chart: events a machine raises itself. The internal queue, its order
+// against always and done, delayed raises as timers of the run, cancel, strict machines,
+// the end of a run, and redaction.
+
+action log(what: string)
+
+/// A raise in a transition, one in an entry and one in a final state's entry, with an
+/// always and a completion in play: all are taken in the step, in the order queued.
+machine Order() {
+  event Go
+  event Next
+  internal event Ping { n: int }
+  internal event Pong
+  var n: int = 0
+
+  initial Idle
+
+  state Idle { on Go -> Work  raise Ping { n: 1 }  do log("go") }
+
+  state Work {
+    initial Inner
+    on Ping           set n = n + event.n  do log("ping")
+    on Pong           do log("pong")
+    done    -> After  do log("done")
+
+    state Inner {
+      entry raise Pong
+      always -> Finished
+    }
+
+    final state Finished { entry raise Ping { n: 2 } }
+  }
+
+  state After { on Next do log("next") }
+}
+
+/// A raise in an initial entry is taken while the run starts.
+machine Starter() {
+  event Back
+  internal event Ping
+
+  initial A
+
+  state A {
+    entry raise Ping
+    on Ping -> B
+  }
+
+  state B { on Back -> A }
+}
+
+/// A raised event that no transition of the current states takes is dropped.
+machine Lenient() {
+  event Go
+  event Later
+  event Move
+  internal event Ping
+
+  initial A
+
+  state A {
+    on Go          raise Ping
+    on Later       raise Ping after 1s
+    on Move  -> B
+  }
+
+  state B { on Ping -> A }
+}
+
+/// The same in a strict machine: a raised event, or a delayed raise's expiry, that no
+/// transition takes is `unhandled`.
+strict machine Picky() {
+  event Go
+  event Later
+  event Move
+  internal event Ping
+
+  initial A
+
+  state A {
+    on Go          raise Ping
+    on Later       raise Ping after 1s
+    on Move  -> B
+  }
+
+  state B { on Ping -> A }
+}
+
+/// A raise that raises itself again hits the limit.
+machine Loop() {
+  event Go
+  internal event Ping
+
+  initial A
+
+  state A {
+    on Go   raise Ping
+    on Ping raise Ping
+  }
+}
+
+/// A reminder that belongs to the run: it survives leaving the state that started it, is
+/// replaced by a raise of the same name, cancelled by `cancel`, and saved with its deadline.
+machine Reminder() {
+  event Start
+  event Stop
+  event Again
+  event Confirm
+  event Boom
+  internal event Remind { attempt: int }
+  var attempts: int = 0
+
+  initial Idle
+
+  state Idle {
+    on Start -> Waiting  raise Remind { attempt: 1 } after 1s as reminder
+    on Stop              cancel reminder
+  }
+
+  state Waiting {
+    on Remind  -> Waiting    set attempts = event.attempt  raise Remind { attempt: event.attempt + 1 } after 1s as reminder
+    on Again                 raise Remind { attempt: 10 } after 500ms as reminder
+    on Stop    -> Idle       cancel reminder
+    on Confirm -> Confirmed
+    on Boom                  do log("boom")
+    after 3s   -> GaveUp
+  }
+
+  final state Confirmed {}
+  final state GaveUp    {}
+}
+
+/// What the exit effects of a run's last step raise is thrown away, and its delayed raises
+/// are cancelled after its exits.
+machine Ending() {
+  event Finish
+  internal event Bye
+
+  initial A
+  exit raise Bye  raise Bye after 1s as bye
+
+  state A {
+    on Finish -> Over
+    on Bye             do log("bye")
+  }
+
+  final state Over {}
+}
+
+/// A child run with a pending raise, which its parent cancels by leaving the invoking state.
+machine Ticker() {
+  internal event Tick
+
+  initial Running
+  entry raise Tick after 1s as tick
+
+  state Running { on Tick -> Running  raise Tick after 1s as tick }
+}
+
+machine Parent() {
+  event Leave
+
+  initial Using
+
+  state Using {
+    invoke Ticker() {
+      done -> Left
+    }
+    on Leave -> Left
+  }
+
+  final state Left {}
+}
+
+/// A sensitive field of a raised event is redacted in every record that shows it.
+machine Vault() {
+  event Lock            { code: string }
+  internal event Locked { sensitive code: string }
+
+  initial Open
+
+  state Open { on Lock -> Closed  raise Locked { code: event.code }  raise Locked { code: event.code } after 1s as relock }
+
+  state Closed { on Locked do log("locked") }
+}

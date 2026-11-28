@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/ended-order.road",
@@ -76,6 +76,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {
         "Closing": {
           "fields": [],
@@ -357,6 +358,7 @@
       "errors": [],
       "vars": [],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

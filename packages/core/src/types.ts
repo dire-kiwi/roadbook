@@ -14,7 +14,10 @@ export type Defect =
   | { readonly kind: "undeclared"; readonly error: string }
   | { readonly kind: "limit" }
   /** A `strict` machine was given one of its own events, a message or a call that enabled no transition. */
-  | { readonly kind: "unhandled"; readonly event: Extract<Input, { readonly kind: "event" | "message" | "call" }> }
+  | {
+    readonly kind: "unhandled"
+    readonly event: Extract<Input, { readonly kind: "event" | "message" | "call" | "after" | "raised" }>
+  }
   /** A `reply` was given a pending-call value whose call `call` is not pending. */
   | { readonly kind: "answered"; readonly call: string }
 
@@ -51,6 +54,16 @@ export interface TimerEntry {
   readonly delay: number
 }
 
+/** A pending delayed raise (`raise E after d [as n]`): a timer of the run, not of a state. */
+export interface ScheduledEntry {
+  /** Its timer id, from the sequence `after` timers take theirs from. */
+  readonly id: number
+  readonly name: string | null
+  readonly delay: number
+  /** The event it raises, one of the machine's own events. */
+  readonly value: Tagged
+}
+
 export type RunResult =
   | { readonly output: Json }
   | { readonly error: Json }
@@ -72,6 +85,8 @@ export interface Snapshot {
   readonly calls: ReadonlyArray<CallEntry>
   readonly spawned: ReadonlyArray<SpawnedEntry>
   readonly timers: ReadonlyArray<TimerEntry>
+  /** The pending delayed raises, in the order they were started. */
+  readonly scheduled: ReadonlyArray<ScheduledEntry>
   readonly nextInvoke: number
   readonly nextTimer: number
   /** The id the next `send` or `emit` effect will get. */
@@ -95,6 +110,11 @@ export interface SavedTimer extends TimerEntry {
   readonly due: number
 }
 
+/** A delayed raise of a saved snapshot, with its due time. */
+export interface SavedScheduled extends ScheduledEntry {
+  readonly due: number
+}
+
 /**
  * A saved snapshot (execution.md, "The saved snapshot"): the core's snapshot as a run's last
  * step left it, with the format version, each timer's due time and, in version 4, the saved
@@ -105,12 +125,14 @@ export interface SavedTimer extends TimerEntry {
  * restores with no children, and version 1, written before history states, has no `history`
  * either and restores as if it had `{}`.
  */
-export interface Saved extends Omit<Snapshot, "invokes" | "timers" | "calls" | "history" | "spawned"> {
+export interface Saved extends Omit<Snapshot, "invokes" | "timers" | "calls" | "history" | "spawned" | "scheduled"> {
   readonly snapshotVersion: 1 | 2 | 3 | 4
   readonly invokes: ReadonlyArray<SavedInvoke>
   /** Written only when the run has pending calls, in any version; a snapshot without it has none. */
   readonly calls?: ReadonlyArray<CallEntry>
   readonly timers: ReadonlyArray<SavedTimer>
+  /** Written only when the run has pending delayed raises, in any version; a snapshot without it has none. */
+  readonly scheduled?: ReadonlyArray<SavedScheduled>
   /** Set exactly in versions 2 to 4. */
   readonly history?: History
   /** Set exactly in versions 3 and 4. */
@@ -178,6 +200,8 @@ export type Input =
   | { readonly kind: "spawn.fail"; readonly spawn: number; readonly error: Tagged }
   | { readonly kind: "spawn.defect"; readonly spawn: number; readonly defect: Defect }
   | { readonly kind: "after"; readonly timer: number }
+  /** An event the run raised itself, as the core takes it from the internal queue: only in records. */
+  | { readonly kind: "raised"; readonly value: Tagged }
   | { readonly kind: "cancel" }
   | { readonly kind: "defect"; readonly defect: Defect }
 
@@ -241,6 +265,15 @@ export type CoreRecord =
     readonly delay: number
   }
   | { readonly kind: "timer.cancelled"; readonly timer: number; readonly state: string; readonly index: number }
+  | { readonly kind: "raised"; readonly value: Tagged }
+  | {
+    readonly kind: "raise.scheduled"
+    readonly timer: number
+    readonly name: string | null
+    readonly delay: number
+    readonly value: Tagged
+  }
+  | { readonly kind: "raise.cancelled"; readonly timer: number; readonly name: string | null }
   | { readonly kind: "done"; readonly state: string; readonly output: Json }
   | { readonly kind: "failed"; readonly state: string; readonly error: Json }
   | { readonly kind: "cancelled" }

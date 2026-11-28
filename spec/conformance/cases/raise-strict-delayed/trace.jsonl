@@ -1,0 +1,7 @@
+{"input":{},"ir":"sha256:f87a8aff1bfad48df50b3ff6555379cb775a1a4f945bac6e5755c0b0d9869420","kind":"started","machine":"Picky","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Picky","t":0}
+{"kind":"entered","run":"r1","state":"Picky.A","t":0}
+{"event":{"kind":"event","value":{"_tag":"Later"}},"kind":"event","run":"r1","t":0}
+{"from":"Picky.A","index":1,"kind":"transition","run":"r1","t":0,"to":[]}
+{"delay":1000,"kind":"raise.scheduled","name":null,"run":"r1","t":0,"timer":1,"value":{"_tag":"Ping"}}
+{"defect":{"event":{"kind":"after","timer":1},"kind":"unhandled"},"kind":"defect","run":"r1","t":1000}

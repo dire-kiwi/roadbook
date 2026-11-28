@@ -352,6 +352,16 @@ fn effect(e: &Effect) -> String {
             format!("send {}{which}.{}", to.name, value.text)
         }
         Effect::Emit { value, .. } => format!("emit {}", value.text),
+        Effect::Raise {
+            value, delay, name, ..
+        } => {
+            let delay = delay
+                .as_ref()
+                .map_or(String::new(), |d| format!(" after {}", d.text));
+            let name = name.as_ref().map_or(String::new(), |n| format!(" as {n}"));
+            format!("raise {}{delay}{name}", value.text)
+        }
+        Effect::Cancel { name } => format!("cancel {name}"),
         Effect::Reply {
             call,
             outcome,

@@ -1,0 +1,20 @@
+{
+  "description": "`on Ping raise Ping` raises the event it takes: each raise is a microstep of settling, which ends with `limit` after 1000.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Loop",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    }
+  ],
+  "status": "defect"
+}

@@ -1,0 +1,338 @@
+{
+  "irVersion": "0.12",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/raise-regions.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Regions": {
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 29,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 7,
+            "col": 3,
+            "endLine": 7,
+            "endCol": 11
+          }
+        }
+      },
+      "internalEvents": {
+        "Signal": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 24
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Regions",
+        "name": "Regions",
+        "kind": "compound",
+        "doc": "",
+        "span": {
+          "file": 0,
+          "line": 6,
+          "col": 1,
+          "endLine": 29,
+          "endCol": 2
+        },
+        "initial": "Regions.P",
+        "states": [
+          {
+            "id": "Regions.P",
+            "name": "P",
+            "kind": "parallel",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 12,
+              "col": 3,
+              "endLine": 28,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [
+              {
+                "id": "Regions.P.Left",
+                "name": "Left",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 13,
+                  "col": 5,
+                  "endLine": 19,
+                  "endCol": 6
+                },
+                "initial": "Regions.P.Left.L1",
+                "states": [
+                  {
+                    "id": "Regions.P.Left.L1",
+                    "name": "L1",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 16,
+                      "col": 7,
+                      "endLine": 16,
+                      "endCol": 45
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Go"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [
+                          "Regions.P.Left.L2"
+                        ],
+                        "internal": false,
+                        "effects": [
+                          {
+                            "kind": "raise",
+                            "event": "Signal",
+                            "value": {
+                              "kind": "record",
+                              "fields": [],
+                              "type": "Signal",
+                              "text": "Signal"
+                            },
+                            "delay": null,
+                            "name": null
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 16,
+                          "col": 18,
+                          "endLine": 16,
+                          "endCol": 43
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Regions.P.Left.L2",
+                    "name": "L2",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 18,
+                      "col": 7,
+                      "endLine": 18,
+                      "endCol": 44
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Signal"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [],
+                        "internal": false,
+                        "effects": [
+                          {
+                            "kind": "do",
+                            "action": "log",
+                            "args": [
+                              {
+                                "kind": "lit",
+                                "value": "left",
+                                "type": "string",
+                                "text": "\"left\""
+                              }
+                            ]
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 18,
+                          "col": 18,
+                          "endLine": 18,
+                          "endCol": 42
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Regions.P.Right",
+                "name": "Right",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 5,
+                  "endLine": 27,
+                  "endCol": 6
+                },
+                "initial": "Regions.P.Right.R1",
+                "states": [
+                  {
+                    "id": "Regions.P.Right.R1",
+                    "name": "R1",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 24,
+                      "col": 7,
+                      "endLine": 24,
+                      "endCol": 35
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Signal"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [
+                          "Regions.P.Right.R2"
+                        ],
+                        "internal": false,
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 24,
+                          "col": 18,
+                          "endLine": 24,
+                          "endCol": 33
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Regions.P.Right.R2",
+                    "name": "R2",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 26,
+                      "col": 7,
+                      "endLine": 26,
+                      "endCol": 18
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:cc80679f41917986fd2e3040fa74f764babe93b93100c80b22c865a5059426ca"
+    }
+  }
+}

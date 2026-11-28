@@ -10,7 +10,7 @@
  * generic type substituted. A member a type does not declare is left as it is. Values are never
  * changed in place: what is redacted is a copy.
  */
-import type { CallDecl, Field, Ir, Machine, TaskDecl } from "./ir.ts"
+import { type CallDecl, type Field, type Ir, type Machine, ownEvent, type TaskDecl } from "./ir.ts"
 import { expandType, fieldsOf, parseTypeRef, type TypeRef } from "./typeref.ts"
 import type { Json } from "./json.ts"
 import type { CoreRecord, Defect, Input, InvokeEntry, Saved, SpawnedEntry, Tagged } from "./types.ts"
@@ -45,7 +45,9 @@ const marks = (ir: Ir): Marks => {
     Object.values(ir.machines).some((m) =>
       marked(m.params) || m.vars.some((v) => v.sensitive) ||
       Object.values(m.calls).some((c) => marked(c.params)) ||
-      [...Object.values(m.events), ...Object.values(m.emits)].some((e) => marked(e.fields))
+      [...Object.values(m.events), ...Object.values(m.internalEvents), ...Object.values(m.emits)].some((e) =>
+        marked(e.fields)
+      )
     )
   const carries = new Map<string, boolean>()
   if (any) {
@@ -192,9 +194,9 @@ class Redactor {
     return isObject(v) && typeof v._tag === "string" ? v._tag : ""
   }
 
-  /** `v` redacted by its tag as one of `m`'s `emits` if `emits`, else of its `events`. */
+  /** `v` redacted by its tag as one of `m`'s `emits` if `emits`, else of its own events (`events` and `internalEvents`). */
   private event(m: Machine, emits: boolean, v: Json): Json {
-    const decl = own(emits ? m.emits : m.events, this.tagOf(v))
+    const decl = emits ? own(m.emits, this.tagOf(v)) : ownEvent(m, this.tagOf(v))
     return this.tagged(decl === undefined ? [] : [decl.fields], v)
   }
 
@@ -310,6 +312,7 @@ class Redactor {
     switch (input.kind) {
       case "event":
       case "message":
+      case "raised":
         return { ...input, value: this.event(m, false, input.value) as typeof input.value }
       case "emitted":
         // The receiving run does not always know the sender's machine (a peer, or a child
@@ -393,6 +396,9 @@ class Redactor {
       }
       case "emitted":
         return { ...record, value: this.event(m, true, record.value) as typeof record.value }
+      case "raised":
+      case "raise.scheduled":
+        return { ...record, value: this.event(m, false, record.value) as typeof record.value }
       // A `reply`'s result by the call's result type, and its error by its tag.
       case "replied":
         return record.outcome === "fail"
@@ -438,7 +444,14 @@ class Redactor {
     let result = saved.result
     if (result !== null && "output" in result) result = { output: this.result(m.returns, result.output) }
     else if (result !== null && "error" in result) result = { error: this.error(result.error) as typeof result.error }
-    const redacted = { ...saved, input: this.object(m.params, saved.input), vars, result }
+    const scheduled = saved.scheduled?.map((sc) => ({ ...sc, value: this.event(m, false, sc.value) as typeof sc.value }))
+    const redacted = {
+      ...saved,
+      input: this.object(m.params, saved.input),
+      vars,
+      result,
+      ...(scheduled === undefined ? {} : { scheduled })
+    }
     // A version 1 or 2 snapshot has no `spawned`, and the record holds it as it was given.
     if (saved.spawned === undefined) return redacted
     const spawned = saved.spawned.map((ch) => ({

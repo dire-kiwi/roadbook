@@ -1,0 +1,41 @@
+{
+  "description": "A machine that is not strict drops a raised event that no transition of its current states takes, immediate (`Go`) or delayed (`Later`, whose expiry is an `after` input that consumes the raise). Once in `B`, the delayed `Ping` is taken.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Lenient",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Later"
+      }
+    },
+    {
+      "advance": 1000
+    },
+    {
+      "event": {
+        "_tag": "Later"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Move"
+      }
+    },
+    {
+      "advance": 1000
+    }
+  ],
+  "status": "running"
+}

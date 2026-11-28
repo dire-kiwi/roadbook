@@ -118,8 +118,8 @@ function addressText(ctx: PanelContext, a: Address, key?: { text: string } | nul
 }
 
 /**
- * An effect as HTML: a `send` or `emit` links to its event and says where it goes, a `reply`
- * to its call, a `spawn` links to the child's machine.
+ * An effect as HTML: a `send`, `emit` or `raise` links to its event and says where it goes, a
+ * `reply` to its call, a `spawn` links to the child's machine; a `cancel` says what it cancels.
  */
 function effectHtml(ctx: PanelContext, e: Effect): string {
   if (e.kind === 'spawn') {
@@ -132,8 +132,10 @@ function effectHtml(ctx: PanelContext, e: Effect): string {
     )
   }
   if (e.kind === 'stop') return `<span class="rb-spawn-kw">stop</span> ${esc(effectText(e).slice('stop '.length))}<span class="rb-sub rb-note">stops the child of ${esc(e.children)} under the key, if there is one</span>`
+  if (e.kind === 'cancel')
+    return `<span class="rb-msg-kw">cancel</span> ${esc(e.name)}<span class="rb-sub rb-note">cancels the pending delayed raise named ${esc(e.name)}, if there is one; with none pending it does nothing</span>`
   const ev = effectEvent(ctx.machine, e)
-  if (!ev || (e.kind !== 'send' && e.kind !== 'emit' && e.kind !== 'reply')) return esc(effectText(e))
+  if (!ev || (e.kind !== 'send' && e.kind !== 'emit' && e.kind !== 'raise' && e.kind !== 'reply')) return esc(effectText(e))
   const kw = e.kind
   const text = effectText(e).slice(kw.length + 1)
   const where =
@@ -141,13 +143,25 @@ function effectHtml(ctx: PanelContext, e: Effect): string {
       ? `to ${esc(peer(e.to))}, ${esc(addressText(ctx, e.to, e.key))}`
       : e.kind === 'emit'
         ? `to whoever invoked or spawned ${esc(ctx.machine)} and every machine holding a ref to it`
-        : e.call.text === 'call'
+        : e.kind === 'raise'
+          ? raiseNote(e)
+          : e.call.text === 'call'
           ? `answers the ${esc(ev.event)} call being taken, to its caller alone`
           : `answers the ${esc(ev.event)} call ${esc(e.call.text)} holds, to its caller alone`
   return (
     `<span class="rb-msg-kw">${kw}</span> <button class="rb-link rb-mono" type="button" data-open-event="${esc(eventKey(ev))}" title="${isCall(ev) ? 'Call' : 'Event'} ${esc(eventKey(ev))}">${esc(text)}</button>` +
     `<span class="rb-sub rb-note">${where}</span>`
   )
+}
+
+/** Where a `raise` puts its event and when it is taken. HTML. */
+function raiseNote(e: Extract<Effect, { kind: 'raise' }>): string {
+  if (!e.delay) return 'to this run itself, on its internal queue: taken before the step ends, after what was queued before it'
+  const replace =
+    e.name !== null
+      ? `; a later raise as ${esc(e.name)} replaces it while it is pending, and <code>cancel ${esc(e.name)}</code> cancels it`
+      : '; it has no name, so nothing cancels or replaces it'
+  return `to this run itself after ${esc(e.delay.text)}: a timer of the run, not of a state, so leaving this state does not cancel it${replace}`
 }
 
 function head(title: string, chip: string, closable: boolean): string {
@@ -378,6 +392,12 @@ export function machinePanel(ctx: PanelContext): string {
           ? '<p class="rb-cnote">Strict: one of these events, a message or a call that no active state handles ends the run with a defect instead of being dropped.</p>'
           : ''),
     ) +
+    section(
+      'Internal events',
+      Object.keys(m.internalEvents ?? {}).length
+        ? eventItems(ctx.machine, m.internalEvents) + '<p class="rb-cnote">Internal: only this machine raises them, with <code>raise</code>. Host code and other machines cannot send them.</p>'
+        : '',
+    ) +
     section('Events it emits', eventItems(ctx.machine, m.emits)) +
     section('Calls it answers', callItems(ctx.machine, m.calls)) +
     section('Children it spawns', childrenSection(ctx, m)) +
@@ -473,9 +493,16 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
   const short = shortId(ctx, state.id)
   switch (t.trigger.kind) {
     case 'event': {
-      const e = own(m.events, t.trigger.event)
-      what = `Event ${t.trigger.event} arrives.`
-      if (e) extra = section('Event', code(eventDeclText(t.trigger.event, e, false)) + docHtml(e.doc) + `<p>${eventLink({ machine: ctx.machine, event: t.trigger.event }, `Who sends ${t.trigger.event} →`)}</p>`)
+      const accepted = own(m.events, t.trigger.event)
+      const e = accepted ?? own(m.internalEvents ?? {}, t.trigger.event)
+      what = accepted || !e ? `Event ${t.trigger.event} arrives.` : `The run raised ${t.trigger.event}, an internal event: only this machine raises it.`
+      if (e)
+        extra = section(
+          'Event',
+          code(eventDeclText(t.trigger.event, e, false, !accepted)) +
+            docHtml(e.doc) +
+            `<p>${eventLink({ machine: ctx.machine, event: t.trigger.event }, `${accepted ? 'Who sends' : 'Where it is raised'} ${t.trigger.event} →`)}</p>`,
+        )
       break
     }
     case 'emitted': {
@@ -505,7 +532,7 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
       break
     }
     case 'any':
-      what = `Any event arrives for which ${short} has no on.`
+      what = `Any of the machine's events arrives, or one it raised, for which ${short} has no on.`
       break
     case 'after':
       what = `The machine has been in ${short} for ${t.trigger.delay.text}, measured from entering it.`
@@ -703,7 +730,7 @@ export function taskEventPanel(ctx: PanelContext, task: string, name: string): s
   )
 }
 
-/** An event the machine accepts or emits: its declaration and everywhere it is sent, emitted and handled. */
+/** An event the machine accepts, raises (internal) or emits: its declaration and everywhere it is sent, raised, emitted and handled. */
 export function eventPanel(ctx: PanelContext, name: string): string {
   const { ir } = ctx
   const m = own(ir.machines, ctx.machine)!
@@ -712,10 +739,11 @@ export function eventPanel(ctx: PanelContext, name: string): string {
   if (own(m.calls, name)) return callPanel(ctx, name)
   const found = eventDecl(ir, { machine: ctx.machine, event: name })
   if (!found) return machinePanel(ctx)
-  const { decl, emitted } = found
+  const { decl, emitted, internal } = found
   // Every site in the IR that names this event of this machine.
   const sites = sitesOf(ir, { machine: ctx.machine, event: name })
   const links = (dir: MessageSite['dir']) => siteLinks(ir, sites, dir)
+  const raised = links('raise')
   let body = ''
   if (emitted) {
     body +=
@@ -728,18 +756,20 @@ export function eventPanel(ctx: PanelContext, name: string): string {
         if (t.trigger.kind === 'event' && t.trigger.event === name) handled.push(transitionSummary(ctx, s, i, true))
       })
     })
-    body +=
-      section('Handled here', handled.join('') || '<p class="rb-empty">No transition names it.</p>') +
-      section('Sent by', links('send') || '<p class="rb-empty">No machine of this chart sends it; host code can.</p>')
+    body += section('Handled here', handled.join('') || '<p class="rb-empty">No transition names it.</p>')
+    if (internal) body += section('Raised', raised || '<p class="rb-empty">Nowhere: no <code>raise</code> names it, so it never happens.</p>')
+    else body += section('Sent by', links('send') || '<p class="rb-empty">No machine of this chart sends it; host code can.</p>') + section('Raised', raised)
   }
   return (
-    head(esc(name), emitted ? 'emitted event' : 'event', true) +
+    head(esc(name), emitted ? 'emitted event' : internal ? 'internal event' : 'event', true) +
     `<p class="rb-path">${esc(ctx.machine)}.${esc(name)} · ${esc(sourceText(ir, decl.span))}</p>` +
     docHtml(decl.doc) +
-    section('Declaration', code(eventDeclText(name, decl, emitted)) + `<p class="rb-empty">${
+    section('Declaration', code(eventDeclText(name, decl, emitted, internal)) + `<p class="rb-empty">${
       emitted
         ? `${esc(ctx.machine)} emits it to the machine that invoked or spawned it and to every machine holding a ref to it.`
-        : `${esc(ctx.machine)} accepts it: another machine sends it with <code>send name.${esc(name)}</code>, or host code through the machine's handle.`
+        : internal
+          ? `Only ${esc(ctx.machine)} raises it, with <code>raise ${esc(name)}</code>, at once or after a delay. Host code and other machines cannot send it.`
+          : `${esc(ctx.machine)} accepts it: another machine sends it with <code>send name.${esc(name)}</code>, or host code through the machine's handle${raised ? '; the machine also raises it itself' : ''}.`
     }</p>`) +
     section('Fields', list(decl.fields.map((f) => `${f.sensitive ? 'sensitive ' : ''}${esc(f.name)}: ${esc(f.type)}${f.doc ? `<span class="rb-sub rb-note">${esc(f.doc)}</span>` : ''}`))) +
     body

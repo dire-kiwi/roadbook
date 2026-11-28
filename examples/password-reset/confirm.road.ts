@@ -77,7 +77,7 @@ export interface ConfirmPasswordResetDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/password-reset/confirm.road",
@@ -473,6 +473,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

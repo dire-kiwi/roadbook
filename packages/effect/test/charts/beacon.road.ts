@@ -41,7 +41,7 @@ export interface BeaconDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "packages/effect/test/charts/beacon.road",
@@ -159,6 +159,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {
         "Beat": {
           "fields": [

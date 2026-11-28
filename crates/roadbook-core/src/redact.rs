@@ -44,6 +44,7 @@ impl Marks {
                     || m.calls.values().any(|c| fields(&c.params))
                     || m.events
                         .values()
+                        .chain(m.internal_events.values())
                         .chain(m.emits.values())
                         .any(|e| fields(&e.fields))
             });
@@ -192,13 +193,14 @@ impl Redactor<'_> {
         }
     }
 
-    /// Redacts `v`, by its tag one of `m`'s `emits` if `emits`, else of its `events`.
+    /// Redacts `v`, by its tag one of `m`'s `emits` if `emits`, else of its own events (its
+    /// `events` and `internalEvents`).
     fn event(&self, m: &Machine, emits: bool, v: &mut Value) {
         let t = tag(v).unwrap_or_default();
         let decl = if emits {
             m.emits.get(&t)
         } else {
-            m.events.get(&t)
+            m.own_event(&t)
         };
         self.tagged(decl.map(|e| e.fields.as_slice()).into_iter(), v);
     }
@@ -279,7 +281,9 @@ impl Redactor<'_> {
             return;
         }
         match input {
-            Input::Event { value } | Input::Message { value, .. } => self.event(m, false, value),
+            Input::Event { value } | Input::Message { value, .. } | Input::Raised { value } => {
+                self.event(m, false, value)
+            }
             // The receiving run does not always know the sender's machine (a peer, or a child
             // whose invoke has ended), so the event is redacted as each machine that emits an
             // event of its name would redact it.
@@ -422,6 +426,9 @@ impl Redactor<'_> {
                 self.object(params.map_or(&[][..], |p| p), args);
             }
             Record::Emitted { value, .. } => self.event(m, true, value),
+            Record::Raised { value } | Record::RaiseScheduled { value, .. } => {
+                self.event(m, false, value)
+            }
             // A `reply`'s result by the call's result type, and its error by its tag.
             Record::Replied {
                 call,
@@ -456,6 +463,7 @@ impl Redactor<'_> {
             | Record::SpawnStopped { .. }
             | Record::TimerStarted { .. }
             | Record::TimerCancelled { .. }
+            | Record::RaiseCancelled { .. }
             | Record::Cancelled
             | Record::Defect { .. }
             | Record::Suspended => {}
@@ -519,6 +527,9 @@ impl Redactor<'_> {
         for ch in saved.spawned.iter_mut().flatten() {
             let params = self.collection(m, &ch.children).map(|(p, _)| p);
             self.object(params.unwrap_or_default(), &mut ch.args);
+        }
+        for sc in &mut saved.scheduled {
+            self.event(m, false, &mut sc.value);
         }
         match &mut saved.result {
             Some(crate::RunResult::Output(output)) => self.output(m, output),

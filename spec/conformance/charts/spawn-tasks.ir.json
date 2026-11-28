@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/spawn-tasks.road",
@@ -236,6 +236,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {

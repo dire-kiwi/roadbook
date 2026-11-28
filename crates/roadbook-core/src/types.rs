@@ -247,6 +247,36 @@ pub struct TimerEntry {
     pub delay: u64,
 }
 
+/// A pending delayed raise in a snapshot (`raise E after d [as n]`): a timer of the run.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScheduledEntry {
+    /// Its timer id, from the sequence `after` timers take theirs from.
+    pub id: u64,
+    /// Its `as` name, or `None`.
+    pub name: Option<String>,
+    /// The evaluated delay, in milliseconds.
+    pub delay: u64,
+    /// The event it raises, a tagged record of one of the machine's own events.
+    pub value: Value,
+}
+
+/// A pending delayed raise in a saved snapshot: a [`ScheduledEntry`] with its due time.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SavedScheduled {
+    /// Its timer id.
+    pub id: u64,
+    /// Its `as` name, or `None`.
+    pub name: Option<String>,
+    /// The evaluated delay, in milliseconds.
+    pub delay: u64,
+    /// The event it raises.
+    pub value: Value,
+    /// When it expires, on the driver's clock, in integer milliseconds.
+    pub due: u64,
+}
+
 /// Everything the core knows about a run between steps. Plain JSON, never modified in place.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -274,6 +304,9 @@ pub struct Snapshot {
     pub spawned: Vec<SpawnedEntry>,
     /// The running timers, in the order they were started.
     pub timers: Vec<TimerEntry>,
+    /// The pending delayed raises, in the order they were started.
+    #[serde(default)]
+    pub scheduled: Vec<ScheduledEntry>,
     /// The id the next invoke will get.
     pub next_invoke: u64,
     /// The id the next timer will get.
@@ -408,6 +441,13 @@ pub enum Input {
     /// Cancel the run from outside.
     #[serde(rename = "cancel")]
     Cancel,
+    /// An event the run raised itself, as the core takes it from the internal queue. Never
+    /// given by a driver: it appears only in records and in an `unhandled` defect.
+    #[serde(rename = "raised")]
+    Raised {
+        /// The event, a tagged record of one of the machine's own events.
+        value: Value,
+    },
     /// The driver met a defect while carrying out this run's commands.
     #[serde(rename = "defect")]
     Defect {
@@ -780,6 +820,32 @@ pub enum Record {
         /// The evaluated delay, in milliseconds.
         delay: u64,
     },
+    /// A `raise` without a delay put an event on the internal queue.
+    #[serde(rename = "raised")]
+    Raised {
+        /// The event.
+        value: Value,
+    },
+    /// A delayed raise was started, or restarted on restoring.
+    #[serde(rename = "raise.scheduled")]
+    RaiseScheduled {
+        /// Its timer id.
+        timer: u64,
+        /// Its `as` name, or `None`.
+        name: Option<String>,
+        /// The delay, in milliseconds: the time that remains, on restoring.
+        delay: u64,
+        /// The event it raises.
+        value: Value,
+    },
+    /// A pending delayed raise was cancelled.
+    #[serde(rename = "raise.cancelled")]
+    RaiseCancelled {
+        /// Its timer id.
+        timer: u64,
+        /// Its `as` name, or `None`.
+        name: Option<String>,
+    },
     /// A running timer was cancelled because its state was left.
     #[serde(rename = "timer.cancelled")]
     TimerCancelled {
@@ -923,6 +989,10 @@ pub struct Saved {
     pub spawned: Option<Vec<SavedSpawned>>,
     /// The running timers, in the order they were started, with their due times.
     pub timers: Vec<SavedTimer>,
+    /// The pending delayed raises, in the order they were started, with their due times.
+    /// Written only when there are some; a snapshot without the member has none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scheduled: Vec<SavedScheduled>,
     /// The id the next invoke will get.
     pub next_invoke: u64,
     /// The id the next timer will get.
@@ -941,8 +1011,10 @@ impl Saved {
     /// The version of the format this runtime writes. It reads this one and versions 1 to 3.
     pub const VERSION: u64 = 4;
 
-    /// `snap` saved, with each timer due at `due(id)`, and no child run nested in it.
-    pub fn new(snap: &Snapshot, mut due: impl FnMut(&TimerEntry) -> u64) -> Saved {
+    /// `snap` saved, with each timer and each delayed raise due at `due(id, delay)` (called
+    /// for the timers in order, then for the delayed raises in order), and no child run nested
+    /// in it.
+    pub fn new(snap: &Snapshot, mut due: impl FnMut(u64, u64) -> u64) -> Saved {
         let mut saved = Saved {
             snapshot_version: Saved::VERSION,
             machine: snap.machine.clone(),
@@ -984,7 +1056,18 @@ impl Saved {
                     state: t.state.clone(),
                     index: t.index,
                     delay: t.delay,
-                    due: due(t),
+                    due: due(t.id, t.delay),
+                })
+                .collect(),
+            scheduled: snap
+                .scheduled
+                .iter()
+                .map(|s| SavedScheduled {
+                    id: s.id,
+                    name: s.name.clone(),
+                    delay: s.delay,
+                    value: s.value.clone(),
+                    due: due(s.id, s.delay),
                 })
                 .collect(),
             next_invoke: snap.next_invoke,
@@ -1040,6 +1123,16 @@ impl Saved {
                     state: t.state.clone(),
                     index: t.index,
                     delay: t.delay,
+                })
+                .collect(),
+            scheduled: self
+                .scheduled
+                .iter()
+                .map(|s| ScheduledEntry {
+                    id: s.id,
+                    name: s.name.clone(),
+                    delay: s.delay,
+                    value: s.value.clone(),
                 })
                 .collect(),
             next_invoke: self.next_invoke,
@@ -1111,8 +1204,21 @@ impl Saved {
         Saved::from_value(value)
     }
 
-    /// The earliest due time of its timers: when a host should wake the saved run.
+    /// The earliest due time of its timers and delayed raises: when a host should wake the
+    /// saved run.
     pub fn next_due(&self) -> Option<u64> {
-        self.timers.iter().map(|t| t.due).min()
+        self.timers
+            .iter()
+            .map(|t| t.due)
+            .chain(self.scheduled.iter().map(|s| s.due))
+            .min()
+    }
+
+    /// The id and due time of each timer and delayed raise, timers first, each in order.
+    pub fn dues(&self) -> impl Iterator<Item = (u64, u64)> + '_ {
+        self.timers
+            .iter()
+            .map(|t| (t.id, t.due))
+            .chain(self.scheduled.iter().map(|s| (s.id, s.due)))
     }
 }

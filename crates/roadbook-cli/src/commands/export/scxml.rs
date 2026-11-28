@@ -37,6 +37,12 @@
 //!   `reply x fail e` the same with the event `error.E`, `E` the error's type; `do f(…)` the
 //!   extension element `<rb:do>`. Event fields, a record reply's fields and arguments are
 //!   `<param>`s; any other value is the `<content>`.
+//! - **Raised events**: `raise E` is `<raise>`, or a `<send target="#_internal">` when the event
+//!   has fields; a delayed `raise E after d as n` is a `<send>` with no target, which SCXML
+//!   queues on the session's own external queue once `delay` has passed, with `id="n"` and,
+//!   before it, a `<cancel sendid="n">`, since a raise replaces the pending one of its name;
+//!   `cancel n` is `<cancel sendid="n">`. SCXML has no internal events: an `internal event` is
+//!   an event like the others there.
 //! - **Spawned children**, which SCXML has no word for: a `children` collection is a `<data>`
 //!   with `rb:children` (its machine) and `rb:key`; `spawn c[k] = M(…)` the element `<rb:spawn>`
 //!   and `stop c[k]` `<rb:stop>`, each with `children` and `key`; `send c[k].E` and
@@ -494,10 +500,12 @@ impl Writer<'_> {
                         _ => None,
                     })
                     .collect();
+                // `on *` takes the machine's own events, internal ones included.
                 let rest: Vec<&str> = self
                     .m
                     .events
                     .keys()
+                    .chain(self.m.internal_events.keys())
                     .map(String::as_str)
                     .filter(|e| !handled.contains(e))
                     .collect();
@@ -749,6 +757,47 @@ impl Writer<'_> {
                 Effect::Stop { children, key } => {
                     let attrs = [("children", children.clone()), ("key", key.text.clone())];
                     self.open(depth, "rb:stop", &attrs, true);
+                }
+                // An immediate raise is SCXML's `<raise>`, or a `<send>` to the internal queue
+                // when the event has fields. A delayed one is a `<send>` with no target, which
+                // SCXML puts on the session's own external queue once its delay has passed;
+                // a named one cancels the pending one of its name first, as Roadbook does.
+                Effect::Raise {
+                    event,
+                    value,
+                    delay: None,
+                    ..
+                } => {
+                    let fields =
+                        matches!(&value.kind, ExprKind::Record { fields } if !fields.is_empty());
+                    if fields {
+                        let attrs = vec![("event", event.clone()), ("target", "#_internal".into())];
+                        self.send(depth, attrs, value);
+                    } else {
+                        self.open(depth, "raise", &[("event", event.clone())], true);
+                    }
+                }
+                Effect::Raise {
+                    event,
+                    value,
+                    delay: Some(delay),
+                    name,
+                } => {
+                    let mut attrs = vec![("event", event.clone())];
+                    match delay.kind {
+                        ExprKind::Lit(Literal::Duration(ms)) => {
+                            attrs.push(("delay", format!("{ms}ms")))
+                        }
+                        _ => attrs.push(("delayexpr", delay.text.clone())),
+                    }
+                    if let Some(n) = name {
+                        self.open(depth, "cancel", &[("sendid", n.clone())], true);
+                        attrs.push(("id", n.clone()));
+                    }
+                    self.send(depth, attrs, value);
+                }
+                Effect::Cancel { name } => {
+                    self.open(depth, "cancel", &[("sendid", name.clone())], true);
                 }
             }
         }

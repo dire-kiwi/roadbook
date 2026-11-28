@@ -80,6 +80,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | --- | --- |
 | `var name: T [= expr]` | A machine variable. `sensitive var` keeps its value out of traces (see [sensitive values](#sensitive-values)). |
 | `event Name [{ fields }]` | An event the machine accepts from outside. |
+| `internal event Name [{ fields }]` | An event only the machine itself produces, with `raise`: host code and other machines cannot send it (see [events a machine raises](#events-a-machine-raises)). |
 | `emits Name [{ fields }]` | An event the machine emits, to whoever invoked or spawned it and every machine holding a reference to it, of those that have an `on` for it. |
 | `call name(params) [-> T] [! E]` | A request the machine answers for any machine holding a reference to it (see [calls between machines](#calls-between-machines)). |
 | `children name: Machine by Key`, `children name: task by Key` | A keyed collection of child machines, or of tasks, started with `spawn` (see [many children](#many-children)). |
@@ -96,7 +97,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | --- | --- |
 | `entry set ... ` / `entry do ...` | Run when the state is entered. |
 | `exit set ...` / `exit do ...` | Run when the state is left. |
-| `on Event ...` | Transition on an external event. `on *` matches any of the machine's own events this state has no `on` for. |
+| `on Event ...` | Transition on one of the machine's own events: an external one, or one the machine [raises](#events-a-machine-raises). `on *` matches any of the machine's own events, internal ones included, that this state has no `on` for. |
 | `on name.Event ...` | Transition on an event emitted by the machine or task `name` addresses: an invoked child or task (`invoke … as name`), a `ref` parameter or variable, or any child of a `children` collection. |
 | `on name.done ...` / `on name.fail Err ...` | Transition when a spawned child of the collection `name` ends (see [many children](#many-children)). |
 | `on name.ended ...` | Transition when the run a `ref` parameter or variable `name` holds ends (see [when a peer ends](#when-a-peer-ends)). |
@@ -116,7 +117,7 @@ on Submit if isValid(order) -> Paying  set attempts = 0  do audit("submitted", o
    ^trigger ^guard             ^target ^assignments      ^actions
 ```
 
-With no `-> Target` the transition has no target: the state is not left and re-entered. The effects are `set` assignments, `do` actions, the messages `send name.Event { … }` and `emit Event { … }` (see [messages between machines](#messages-between-machines)), `reply name done [value]` and `reply name fail error`, which answer a call (see [calls between machines](#calls-between-machines)), and `spawn` and `stop` (see [many children](#many-children)). `set` assignments run first: every `set`, in the order written, then the `do`, `send`, `emit`, `reply`, `spawn` and `stop` effects, in the order written among themselves, wherever they are written, so an action or a message sees the values its transition's `set`s assign. The same goes for `entry` and `exit`. The formatter writes every `set` clause before the others, so the source shows the order they run in.
+With no `-> Target` the transition has no target: the state is not left and re-entered. The effects are `set` assignments, `do` actions, the messages `send name.Event { … }` and `emit Event { … }` (see [messages between machines](#messages-between-machines)), `reply name done [value]` and `reply name fail error`, which answer a call (see [calls between machines](#calls-between-machines)), `spawn` and `stop` (see [many children](#many-children)), and `raise` and `cancel`, which give the machine one of its own events, at once or after a delay (see [events a machine raises](#events-a-machine-raises)). `set` assignments run first: every `set`, in the order written, then the `do`, `send`, `emit`, `reply`, `spawn`, `stop`, `raise` and `cancel` effects, in the order written among themselves, wherever they are written, so an action or a message sees the values its transition's `set`s assign. The same goes for `entry` and `exit`. The formatter writes every `set` clause before the others, so the source shows the order they run in.
 
 Inside a transition, these names are in scope besides the machine's variables: `event` (in `on`, also `on name.Event`, `on name` and `on name.ended`), `result` (in an invoke's `done` and in `on name.done`), `error` (in an invoke's `fail` and in `on name.fail`), `call` (in `on name`, the call being taken) and `key` (in `on name.Event`, `on name.done` and `on name.fail` through a `children` collection).
 
@@ -161,7 +162,7 @@ The precise rules are in the [semantics](semantics.md#execution-model) and [`spe
 - **A transition with a target is external, unless the target has a dot.** It leaves its source state and enters its target, even when the target is the source itself or one of its children: `-> Self` written in `Self`, or `-> Parent.Child` written in `Parent`, exits `Self` (or `Parent`) and enters it again, running `exit` and `entry` and restarting its `invoke` and its `after` timers. `-> .Child` written in `Parent` does not: it is internal, and only `Parent`'s active children are left. The machine body is the one place where both are the same: a transition written there does not leave the machine, so the machine's own `entry`, `exit` and timers are left alone.
 - **A transition between the regions of a parallel state leaves the parallel state.** `-> P.B.Y` written in region `A` of `P` exits `P` and enters it again, so every region but `B` starts over by its `initial` (warning `RB0913`). To change one region and keep the others, write the transition in that region or in `P` with a dot, or list a target in every region.
 - **A transition with no target** leaves and enters nothing, and nothing is restarted: only its effects run. An `after` timer starts when its state is entered and is used up when it fires, so an `after` with no target fires once per entry into its state.
-- **The order of a step.** States are exited innermost first, then the transition's effects run, then states are entered outermost first, each running its `entry`. Only then are `always` guards evaluated, and `done` transitions taken, until none applies: an `always` sees what the `entry` effects assigned. Invokes and timers start last, for the states still active.
+- **The order of a step.** States are exited innermost first, then the transition's effects run, then states are entered outermost first, each running its `entry`. Only then are `always` guards evaluated, and `done` transitions and the events the step [raised](#events-a-machine-raises) taken, until none applies: an `always` sees what the `entry` effects assigned, and is taken before a `done` or a raised event. Invokes and timers start last, for the states still active.
 - **Events go only to the machine they are sent to.** Host code sends to the machine it runs. An invoked child receives an event only when its parent sends it one with `send name.Event`, so a child that waits on `on E` with no such `send` waits until it times out or its parent leaves the invoking state.
 - **A failure that is not a declared error** (a host defect, such as a thrown exception or a panic) is not flow: it fails the whole run and what it started, and propagates to whoever ran it. See [the semantics](semantics.md#work-is-tied-to-states).
 
@@ -328,11 +329,11 @@ state Uploading {
 }
 ```
 
-- **`send name.Event { fields }`** queues the event for another machine and carries on. `name` is an `invoke … as name` in scope, or a parameter or variable of type `ref Machine`. The event must be one the machine declares with `event`, with every field and the right types, as a record value. A field-less event is written bare: `send upload.Pause`.
+- **`send name.Event { fields }`** queues the event for another machine and carries on. `name` is an `invoke … as name` in scope, or a parameter or variable of type `ref Machine`. The event must be one the machine declares with `event`, with every field and the right types, as a record value: not one of its `internal event`s, which only it can raise (`RB0116`). A field-less event is written bare: `send upload.Pause`.
 - **`emit Event { fields }`** emits one of the machine's own `emits`, to whoever invoked or spawned it and to every machine holding a reference to it, of those that have an `on` for it ([who receives emitted events](actors.md#who-receives-emitted-events)). The machine does not receive its own emitted events.
 - **`on name.Event`** is taken for an event that `name`'s machine emits. `name` is resolved as for `send`, and `Event` must be one that machine declares with `emits`.
 - **An `as` name is in scope in the invoking state and the states inside it**, which is while the child runs: elsewhere it is an error (`RB0115`). A `send` to the child must also find it running (`RB0213`): not in the invoking state's own `entry` (the child starts once the step has settled), `exit` (it has been stopped) or the child's own outcomes (it has ended), and not in a transition that leaves the invoking state, since leaving stops the child before the transition's effects run. A transition with no target, an internal one (`-> .X`) written in the invoking state or inside it, or one written in a state inside the invoking state whose targets are all inside it too, can send. So can an outcome of another invoke of the same state that does not leave it ([several invokes](#several-invokes)). Two states may use the same `as` name when neither contains the other.
-- **Names.** An `as` name shares the machine's namespace with its parameters and variables, and cannot be the name of an `as` around it. It is not a value: it is used only in `send name.Event` and `on name.Event`. A machine's `event` and `emits` names share one namespace, and like events, emitted events cannot have the name of a type, error or machine.
+- **Names.** An `as` name shares the machine's namespace with its parameters and variables, and cannot be the name of an `as` around it. It is not a value: it is used only in `send name.Event` and `on name.Event`. A machine's `event`, `internal event` and `emits` names share one namespace (`RB0108`), and like events, internal and emitted events cannot have the name of a type, error or machine.
 - **Two namespaces of triggers.** The events a machine accepts are its own: `on Cancel`. The events it receives from others are named through their sender: `on upload.Cancel` is a different trigger from `on Cancel`, and from `on other.Cancel`. `on *` matches only the machine's own events, never an emitted one.
 - **A `ref` variable** addresses whichever machine it holds when the `send` runs or the event arrives.
 
@@ -456,6 +457,106 @@ state Open {
 
 The rules at run time are in [`spec/execution.md`](../../spec/execution.md#spawned-children).
 
+## Events a machine raises
+
+A machine can give itself one of its own events with `raise`: at once, as SCXML's `<raise>` does, or after a delay, as SCXML's `<send>` with a delay to the machine itself does. An event declared `internal event` can come only from a `raise`. An order that reminds its customer every 24 hours until they confirm, whatever state it is in, and lapses after three days:
+
+```
+action remind(order: string)
+
+machine Order(id: string) {
+  event Checkout
+  event Pack
+  event Confirm
+  /// Raised by the order itself: host code and other machines cannot send it.
+  internal event Remind { attempt: int }
+
+  initial Cart
+
+  // In the machine body: taken whatever state the order is in.
+  on Remind {
+    if event.attempt < 3            do remind(id)  raise Remind { attempt: event.attempt + 1 } after 24h as reminder
+    else                 -> Lapsed
+  }
+
+  state Cart { on Checkout -> Placed  raise Remind { attempt: 1 } after 24h as reminder }
+  state Placed {
+    on Pack    -> Packing
+    on Confirm -> Confirmed  cancel reminder
+  }
+  state Packing      { on Confirm -> Confirmed  cancel reminder }
+  state Confirmed    { … }
+  final state Lapsed {}
+}
+```
+
+- **`internal event Name [{ fields }]`** declares an event that only the machine itself raises. It is not part of the machine's interface: host code cannot send it ([TypeScript](typescript.md#what-gets-generated), [Rust](rust.md#what-gets-generated)), and a `send` of it from another machine is an error (`RB0116`). Otherwise it is an event like any other: it may have fields, `sensitive` ones among them, and a doc comment, `on Name` and `on *` take it, and `event` has its type. It is declared directly in the machine body (`RB0015` in a state), and its name shares one namespace with the machine's `event` and `emits` names (`RB0108`). An internal event that no `raise` of the machine raises can never happen (warning `RB0914`).
+- **`raise Event [{ fields }]`** puts one of the machine's own events, internal or declared with `event`, on its internal queue. An event it emits, another machine's or an unknown one is an error (`RB0125`). The value is written as for `send` and `emit`, and a field-less event is written bare.
+- **When it is taken.** In the same step, before the step ends: after the `always` transitions that are enabled, and after the completions (`done`) and raised events queued before it, and before any input the run takes next, even an external event that was already waiting. It is selected as the same event from outside would be: from the innermost active state outward, by `on Event` and then `on *`, in several regions at once if it enables transitions there. It belongs to the run, not to the state whose effect raised it, so it is still taken when that state was left in the same step.
+- **Nothing is kept for later.** A raised event that enables no transition when it is taken is dropped, and in a [strict machine](#strict-machines) it is the `unhandled` defect. A `raise` of an event that no `on Event` and no `on *` of the machine takes is never taken (warning `RB0915`). A raised event whose transition raises it again, without end, ends the run with the `limit` defect after 1000 microsteps, as an `always` loop does.
+- **`raise Event [{ fields }] after delay [as name]`** is a **delayed raise**: a timer that belongs to the run, not to a state. The delay, a `duration` expression, and then the value are evaluated when the effect runs, so `event.attempt + 1` above is computed when the reminder is scheduled. Leaving the state that started it changes nothing. When it is due, its event is queued as an `after` timer's expiry is, behind the inputs that arrived before it, and is taken as an external event is, by whatever states are active then: dropped if none takes it, and `unhandled` in a strict machine. `after` goes on with a raise only on the line where its event (or the event's `{ … }`) ends: on a later line it starts an `after` transition.
+- **`as name`** names a delayed raise. A delayed raise whose name is pending replaces it: the pending one is cancelled, and the new one starts with its whole delay. Several raises may use one name, as the two above do, so that each starts the same reminder again. The name shares the machine's namespace with its parameters, variables, collections and `as` names (`RB0108`). An unnamed delayed raise can be neither replaced nor cancelled. `as` on a raise without `after` is an error (`RB0028`): an immediate raise is taken before the step ends, so there is nothing to cancel.
+- **`cancel name`** cancels the pending delayed raise of that name. If none is pending (it never started, it has fired, or it was cancelled already), it does nothing. A name that no `raise … after … as name` of the machine uses is an error (`RB0126`). An expiry already queued when its raise was cancelled or replaced is `stale` when it is taken, so it does nothing.
+- **When the run ends.** A run that finishes, or is cancelled (by host code, or by its parent leaving the invoking state), cancels its pending delayed raises after its `exit` effects and after stopping its spawned children. What the `exit` effects of that last step raise at once is traced and never taken. A run that ends with a defect drops its delayed raises with no record, as it does its timers.
+- **Saving.** A delayed raise is saved and restored as an `after` timer is: a run waiting only on delayed raises is idle, so `suspend` and `resume` save it, with each pending raise's due time, and restoring starts it again with the time that remains; one that fell due while the run was saved fires as soon as it is restored. A snapshot with no pending raise is written as before.
+- **The trace** writes `raised` as an immediate raise runs, followed by its `event` (or `dropped`) record with the input `raised`; `raise.scheduled` as a delayed raise starts, and `raise.cancelled` as one is cancelled or replaced, or the run ends. A delayed raise's expiry is an `after` input with its timer's id ([`spec/trace.md`](../../spec/trace.md)).
+- **Compared with `after`.** An `after` belongs to its state: it starts when the state is entered and stops when the state is left, and starting it again means leaving and entering the state. A delayed raise is started by any effect, outlives the state that started it, is stopped by a `cancel` anywhere in the machine, and is started again by a raise of the same name without leaving anything. A timeout of a state stays an `after`.
+
+**A debounce.** Each key starts the delay again, because each raise replaces the pending one of its name. `Typing` is never left, so its own `entry`, `exit`, invoke and timers are left alone, where a self-transition `on Key -> Typing` with an `after 500ms` in `Typing` would restart them all:
+
+```
+machine Finder() {
+  event Key             { text: string }
+  internal event Search
+  var query: string = ""
+
+  initial Typing
+
+  state Typing {
+    on Key                  set query = event.text  raise Search after 500ms as debounce
+    on Search -> Searching
+  }
+  state Searching { … }
+}
+```
+
+**Signalling between regions.** An immediate raise lets one region of a parallel state tell another that something has happened, without a variable kept in step and an `always` that waits on it:
+
+```
+task warmCache()
+
+machine Setup() {
+  internal event Ready
+
+  initial Starting
+
+  parallel state Starting {
+    done -> Running
+    state Cache {
+      initial Warming
+      state Warming {
+        invoke warmCache() {
+          done -> Warm  raise Ready
+        }
+      }
+      final state Warm {}
+    }
+    state Server {
+      initial Waiting
+      state Waiting       { on Ready -> Serving }
+      final state Serving {}
+    }
+  }
+  state Running { … }
+}
+```
+
+`Ready` is raised by the transition out of `Warming` and taken in the same step, where it moves `Server` to `Serving`; both regions are then final, so `Starting`'s `done` is taken too, still in that step. Had `Server` been in a state with no `on Ready`, the event would have been dropped: a raised event is an event, not a flag, and a region that must learn of something later needs a variable.
+
+There is no delayed `send` to another machine: a delayed raise whose transition sends does the same, and keeps the timer in the chart that owns it.
+
+Decided on 27 November 2026 and built on 28 November 2026 in IR 0.11 (SM-28): `internalEvents` is a member of each [machine](../../spec/ir.md#machines), and `raise` and `cancel` are [effects](../../spec/ir.md#effects). A machine that uses none of them keeps its hash. The rules at run time are in [`spec/execution.md`](../../spec/execution.md#raised-events).
+
 ## History states
 
 A history state returns to a compound or parallel state where it was when it was last left, instead of starting it over from its `initial`.
@@ -547,13 +648,13 @@ A state is written as a path from the machine body, as a target written at machi
 
 ### How checks are decided
 
-The compiler explores every configuration the machine can be in, following [the execution rules](../../spec/execution.md) exactly: the walks that select transitions in each region, conflicts, exit and entry sets, history recorded on exit, settling (`always` before `done`, completions in order), timers and invokes started on entry and consumed by their expiry or outcome, events emitted by children and peers, peers' ends (`on name.ended`), calls the machine makes and those it takes, spawned children's outcomes, and the transitions written in the machine body. In a strict machine, `ignore` transitions are explored like any other. A configuration passed through while settling counts: a state entered by an `always` and left at once was still active. What it does not know is data. Every guard may hold or fail each time it is evaluated, every declared event may arrive at any time, a task may finish or fail with any of its declared errors, a call it makes may be answered `done`, with any of its declared errors or with `Unanswered`, a call of its own may arrive at any time, a peer may end at any time (and more than once, since the compiler does not follow which runs a `ref` holds), a child machine may do anything its declaration allows, and any running timer may expire.
+The compiler explores every configuration the machine can be in, following [the execution rules](../../spec/execution.md) exactly: the walks that select transitions in each region, conflicts, exit and entry sets, history recorded on exit, settling (`always` before the internal queue, completions and raised events in the order they were queued), timers and invokes started on entry and consumed by their expiry or outcome, the delayed raises pending in the run (replaced, cancelled and consumed by their expiry), events emitted by children and peers, peers' ends (`on name.ended`), calls the machine makes and those it takes, spawned children's outcomes, and the transitions written in the machine body. In a strict machine, `ignore` transitions are explored like any other. A configuration passed through while settling counts: a state entered by an `always` and left at once was still active. What it does not know is data. Every guard may hold or fail each time it is evaluated, every declared event may arrive at any time (an internal one only when the machine raises it), a task may finish or fail with any of its declared errors, a call it makes may be answered `done`, with any of its declared errors or with `Unanswered`, a call of its own may arrive at any time, a peer may end at any time (and more than once, since the compiler does not follow which runs a `ref` holds), a child machine may do anything its declaration allows, and any running timer may expire.
 
 That set of paths includes every path a real run can take, and more. So:
 
 - **A `never` or `only after` that passes is a proof**, whatever the data: no run started from the chart can do it.
 - **A `reachable` that fails is a proof** that no run can reach the state.
-- **A `reachable` that passes is `proved`** when the path it found relies on nothing the chart can't show: only the machine's own events, task outcomes, and timers that are sure to expire first (the only one running, or an `after` with a literal delay shorter than the literal delays of the `after`s written after it in the same state), each taken where no other machine can act first. Otherwise it is **`conditional`**, and the report lists what the path assumes: a guard holding or failing, a timer expiring before the other running timers (its delay might not be the shortest), another machine finishing, failing or emitting, answering a call one way or making one, or a step coming before another machine that could act at that point (a child still running, a collection that may have children, a peer whose events an active state listens for, a callee still to answer, a caller whose call an active state takes) ends, emits, answers or calls ("`` `Child` (invoked in `A`) does not end or emit first ``"). So with `invoke Child() { done -> D }` and `after 1s -> T` in one state, `reachable T` is conditional: the child may always finish within the second.
+- **A `reachable` that passes is `proved`** when the path it found relies on nothing the chart can't show: only the machine's own events, task outcomes, and timers that are sure to expire first (the only one running, an `after` timer's or a delayed raise's, or an `after` with a literal delay shorter than the literal delays of the `after`s written after it in the same state), each taken where no other machine can act first. Otherwise it is **`conditional`**, and the report lists what the path assumes: a guard holding or failing, a timer or a delayed raise expiring before the other running timers (its delay might not be the shortest), another machine finishing, failing or emitting, answering a call one way or making one, or a step coming before another machine that could act at that point (a child still running, a collection that may have children, a peer whose events an active state listens for, a callee still to answer, a caller whose call an active state takes) ends, emits, answers or calls ("`` `Child` (invoked in `A`) does not end or emit first ``"). So with `invoke Child() { done -> D }` and `after 1s -> T` in one state, `reachable T` is conditional: the child may always finish within the second.
 - **A `can finish` that passes is `proved`** when, from every configuration, the host can bring the run to a top-level final state whatever the guards decide and whatever other machines do first. The host picks the inputs it controls (the machine's own events, task outcomes, timers sure to expire first) and the data picks every guard's outcome, including all of them failing so that the input takes nothing; while the run settles nobody picks. Precisely: a final configuration is won; a settling one is won when every step from it leads to a won one; and a stable one is won when some input the host controls leads to a won configuration whatever its guards decide, and every move another machine can make from it (an outcome or event of a child, a spawned child or a peer, an answer to a call it made, a call it takes) leads to a won configuration too, since that machine may act first. So an `if approved() -> Charged` with an `else -> Declined`, both finishing, is proved, while the same `if` with no `else` is not: the guard may keep failing. Otherwise it is **`conditional`**: every configuration has a path to a final state, but something the chart can't show could block it, and the report lists what the path assumes from the first configuration (nearest the start) where the host can't force the end, together with the path to it and on to a final state.
 - **A failing check is an error**, and the error shows a counterexample: of those with the fewest assumptions in all, the shortest. When the counterexample relies on assumptions, the error lists them: the path may be blocked at run time by a guard, but the chart can't show that, so to pass, the chart must change.
 
@@ -723,8 +824,8 @@ strict machine Lock() {
 }
 ```
 
-- **What is strict.** In a `strict machine`, one of its own events (from host code, or a `send` from another machine) that enables no transition ends the run with an `unhandled` defect instead of being dropped. The defect names the input, with its sender for a message ([`spec/execution.md`](../../spec/execution.md#defects)). Above, a quiet `Knock` while `Closed` is a defect: the machine body's `on Knock` takes only a loud one. A [call](#calls-between-machines) that no `on name` takes is the same defect, and the callee's caller gets `Unanswered` as the callee ends.
-- **What is not.** Emitted events from other machines (a spawned child's among them) and from tasks, a peer's end that no `on name.ended` takes, invoke outcomes whose guarded branches all fail, a spawned child's outcome that no `on name.done` or `on name.fail` takes, and guarded `after` expiries are still dropped and traced. They arrive when another machine or the clock decides, so failing on them would make an ordinary race fatal. A `send` from a strict machine that reaches no running machine is [undelivered](actors.md#semantics), as from any machine: strict is about what a machine receives, and a peer that has ended is the same kind of race as an emitted event.
+- **What is strict.** In a `strict machine`, one of its own events (from host code, or a `send` from another machine) that enables no transition ends the run with an `unhandled` defect instead of being dropped. The defect names the input, with its sender for a message ([`spec/execution.md`](../../spec/execution.md#defects)). Above, a quiet `Knock` while `Closed` is a defect: the machine body's `on Knock` takes only a loud one. A [call](#calls-between-machines) that no `on name` takes is the same defect, and the callee's caller gets `Unanswered` as the callee ends. So is an event the machine [raises](#events-a-machine-raises) itself, at once or when a delayed raise is due, that enables no transition, internal or not.
+- **What is not.** Emitted events from other machines (a spawned child's among them) and from tasks, a peer's end that no `on name.ended` takes, invoke outcomes whose guarded branches all fail, a spawned child's outcome that no `on name.done` or `on name.fail` takes, and guarded `after` expiries are still dropped and traced (an `after` timer's, not a delayed raise's). They arrive when another machine or the clock decides, so failing on them would make an ordinary race fatal. A `send` from a strict machine that reaches no running machine is [undelivered](actors.md#semantics), as from any machine: strict is about what a machine receives, and a peer that has ended is the same kind of race as an emitted event.
 - **`ignore`.** `on Event ignore` takes the event and does nothing: nothing is left or entered, and no effect runs. It can have a guard (`on Knock if event.loud ignore`) and be a branch of a block (`if busy ignore`), and it stands alone: a branch with `ignore` has no target and no effects. It is a transition like any other, so the trace shows the event as taken, with a `transition` record that goes nowhere, and an inner state's `ignore` is taken before an outer state's `on` for the same event, as `Opened`'s `on Knock ignore` is above. Only an event's `on` transition (an emitted event's and a [peer's end](#when-a-peer-ends) among them) can ignore (`RB0026`): a timer, `always` or `done` with nothing to do can be removed, and a call is answered with `reply`, so `on reserve ignore` is an error too. `ignore` is allowed in any machine, not only a strict one; elsewhere it documents that an event is meant to be ignored, and turns a `dropped` record into a taken one.
 - **The viewer** writes `strict` in the machine's signature, shows an `ignore` inside its state like any internal transition, and in simulate mode says of an event no active state handles that the run would end with a defect rather than drop it.
 
@@ -793,6 +894,7 @@ Errors (the build fails):
 - `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` and `on name.fail` through a name that is not a `children` collection, and a `send name.E` to a collection with no `[key]` or `.*`; a `spawn` of a machine or task other than the collection's; a key of the wrong type; a collection whose key type is not `string`, `int` or an enum, or whose upper-case name is not a machine or lower-case name not a task; `key` as the name of a parameter, variable, `as` or collection; `on name.fail E` for an error the collection's machine or task does not declare.
 - `send`, `emit` and `on name.Event` that do not match a declaration: an unknown or out-of-scope `name`, or one that is not a `ref` (a `ref` that is optional or a list cannot be sent to); an event the receiver does not declare with `event`, or the sender (a machine or a task) with `emits`; a missing, extra or wrongly typed field. A `send` to a task, through its `as` name or a collection of tasks. A `send` to an invoked child where it is not running. An `as` on a call or on a task that declares no `emits` in a state with one invoke, an invoke without `as` in a state with several, or an `as` that clashes with a variable, parameter or enclosing `as`. A `ref` to something that is not a machine, or in a field or a result.
 - `on name.ended` through a name that is not a parameter or variable of type `ref M`, `ref M?` or `ref M[]` (an invoked child or a collection among them), and a lower-case word after `name.` other than `done`, `fail` and `ended`; `event` read in it other than as `event.status`; a declaration or event named `Ended`.
+- `raise` of an event that is not one of the machine's own (`event` or `internal event`): an event it emits, another machine's, or an unknown one. `cancel` of a name that no `raise … after … as name` of the machine uses, and `as` on a raise without `after`. A `send` of another machine's `internal event`.
 - Calls that do not match their declaration: an `invoke x.name` whose `x` is not a `ref` or whose machine has no call `name`; an `on name` or a `call name` type naming no call of the machine; arguments, `done` and `fail` outcomes checked as for a task, with `Unanswered` one more error to handle; a `reply` to something that is not a pending call, or that answers otherwise than its call is declared. A `call name` type anywhere but a machine variable's, `Unanswered` anywhere but a call invoke's `fail`, and `call` outside an `on name`.
 - A sensitive value going where a trace would show it as it is, and a value with sensitive fields going where `json` is expected (see [sensitive values](#sensitive-values)).
 - A machine that invokes itself, directly or through other machines, without an `after` or event in between (unbounded recursion). Precisely: machine `M` *starts* machine `N` if a state of `M` that invokes `N` can be entered from `M`'s initial states by taking only `always`, `done` and invoke outcome transitions, whatever their guards; or if a `spawn` of `N` is in the `entry` of such a state, in the effects of such a transition taken in such a state, or in the `exit` of the state such a transition is written in or of a state around it that the transition leaves (a transition to a top-level final state ends the run, so what it spawns never starts). An `on name.done` or `on name.fail` is an `on`, and counts as waiting: a supervisor that spawns a child again when it fails is fine. Only `on` and `after` transitions count as waiting; an invoke's outcome does not, since a task can finish at once. A transition to a history state counts as entering its parent's default entry: what a history state restores was entered before. A cycle of *starts* is an error.
@@ -808,6 +910,7 @@ Warnings:
 - An `emits E` that no `on name.E` in the checked files receives: a machine's, or a task's that no `on x.E` through an address of that task receives. As for unused declarations, a receiver in any file checked at the same time counts; host code holding a handle may still receive it.
 - A `call` that no `on name` of its machine takes, so every such call is answered `Unanswered`, and a `call name` variable that no `reply` answers.
 - A history state that no transition targets.
+- An `internal event` that no `raise` of its machine raises, and a `raise` of an event that no `on E` and no `on *` of the machine takes.
 - A transition that leaves a parallel state it is written in, to a target inside it, and so starts some of its regions over by default entry: one from a region to another region, or from a region to a state inside itself. The message names the regions that restart; a transition that targets the parallel state itself, lists a target in every region, or is internal does not warn.
 
 The checks run in order: names and structure, then types, then the analyses (the cycle and recursion checks, definite assignment and the warnings). A file with syntax errors is checked no further: its declarations are left out, and the names other files import from it are not reported as unknown. The files around it are still checked. The analyses run for each entry file once its compilation (the file and everything it imports) has no other errors, so one mistake does not produce a cascade of diagnostics, and an error in one chart does not turn off the analyses of another.
@@ -960,9 +1063,9 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0012` | A name of the wrong case. | `type order`, `state idle` |
 | `RB0013` | A keyword, or `result`, used as a name, or a declaration or event named `Unanswered` or `Ended`. | `var on: int`, `var result: int`, `type Evt { type: string }`, `error Unanswered`, `enum Ended { A }` |
 | `RB0014` | `done`, `invoke`, `output`, `fail` or a history state directly in a machine body. | `machine M() { done -> A }`, `machine M() { history H }` |
-| `RB0015` | `var`, `event`, `emits`, `call`, `children` or `check` inside a state. | `state A { var x: int }`, `state A { check can finish }` |
+| `RB0015` | `var`, `event`, `internal event`, `emits`, `call`, `children` or `check` inside a state. | `state A { var x: int }`, `state A { check can finish }` |
 | `RB0016` | A machine item at the top level of a file. | `state A {}` or `check can finish` outside a machine |
-| `RB0017` | A transition with no target, `set`, `do`, `send`, `emit`, `reply`, `spawn`, `stop` or `ignore`. | `on Go` |
+| `RB0017` | A transition with no target, `set`, `do`, `send`, `emit`, `reply`, `spawn`, `stop`, `raise`, `cancel` or `ignore`. | `on Go` |
 | `RB0018` | A record value as an `after` delay, or a retry's delay, without parentheses. | `after Cfg { ms: 5 } -> A` |
 | `RB0019` | An invoke outcome outside `invoke { }`. | `fail CardDeclined -> Declined` in a state |
 | `RB0020` | Something other than an outcome inside `invoke { }`. | `fail declined`, `on Go -> A` in an invoke |
@@ -973,6 +1076,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0025` | Nesting more than 64 levels deep. | 65 nested states, or `((((…))))` |
 | `RB0026` | `ignore` outside an event's `on` transition (a call's too), or with a target or effects. | `after 5s ignore`, `on Go ignore -> A` |
 | `RB0027` | `on name.word` with a lower-case `word` other than `done`, `fail` and `ended`. | `on inventory.end`, `on peer.reserved` |
+| `RB0028` | `as name` on a `raise` without `after`: only a delayed raise has a name. | `raise Ping as ping` |
 
 The compiler's codes:
 
@@ -985,7 +1089,7 @@ The compiler's codes:
 | `RB0105` | An unknown variable. | `set attemps = 1` |
 | `RB0106` | An event the machine does not declare. | `on Cancl -> Done` |
 | `RB0107` | Two declarations with the same name in one compilation, or an event or type parameter named like a type, error or machine. | `type Order` in two files, `event Order`, `type Page<Order>` |
-| `RB0108` | Two fields, parameters, type parameters, variants, variables, events or sibling states with the same name, or a name imported twice. | `state A {}` twice in one parent, `import { B, B }` |
+| `RB0108` | Two fields, parameters, type parameters, variants, variables, events or sibling states with the same name, or a name imported twice. A machine's `event`, `internal event` and `emits` names are one namespace, and the name of a delayed raise shares one with its parameters, variables, collections and `as` names. | `state A {}` twice in one parent, `import { B, B }`, `event Go` and `internal event Go`, `raise Go after 1s as attempts` beside `var attempts: int` |
 | `RB0109` | A name used as something it is not. | `invoke audit(x)` where `audit` is an action |
 | `RB0110` | `event`, `result`, `error`, `call` or `key` where it is not in scope. | `entry set n = result`, `on Go set p = call` |
 | `RB0111` | An import of a file that cannot be read. | `import { A } from "./missing.road"` |
@@ -993,7 +1097,7 @@ The compiler's codes:
 | `RB0113` | An enum variant that does not exist. | `Role.Admn` |
 | `RB0114` | A `set` of a machine parameter. | `set token = ""` |
 | `RB0115` | A `send name.E` or `on name.E` whose `name` is not an `invoke … as name` in scope or a parameter or variable, or names a call, or an `invoke name.call(…)` or `on name.ended` whose `name` is not a parameter or variable. | `send uplod.Pause`, `upload` outside its invoking state, `invoke invntory.reserve()`, `on invntory.ended` |
-| `RB0116` | A `send` of an event the receiving machine does not declare with `event`, or a `send` to a task, which takes no events. | `send upload.Stop`, `send up.Pause` for `invoke upload(f) as up`, `send uploads[k].Pause` for `children uploads: upload by string` |
+| `RB0116` | A `send` of an event the receiving machine does not declare with `event` (an `internal event` of it among them, which only it can raise), or a `send` to a task, which takes no events. | `send upload.Stop`, `send child.Ping` for `internal event Ping` in the child, `send up.Pause` for `invoke upload(f) as up`, `send uploads[k].Pause` for `children uploads: upload by string` |
 | `RB0117` | An `emit` of an event the machine does not declare with `emits`, or an `on name.E` of one its sender, a machine or a task, does not. | `emit Progres`, `on upload.Pause`, `on up.Progres` |
 | `RB0118` | A call the machine does not declare: in `invoke x.name`, `on name` or a `call name` type. | `invoke inventory.reserv(id)`, `on reserv` |
 | `RB0119` | `Unanswered` where it cannot be: in a `!` list, as a type or a value, or in a `fail` outcome of an invoke that is not a call. | `call reserve() ! Unanswered`, `fail Unanswered` after a task |
@@ -1002,6 +1106,8 @@ The compiler's codes:
 | `RB0122` | `key` as the name of a machine parameter, variable, `as` name or collection. | `var key: string` |
 | `RB0123` | A state path in a `check` that names no state of the machine, or names a history state. | `check reachable Applyng`, `check never Work.Last` for `history Last` |
 | `RB0124` | `on name.ended` through an `invoke … as name` child or task, or a `children` collection, whose end is its outcome. | `on upload.ended`, `on up.ended`, `on sessions.ended` |
+| `RB0125` | A `raise` of an event that is not one of the machine's own events or internal events: an event it emits, another machine's, or an unknown one. | `raise Progress` for `emits Progress`, `raise Unknown` |
+| `RB0126` | A `cancel` of a name that no `raise … after … as name` of the machine uses. | `cancel reminder` with no `raise … as reminder` |
 | `RB0201` | A transition target that does not resolve, or a path through a history state. | `-> Dne`, `-> Working.Previous.Editing` |
 | `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }`, `machine M() { initial A }` |
 | `RB0203` | An `initial` that is not a child state, is written twice, or is in a state without children. | `initial Strat`, `initial Previous` for `history Previous` |
@@ -1071,6 +1177,8 @@ The compiler's codes:
 | `RB0911` | A `children` collection that no `spawn` fills (warning). | `children sessions: Session by string` with no `spawn sessions[…]` |
 | `RB0912` | A machine whose checks were not evaluated, as too large to explore: more than 100000 configurations, a peer's event expected through more than 8 `ref` names, or regions whose guard outcomes combine in too many ways (warning). | many parallel regions, each with deep history |
 | `RB0913` | A transition that leaves a parallel state and enters it again, starting regions over that it does not target (warning). | `on Cross -> P.B.Y` in region `A` of `P` |
+| `RB0914` | An `internal event` that no `raise` of the machine raises, so it can never happen (warning). | `internal event Ping` with no `raise Ping` |
+| `RB0915` | A `raise E` where no `on E` and no `on *` of the machine takes `E`, so it is always dropped, or `unhandled` in a strict machine (warning). | `raise Ping` with no `on Ping` |
 
 ## Grammar
 
@@ -1101,7 +1209,7 @@ errors      = "!" Upper { "|" Upper } ;
 machineDecl = [ "strict" ] "machine" Upper params [ "->" type ] [ errors ] "{" { machineItem } "}" ;
 machineItem = varDecl | eventDecl | emitsDecl | callDecl | childrenDecl | checkDecl | commonItem ;
 varDecl     = [ "sensitive" ] "var" lower ":" type [ "=" expr ] ;
-eventDecl   = "event" Upper [ fields ] ;
+eventDecl   = [ "internal" ] "event" Upper [ fields ] ;
 emitsDecl   = "emits" Upper [ fields ] ;
 callDecl    = "call" lower params [ "->" type ] [ errors ] ;
 childrenDecl = "children" lower ":" name "by" type ;
@@ -1143,7 +1251,9 @@ effect      = "set" assign { "," assign }
             | "emit" Upper [ recordBody ]
             | "reply" ( "call" | lower ) ( "done" [ expr ] | "fail" expr )
             | "spawn" lower "[" expr "]" "=" name "(" [ expr { "," expr } ] ")"
-            | "stop" lower "[" expr "]" ;
+            | "stop" lower "[" expr "]"
+            | "raise" Upper [ recordBody ] [ "after" expr [ "as" lower ] ]
+            | "cancel" lower ;
 recordBody  = "{" [ lower ":" expr { "," lower ":" expr } ] "}" ;
 assign      = lower "=" expr ;
 call        = lower "(" [ expr { "," expr } ] ")" ;
@@ -1178,12 +1288,13 @@ comment     = "//" … end of line ;        doc comment = "///" … end of line 
 Rules the grammar does not express:
 
 - Every comma-separated list accepts a trailing comma.
-- All keywords are reserved: `import type enum error extern fn action task machine strict var event emits call initial state final parallel entry exit on after always done invoke output fail if else set do send emit reply ignore and or not true false`. `from`, `as`, `retry`, `ref`, `map`, `sensitive`, `history`, `deep`, `children`, `by`, `spawn`, `stop`, `check`, `never`, `reachable`, `only`, `can`, `finish` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), at the start of an item of a state body (`history`, `deep`), in `children name:` at the start of a machine item, after a collection's machine, in `spawn name[` and `stop name[` at the start of an effect (so `action stop()` is still a valid action), and in a check: `check` followed by a name at the start of a machine item, and the words of its property after it (so `var check: int` is still a variable). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field. (`call` is a keyword.)
+- All keywords are reserved: `import type enum error extern fn action task machine strict var event emits call initial state final parallel entry exit on after always done invoke output fail if else set do send emit reply ignore and or not true false`. `from`, `as`, `retry`, `ref`, `map`, `sensitive`, `history`, `deep`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `check`, `never`, `reachable`, `only`, `can`, `finish` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`) and after a delayed raise's delay (`as`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), at the start of an item of a state body (`history`, `deep`), in `children name:` at the start of a machine item, after a collection's machine, in `spawn name[`, `stop name[`, `raise Name` and `cancel name` at the start of an effect (so `action stop()` is still a valid action), in `internal event` at the start of a machine item, and in a check: `check` followed by a name at the start of a machine item, and the words of its property after it (so `var check: int` is still a variable). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field. (`call` is a keyword.)
 - In a type, the `>` closing type arguments may be written as the first character of a `>=`: `var m: map<string, int>= f()` reads as written (the formatter writes `> =` with a space).
 - A `///` comment documents the declaration, machine, state, history state, event, variable or check that follows it. A `///` anywhere else is an error: use `//`.
-- A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust, and so must one in a retry's delay, which the invoke's `{` follows. A `{` after the event of a `send` or `emit` is always its record body.
+- A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust, and so must one in a retry's delay, which the invoke's `{` follows. A `{` after the event of a `send`, `emit` or `raise` is always its record body.
 - `on name.Event` is told from `on Event` by the lower-case name and the `.` after it, and `on name`, which takes a call, by a lower-case name with no `.`. Likewise `invoke x.name(…)` is a call, told from `invoke name(…)` by the `.`.
 - In `reply x done value`, the value is parsed only if it starts on the same line as `done`.
+- `after` goes on with a `raise` only on the line where the raised event, or its `{ … }`, ends. On a later line it starts an `after` transition. `as` names a raise only after its delay (`RB0028` without one).
 - In a final state, `fail expr` is the machine's failure. Inside `invoke { }`, `fail Upper` is an outcome. The two never appear in the same position.
 - Two `after` transitions in one state are the same trigger only if their delays are the same expression, written the same way once formatted: `after 1s` and `after 1000ms` are different triggers.
 - A type is optional at most once: `T??` is an error.

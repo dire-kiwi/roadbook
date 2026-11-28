@@ -1,0 +1,27 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  What the exit effects of a run's last step raise is thrown away, and its delayed raises
+  are cancelled after its exits.
+-->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Ending" datamodel="roadbook" initial="Ending">
+  <state id="Ending" initial="Ending_A">
+    <onexit>
+      <raise event="Bye"/>
+      <cancel sendid="bye"/>
+      <send event="Bye" delay="1000ms" id="bye"/>
+    </onexit>
+    <state id="Ending_A">
+      <transition event="Finish" target="Ending_Over"/>
+      <transition event="Bye" type="internal">
+        <rb:do action="log">
+          <param name="what" expr="&quot;bye&quot;"/>
+        </rb:do>
+      </transition>
+    </state>
+  </state>
+  <final id="Ending_Over"/>
+</scxml>

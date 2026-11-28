@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "packages/viewer/test/charts/escape.road",
@@ -160,6 +160,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1148,6 +1149,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {
         "Pong": {
           "fields": [

@@ -99,6 +99,7 @@ export const supported: ReadonlyArray<string> = [
   "spawn",
   "ended",
   "task-emits",
+  "raise",
   "invokes"
 ]
 

@@ -53,6 +53,7 @@ const SUPPORTED: &[&str] = &[
     "spawn",
     "ended",
     "task-emits",
+    "raise",
     "invokes",
 ];
 
@@ -1086,7 +1087,7 @@ fn restore_and_go_on(c: &LoadedCase, name: &str, text: &str) -> Result<bool, Str
             again.to_canonical()
         ));
     }
-    let last = saved.timers.iter().map(|t| t.due).max().unwrap_or(0);
+    let last = saved.dues().map(|(_, due)| due).max().unwrap_or(0);
     advance(&timer, &mut runner, last)?;
     let records: Vec<Value> = sink
         .records()
@@ -1102,15 +1103,22 @@ fn restore_and_go_on(c: &LoadedCase, name: &str, text: &str) -> Result<bool, Str
             return Err(format!("invoke {} was not started again", inv.id));
         }
     }
-    for tm in &saved.timers {
+    // Each timer and delayed raise expires at its saved deadline, unless an earlier one's
+    // transition cancelled it first (leaving its state, or replacing the raise).
+    for (id, due) in saved.dues() {
         let taken = records.iter().any(|r| {
             r["kind"] == "event"
                 && r["event"]["kind"] == "after"
-                && r["event"]["timer"] == tm.id
-                && r["t"] == tm.due
+                && r["event"]["timer"] == id
+                && r["t"] == due
         });
-        if !taken {
-            return Err(format!("timer {} did not expire at {}", tm.id, tm.due));
+        let cancelled = records.iter().any(|r| {
+            (r["kind"] == "timer.cancelled" || r["kind"] == "raise.cancelled")
+                && r["timer"] == id
+                && r["t"].as_u64().is_some_and(|t| t <= due)
+        });
+        if !taken && !cancelled {
+            return Err(format!("timer {id} did not expire at {due}"));
         }
     }
     let problems = host.problems.lock().unwrap().clone();

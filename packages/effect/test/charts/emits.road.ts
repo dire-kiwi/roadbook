@@ -57,7 +57,7 @@ export interface UploaderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "packages/effect/test/charts/emits.road",
@@ -259,6 +259,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

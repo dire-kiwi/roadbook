@@ -72,6 +72,10 @@ pub const UNKNOWN_CHECK_STATE: Code = Code(123);
 /// An `on name.ended` through an `invoke … as name` child or task or a `children` collection,
 /// whose ends are their outcomes, not through a `ref`.
 pub const ENDED_NOT_A_PEER: Code = Code(124);
+/// A `raise` of an event that is not one of the machine's own events or internal events.
+pub const NOT_RAISABLE: Code = Code(125);
+/// A `cancel name` where no `raise … as name` of the machine uses `name`.
+pub const UNKNOWN_RAISE_NAME: Code = Code(126);
 
 // ───────────── structure ─────────────
 
@@ -275,6 +279,10 @@ pub const NOT_CHECKED: Code = Code(912);
 /// A transition that leaves a parallel state and enters it again, starting regions over that
 /// it does not target.
 pub const REGIONS_RESET: Code = Code(913);
+/// An `internal event` that no `raise` of the machine raises.
+pub const NEVER_RAISED: Code = Code(914);
+/// A `raise E` where no `on E` or `on *` of the machine takes `E`.
+pub const RAISED_NOT_TAKEN: Code = Code(915);
 
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
@@ -302,6 +310,8 @@ pub const ALL: &[Code] = &[
     KEY_AS_NAME,
     UNKNOWN_CHECK_STATE,
     ENDED_NOT_A_PEER,
+    NOT_RAISABLE,
+    UNKNOWN_RAISE_NAME,
     UNKNOWN_TARGET,
     MISSING_INITIAL,
     BAD_INITIAL,
@@ -371,6 +381,8 @@ pub const ALL: &[Code] = &[
     NEVER_SPAWNED,
     NOT_CHECKED,
     REGIONS_RESET,
+    NEVER_RAISED,
+    RAISED_NOT_TAKEN,
 ];
 
 #[cfg(test)]

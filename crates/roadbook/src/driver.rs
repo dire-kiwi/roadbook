@@ -261,7 +261,7 @@ pub(crate) fn early_defect(
     snap.input = input;
     snap.status = Status::Defect;
     snap.result = Some(RunResult::Defect(defect));
-    Saved::new(&snap, |t| t.delay)
+    Saved::new(&snap, |_, delay| delay)
 }
 
 /// Checks a saved snapshot for restoring as a run of `machine` (or of the machine it names),
@@ -302,6 +302,7 @@ fn blank() -> Snapshot {
         calls: Vec::new(),
         spawned: Vec::new(),
         timers: Vec::new(),
+        scheduled: Vec::new(),
         next_invoke: 1,
         next_timer: 1,
         next_message: 1,
@@ -523,7 +524,7 @@ impl<'a> Driver<'a> {
         let (snap, commands) = match begin {
             Begin::Start(machine, input) => self.program.start(machine, &self.id, input, &mut fns),
             Begin::Restore(saved, migrated) => {
-                self.restored_dues = saved.timers.iter().map(|t| (t.id, t.due)).collect();
+                self.restored_dues = saved.dues().collect();
                 let now = self.config.timer.now();
                 self.program
                     .restore(&saved, &self.id, now, migrated, &mut fns)
@@ -598,12 +599,20 @@ impl<'a> Driver<'a> {
         if let Some(leaf) = leaf {
             self.shared.set_state(leaf);
         }
-        let timers = &self.snap.timers;
-        self.dues.retain(|id, _| timers.iter().any(|t| t.id == *id));
+        // The timers' due times, then the delayed raises', each in order: what `Saved::new`
+        // asks for.
+        let timers: Vec<(u64, u64)> = self
+            .snap
+            .timers
+            .iter()
+            .map(|t| (t.id, t.delay))
+            .chain(self.snap.scheduled.iter().map(|s| (s.id, s.delay)))
+            .collect();
+        self.dues.retain(|id, _| timers.iter().any(|t| t.0 == *id));
         let now = self.config.timer.now();
         let dues = timers
             .iter()
-            .map(|t| self.dues.get(&t.id).copied().unwrap_or(due(now, t.delay)))
+            .map(|&(id, delay)| self.dues.get(&id).copied().unwrap_or(due(now, delay)))
             .collect();
         self.shared.publish(self.snap.clone(), dues);
     }
@@ -700,8 +709,8 @@ impl<'a> Driver<'a> {
             .saved()
             .map(|s| (*s).clone())
             .unwrap_or_else(|| {
-                Saved::new(&self.snap, |t| {
-                    self.dues.get(&t.id).copied().unwrap_or(t.delay)
+                Saved::new(&self.snap, |id, delay| {
+                    self.dues.get(&id).copied().unwrap_or(delay)
                 })
             });
         self.shared.finish(Finished::Ok);
@@ -1271,7 +1280,7 @@ mod tests {
         let (snap, _) = program
             .start("C", "r1", Object::new(), &mut no_fns)
             .unwrap();
-        let saved = Saved::new(&snap, |t| t.delay);
+        let saved = Saved::new(&snap, |_, delay| delay);
         let sink = Arc::new(MemorySink::new());
         let config = Config::new().sink(sink.clone());
         let rt = tokio::runtime::Builder::new_current_thread()

@@ -6,8 +6,8 @@ use std::collections::{HashMap, HashSet};
 use indexmap::IndexMap;
 use roadbook_ir as ir;
 use roadbook_syntax::ast::{
-    self, Body, Branches, Decl, DeclKind, Effect, Ident, Invoke, Item, Message, Pattern, Reply,
-    ReplyOutcome, SendKey, State, StateKind, Target, Transition, Trigger,
+    self, Body, Branches, Decl, DeclKind, Effect, Ident, Invoke, Item, Message, Pattern, Raise,
+    Reply, ReplyOutcome, SendKey, State, StateKind, Target, Transition, Trigger,
 };
 use roadbook_syntax::diagnostic::Code;
 use roadbook_syntax::{Diagnostic, Span, expr_text, message_value};
@@ -105,6 +105,12 @@ pub(crate) struct MachineInfo {
     pub call_vars: Vec<(String, Span)>,
     /// The variables a `reply` answers.
     pub replied: HashSet<String>,
+    /// Declared internal events with their name spans, in order. They are in `events` too.
+    pub internal_events: Vec<(String, Span)>,
+    /// Every `raise`, by its event: the event's span in the `raise`, in the order lowered.
+    pub raised: Vec<(String, Span)>,
+    /// Whether some state of the machine has an `on *`.
+    pub any_handler: bool,
 }
 
 /// Where effects run, for the check that a `send` to an invoked child finds it running.
@@ -220,8 +226,15 @@ pub(crate) struct Cx<'c, 'p> {
     /// The machine's symbol, which its parameters, variables and events are members of.
     pub symbol: Option<SymbolId>,
     pub vars: HashMap<String, Var>,
+    /// The machine's own events, its internal events among them: what `on E` and `raise E`
+    /// take.
     pub events: HashMap<String, Vec<(String, Ty)>>,
+    /// Which of `events` are internal events.
+    pub internal: HashSet<String>,
     pub emits: HashMap<String, Vec<(String, Ty)>>,
+    /// The names of the machine's delayed raises (`raise … as name`), with where each is
+    /// first written.
+    pub raise_names: HashMap<String, Span>,
     /// The calls the machine answers.
     pub calls: IndexMap<String, Sig>,
     pub collections: HashMap<String, Collection>,
@@ -259,7 +272,9 @@ pub(crate) fn lower<'p>(
         symbol,
         vars: HashMap::new(),
         events: HashMap::new(),
+        internal: HashSet::new(),
         emits: HashMap::new(),
+        raise_names: HashMap::new(),
         calls: IndexMap::new(),
         collections: HashMap::new(),
         returns: sig.as_ref().and_then(|s| s.returns.clone()),
@@ -281,6 +296,9 @@ pub(crate) fn lower<'p>(
             taken_calls: HashSet::new(),
             call_vars: Vec::new(),
             replied: HashSet::new(),
+            internal_events: Vec::new(),
+            raised: Vec::new(),
+            any_handler: false,
         },
         reads: Vec::new(),
         transition_reads: Vec::new(),
@@ -368,16 +386,24 @@ pub(crate) fn lower<'p>(
         var_tys.push(ty);
     }
 
-    // Events and emitted events: one namespace. Their field types are in the interface.
+    // Events, internal events and emitted events: one namespace. Their field types are in
+    // the interface.
     let mut events = IndexMap::new();
+    let mut internal_events = IndexMap::new();
     let mut emits = IndexMap::new();
     let mut first_seen: HashMap<String, Span> = HashMap::new();
-    for (is_emits, e) in m.body.items.iter().filter_map(|i| match i {
-        Item::Event(e) => Some((false, e)),
-        Item::Emits(e) => Some((true, e)),
+    for (kind, e) in m.body.items.iter().filter_map(|i| match i {
+        Item::Event(e) => Some((0, e)),
+        Item::InternalEvent(e) => Some((1, e)),
+        Item::Emits(e) => Some((2, e)),
         _ => None,
     }) {
-        let word = if is_emits { "emitted event" } else { "event" };
+        let is_emits = kind == 2;
+        let word = match kind {
+            0 => "event",
+            1 => "internal event",
+            _ => "emitted event",
+        };
         if let Some(first) = first_seen.get(&e.name.name) {
             cx.ck.diags.push(
                 Diagnostic::error(
@@ -386,9 +412,7 @@ pub(crate) fn lower<'p>(
                     format!("event `{}` is declared twice", e.name.name),
                 )
                 .with_secondary(*first, "first declared here")
-                .with_help(
-                    "the events a machine accepts and those it emits share one set of names",
-                ),
+                .with_help("the events a machine accepts, raises and emits share one set of names"),
             );
             continue;
         }
@@ -431,6 +455,19 @@ pub(crate) fn lower<'p>(
             cx.emits.insert(e.name.name.clone(), fields);
             cx.info.emits.push((e.name.name.clone(), e.name.span));
             emits.insert(e.name.name.clone(), decl);
+        } else if kind == 1 {
+            let fields = iface
+                .internal
+                .get(&e.name.name)
+                .cloned()
+                .unwrap_or_default();
+            cx.events.insert(e.name.name.clone(), fields);
+            cx.internal.insert(e.name.name.clone());
+            cx.info.events.push((e.name.name.clone(), e.name.span));
+            cx.info
+                .internal_events
+                .push((e.name.name.clone(), e.name.span));
+            internal_events.insert(e.name.name.clone(), decl);
         } else {
             let fields = iface.events.get(&e.name.name).cloned().unwrap_or_default();
             cx.events.insert(e.name.name.clone(), fields);
@@ -511,6 +548,36 @@ pub(crate) fn lower<'p>(
                 span: ir_span(c.span),
             },
         );
+    }
+
+    // The names of delayed raises share the namespace too. Several raises may use one name:
+    // a raise replaces the pending one of its name.
+    for e in m.body.all_effects() {
+        let ast::Effect::Raise(Raise { name: Some(n), .. }) = e else {
+            continue;
+        };
+        if cx.raise_names.contains_key(&n.name) {
+            continue;
+        }
+        cx.key_as_name(n, "a delayed raise");
+        if let Some(first) = seen.get(&n.name) {
+            let what = match cx.vars.get(&n.name) {
+                Some(v) if v.param => "a parameter",
+                Some(_) => "a variable",
+                None => "a children collection",
+            };
+            cx.ck.diags.push(
+                Diagnostic::error(
+                    codes::DUPLICATE_NAME,
+                    n.span,
+                    format!("`{}` is already {what} of `{name}`", n.name),
+                )
+                .with_secondary(*first, "first declared here")
+                .with_help("a delayed raise's name shares the machine's names with its parameters, variables and collections"),
+            );
+            continue;
+        }
+        cx.raise_names.insert(n.name.clone(), n.span);
     }
 
     // Variable initialisers may read parameters and other variables.
@@ -601,6 +668,7 @@ pub(crate) fn lower<'p>(
         errors: m.errors.iter().map(|e| e.name.clone()).collect(),
         vars,
         events,
+        internal_events,
         emits,
         calls,
         children,
@@ -1023,6 +1091,19 @@ impl<'p> Cx<'_, 'p> {
                     )
                     .with_help("an `as` name shares the machine's names with its collections; choose another"),
                 );
+                } else if let Some(&raise) = self.raise_names.get(&alias.name) {
+                    bad = Some(
+                        Diagnostic::error(
+                            codes::DUPLICATE_NAME,
+                            alias.span,
+                            format!(
+                                "`{}` is already the name of a delayed raise of `{}`",
+                                alias.name, self.machine
+                            ),
+                        )
+                        .with_secondary(raise, "named here")
+                        .with_help("an `as` name shares the machine's names with its delayed raises; choose another"),
+                    );
                 } else {
                     let mut up = self.nodes[i].parent;
                     while let Some(a) = up {
@@ -1630,6 +1711,19 @@ impl<'p> Cx<'_, 'p> {
                 )
             };
             d = d.with_help(help);
+        } else if iface.internal.contains_key(&event.name) {
+            let help = if emitted {
+                format!(
+                    "`{}` is an internal event of `{machine}`, which only it raises",
+                    event.name
+                )
+            } else {
+                format!(
+                    "`{}` is an internal event of `{machine}`: only `{machine}` raises it, so no other machine can send it",
+                    event.name
+                )
+            };
+            d = d.with_help(help);
         } else if let Some(s) = suggest(&event.name, list.keys().map(String::as_str)) {
             d = d.with_help(format!("did you mean `{s}`?")).with_fix(
                 format!("replace with `{s}`"),
@@ -1956,6 +2050,7 @@ impl<'p> Cx<'_, 'p> {
                 }
                 Item::Var(_)
                 | Item::Event(_)
+                | Item::InternalEvent(_)
                 | Item::Emits(_)
                 | Item::Call(_)
                 | Item::Children(_)
@@ -2099,7 +2194,7 @@ impl<'p> Cx<'_, 'p> {
                     Item::State(s) => s.doc.as_ref(),
                     Item::History(h) => h.doc.as_ref(),
                     Item::Var(v) => v.doc.as_ref(),
-                    Item::Event(e) | Item::Emits(e) => e.doc.as_ref(),
+                    Item::Event(e) | Item::InternalEvent(e) | Item::Emits(e) => e.doc.as_ref(),
                     Item::Check(c) => c.doc.as_ref(),
                     _ => None,
                 };
@@ -2317,6 +2412,7 @@ impl<'p> Cx<'_, 'p> {
                 }
             }
             Trigger::On(Pattern::Any { .. }) => {
+                self.info.any_handler = true;
                 scope.event = Implicit::Bad(
                     codes::UNTYPED_EVENT,
                     "`event` has no type in `on *`, which matches events of different types".into(),
@@ -3004,6 +3100,42 @@ impl<'p> Cx<'_, 'p> {
                         });
                     }
                 }
+                Effect::Raise(r) => {
+                    if let Some(e) = self.raise(r, scope) {
+                        out.push(e);
+                    }
+                }
+                Effect::Cancel(c) => {
+                    if self.raise_names.contains_key(&c.name.name) {
+                        out.push(ir::Effect::Cancel {
+                            name: c.name.name.clone(),
+                        });
+                    } else {
+                        let mut d = Diagnostic::error(
+                            codes::UNKNOWN_RAISE_NAME,
+                            c.name.span,
+                            format!(
+                                "no delayed raise of `{}` is named `{}`",
+                                self.machine, c.name.name
+                            ),
+                        );
+                        let names: Vec<&str> =
+                            self.raise_names.keys().map(String::as_str).collect();
+                        if let Some(s) = suggest(&c.name.name, names.iter().copied()) {
+                            d = d.with_help(format!("did you mean `{s}`?")).with_fix(
+                                format!("replace with `{s}`"),
+                                c.name.span,
+                                s,
+                            );
+                        } else {
+                            d = d.with_help(format!(
+                                "name the raise to cancel: `raise Event after 5s as {}`",
+                                c.name.name
+                            ));
+                        }
+                        self.ck.diags.push(d);
+                    }
+                }
                 Effect::Stop(st) => {
                     let written = format!("stop {}", st.children.name);
                     let c = self.collection(&st.children, &written);
@@ -3027,6 +3159,56 @@ impl<'p> Cx<'_, 'p> {
             }
         }
         (out, reads)
+    }
+
+    /// Checks and lowers `raise E [{ fields }] [after d [as name]]`: `E` is one of the
+    /// machine's own events, internal or not.
+    fn raise(&mut self, r: &Raise, scope: &Scope) -> Option<ir::Effect> {
+        let event = &r.message.event;
+        self.ck.refer_member(self.file, self.symbol, event);
+        let fields = self.events.get(&event.name).cloned();
+        if fields.is_some() {
+            self.info.raised.push((event.name.clone(), event.span));
+        } else {
+            let mut d = Diagnostic::error(
+                codes::NOT_RAISABLE,
+                event.span,
+                format!("`{}` has no event `{}` to raise", self.machine, event.name),
+            );
+            if self.emits.contains_key(&event.name) {
+                d = d.with_help(format!(
+                    "`{}` is an event `{}` emits for others; a machine raises only its own events (`event` or `internal event`): `emit {}` sends it",
+                    event.name, self.machine, event.name
+                ));
+            } else if let Some(s) = suggest(
+                &event.name,
+                self.info.events.iter().map(|(e, _)| e.as_str()),
+            ) {
+                d = d.with_help(format!("did you mean `{s}`?")).with_fix(
+                    format!("replace with `{s}`"),
+                    event.span,
+                    s,
+                );
+            } else {
+                d = d.with_help(format!(
+                    "declare it in the machine body: `internal event {}` for an event only the machine raises, or `event {}`",
+                    event.name, event.name
+                ));
+            }
+            self.ck.diags.push(d);
+        }
+        let ty = Ty::Event(event.name.clone());
+        let delay = r
+            .delay
+            .as_ref()
+            .map(|d| self.expect_to(d, scope, &DURATION, "a `raise` delay", Dest::Shown));
+        let value = self.message_value(&r.message, &ty, fields.as_deref(), scope);
+        fields.map(|_| ir::Effect::Raise {
+            event: event.name.clone(),
+            value,
+            delay,
+            name: r.name.as_ref().map(|n| n.name.clone()),
+        })
     }
 
     /// Checks and lowers `reply x done [value]` or `reply x fail error`.

@@ -1,0 +1,13 @@
+{"input":{},"ir":"sha256:9b1607d82690c0e6dcfe2fba07abb124f92055d4bf86880e0255d6bfc8764e69","kind":"started","machine":"Reminder","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Reminder","t":0}
+{"kind":"entered","run":"r1","state":"Reminder.Idle","t":0}
+{"event":{"kind":"event","value":{"_tag":"Start"}},"kind":"event","run":"r1","t":0}
+{"from":"Reminder.Idle","index":0,"kind":"transition","run":"r1","t":0,"to":["Reminder.Waiting"]}
+{"kind":"exited","run":"r1","state":"Reminder.Idle","t":0}
+{"delay":1000,"kind":"raise.scheduled","name":"reminder","run":"r1","t":0,"timer":1,"value":{"_tag":"Remind","attempt":1}}
+{"kind":"entered","run":"r1","state":"Reminder.Waiting","t":0}
+{"delay":3000,"index":5,"kind":"timer.started","run":"r1","state":"Reminder.Waiting","t":0,"timer":2}
+{"event":{"kind":"event","value":{"_tag":"Boom"}},"kind":"event","run":"r1","t":0}
+{"from":"Reminder.Waiting","index":4,"kind":"transition","run":"r1","t":0,"to":[]}
+{"action":"log","args":{"what":"boom"},"kind":"action","run":"r1","t":0}
+{"defect":{"kind":"host","message":"boom"},"kind":"defect","run":"r1","t":0}

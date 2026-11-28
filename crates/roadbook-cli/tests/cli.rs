@@ -135,7 +135,7 @@ fn export_ir_writes_the_fixture() {
     let out = roadbook(&dir, &["export", "ir", "m.road", "-o", "m.ir.json"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let written = std::fs::read_to_string(dir.join("m.ir.json")).unwrap();
-    assert!(written.contains("\"irVersion\": \"0.11\""));
+    assert!(written.contains("\"irVersion\": \"0.12\""));
 }
 
 #[test]
@@ -1074,6 +1074,18 @@ fn export_mermaid_snapshots_tasks_that_emit() {
         assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
         insta::assert_snapshot!(snapshot, text(&out.stdout));
     }
+}
+
+/// Raises and cancels in edge labels and state descriptions: `raise Ping { n: 1 }`,
+/// `raise Remind { … } after 1s as reminder`, `cancel reminder`.
+#[test]
+fn export_mermaid_snapshots_raises() {
+    let out = roadbook(
+        &repo(),
+        &["export", "mermaid", "spec/conformance/charts/raise.road"],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    insta::assert_snapshot!("raise_mermaid", text(&out.stdout));
 }
 
 /// A peer's end: `x.ended` on an edge with its guard (from the machine, for one in its body),

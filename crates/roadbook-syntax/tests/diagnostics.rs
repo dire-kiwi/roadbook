@@ -28,6 +28,8 @@ fn each_syntax_error_has_its_code() {
         ("import { A } from \"\\q\"".into(), "RB0003"),
         (m("  after 5min -> A"), "RB0004"),
         (m("  var x: int = 99999999999999999999"), "RB0005"),
+        (m("  on Go raise Ping as ping"), "RB0028"),
+        (s("    internal event Ping"), "RB0015"),
         (
             m(&format!("  var x: float = 1{}.0", "0".repeat(400))),
             "RB0005",
@@ -288,7 +290,7 @@ fn rendered_syntax_error() {
         source: &src,
     });
     let expected = "\
-error[RB0017]: a transition must do something: expected `-> Target`, `set`, `do`, `send`, `emit`, `reply`, `spawn`, `stop` or `ignore`, found `}`
+error[RB0017]: a transition must do something: expected `-> Target`, `set`, `do`, `send`, `emit`, `reply`, `spawn`, `stop`, `raise`, `cancel` or `ignore`, found `}`
  --> m.road:4:3
   |
 3 |     on Go if ready
@@ -296,7 +298,7 @@ error[RB0017]: a transition must do something: expected `-> Target`, `set`, `do`
 4 |   }
   |   ^
   |
-  = help: give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`) or a reply (`reply call done`), or write `ignore` to take the event and do nothing
+  = help: give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`, `raise Event`) or a reply (`reply call done`), or write `ignore` to take the event and do nothing
 ";
     assert_eq!(out, expected);
 }

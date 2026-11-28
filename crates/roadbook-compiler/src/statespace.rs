@@ -9,7 +9,8 @@
 //! says what it assumed of it ([`Edge::assumptions`], [`Assumption`]):
 //! - the outcome of each guard it relies on;
 //! - for a timer's expiry while another timer of the run is running, that it expires first,
-//!   since its delay might not be the shortest;
+//!   since its delay might not be the shortest (a delayed raise's timer counts, and the
+//!   expiry of a delayed raise assumes the same of the others);
 //! - for an outcome of a child or spawned child machine, the answer to a call the machine made
 //!   of a peer (`invoke peer.c(…)`: done, a declared error or `Unanswered`), a call another run
 //!   makes of it (`on c`), or an event that a child, a spawned child or a peer emits, that the
@@ -32,14 +33,16 @@
 //! A **node** is the machine between two microsteps: its active states, what each history
 //! state has recorded, which invokes and timers of the active states have already been
 //! consumed (an outcome or an expiry consumes its invoke or timer even when it takes no
-//! transition), which `children` collections may have a running child, whether the run has
-//! finished, and, while it settles, the completion queue. Nodes are hash-consed: two ways to
+//! transition), which `children` collections may have a running child, which delayed raises
+//! are pending, whether the run has finished, and, while it settles, the internal queue of
+//! completions and raised events. Nodes are hash-consed: two ways to
 //! the same configuration reach the same node.
 //!
 //! An **edge** is one of:
 //! - an input's microstep, from a stable node (one that has settled);
 //! - an invoke outcome or a timer expiry that takes no transition, which only consumes it;
-//! - a microstep of settling (`always`, or a `done`), from a settling node;
+//! - a microstep of settling (`always`, a `done`, or a raised event's), from a settling
+//!   node;
 //! - the end of settling ([`Input::Settled`]), from a settling node to the stable node with the
 //!   same active states, when every `always` guard and every queued `done` guard may fail.
 //!
@@ -64,6 +67,10 @@
 //!   `ended`, and may likewise arrive at any time, more than once.
 //! - A call of each of the machine's `calls` may arrive at any stable node, from some caller;
 //!   which calls are pending is not part of a node, so a `reply` changes nothing in it.
+//! - A named delayed raise is pending exactly as in a run: started, replaced by one of its
+//!   name, cancelled, consumed by its expiry. An unnamed one, of which a run can have any
+//!   number, is pending from the first time it is started for the rest of the run, so its
+//!   expiry may arrive at any stable node after that.
 //! - A defect, a cancel and the `limit` on settling are not modelled: they end a run, and a
 //!   node's run only ever ends at a top-level final state. So in a strict machine an input that
 //!   enables nothing, which is the `unhandled` defect, takes nothing here, as it does in a
@@ -145,6 +152,14 @@ pub enum Assumption {
         state: StateIndex,
         /// The index of the block's first transition.
         index: usize,
+    },
+    /// The delayed raise of `event` named `name` expires while another timer of the run is
+    /// running (an `after` timer or another delayed raise): before it.
+    RaiseFirst {
+        /// The raise's `as` name, or `None`.
+        name: Option<String>,
+        /// The event it raises.
+        event: String,
     },
     /// Another machine does what the edge's input says: a child or spawned child machine ends
     /// `done` or fails, a peer answers a call (or leaves it `Unanswered`), another run calls
@@ -296,6 +311,16 @@ pub enum Input {
         children: String,
         /// The error's name, one the collection's machine declares.
         error: String,
+    },
+    /// Settling took the transitions a raised event (`raise E`) enabled.
+    Raised(String),
+    /// A delayed raise of the event `event`, named `name` (`raise E after d [as name]`),
+    /// expired.
+    RaiseExpired {
+        /// Its `as` name, or `None`.
+        name: Option<String>,
+        /// The event it raises.
+        event: String,
     },
     /// Settling took the enabled `always` transitions.
     Always,
@@ -642,6 +667,9 @@ impl Graph {
             },
             Input::SpawnDone { children } => format!("{children}.done"),
             Input::SpawnFail { children, error } => format!("{children}.fail {error}"),
+            Input::Raised(e) => format!("the raised {e}"),
+            Input::RaiseExpired { name: Some(n), .. } => format!("the delayed raise {n}"),
+            Input::RaiseExpired { name: None, event } => format!("a delayed {event}"),
             Input::Always => "always".into(),
             Input::Done { state } => format!("done of {}", id(state)),
             Input::Settled => "settled".into(),
@@ -813,6 +841,15 @@ struct Chart<'a> {
     spawn_exit: Vec<Vec<usize>>,
     /// The collections each transition's effects spawn into.
     spawn_effects: Vec<Vec<Vec<usize>>>,
+    /// The machine's own events, `events` then `internalEvents`, which a raise names by index.
+    own_events: Vec<&'a str>,
+    /// The names of the machine's delayed raises, which a raise names by index.
+    raise_names: Vec<&'a str>,
+    /// The raises and cancels of a state's `entry` and `exit`, in order.
+    raise_entry: Vec<Vec<RaiseOp>>,
+    raise_exit: Vec<Vec<RaiseOp>>,
+    /// The raises and cancels of each transition's effects, in order.
+    raise_effects: Vec<Vec<Vec<RaiseOp>>>,
     /// The `after` blocks of each state: (group, index of its first transition).
     after_blocks: Vec<Vec<(u32, usize)>>,
     /// The events a trigger expects from the child invoked by each state.
@@ -853,6 +890,16 @@ impl<'a> Chart<'a> {
             spawn_entry: Vec::new(),
             spawn_exit: Vec::new(),
             spawn_effects: Vec::new(),
+            own_events: machine
+                .events
+                .keys()
+                .chain(machine.internal_events.keys())
+                .map(String::as_str)
+                .collect(),
+            raise_names: machine.raise_names(),
+            raise_entry: Vec::new(),
+            raise_exit: Vec::new(),
+            raise_effects: Vec::new(),
             after_blocks: Vec::new(),
             child_events: Vec::new(),
             children_events: vec![Vec::new(); machine.children.len()],
@@ -897,6 +944,30 @@ impl<'a> Chart<'a> {
             out.dedup();
             out
         };
+        let own = c.own_events.clone();
+        let names = c.raise_names.clone();
+        let event = |e: &str| own.iter().position(|&x| x == e).unwrap_or(0) as u32;
+        let name = |n: &str| names.iter().position(|&x| x == n).unwrap_or(0) as u32;
+        let raises = |effects: &[Effect]| -> Vec<RaiseOp> {
+            effects
+                .iter()
+                .filter_map(|e| match e {
+                    Effect::Raise {
+                        event: e,
+                        delay: None,
+                        ..
+                    } => Some(RaiseOp::Now(event(e))),
+                    Effect::Raise {
+                        event: e,
+                        delay: Some(_),
+                        name: n,
+                        ..
+                    } => Some(RaiseOp::Later(n.as_deref().map(name), event(e))),
+                    Effect::Cancel { name: n } => Some(RaiseOp::Cancel(name(n))),
+                    _ => None,
+                })
+                .collect()
+        };
         let n = c.states.len();
         let mut child_events: Vec<Vec<Vec<&str>>> = c
             .states
@@ -940,6 +1011,10 @@ impl<'a> Chart<'a> {
             c.spawn_exit.push(spawns(&s.exit));
             c.spawn_effects
                 .push(s.transitions.iter().map(|t| spawns(&t.effects)).collect());
+            c.raise_entry.push(raises(&s.entry));
+            c.raise_exit.push(raises(&s.exit));
+            c.raise_effects
+                .push(s.transitions.iter().map(|t| raises(&t.effects)).collect());
             let mut blocks = Vec::new();
             for (k, t) in s.transitions.iter().enumerate() {
                 match &t.trigger {
@@ -1202,6 +1277,25 @@ impl<'a> Chart<'a> {
         }
     }
 
+    /// What raises and cancels do: an immediate raise queues its event, a delayed one is
+    /// pending (replacing the pending one of its name), a cancel removes the one of its name.
+    fn apply_raises(cfg: &mut Config, ops: &[RaiseOp]) {
+        for &op in ops {
+            match op {
+                RaiseOp::Now(e) => cfg.queue.push(Queued::Raised(e)),
+                RaiseOp::Later(name, e) => {
+                    if name.is_some() {
+                        cfg.scheduled.retain(|&(n, _)| n != name);
+                    }
+                    if let Err(at) = cfg.scheduled.binary_search(&(name, e)) {
+                        cfg.scheduled.insert(at, (name, e));
+                    }
+                }
+                RaiseOp::Cancel(n) => cfg.scheduled.retain(|&(x, _)| x != Some(n)),
+            }
+        }
+    }
+
     /// Forgets that `s`'s work was consumed: it is left, or entered again and restarted.
     fn restart(cfg: &mut Config, s: u32) {
         cfg.consumed.retain(|&(x, _)| x != s);
@@ -1216,6 +1310,7 @@ impl<'a> Chart<'a> {
             }
             Self::set_spawned(cfg, &self.spawn_entry[s as usize]);
             Self::restart(cfg, s);
+            Self::apply_raises(cfg, &self.raise_entry[s as usize]);
             if self.kind(s) == StateKind::Final {
                 let parent = self.parent[s as usize].unwrap_or(0);
                 if parent == 0 {
@@ -1232,7 +1327,7 @@ impl<'a> Chart<'a> {
         let mut s = f;
         let parent = self.parent[f as usize].unwrap_or(0);
         if self.kind(parent) == StateKind::Compound {
-            cfg.queue.push(parent);
+            cfg.queue.push(Queued::Completion(parent));
             s = parent;
         }
         while let Some(p) = self.parent[s as usize] {
@@ -1240,7 +1335,7 @@ impl<'a> Chart<'a> {
                 break;
             }
             s = p;
-            cfg.queue.push(s);
+            cfg.queue.push(Queued::Completion(s));
         }
     }
 
@@ -1280,15 +1375,21 @@ impl<'a> Chart<'a> {
         for &s in exits.iter().rev() {
             Self::restart(cfg, s);
             Self::set_spawned(cfg, &self.spawn_exit[s as usize]);
+            Self::apply_raises(cfg, &self.raise_exit[s as usize]);
             if let Ok(at) = cfg.active.binary_search(&s) {
                 cfg.active.remove(at);
             }
             // A state's completion goes with it, and with any state below it: an internal
-            // transition that exits a final state takes its parent's completion back.
-            cfg.queue.retain(|&q| q != s && !self.contains(q, s));
+            // transition that exits a final state takes its parent's completion back. A raised
+            // event stays.
+            cfg.queue.retain(|&q| match q {
+                Queued::Completion(q) => q != s && !self.contains(q, s),
+                Queued::Raised(_) => true,
+            });
         }
         for &t in ts {
             Self::set_spawned(cfg, &self.spawn_effects[t.0 as usize][t.1]);
+            Self::apply_raises(cfg, &self.raise_effects[t.0 as usize][t.1]);
         }
         let mut entries = Vec::new();
         for &t in ts {
@@ -1308,17 +1409,19 @@ impl<'a> Chart<'a> {
             cfg.consumed.clear();
             cfg.spawned.iter_mut().for_each(|f| *f = false);
             cfg.queue.clear();
+            cfg.scheduled.clear();
             cfg.settling = false;
             return cfg;
         }
         let always = cfg.active.iter().any(|&s| self.has_always[s as usize]);
-        let done = cfg.queue.iter().any(|&q| {
-            self.states[q as usize]
+        let queued = cfg.queue.iter().any(|&q| match q {
+            Queued::Completion(q) => self.states[q as usize]
                 .transitions
                 .iter()
-                .any(|t| matches!(t.trigger, Trigger::Done))
+                .any(|t| matches!(t.trigger, Trigger::Done)),
+            Queued::Raised(_) => true,
         });
-        cfg.settling = always || done;
+        cfg.settling = always || queued;
         if !cfg.settling {
             cfg.queue.clear();
         }
@@ -1588,6 +1691,42 @@ impl<'a> Chart<'a> {
                 &mut out,
             );
         }
+        // The expiries of pending delayed raises: each consumes its raise (an unnamed one stays
+        // pending: there may be more) and is selected as its event.
+        for &(name, e) in &cfg.scheduled {
+            let event = self.own_events[e as usize];
+            let input = Input::RaiseExpired {
+                name: name.map(|n| self.raise_names[n as usize].to_owned()),
+                event: event.to_owned(),
+            };
+            let mut consumed = cfg.clone();
+            if name.is_some() {
+                consumed.scheduled.retain(|&x| x != (name, e));
+            }
+            let extra = self.input_assumption(cfg, &input);
+            let c = Cand::Event(event);
+            let choices = if cfg.active.iter().any(|&s| self.has_candidate(s, &c)) {
+                self.select_by_walks(cfg, &c)
+            } else {
+                vec![(Vec::new(), Vec::new())]
+            };
+            for (ts, assumed) in choices {
+                let mut next = consumed.clone();
+                if !ts.is_empty() {
+                    self.microstep(&mut next, &ts);
+                    next = self.normalize(next);
+                } else if next == *cfg {
+                    continue;
+                }
+                out.push(Successor::new(
+                    input.clone(),
+                    &ts,
+                    &assumed,
+                    extra.clone(),
+                    next,
+                ));
+            }
+        }
         // Calls from other runs, selected among the `on c` transitions alone.
         for name in self.machine.calls.keys() {
             self.by_walks(cfg, Input::Call(name.clone()), &Cand::Call(name), &mut out);
@@ -1836,20 +1975,36 @@ impl<'a> Chart<'a> {
                 (!tasks).then(|| Assumption::Machine(input.clone()))
             }
             Input::Call(_) | Input::Emitted { .. } => Some(Assumption::Machine(input.clone())),
-            Input::After { state, index } => {
-                let others = cfg.active.iter().any(|&s| {
-                    self.after_blocks[s as usize].iter().any(|&(group, i)| {
-                        (s, i) != (state.0, *index)
-                            && !cfg.consumed.contains(&(s, group))
-                            && !self.expires_first((state.0, *index), (s, i))
-                    })
+            Input::RaiseExpired { name, event } => {
+                let timers = cfg.active.iter().any(|&s| {
+                    self.after_blocks[s as usize]
+                        .iter()
+                        .any(|&(group, _)| !cfg.consumed.contains(&(s, group)))
                 });
+                (timers || cfg.scheduled.len() > 1).then(|| Assumption::RaiseFirst {
+                    name: name.clone(),
+                    event: event.clone(),
+                })
+            }
+            Input::After { state, index } => {
+                let others = !cfg.scheduled.is_empty()
+                    || cfg.active.iter().any(|&s| {
+                        self.after_blocks[s as usize].iter().any(|&(group, i)| {
+                            (s, i) != (state.0, *index)
+                                && !cfg.consumed.contains(&(s, group))
+                                && !self.expires_first((state.0, *index), (s, i))
+                        })
+                    });
                 others.then_some(Assumption::TimerFirst {
                     state: *state,
                     index: *index,
                 })
             }
-            Input::Event(_) | Input::Always | Input::Done { .. } | Input::Settled => None,
+            Input::Event(_)
+            | Input::Raised(_)
+            | Input::Always
+            | Input::Done { .. }
+            | Input::Settled => None,
         }
     }
 
@@ -1904,7 +2059,7 @@ impl<'a> Chart<'a> {
                 ));
                 continue;
             }
-            // No `always` is taken: the completions, in queue order.
+            // No `always` is taken: the internal queue, in order.
             let mut assumed = assumed;
             let mut queue = cfg.queue.clone();
             loop {
@@ -1915,7 +2070,46 @@ impl<'a> Chart<'a> {
                     out.push(Successor::new(Input::Settled, &[], &assumed, None, next));
                     break;
                 }
-                let p = queue.remove(0);
+                let p = match queue.remove(0) {
+                    Queued::Completion(p) => p,
+                    Queued::Raised(e) => {
+                        // Selected as the same event from outside would be; one that enables
+                        // nothing is dropped, and settling goes on with the rest of the queue.
+                        let event = self.own_events[e as usize];
+                        let c = Cand::Event(event);
+                        let mut none = None;
+                        let choices = if cfg.active.iter().any(|&s| self.has_candidate(s, &c)) {
+                            self.select_by_walks(cfg, &c)
+                        } else {
+                            vec![(Vec::new(), Vec::new())]
+                        };
+                        for (ts, more) in choices {
+                            let mut a = assumed.clone();
+                            a.extend(more.iter().copied());
+                            if ts.is_empty() {
+                                none.get_or_insert(a);
+                                continue;
+                            }
+                            let mut next = cfg.clone();
+                            next.queue = queue.clone();
+                            self.microstep(&mut next, &ts);
+                            out.push(Successor::new(
+                                Input::Raised(event.to_owned()),
+                                &ts,
+                                &a,
+                                None,
+                                self.normalize(next),
+                            ));
+                        }
+                        match none {
+                            Some(a) => {
+                                assumed = a;
+                                continue;
+                            }
+                            None => break,
+                        }
+                    }
+                };
                 let mut none = None;
                 for choice in self.search(std::iter::once(p), &Cand::Done) {
                     let mut a = assumed.clone();
@@ -2032,8 +2226,31 @@ struct Config {
     end: Option<u32>,
     /// Whether the run is settling.
     settling: bool,
-    /// The completion queue, while settling.
-    queue: Vec<u32>,
+    /// The internal queue, while settling.
+    queue: Vec<Queued>,
+    /// The pending delayed raises, sorted: (name, event), indices into the chart's raise
+    /// names and own events. Named ones are unique by name.
+    scheduled: Vec<(Option<u32>, u32)>,
+}
+
+/// An entry of the internal queue.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum Queued {
+    /// A state's completion.
+    Completion(u32),
+    /// A raised event, by its index among the machine's own events.
+    Raised(u32),
+}
+
+/// A `raise` or `cancel` effect, for the abstraction: events and names by index.
+#[derive(Clone, Copy, Debug)]
+enum RaiseOp {
+    /// `raise E`.
+    Now(u32),
+    /// `raise E after d [as name]`.
+    Later(Option<u32>, u32),
+    /// `cancel name`.
+    Cancel(u32),
 }
 
 impl Config {
@@ -2046,6 +2263,7 @@ impl Config {
             end: None,
             settling: true,
             queue: Vec::new(),
+            scheduled: Vec::new(),
         }
     }
 }
@@ -2459,6 +2677,86 @@ mod tests {
             .filter(|e| g.describe(&e.input) == input)
             .map(|e| e.assumptions.clone())
             .collect()
+    }
+
+    #[test]
+    fn a_raised_event_is_taken_while_settling_in_queue_order() {
+        // `Go` raises Ping, entering `W.A` raises Pong, and `W.F`'s entry Ping again before
+        // `W`'s completion: settling takes them in that order, then `done`.
+        let g = graph(
+            "machine M() {\n  event Go\n  internal event Ping\n  internal event Pong\n  initial I\n  state I { on Go -> W  raise Ping }\n  state W {\n    initial A\n    on Ping ignore\n    on Pong ignore\n    done -> Z\n    state A {\n      entry raise Pong\n      always -> F\n    }\n    final state F { entry raise Ping }\n  }\n  state Z {}\n}\n",
+        );
+        let s = steps(&g);
+        let order: Vec<&str> = [
+            "I --Go--> W.A",
+            "W.A --always--> W.F",
+            "W.F --the raised Ping--> W.F",
+            "W.F --the raised Pong--> W.F",
+            "W.F --the raised Ping--> W.F",
+            "W.F --done of M.W--> Z",
+        ]
+        .into_iter()
+        .filter(|x| !s.contains(*x))
+        .collect();
+        assert!(order.is_empty(), "missing {order:?} in {s:#?}");
+        // Internal events are not the host's: no edge takes `Ping` from outside.
+        assert!(!s.iter().any(|x| x.contains("--Ping")), "{s:#?}");
+        // Settling never ends with an event still queued.
+        assert!(!s.iter().any(|x| x.contains("settled")), "{s:#?}");
+    }
+
+    #[test]
+    fn a_raised_event_that_enables_nothing_is_dropped() {
+        let g = graph(
+            "machine M() {\n  event Go\n  internal event Ping\n  initial A\n  state A { on Go raise Ping }\n  state B { on Ping -> A }\n}\n",
+        );
+        let s = steps(&g);
+        assert!(s.contains("A --Go--> A"), "{s:#?}");
+        assert!(s.contains("A --settled--> A"), "{s:#?}");
+        assert!(!s.iter().any(|x| x.contains("raised")), "{s:#?}");
+    }
+
+    #[test]
+    fn a_delayed_raise_belongs_to_the_run_and_is_replaced_and_cancelled_by_name() {
+        let g = graph(
+            "machine M() {\n  event Start\n  event Stop\n  internal event Remind\n  initial Idle\n  state Idle { on Start -> Waiting  raise Remind after 1s as r }\n  state Waiting {\n    on Stop -> Idle  cancel r\n    on Remind -> Done\n  }\n  final state Done {}\n}\n",
+        );
+        let s = steps(&g);
+        // It fires in the state the run is in, not the one that started it.
+        assert!(
+            s.contains("Waiting --the delayed raise r--> Done+"),
+            "{s:#?}"
+        );
+        // Cancelled, it fires no more: from Idle after `Stop`, nothing expires.
+        let idle: Vec<&String> = s.iter().filter(|x| x.starts_with("Idle --")).collect();
+        assert!(
+            idle.iter().all(|x| !x.contains("delayed raise")),
+            "{idle:?}"
+        );
+        // With nothing else running it assumes nothing.
+        assert_eq!(assumed_by(&g, "the delayed raise r"), vec![vec![]]);
+        // With an `after` timer running, it assumes it expires first, and so does the timer.
+        let g = graph(
+            "machine M() {\n  event Start\n  internal event Remind\n  initial Idle\n  state Idle { on Start -> Waiting  raise Remind after 1s as r }\n  state Waiting {\n    after 5s -> Idle\n    on Remind -> Done\n  }\n  final state Done {}\n}\n",
+        );
+        let w = g.state_index("M.Waiting").unwrap();
+        // In `Waiting`, with its timer; in `Idle`, after it took the run back there with the
+        // raise still pending, alone, taking nothing.
+        assert_eq!(
+            assumed_by(&g, "the delayed raise r"),
+            vec![
+                vec![Assumption::RaiseFirst {
+                    name: Some("r".into()),
+                    event: "Remind".into()
+                }],
+                vec![]
+            ]
+        );
+        assert!(steps(&g).contains("Idle --the delayed raise r--> Idle"));
+        assert_eq!(
+            assumed_by(&g, "the after at #0 of M.Waiting"),
+            vec![vec![Assumption::TimerFirst { state: w, index: 0 }]]
+        );
     }
 
     #[test]

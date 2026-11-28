@@ -187,6 +187,30 @@ describe('scopes', () => {
     expect(await scopesAt('invoke ticks(1s) as clock', 'clock')).toContain('variable.other.definition.roadbook')
   })
 
+  it('marks internal events, raise and cancel, and the same words as names', async () => {
+    const decl = '  internal event Remind { attempt: int }'
+    expect(await scopesAt(decl, 'internal')).toContain('storage.modifier.internal.roadbook')
+    expect(await scopesAt(decl, 'event')).toContain('storage.type.event.roadbook')
+    expect(await scopesAt(decl, 'Remind')).toContain('entity.name.type.event.roadbook')
+    const raise = 'on Go raise Ping  raise Remind { attempt: 1 } after 24h as reminder'
+    expect(await scopesAt(raise, 'raise')).toContain('keyword.other.effect.roadbook')
+    expect(await scopesAt(raise, 'Ping')).toContain('entity.name.type.event.roadbook')
+    expect(await scopesAt(raise, 'Remind')).toContain('entity.name.type.event.roadbook')
+    expect(await scopesAt(raise, 'after')).toContain('keyword.control.after.roadbook')
+    expect(await scopesAt(raise, '24h')).toContain('constant.numeric.duration.roadbook')
+    expect(await scopesAt(raise, 'as')).toContain('keyword.control.as.roadbook')
+    expect(await scopesAt(raise, 'reminder')).toContain('variable.other.definition.roadbook')
+    const cancel = 'exit cancel reminder  do log()'
+    expect(await scopesAt(cancel, 'cancel')).toContain('keyword.other.effect.roadbook')
+    expect(await scopesAt(cancel, 'reminder')).toContain('variable.other.roadbook')
+    expect(await scopesAt('  var raise: int = 0', 'raise')).toContain('variable.other.definition.roadbook')
+    expect(await scopesAt('set raise = raise + 1', 'raise')).toContain('variable.other.roadbook')
+    expect(await scopesAt('set n = cancel and ok', 'cancel')).toContain('variable.other.roadbook')
+    expect(await scopesAt('set n = cancel and ok', 'and')).toContain('keyword.operator.logical.roadbook')
+    expect(await scopesAt('on X do cancel()', 'cancel')).toContain('entity.name.function.call.roadbook')
+    expect(await scopesAt('type T { internal: bool }', 'internal')).toContain('variable.other.property.roadbook')
+  })
+
   it('marks literals', async () => {
     expect(await scopesAt('after 30s -> A', '30s')).toContain('constant.numeric.duration.roadbook')
     expect(await scopesAt('set r = 1.5', '1.5')).toContain('constant.numeric.float.roadbook')
