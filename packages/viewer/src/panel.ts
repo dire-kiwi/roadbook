@@ -562,7 +562,7 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
     section(
       'To',
       t.targets.length
-        ? t.targets.map(toText).join('') + severalNote + internalNote
+        ? (t.targets.length > 1 ? t.targets.map((x) => `<div>${toText(x)}</div>`).join('') : toText(t.targets[0]!)) + severalNote + internalNote
         : '<p class="rb-empty">No target: the state is not left, so no exit or entry effects run.</p>',
     ) +
     extra
