@@ -15,6 +15,8 @@ const describe = (defect: Core.Defect): string => {
     case "unhandled":
       return defect.event.kind === "call"
         ? `a call of ${defect.event.call} enabled no transition in a strict machine`
+        : defect.event.kind === "after"
+        ? `the delayed raise ${defect.event.timer} enabled no transition in a strict machine`
         : `${defect.event.value._tag} enabled no transition in a strict machine`
     case "answered":
       return `a reply was given a call of ${defect.call} that is no longer pending`

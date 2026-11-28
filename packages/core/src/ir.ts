@@ -122,6 +122,8 @@ export interface Machine {
   readonly errors: ReadonlyArray<string>
   readonly vars: ReadonlyArray<Variable>
   readonly events: Readonly<Record<string, EventDecl>>
+  /** Events only the machine raises itself (`internal event Name`); host code cannot send them. */
+  readonly internalEvents: Readonly<Record<string, EventDecl>>
   readonly emits: Readonly<Record<string, EventDecl>>
   readonly calls: Readonly<Record<string, CallDecl>>
   readonly children: Readonly<Record<string, ChildrenDecl>>
@@ -260,6 +262,16 @@ export type Effect =
     readonly args: ReadonlyArray<Expr>
   }
   | { readonly kind: "stop"; readonly children: string; readonly key: Expr }
+  /** `raise E`, on the internal queue, or `raise E after d [as name]`, a delayed raise. */
+  | {
+    readonly kind: "raise"
+    readonly event: string
+    readonly value: Expr
+    readonly delay: Expr | null
+    readonly name: string | null
+  }
+  /** `cancel name`: the pending delayed raise of that name, if any. */
+  | { readonly kind: "cancel"; readonly name: string }
 
 interface ExprBase {
   readonly type: string
@@ -299,6 +311,27 @@ export const isHistory = (state: State): boolean => state.kind === "history" || 
  */
 export const childrenOf = (state: State): ReadonlyArray<State> =>
   state.states.some(isHistory) ? state.states.filter((c) => !isHistory(c)) : state.states
+
+/** The machine's own event `name`: one of its `events` or `internalEvents`. */
+export const ownEvent = (m: Machine, name: string): EventDecl | undefined =>
+  Object.hasOwn(m.events, name)
+    ? m.events[name]
+    : Object.hasOwn(m.internalEvents, name)
+    ? m.internalEvents[name]
+    : undefined
+
+/** The names of `m`'s delayed raises (`raise … after … as name`), each once, in document order. */
+export const raiseNames = (m: Machine): ReadonlyArray<string> => {
+  const out: Array<string> = []
+  const walk = (s: State) => {
+    for (const e of [...s.entry, ...s.exit, ...s.transitions.flatMap((t) => t.effects)]) {
+      if (e.kind === "raise" && e.name !== null && !out.includes(e.name)) out.push(e.name)
+    }
+    s.states.forEach(walk)
+  }
+  walk(m.root)
+  return out
+}
 
 /** Thrown by {@link loadIr} for a document this package cannot run. */
 export class IrError extends Error {
