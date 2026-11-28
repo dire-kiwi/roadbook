@@ -427,28 +427,19 @@ idle:    { on: { LOAD: { target: 'loading', input: { userId: 'u1' } } } },
 loading: { entry: ({ input }) => console.log(input.userId) },
 ```
 
-**Roadbook** keeps every variable on the machine. Definite assignment proves it is set before it is read, but it lives on after the state that needed it:
+**Roadbook** (SM-29) has state parameters and state variables. A parameter is passed on the transition into the state, and a `var` declared in a state is set again each time the state is entered; both are readable only in that state and the states inside it, and both are gone once it is left:
 
 ```
-var token: ResetToken
-
 state Requesting {
-  invoke requestReset(email) { done -> Confirming  set token = result }
+  invoke requestReset(email) { done -> Confirming(result) }
 }
-state Confirming {
-  on Confirm -> Resetting      // token is still set here, and in every later state
-}
-```
-
-```
-// proposed: a state's own variables and parameters
 state Confirming(token: ResetToken) {
   var tries: int = 0           // set to 0 each time Confirming is entered, gone when it is left
   on Confirm if tries < 3 -> Resetting(token)
 }
 ```
 
-`-> Confirming(result)` would pass the argument, and the compiler would check that every transition into the state passes one.
+The compiler checks that every transition into `Confirming` passes a `ResetToken`. Before SM-29, `token` was a machine variable, set by `done -> Confirming  set token = result`, which definite assignment proved set before it was read but which lived on in every later state.
 
 ## Callback actors, and tasks that report progress
 
