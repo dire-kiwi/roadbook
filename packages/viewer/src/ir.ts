@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.10) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.11) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -152,6 +152,14 @@ export type Effect =
   | { kind: 'spawn'; children: string; src: string; key: Expr; args: Expr[] }
   /** `stop name[key]` */
   | { kind: 'stop'; children: string; key: Expr }
+  /**
+   * `raise E { … }`, on the internal queue (`delay` null), or `raise E { … } after d [as name]`,
+   * a delayed raise: a timer of the run, not of a state. `event` is one of the machine's own
+   * events, accepted or internal; `value`'s text is the event as written after `raise`.
+   */
+  | { kind: 'raise'; event: string; value: Expr; delay: Expr | null; name: string | null }
+  /** `cancel name`: the pending delayed raise of that name, if any. */
+  | { kind: 'cancel'; name: string }
 
 export interface Transition {
   trigger: Trigger
@@ -200,6 +208,8 @@ export interface Machine {
   errors: string[]
   vars: Var[]
   events: Record<string, EventDecl>
+  /** Events only the machine raises itself (`internal event Name { fields }`): host code and other machines cannot send them. */
+  internalEvents: Record<string, EventDecl>
   /** Events the machine emits (`emits Name { fields }`), to its invoker and every holder of a ref to it. */
   emits: Record<string, EventDecl>
   /** Calls the machine answers (`call name(params) -> T ! E`). */

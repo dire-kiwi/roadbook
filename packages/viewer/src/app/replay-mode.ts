@@ -107,11 +107,13 @@ export function replayMode(host: Host, el: HTMLElement, embedded: { name: string
         h += `<h3>Last transition</h3><p><button class="rb-link rb-mono" type="button" data-m-transition="${esc(JSON.stringify([view.taken.state, view.taken.index]))}">${esc(stateName(view.taken.state) || view.taken.state)}: ${esc(tr ? triggerText(tr.trigger) : `#${view.taken.index}`)}${tr?.targets.length ? ` → ${esc(tr.targets.map(stateName).join(', '))}` : ''}</button></p>`
       }
       const childRun = (id: number) => (replay!.runs.some((x) => x.id === `${run}.${id}`) ? `child run ${esc(`${run}.${id}`)}` : '')
-      if (view.invokes.length || view.spawned.length || view.timers.length) {
+      if (view.invokes.length || view.spawned.length || view.timers.length || view.scheduled.length) {
         h += `<h3>Running</h3><ul class="rb-list">${view.invokes.map((i) => `<li>invoke ${i.id}: ${esc(i.src)} <span class="rb-cnote">in ${esc(stateName(i.state))}${childRun(i.id) ? `, ${childRun(i.id)}` : ''}</span></li>`).join('')}${view.spawned
           .map((c) => `<li>spawned ${c.id}: ${esc(c.children)}[${esc(jsonText(c.key, 60))}] = ${esc(c.src)} <span class="rb-cnote">${childRun(c.id)}</span></li>`)
           .join('')}${view.timers
           .map((t) => `<li>timer ${t.id}: ${t.delay} ms <span class="rb-cnote">in ${esc(stateName(t.state))}</span></li>`)
+          .join('')}${view.scheduled
+          .map((sc) => `<li>timer ${sc.id}: ${sc.delay} ms <span class="rb-cnote">a delayed raise of ${esc(jsonText(sc.value, 60))}${sc.name !== null ? ` as ${esc(sc.name)}` : ''}</span></li>`)
           .join('')}</ul>`
       }
       if (view.calls.length) {

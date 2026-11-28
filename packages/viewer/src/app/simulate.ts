@@ -1,5 +1,5 @@
 // Simulate mode's panel: start the machine drawn with an input, then choose what happens next
-// (an event, a call from a simulated caller, an invoke's or a spawned child's outcome, a peer's end, a timer, the clock, a cancel), answer the functions the core
+// (an event, a call from a simulated caller, an invoke's or a spawned child's outcome, a peer's end, a timer or delayed raise, the clock, a cancel), answer the functions the core
 // calls, and step back and forward through the choices. The model is src/sim.ts; this file
 // only draws it and wires up the forms.
 
@@ -7,7 +7,7 @@ import type { Json, Tagged } from '@dire-kiwi/roadbook-core'
 import type { Field } from '../ir.ts'
 import { own } from '../ir.ts'
 import { findState, triggerText } from '../model.ts'
-import { stateName } from '../replay.ts'
+import { jsonText, stateName } from '../replay.ts'
 import { esc } from '../render.ts'
 import { ENDED_STATUSES, Simulation, refusal, spawnedText } from '../sim.ts'
 import type { Outcome, PeerChoice, SpawnChoice } from '../sim.ts'
@@ -179,6 +179,9 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
         h += tagged(k(`event:${e.name}`), `send ${e.name}`, e.name, e.fields, (v) => s.send(v), note)
       }
     }
+    const internal = Object.keys(m.internalEvents ?? {})
+    if (internal.length && s.current?.snapshot.status === 'running')
+      h += `<p class="rb-cnote">Internal events (${internal.map((n) => `<code>${esc(n)}</code>`).join(', ')}) cannot be sent: only the machine raises them.</p>`
     if (c.calls.length) {
       const from = `r${(s.current?.callers ?? 0) + 2}`
       h += `<h4>Take a call <span class="rb-h-note">from ${esc(from)}, a simulated caller</span></h4>`
@@ -237,13 +240,21 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
         h += `<div class="rb-choice">${button(k(`timer:${t.id}`), `fire timer ${t.id}`, () => s.fire(t.id))}<span class="rb-cnote"><code>${esc(tr ? triggerText(tr.trigger) : 'after')}</code> on ${esc(stateName(t.state) || t.state)}: ${t.delay} ms, due at t = ${t.due}</span></div>`
       }
     }
+    if (c.scheduled.length) {
+      h += '<h4>Delayed raises <span class="rb-h-note">timers of the run, not of a state</span></h4>'
+      for (const r of c.scheduled) {
+        const { _tag, ...fields } = r.value
+        const value = `${_tag}${Object.keys(fields).length ? ` ${jsonText(fields, 80)}` : ''}`
+        h += `<div class="rb-choice">${button(k(`timer:${r.id}`), `fire timer ${r.id}`, () => s.fire(r.id), `Let the delayed raise fire: ${value} is taken as an event`)}<span class="rb-cnote">raises <code>${esc(value)}</code>${r.name !== null ? ` as <code>${esc(r.name)}</code>` : ''}: ${r.delay} ms, due at t = ${r.due}</span></div>`
+      }
+    }
     h += '<h4>Clock and run</h4>'
     h += `<div class="rb-choice rb-advance"><label>advance <input class="rb-ms" type="number" min="0" step="1" value="${esc(typed.get('advance') ?? '1000')}" data-m-ms aria-label="milliseconds"> ms</label>${button(k('advance'), 'Advance', () => {
       const ms = Number(el.querySelector<HTMLInputElement>('[data-m-ms]')?.value)
       return s.advance(ms)
-    }, 'Move the clock on, firing the timers due on the way')}</div>`
+    }, 'Move the clock on, firing the timers and delayed raises due on the way')}</div>`
     h += `<div class="rb-choice">${button(k('cancel'), 'Cancel the run', () => s.cancel(), 'Cancel from outside: every state is exited')}</div>`
-    if (!c.events.length && !c.calls.length && !c.invokes.length && !c.spawned.length && !c.timers.length && !c.peers.length)
+    if (!c.events.length && !c.calls.length && !c.invokes.length && !c.spawned.length && !c.timers.length && !c.scheduled.length && !c.peers.length)
       h += `<p class="rb-empty">${esc(m.root.name)} waits for nothing: no event, call, invoke, spawned child, peer's end or timer can move it.</p>`
     return h
   }

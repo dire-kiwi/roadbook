@@ -5,7 +5,8 @@
 // machine (the `ir` of `started` differs from the machine's hash). A run restored from a saved
 // snapshot begins with `restored` instead, and goes on from the snapshot's configuration,
 // variables and work; a suspended run ends with `suspended`. A callee's view keeps the calls it
-// has taken and not yet answered (`replied`). A peer's end (an `ended` input) is linked to the
+// has taken and not yet answered (`replied`), and a run its pending delayed raises
+// (`raise.scheduled`, until their expiry or `raise.cancelled`). A peer's end (an `ended` input) is linked to the
 // record that ends the peer's run, and back. Pure and DOM-free.
 
 import type { Json } from '@dire-kiwi/roadbook-core'
@@ -18,7 +19,8 @@ export type Rec = { kind: string; run: string; t: number; parent?: string } & { 
 
 const KINDS = new Set([
   'started', 'restored', 'suspended', 'entered', 'exited', 'event', 'dropped', 'stale', 'transition', 'set', 'action', 'sent', 'emitted', 'undelivered',
-  'invoke.started', 'invoke.cancelled', 'replied', 'spawn.started', 'spawn.stopped', 'timer.started', 'timer.cancelled', 'done', 'failed', 'cancelled', 'defect',
+  'invoke.started', 'invoke.cancelled', 'replied', 'spawn.started', 'spawn.stopped', 'timer.started', 'timer.cancelled', 'raised', 'raise.scheduled', 'raise.cancelled',
+  'done', 'failed', 'cancelled', 'defect',
 ])
 /** The records after which a run writes nothing more. */
 const ENDS = new Set(['done', 'failed', 'cancelled', 'defect', 'suspended'])
@@ -95,6 +97,8 @@ export interface RunView {
   /** The running spawned children: id, collection, key and machine. */
   spawned: { id: number; children: string; key: Json; src: string }[]
   timers: { id: number; state: string; index: number; delay: number }[]
+  /** The pending delayed raises: a timer of the run, its `as` name, its delay and the event it raises. */
+  scheduled: { id: number; name: string | null; delay: number; value: Json }[]
   /** The last transition the run took. */
   taken: { state: string; index: number } | null
 }
@@ -298,6 +302,12 @@ export class Replay {
             }
             break
           }
+          case 'raised':
+          case 'raise.scheduled': {
+            const tag = str((r.value as { _tag?: unknown } | null)?._tag)
+            if (!own(m.events, tag) && !own(m.internalEvents ?? {}, tag)) out.push(`${at}: ${view.machine} has no event ${tag}`)
+            break
+          }
           case 'spawn.started': {
             const c = own(m.children, str(r.children))
             if (!c || c.src !== r.src) out.push(`${at}: ${view.machine} has no children ${str(r.children)} of ${str(r.src)}`)
@@ -313,6 +323,7 @@ export class Replay {
       if (r.kind === 'invoke.cancelled' && !view.invokes.some((x) => x.id === r.invoke)) out.push(`${at}: invoke ${String(r.invoke)} is not running`)
       if (r.kind === 'spawn.stopped' && !view.spawned.some((x) => x.id === r.spawn)) out.push(`${at}: spawned child ${String(r.spawn)} is not running`)
       if (r.kind === 'timer.cancelled' && !view.timers.some((x) => x.id === r.timer)) out.push(`${at}: timer ${String(r.timer)} is not running`)
+      if (r.kind === 'raise.cancelled' && !view.scheduled.some((x) => x.id === r.timer)) out.push(`${at}: no delayed raise ${String(r.timer)} is pending`)
       if (r.kind === 'replied') {
         // A reply answers a pending call, or the call dropped by the record just before it.
         const prev = this.records.slice(0, i).reverse().find((x) => x.run === r.run)
@@ -335,7 +346,8 @@ export class Replay {
       }
       if (r.kind === 'event') {
         const input = r.event as { kind?: string; invoke?: number; spawn?: number; timer?: number } | undefined
-        if (input?.kind === 'after' && !view.timers.some((x) => x.id === input.timer)) out.push(`${at}: timer ${String(input.timer)} is not running`)
+        if (input?.kind === 'after' && !view.timers.some((x) => x.id === input.timer) && !view.scheduled.some((x) => x.id === input.timer))
+          out.push(`${at}: timer ${String(input.timer)} is not running`)
         if (input?.kind?.startsWith('invoke.') && !view.invokes.some((x) => x.id === input.invoke)) out.push(`${at}: invoke ${String(input.invoke)} is not running`)
         if (input?.kind?.startsWith('spawn.') && !view.spawned.some((x) => x.id === input.spawn)) out.push(`${at}: spawned child ${String(input.spawn)} is not running`)
       }
@@ -359,6 +371,7 @@ const emptyView = (run: string, machine: string): RunView => ({
   calls: [],
   spawned: [],
   timers: [],
+  scheduled: [],
   taken: null,
 })
 
@@ -368,6 +381,7 @@ interface SavedView {
   input?: { [param: string]: Json }
   vars?: { [name: string]: Json }
   timers?: { id: number; state: string; index: number; delay: number }[]
+  scheduled?: { id: number; name: string | null; delay: number; value: Json }[]
   calls?: { from: string; invoke: number; call: string }[]
 }
 
@@ -388,6 +402,7 @@ function apply(view: RunView, r: Rec) {
       view.input = saved.input ?? {}
       view.vars = saved.vars ?? {}
       view.timers = (saved.timers ?? []).map(({ id, state, index, delay }) => ({ id, state, index, delay }))
+      view.scheduled = (saved.scheduled ?? []).map(({ id, name, delay, value }) => ({ id, name, delay, value }))
       view.calls = (saved.calls ?? []).map(({ from, invoke, call }) => ({ from, invoke, call }))
       break
     }
@@ -429,11 +444,24 @@ function apply(view: RunView, r: Rec) {
     case 'timer.cancelled':
       view.timers = view.timers.filter((x) => x.id !== r.timer)
       break
+    case 'raise.scheduled':
+      // A restored delayed raise restarts with the id it was saved with: the record replaces it.
+      view.scheduled = [
+        ...view.scheduled.filter((x) => x.id !== r.timer),
+        { id: num(r.timer), name: typeof r.name === 'string' ? r.name : null, delay: num(r.delay), value: (r.value ?? null) as Json },
+      ]
+      break
+    case 'raise.cancelled':
+      view.scheduled = view.scheduled.filter((x) => x.id !== r.timer)
+      break
     case 'event':
     case 'dropped': {
       // An outcome or an expiry is consumed whether or not it enabled a transition.
       const input = r.event as { kind?: string; invoke?: number; spawn?: number; timer?: number; from?: unknown; call?: unknown } | undefined
-      if (input?.kind === 'after') view.timers = view.timers.filter((x) => x.id !== input.timer)
+      if (input?.kind === 'after') {
+        view.timers = view.timers.filter((x) => x.id !== input.timer)
+        view.scheduled = view.scheduled.filter((x) => x.id !== input.timer)
+      }
       if (input?.kind?.startsWith('invoke.')) view.invokes = view.invokes.filter((x) => x.id !== input.invoke)
       if (input?.kind?.startsWith('spawn.')) view.spawned = view.spawned.filter((x) => x.id !== input.spawn)
       // A call taken is pending until a reply answers it; a dropped one is answered at once.
@@ -467,6 +495,7 @@ function apply(view: RunView, r: Rec) {
       view.invokes = []
       view.spawned = []
       view.timers = []
+      view.scheduled = []
       view.calls = []
       break
   }
@@ -506,6 +535,9 @@ function jsonFields(v: unknown): string {
   return Object.keys(rest).length ? ' ' + jsonText(rest, 100) : ''
 }
 
+/** A tagged value in words: its tag, then its other fields as JSON. */
+const tagged = (v: unknown) => `${str((v as { _tag?: unknown } | null)?._tag)}${jsonFields(v)}`
+
 /** An input as an `event`, `dropped` or `stale` record holds it, in words. */
 export function inputText(input: unknown): string {
   const i = (input ?? {}) as { [k: string]: unknown }
@@ -520,6 +552,8 @@ export function inputText(input: unknown): string {
       return `${tag(i.value)} emitted by ${str(i.from)}${fields(i.value)}`
     case 'task.emitted':
       return `${tag(i.value)} emitted by the task of invoke ${String(i.invoke)}${fields(i.value)}`
+    case 'raised':
+      return `${tag(i.value)} raised by the run${fields(i.value)}`
     case 'call': {
       const args = (i.args ?? {}) as { [k: string]: unknown }
       return `call ${str(i.call)} from ${str(i.from)} (its invoke ${String(i.invoke)})${Object.keys(args).length ? ' ' + jsonText(args, 100) : ''}`
@@ -598,6 +632,12 @@ export function recordText(r: { kind: string; [member: string]: unknown }): stri
       return `timer ${String(r.timer)} started: ${String(r.delay)} ms in ${stateName(r.state)}`
     case 'timer.cancelled':
       return `timer ${String(r.timer)} cancelled in ${stateName(r.state)}`
+    case 'raised':
+      return `raised ${tagged(r.value)}`
+    case 'raise.scheduled':
+      return `raise ${tagged(r.value)} scheduled: timer ${String(r.timer)}, ${String(r.delay)} ms${typeof r.name === 'string' ? ` as ${r.name}` : ''}`
+    case 'raise.cancelled':
+      return `delayed raise cancelled: timer ${String(r.timer)}${typeof r.name === 'string' ? ` (${r.name})` : ''}`
     case 'done':
       return `done in ${stateName(r.state)}: ${jsonText(r.output, 100)}`
     case 'failed':
@@ -605,9 +645,16 @@ export function recordText(r: { kind: string; [member: string]: unknown }): stri
     case 'cancelled':
       return 'cancelled'
     case 'defect': {
-      const d = r.defect as { kind?: unknown; event?: { kind?: unknown; call?: unknown; value?: { _tag?: unknown } } } | null
+      const d = r.defect as { kind?: unknown; event?: { kind?: unknown; call?: unknown; timer?: unknown; value?: { _tag?: unknown } } } | null
       if (d?.kind === 'unhandled') {
-        const what = d.event?.kind === 'call' ? `a call of ${String(d.event.call)}` : String(d.event?.value?._tag)
+        const what =
+          d.event?.kind === 'call'
+            ? `a call of ${String(d.event.call)}`
+            : d.event?.kind === 'after'
+              ? `the expiry of the delayed raise of timer ${String(d.event.timer)}`
+              : d.event?.kind === 'raised'
+                ? `${String(d.event.value?._tag)}, raised by the run,`
+                : String(d.event?.value?._tag)
         return `defect: ${what} enabled no transition in this strict machine`
       }
       return `defect ${jsonText(r.defect, 100)}`

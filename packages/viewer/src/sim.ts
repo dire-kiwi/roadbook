@@ -5,7 +5,9 @@
 // It is a small driver (spec/execution.md, "The driver") for a single run on a virtual clock:
 // the reader is the host. Tasks, machine invokes and spawned children (treated as tasks: the
 // child run is not started) and call invokes (the callee is not run either) end when the reader
-// gives their outcome; timers fire when the reader lets them or advances the clock; functions
+// gives their outcome; timers, and the run's delayed raises (`raise E after d`), fire when the
+// reader lets them or advances the clock; events the run raises at once are taken by the core
+// in the same step, and only the machine's accepted `events` can be sent by hand; functions
 // are answered by the reader when the core calls them; actions do nothing. `send` and `emit`
 // are carried out as their records only: there is no other run to deliver to. A child or a
 // task that emits, invoked with `as` or spawned, can be made to emit one of its events by hand
@@ -115,6 +117,21 @@ export interface TimerChoice {
   due: number
 }
 
+/**
+ * A pending delayed raise (`raise E after d [as name]`): a timer of the run, not of a state,
+ * whose expiry is an `after` input like a timer's.
+ */
+export interface ScheduledChoice {
+  /** Its timer id, from the sequence `after` timers take theirs from. */
+  id: number
+  /** Its `as` name, or null. */
+  name: string | null
+  delay: number
+  due: number
+  /** The event it raises. */
+  value: Tagged
+}
+
 export interface EventChoice {
   name: string
   fields: Field[]
@@ -165,6 +182,8 @@ export interface Choices {
   invokes: InvokeChoice[]
   spawned: SpawnChoice[]
   timers: TimerChoice[]
+  /** The pending delayed raises, in the order they were started. */
+  scheduled: ScheduledChoice[]
   /** The peers whose end the run can be told. */
   peers: PeerChoice[]
 }
@@ -275,19 +294,23 @@ export class Simulation {
     return this.choose(`${inv.src} ${what}`, (w) => this.step(w, input))
   }
 
-  /** Lets a running timer fire, moving the clock to when it is due if that is later. */
+  /**
+   * Lets a running timer, or a pending delayed raise, fire, moving the clock to when it is due
+   * if that is later.
+   */
   fire(timer: number): Outcome {
     const due = this.current?.due[timer]
     if (due === undefined) return { kind: 'error', message: `timer ${timer} is not running` }
-    return this.choose(`timer ${timer} fires`, (w) => {
+    const raise = this.current?.snapshot.scheduled.find((sc) => sc.id === timer)
+    return this.choose(raise ? `raise ${raise.value._tag} fires (timer ${timer})` : `timer ${timer} fires`, (w) => {
       w.now = Math.max(w.now, due)
       this.step(w, { kind: 'after', timer })
     })
   }
 
   /**
-   * Moves the clock on by `ms`, firing the timers that fall due on the way one at a time, the
-   * earliest first (as a conformance runner's `advance`).
+   * Moves the clock on by `ms`, firing the timers and delayed raises that fall due on the way
+   * one at a time, the earliest first (as a conformance runner's `advance`).
    */
   advance(ms: number): Outcome {
     if (!(Number.isInteger(ms) && ms >= 0)) return { kind: 'error', message: 'advance by a whole number of milliseconds, 0 or more' }
@@ -296,9 +319,10 @@ export class Simulation {
       for (;;) {
         if (w.snapshot.status !== 'running') break
         let next: { id: number; due: number } | null = null
-        for (const t of w.snapshot.timers) {
+        for (const t of [...w.snapshot.timers, ...w.snapshot.scheduled]) {
           const due = w.due[t.id]
-          if (due !== undefined && due <= end && (!next || due < next.due)) next = { id: t.id, due }
+          // Ties go to the lower timer id, as a conformance runner's.
+          if (due !== undefined && due <= end && (!next || due < next.due || (due === next.due && t.id < next.id))) next = { id: t.id, due }
         }
         if (!next) break
         w.now = next.due
@@ -421,7 +445,7 @@ export class Simulation {
   /** What the reader can do in the frame shown. */
   choices(): Choices {
     const f = this.current
-    if (!f || f.snapshot.status !== 'running') return { events: [], calls: [], pending: [], invokes: [], spawned: [], timers: [], peers: [] }
+    if (!f || f.snapshot.status !== 'running') return { events: [], calls: [], pending: [], invokes: [], spawned: [], timers: [], scheduled: [], peers: [] }
     const m = this.def
     const active = f.snapshot.active.map((id) => findState(m, id)).filter((s) => s !== null)
     const events = Object.entries(m.events).map(([name, decl]) => ({
@@ -490,6 +514,7 @@ export class Simulation {
       }
     })
     const timers = f.snapshot.timers.map((t) => ({ id: t.id, state: t.state, index: t.index, delay: t.delay, due: f.due[t.id] ?? f.now + t.delay }))
+    const scheduled = f.snapshot.scheduled.map((sc) => ({ id: sc.id, name: sc.name, delay: sc.delay, due: f.due[sc.id] ?? f.now + sc.delay, value: sc.value }))
     // The names an `on name.ended` watches, anywhere in the machine, and the runs they hold now.
     const watched = new Map<string, string>()
     walkStates(m.root, (s) => {
@@ -506,7 +531,7 @@ export class Simulation {
       }
     }
     for (const p of peers) p.handled = active.some((s) => s.transitions.some((t) => t.trigger.kind === 'ended' && p.names.includes(t.trigger.from.name)))
-    return { events, calls, pending, invokes, spawned, timers, peers }
+    return { events, calls, pending, invokes, spawned, timers, scheduled, peers }
   }
 
   // ───────────── the driver ─────────────
@@ -537,7 +562,7 @@ export class Simulation {
     }
     this.pending = null
     const taken = w.records.flatMap((r) => (r.kind === 'transition' ? [{ state: r.from, index: r.index }] : []))
-    for (const id of Object.keys(w.due).map(Number)) if (!w.snapshot.timers.some((t) => t.id === id)) delete w.due[id]
+    for (const id of Object.keys(w.due).map(Number)) if (!w.snapshot.timers.some((t) => t.id === id) && !w.snapshot.scheduled.some((sc) => sc.id === id)) delete w.due[id]
     const running = (id: number) => w.snapshot.invokes.some((i) => i.id === id) || w.snapshot.spawned.some((c) => c.id === id)
     for (const id of Object.keys(w.childMessages).map(Number)) if (!running(id)) delete w.childMessages[id]
     const frame: Frame = { label, snapshot: w.snapshot, now: w.now, due: w.due, childMessages: w.childMessages, callers: w.callers, ended: w.ended, records: w.records, taken }

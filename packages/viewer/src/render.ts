@@ -71,14 +71,14 @@ const baseline = (top: number, lineH: number, fontSize: number) => n(top + lineH
 const eventAttr = (ref: EventRef) => ` data-event="${esc(eventKey(ref))}"`
 
 /**
- * Text that names another machine's event or a call, marked so the viewer can link it: a
- * `send`, `emit` or `reply` effect (its keyword stressed), the `upload.Progress` or `reserve`
- * of a trigger, or a call invoke's `inventory.reserve(…)`.
+ * Text that names an event or a call, marked so the viewer can link it: a `send`, `emit`,
+ * `raise` or `reply` effect (its keyword stressed), the `upload.Progress` or `reserve` of a
+ * trigger, or a call invoke's `inventory.reserve(…)`.
  */
 function messageText(text: string, ref: EventRef): string {
   const lead = text.length - text.trimStart().length
   const body = text.slice(lead)
-  const m = /^(send|emit|reply) /.exec(body)
+  const m = /^(send|emit|raise|reply) /.exec(body)
   const inner = m ? `<tspan class="rb-msg-kw">${m[1]}</tspan>${esc(body.slice(m[1]!.length))}` : esc(body)
   const what = /^[a-z]/.test(ref.event) ? 'call' : 'event'
   return `${' '.repeat(lead)}<tspan class="rb-msg"${eventAttr(ref)}><title>Open ${what} ${esc(eventKey(ref))}</title>${inner}</tspan>`
