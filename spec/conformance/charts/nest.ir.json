@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/nest.road",
@@ -252,34 +252,37 @@
                         ]
                       }
                     ],
-                    "invoke": {
-                      "kind": "task",
-                      "src": "work",
-                      "to": null,
-                      "as": null,
-                      "args": [
-                        {
-                          "kind": "ref",
-                          "path": [
-                            "n"
-                          ],
-                          "state": null,
-                          "type": "int",
-                          "text": "n"
+                    "invokes": [
+                      {
+                        "kind": "task",
+                        "src": "work",
+                        "to": null,
+                        "as": null,
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "n"
+                            ],
+                            "state": null,
+                            "type": "int",
+                            "text": "n"
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 45,
+                          "col": 9,
+                          "endLine": 47,
+                          "endCol": 10
                         }
-                      ],
-                      "span": {
-                        "file": 0,
-                        "line": 45,
-                        "col": 9,
-                        "endLine": 47,
-                        "endCol": 10
                       }
-                    },
+                    ],
                     "transitions": [
                       {
                         "trigger": {
-                          "kind": "invoke.done"
+                          "kind": "invoke.done",
+                          "as": null
                         },
                         "group": 0,
                         "guard": null,
@@ -363,7 +366,7 @@
                     ]
                   }
                 ],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -513,7 +516,7 @@
                 ]
               }
             ],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -764,7 +767,7 @@
                 ]
               }
             ],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -816,7 +819,7 @@
             ]
           }
         ],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

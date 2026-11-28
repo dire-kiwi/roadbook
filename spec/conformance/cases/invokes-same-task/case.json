@@ -1,0 +1,29 @@
+{
+  "description": "One task invoked twice in a state, as `a` and `b`. `b` fails `Busy`: taken by `b`'s own `fail Busy` (index 3), not by `a`'s `fail *` (index 1), which comes first in the state. Then `a` ends `done` and leaves, with nothing left to cancel. The `task` steps name each by `as`.",
+  "requires": [
+    "messaging",
+    "task-emits",
+    "invokes"
+  ],
+  "chart": "charts/invokes.road",
+  "machine": "Lookup",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "fetch",
+      "as": "b",
+      "fail": {
+        "_tag": "Busy"
+      }
+    },
+    {
+      "task": "fetch",
+      "as": "a",
+      "done": "x"
+    }
+  ],
+  "status": "done"
+}

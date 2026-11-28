@@ -35,7 +35,8 @@
 //!   for, never a call; `after d` is a `<send>` of `roadbook.after.<state>.<group>` on entry,
 //!   cancelled on exit; `always` has no event; `done` is `done.state.<state>`; an invoke's `done`
 //!   is `done.invoke.<invoke>` and its `fail E` is `error.E.<invoke>`, `fail *` the declared
-//!   errors no other branch lists, and for a call `Unanswered` too; `on x.ended`, a peer's end,
+//!   errors no other branch of that invoke lists, and for a call `Unanswered` too; the id of
+//!   an invoke is `<state>_invoke`, or `<state>_invoke_<as>` in a state with several; `on x.ended`, a peer's end,
 //!   is `x.ended`.
 //! - **Effects** are executable content: `set` is `<assign>`; `send x.E` a `<send>` to the
 //!   child's invoke (`#_<invoke>`) or to the machine a `ref` holds (`targetexpr`); `emit E` a
@@ -174,16 +175,21 @@ fn local_id(state_id: &str, name: &str) -> String {
     format!("{}.{name}", xml_id(state_id))
 }
 
-/// The state with id `id` in the tree under `s`.
+/// The SCXML id of the invoke of `s` named `alias`: `<state>_invoke`, or with several invokes
+/// in the state, `<state>_invoke_<as>`.
+fn invoke_id(s: &State, alias: Option<&str>) -> String {
+    match alias {
+        Some(a) if s.has_several_invokes() => format!("{}_invoke_{a}", xml_id(&s.id)),
+        _ => format!("{}_invoke", xml_id(&s.id)),
+    }
+}
+
+/// The state with id `id`, at or below `s`.
 fn find_state<'a>(s: &'a State, id: &str) -> Option<&'a State> {
     if s.id == id {
         return Some(s);
     }
     s.states.iter().find_map(|c| find_state(c, id))
-}
-
-fn invoke_id(state_id: &str) -> String {
-    format!("{}_invoke", xml_id(state_id))
 }
 
 /// The event a callee takes a call `c` as: `call.c`. It is named like an emitted event, after
@@ -206,7 +212,7 @@ pub fn document(ir: &Ir, name: &str, m: &Machine) -> String {
     let wrap = !root.transitions.is_empty()
         || !root.entry.is_empty()
         || !root.exit.is_empty()
-        || root.invoke.is_some();
+        || !root.invokes.is_empty();
     let is_final = |id: &str| {
         root.states
             .iter()
@@ -372,7 +378,7 @@ impl Writer<'_> {
             && timers.is_empty()
             && s.params.is_empty()
             && s.vars.is_empty()
-            && s.invoke.is_none()
+            && s.invokes.is_empty()
             && s.transitions.is_empty()
             && s.states.is_empty()
             && s.output.is_none();
@@ -438,7 +444,7 @@ impl Writer<'_> {
             self.effects(&s.exit, d + 1);
             self.close(d, "onexit");
         }
-        if let Some(inv) = &s.invoke {
+        for inv in &s.invokes {
             let (ty, src, params) = match inv.kind {
                 InvokeKind::Task => (
                     TASK_TYPE,
@@ -461,7 +467,7 @@ impl Writer<'_> {
                 ),
             };
             let mut attrs = vec![
-                ("id", invoke_id(&s.id)),
+                ("id", invoke_id(s, inv.alias.as_deref())),
                 ("type", ty.to_string()),
                 ("src", src),
             ];
@@ -561,7 +567,9 @@ impl Writer<'_> {
             Trigger::After { .. } => Some(after_event(&s.id, t.group)),
             Trigger::Always => None,
             Trigger::Done => Some(format!("done.state.{}", xml_id(&s.id))),
-            Trigger::InvokeDone => Some(format!("done.invoke.{}", invoke_id(&s.id))),
+            Trigger::InvokeDone { alias } => {
+                Some(format!("done.invoke.{}", invoke_id(s, alias.as_deref())))
+            }
             Trigger::SpawnDone { children } => Some(format!("done.spawn.{children}")),
             Trigger::Ended { from } => Some(format!("{}.ended", from.name)),
             Trigger::SpawnFail { children, error } => {
@@ -610,17 +618,22 @@ impl Writer<'_> {
                     .collect();
                 Some(names.join(" "))
             }
-            Trigger::InvokeFail { error } => {
+            Trigger::InvokeFail { alias, error } => {
+                let invoke = s.invoke_named(alias.as_deref());
                 let errors: Vec<&str> = if error == "*" {
                     let listed: Vec<&str> = s
                         .transitions
                         .iter()
                         .filter_map(|o| match &o.trigger {
-                            Trigger::InvokeFail { error } if error != "*" => Some(error.as_str()),
+                            Trigger::InvokeFail { alias: a, error }
+                                if a == alias && error != "*" =>
+                            {
+                                Some(error.as_str())
+                            }
                             _ => None,
                         })
                         .collect();
-                    let declared = s.invoke.as_ref().and_then(|inv| match inv.kind {
+                    let declared = invoke.and_then(|inv| match inv.kind {
                         InvokeKind::Task => self.ir.tasks.get(&inv.src).map(|t| &t.errors),
                         InvokeKind::Machine => self.ir.machines.get(&inv.src).map(|m| &m.errors),
                         InvokeKind::Call => inv
@@ -631,9 +644,7 @@ impl Writer<'_> {
                             .map(|c| &c.errors),
                     });
                     // A call also fails with the built-in `Unanswered`, which `*` covers.
-                    let unanswered = s
-                        .invoke
-                        .as_ref()
+                    let unanswered = invoke
                         .filter(|inv| inv.kind == InvokeKind::Call)
                         .map(|_| roadbook_ir::UNANSWERED);
                     declared
@@ -653,7 +664,7 @@ impl Writer<'_> {
                     );
                     return;
                 }
-                let id = invoke_id(&s.id);
+                let id = invoke_id(s, alias.as_deref());
                 let names: Vec<String> = errors.iter().map(|e| format!("error.{e}.{id}")).collect();
                 Some(names.join(" "))
             }
@@ -741,7 +752,11 @@ impl Writer<'_> {
                 } => {
                     let target = match (to.kind, &to.state) {
                         (AddressKind::Child, Some(state)) => {
-                            ("target", format!("#_{}", invoke_id(state)))
+                            let id = match find_state(&self.m.root, state) {
+                                Some(st) => invoke_id(st, Some(&to.name)),
+                                None => format!("{}_invoke", xml_id(state)),
+                            };
+                            ("target", format!("#_{id}"))
                         }
                         (AddressKind::Children, _) => match key {
                             Some(k) => ("targetexpr", format!("{}[{}]", to.name, k.text)),

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "packages/viewer/test/charts/tasks.road",
@@ -341,34 +341,37 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "upload",
-              "to": null,
-              "as": "up",
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "file"
-                  ],
-                  "state": null,
-                  "type": "string",
-                  "text": "file"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "upload",
+                "to": null,
+                "as": "up",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "file"
+                    ],
+                    "state": null,
+                    "type": "string",
+                    "text": "file"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 35,
+                  "col": 5,
+                  "endLine": 38,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 35,
-                "col": 5,
-                "endLine": 38,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": "up"
                 },
                 "group": 0,
                 "guard": null,
@@ -404,6 +407,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": "up",
                   "error": "UploadFailed"
                 },
                 "group": 1,
@@ -598,27 +602,29 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "ticks",
-              "to": null,
-              "as": "clock",
-              "args": [
-                {
-                  "kind": "lit",
-                  "value": 1000,
-                  "type": "duration",
-                  "text": "1s"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "ticks",
+                "to": null,
+                "as": "clock",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 47,
+                  "col": 5,
+                  "endLine": 47,
+                  "endCol": 30
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 47,
-                "col": 5,
-                "endLine": 47,
-                "endCol": 30
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
@@ -717,7 +723,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -987,7 +993,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -1003,7 +1009,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

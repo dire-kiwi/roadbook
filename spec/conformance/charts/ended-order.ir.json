@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/ended-order.road",
@@ -147,7 +147,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -239,7 +239,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -336,7 +336,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -344,7 +344,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -411,36 +411,39 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "call",
-              "src": "reserve",
-              "to": {
-                "kind": "ref",
-                "name": "desk",
-                "machine": "Desk",
-                "state": null
-              },
-              "as": null,
-              "args": [
-                {
-                  "kind": "lit",
-                  "value": "o1",
-                  "type": "string",
-                  "text": "\"o1\""
+            "invokes": [
+              {
+                "kind": "call",
+                "src": "reserve",
+                "to": {
+                  "kind": "ref",
+                  "name": "desk",
+                  "machine": "Desk",
+                  "state": null
+                },
+                "as": null,
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "o1",
+                    "type": "string",
+                    "text": "\"o1\""
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 39,
+                  "col": 5,
+                  "endLine": 42,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 39,
-                "col": 5,
-                "endLine": 42,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -461,6 +464,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "Unanswered"
                 },
                 "group": 1,
@@ -532,7 +536,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -582,7 +586,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -605,7 +609,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -613,7 +617,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/workers.road",
@@ -113,7 +113,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -194,7 +194,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -202,7 +202,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -293,7 +293,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -338,7 +338,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -384,7 +384,7 @@
             }
           }
         ],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -474,34 +474,37 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "machine",
-              "src": "Worker",
-              "to": null,
-              "as": "worker",
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "book"
-                  ],
-                  "state": null,
-                  "type": "ref Logbook",
-                  "text": "book"
+            "invokes": [
+              {
+                "kind": "machine",
+                "src": "Worker",
+                "to": null,
+                "as": "worker",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "book"
+                    ],
+                    "state": null,
+                    "type": "ref Logbook",
+                    "text": "book"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 46,
+                  "col": 5,
+                  "endLine": 48,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 46,
-                "col": 5,
-                "endLine": 48,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": "worker"
                 },
                 "group": 0,
                 "guard": null,
@@ -621,7 +624,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -679,7 +682,7 @@
             }
           }
         ],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

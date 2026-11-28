@@ -553,7 +553,7 @@ impl<'a> Graph<'a> {
             steps.push(Step {
                 from,
                 index,
-                trigger: trigger_text(&t.trigger),
+                trigger: trigger_text(owner, &t.trigger),
                 guard: guard_text(owner, index),
                 to,
                 at: next,

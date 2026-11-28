@@ -682,6 +682,85 @@
 #                    ^^^^^ variable.other.roadbook
 >}
 #^ punctuation.section.braces.roadbook
+>machine Watch(server: string, folder: string) {
+#^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
+#        ^^^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
+#             ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#              ^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                    ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                      ^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                            ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                              ^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                    ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                      ^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                                            ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                              ^ punctuation.section.braces.roadbook
+>  initial Watching
+#  ^^^^^^^ keyword.control.initial.roadbook
+#          ^^^^^^^^ entity.name.type.state.roadbook
+>  state Watching {
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^^^^^ entity.name.type.state.roadbook
+#                 ^ punctuation.section.braces.roadbook
+>    invoke heartbeat(server) as beat { fail Lost -> Offline }
+#    ^^^^^^ keyword.control.invoke.roadbook
+#           ^^^^^^^^^ entity.name.function.call.roadbook
+#                    ^ punctuation.section.parens.roadbook
+#                     ^^^^^^ variable.other.roadbook
+#                           ^ punctuation.section.parens.roadbook
+#                             ^^ keyword.control.as.roadbook
+#                                ^^^^ variable.other.definition.roadbook
+#                                     ^ punctuation.section.braces.roadbook
+#                                       ^^^^ keyword.control.fail.roadbook
+#                                            ^^^^ entity.name.type.error.roadbook
+#                                                 ^^ keyword.operator.arrow.roadbook
+#                                                    ^^^^^^^ entity.name.type.state.roadbook
+#                                                            ^ punctuation.section.braces.roadbook
+>    invoke syncFiles(folder) as sync {
+#    ^^^^^^ keyword.control.invoke.roadbook
+#           ^^^^^^^^^ entity.name.function.call.roadbook
+#                    ^ punctuation.section.parens.roadbook
+#                     ^^^^^^ variable.other.roadbook
+#                           ^ punctuation.section.parens.roadbook
+#                             ^^ keyword.control.as.roadbook
+#                                ^^^^ variable.other.definition.roadbook
+#                                     ^ punctuation.section.braces.roadbook
+>      done   -> Synced
+#      ^^^^ keyword.control.done.roadbook
+#             ^^ keyword.operator.arrow.roadbook
+#                ^^^^^^ entity.name.type.state.roadbook
+>      fail * -> Offline
+#      ^^^^ keyword.control.fail.roadbook
+#           ^ keyword.operator.wildcard.roadbook
+#             ^^ keyword.operator.arrow.roadbook
+#                ^^^^^^^ entity.name.type.state.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>    invoke ticks(1s) as clock
+#    ^^^^^^ keyword.control.invoke.roadbook
+#           ^^^^^ entity.name.function.call.roadbook
+#                ^ punctuation.section.parens.roadbook
+#                 ^ constant.numeric.duration.roadbook
+#                  ^ constant.numeric.duration.roadbook keyword.other.unit.roadbook
+#                   ^ punctuation.section.parens.roadbook
+#                     ^^ keyword.control.as.roadbook
+#                        ^^^^^ variable.other.definition.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>  final state Synced {}
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^ entity.name.type.state.roadbook
+#                     ^ punctuation.section.braces.roadbook
+#                      ^ punctuation.section.braces.roadbook
+>  final state Offline {}
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^^ entity.name.type.state.roadbook
+#                      ^ punctuation.section.braces.roadbook
+#                       ^ punctuation.section.braces.roadbook
+>}
+#^ punctuation.section.braces.roadbook
 >"unterminated
 #^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
 # ^^^^^^^^^^^^ string.quoted.double.roadbook

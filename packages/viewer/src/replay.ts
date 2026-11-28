@@ -12,7 +12,7 @@
 import type { Json } from '@dire-kiwi/roadbook-core'
 import type { Ir, Machine, State } from './ir.ts'
 import { own } from './ir.ts'
-import { allStates } from './model.ts'
+import { allStates, invokeNamed } from './model.ts'
 
 /** A trace record as read: every member the line had. */
 export type Rec = { kind: string; run: string; t: number; parent?: string } & { [member: string]: unknown }
@@ -294,9 +294,10 @@ export class Replay {
             break
           }
           case 'invoke.started': {
-            const s = state(r.state)
+            // The invoke the record names: by its `as` when its state has several.
+            const inv = invokeNamed(state(r.state), typeof r.as === 'string' ? r.as : undefined)
             // A call's src names its address too: `inventory.reserve`.
-            const src = s?.invoke ? (s.invoke.kind === 'call' && s.invoke.to ? `${s.invoke.to.name}.${s.invoke.src}` : s.invoke.src) : null
+            const src = inv ? (inv.kind === 'call' && inv.to ? `${inv.to.name}.${inv.src}` : inv.src) : null
             if (src !== r.src) out.push(`${at}: ${str(r.state)} does not invoke ${str(r.src)}`)
             break
           }

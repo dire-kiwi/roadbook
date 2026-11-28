@@ -1,0 +1,39 @@
+task one()
+task two()
+
+machine Kid() {
+  emits Poked
+  initial Idle
+  state Idle {}
+}
+
+// In a state with several invokes, each `as` still shares the machine's namespace: it cannot
+// be a parameter, a variable, a collection or the `as` of an invoke around it.
+machine M(x: int) {
+  var y: int = 0
+  children kids: Kid by string
+
+  initial A
+  state A {
+    invoke one() as x
+    invoke two() as y
+    invoke one() as kids
+  }
+}
+
+machine N() {
+  initial A
+  state A {
+    invoke Kid() as kid
+    initial In
+    state In {
+      invoke Kid() as kid
+      invoke two() as other
+    }
+  }
+}
+
+// expect: RB0108 at 18:21
+// expect: RB0108 at 19:21
+// expect: RB0108 at 20:21
+// expect: RB0108 at 30:23

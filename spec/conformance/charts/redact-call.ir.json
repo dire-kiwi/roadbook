@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/redact-call.road",
@@ -141,7 +141,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -252,7 +252,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -282,7 +282,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -376,48 +376,51 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "call",
-              "src": "issue",
-              "to": {
-                "kind": "ref",
-                "name": "issuer",
-                "machine": "Issuer",
-                "state": null
-              },
-              "as": null,
-              "args": [
-                {
+            "invokes": [
+              {
+                "kind": "call",
+                "src": "issue",
+                "to": {
                   "kind": "ref",
-                  "path": [
-                    "user"
-                  ],
-                  "state": null,
-                  "type": "string",
-                  "text": "user"
+                  "name": "issuer",
+                  "machine": "Issuer",
+                  "state": null
                 },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "pin"
-                  ],
-                  "state": null,
-                  "type": "string",
-                  "text": "pin"
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "user"
+                    ],
+                    "state": null,
+                    "type": "string",
+                    "text": "user"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "pin"
+                    ],
+                    "state": null,
+                    "type": "string",
+                    "text": "pin"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 36,
+                  "col": 5,
+                  "endLine": 39,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 36,
-                "col": 5,
-                "endLine": 39,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -453,6 +456,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "Unanswered"
                 },
                 "group": 1,
@@ -493,7 +497,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -524,7 +528,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "lit",
@@ -537,7 +541,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

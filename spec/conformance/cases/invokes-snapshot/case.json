@@ -1,0 +1,42 @@
+{
+  "description": "Saved after `files` failed `Busy` and stayed: the snapshot holds the three invokes still running, those of the state with several with `as`, the child state's one without. Restored as r2, they start again with their ids, state by state and by id, with each state's timer after its invokes; `beat` failing `Lost` in r2 then cancels the other two. r1 carries on untouched.",
+  "requires": [
+    "messaging",
+    "task-emits",
+    "invokes",
+    "snapshots"
+  ],
+  "chart": "charts/invokes.road",
+  "machine": "Watch",
+  "input": {
+    "server": "s",
+    "folder": "f"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "copy",
+      "fail": {
+        "_tag": "Busy"
+      }
+    },
+    {
+      "snapshot": "watching"
+    },
+    {
+      "restore": "watching",
+      "run": "r2",
+      "status": "done"
+    },
+    {
+      "task": "heartbeat",
+      "run": "r2",
+      "fail": {
+        "_tag": "Lost"
+      }
+    }
+  ],
+  "status": "running"
+}

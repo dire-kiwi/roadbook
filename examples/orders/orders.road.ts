@@ -50,7 +50,7 @@ export interface OrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "examples/orders/orders.road",
@@ -400,49 +400,52 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "call",
-              "src": "reserve",
-              "to": {
-                "kind": "ref",
-                "name": "inventory",
-                "machine": "Inventory",
-                "state": null
-              },
-              "as": null,
-              "args": [
-                {
+            "invokes": [
+              {
+                "kind": "call",
+                "src": "reserve",
+                "to": {
                   "kind": "ref",
-                  "path": [
-                    "id"
-                  ],
-                  "state": null,
-                  "type": "string",
-                  "text": "id"
+                  "name": "inventory",
+                  "machine": "Inventory",
+                  "state": null
                 },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "draft",
-                    "items"
-                  ],
-                  "state": null,
-                  "type": "Item[]",
-                  "text": "draft.items"
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "id"
+                    ],
+                    "state": null,
+                    "type": "string",
+                    "text": "id"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "draft",
+                      "items"
+                    ],
+                    "state": null,
+                    "type": "Item[]",
+                    "text": "draft.items"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 5,
+                  "endLine": 31,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 27,
-                "col": 5,
-                "endLine": 31,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -463,6 +466,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "OutOfStock"
                 },
                 "group": 1,
@@ -499,6 +503,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "Unanswered"
                 },
                 "group": 2,
@@ -609,43 +614,46 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "charge",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "id"
-                  ],
-                  "state": null,
-                  "type": "string",
-                  "text": "id"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "draft"
-                  ],
-                  "state": null,
-                  "type": "OrderDraft",
-                  "text": "draft"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "charge",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "id"
+                    ],
+                    "state": null,
+                    "type": "string",
+                    "text": "id"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "draft"
+                    ],
+                    "state": null,
+                    "type": "OrderDraft",
+                    "text": "draft"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 36,
+                  "col": 5,
+                  "endLine": 39,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 36,
-                "col": 5,
-                "endLine": 39,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -681,6 +689,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "PaymentDeclined"
                 },
                 "group": 1,
@@ -752,7 +761,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -783,7 +792,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -814,7 +823,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -827,7 +836,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -1020,7 +1029,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1131,52 +1140,55 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "reserveStock",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "warehouse"
-                  ],
-                  "state": null,
-                  "type": "string",
-                  "text": "warehouse"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "orderId"
-                  ],
-                  "state": null,
-                  "type": "string",
-                  "text": "orderId"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "items"
-                  ],
-                  "state": null,
-                  "type": "Item[]",
-                  "text": "items"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "reserveStock",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "warehouse"
+                    ],
+                    "state": null,
+                    "type": "string",
+                    "text": "warehouse"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "orderId"
+                    ],
+                    "state": null,
+                    "type": "string",
+                    "text": "orderId"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "items"
+                    ],
+                    "state": null,
+                    "type": "Item[]",
+                    "text": "items"
+                  }
+                ],
+                "span": {
+                  "file": 1,
+                  "line": 43,
+                  "col": 5,
+                  "endLine": 46,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 1,
-                "line": 43,
-                "col": 5,
-                "endLine": 46,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -1212,6 +1224,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "OutOfStock"
                 },
                 "group": 1,
@@ -1324,7 +1337,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -1332,7 +1345,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [
           {
             "trigger": {

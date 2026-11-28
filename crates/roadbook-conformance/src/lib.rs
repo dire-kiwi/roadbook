@@ -52,6 +52,7 @@ pub const FEATURES: &[&str] = &[
     "ended",
     "task-emits",
     "raise",
+    "invokes",
     "locals",
 ];
 
@@ -299,6 +300,9 @@ pub struct TaskStep {
     /// The key of the spawned task meant, when a run has several of that
     /// name running.
     pub key: Option<Value>,
+    /// The `as` of the invoke meant, when a run has several invokes of that
+    /// name running (one state invoking it twice).
+    pub alias: Option<String>,
     /// How it ends, or what it emits.
     pub outcome: Outcome,
 }
@@ -453,12 +457,17 @@ fn step_from_value(v: Value) -> Result<Step, String> {
         return Ok(Step::Together(steps));
     }
     if let Some(task) = m.remove("task") {
-        only(&m, &["run", "key", "done", "fail", "defect", "emit"])?;
+        only(&m, &["run", "key", "as", "done", "fail", "defect", "emit"])?;
         let Value::String(task) = task else {
             return Err("`task` is a name".into());
         };
         let run = take_run(&mut m)?;
         let key = m.remove("key");
+        let alias = match m.remove("as") {
+            None => None,
+            Some(Value::String(a)) => Some(a),
+            Some(_) => return Err("`as` is a name".into()),
+        };
         let mut outcomes = Vec::new();
         if let Some(v) = m.remove("done") {
             outcomes.push(Outcome::Done(v));
@@ -480,6 +489,7 @@ fn step_from_value(v: Value) -> Result<Step, String> {
                 task,
                 run,
                 key,
+                alias,
                 outcome,
             })),
             Err(_) => {
@@ -879,6 +889,7 @@ mod tests {
                 task: "t".into(),
                 run: Some("r1.2".into()),
                 key: None,
+                alias: None,
                 outcome: Outcome::Fail(json!({"_tag": "E"}))
             })
         );

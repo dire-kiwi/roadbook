@@ -327,7 +327,7 @@ impl<'p> Cx<'_, 'p> {
                 || self
                     .nodes
                     .iter()
-                    .any(|x| x.alias.as_ref().is_some_and(|(a, _)| a.name == n))
+                    .any(|x| x.aliases.iter().any(|a| a.name.name == n))
                 || self.retry_vars.iter().any(|(v, _)| v.name == n)
                 || in_delay.iter().any(|v| v == n)
         };
@@ -384,7 +384,7 @@ impl<'p> Cx<'_, 'p> {
         let named: HashSet<String> = outcomes
             .iter()
             .filter_map(|(t, ..)| match &t.trigger {
-                ir::Trigger::InvokeFail { error } if error != "*" => Some(error.clone()),
+                ir::Trigger::InvokeFail { error, .. } if error != "*" => Some(error.clone()),
                 _ => None,
             })
             .collect();
@@ -418,8 +418,8 @@ impl<'p> Cx<'_, 'p> {
         let mut seen_group = HashSet::new();
         for (t, rd, tr) in outcomes {
             let retries = match &t.trigger {
-                ir::Trigger::InvokeFail { error } if error == "*" => any_retried,
-                ir::Trigger::InvokeFail { error } => retried.contains(error),
+                ir::Trigger::InvokeFail { error, .. } if error == "*" => any_retried,
+                ir::Trigger::InvokeFail { error, .. } => retried.contains(error),
                 _ => false,
             };
             if retries && seen_group.insert(t.group) {
@@ -486,7 +486,7 @@ impl<'p> Cx<'_, 'p> {
             states: Vec::new(),
             entry: Vec::new(),
             exit: Vec::new(),
-            invoke: st.invoke.take(),
+            invokes: std::mem::take(&mut st.invokes),
             transitions: attempt_ts,
             output: None,
             fail: None,
@@ -495,7 +495,7 @@ impl<'p> Cx<'_, 'p> {
             attempt_id.clone(),
             StateInfo {
                 name_span: invoke_head(plan.inv),
-                invoke_span: info.invoke_span.take(),
+                invoke_spans: std::mem::take(&mut info.invoke_spans),
                 triggers: attempt_triggers,
                 initial_span: None,
                 entry_reads: Vec::new(),
@@ -521,7 +521,7 @@ impl<'p> Cx<'_, 'p> {
                 states: Vec::new(),
                 entry: Vec::new(),
                 exit: Vec::new(),
-                invoke: None,
+                invokes: Vec::new(),
                 transitions: vec![ir::Transition {
                     trigger: ir::Trigger::After { delay },
                     group: 0,
@@ -539,7 +539,7 @@ impl<'p> Cx<'_, 'p> {
                 backoff_id,
                 StateInfo {
                     name_span: span,
-                    invoke_span: None,
+                    invoke_spans: Vec::new(),
                     triggers: vec![span],
                     initial_span: None,
                     entry_reads: Vec::new(),

@@ -552,7 +552,7 @@ fn remap_state(s: &mut ir::State, f: &impl Fn(&mut ir::Span)) {
     for v in &mut s.vars {
         f(&mut v.span);
     }
-    if let Some(inv) = &mut s.invoke {
+    for inv in &mut s.invokes {
         f(&mut inv.span);
     }
     for t in &mut s.transitions {

@@ -106,6 +106,19 @@ const CHECKOUT: &str = "Checkout: 6 paths
 6. Charging --fail GatewayUnavailable [else]--> GaveUp (final: fail GatewayUnavailable)
 ";
 
+/// In a state with several invokes, a step names the invoke whose outcome it takes.
+#[test]
+fn a_step_names_the_invoke_of_its_outcome() {
+    let out = roadbook(
+        &repo(),
+        &["paths", "Lookup", "spec/conformance/charts/invokes.road"],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let shown = text(&out.stdout);
+    assert!(shown.contains("--a: done--> Found"), "{shown}");
+    assert!(shown.contains("--a: fail *--> Gave"), "{shown}");
+}
+
 #[test]
 fn checkout_has_six_paths_each_loop_taken_once() {
     // From a file, in the repository.

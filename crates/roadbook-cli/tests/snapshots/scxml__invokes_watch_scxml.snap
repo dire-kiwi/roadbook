@@ -1,0 +1,61 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: doc
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Three invokes and a timer in one state, and one more invoke in its child state. -->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Watch" datamodel="roadbook" initial="Watch_Watching" rb:returns="int">
+  <datamodel>
+    <data id="server" rb:type="string" rb:param="true"/>
+    <data id="folder" rb:type="string" rb:param="true"/>
+    <data id="copied" expr="0" rb:type="int"/>
+    <data id="busy" expr="0" rb:type="int"/>
+  </datamodel>
+  <state id="Watch_Watching" initial="Watch_Watching_Inner">
+    <onentry>
+      <send id="Watch_Watching_after_4" event="roadbook.after.Watch_Watching.4" delay="60000ms"/>
+    </onentry>
+    <onexit>
+      <cancel sendid="Watch_Watching_after_4"/>
+    </onexit>
+    <invoke id="Watch_Watching_invoke_beat" type="urn:roadbook:task" src="heartbeat" rb:as="beat">
+      <param name="server" expr="server"/>
+    </invoke>
+    <invoke id="Watch_Watching_invoke_files" type="urn:roadbook:task" src="copy" rb:as="files">
+      <param name="folder" expr="folder"/>
+    </invoke>
+    <invoke id="Watch_Watching_invoke_extra" type="urn:roadbook:task" src="work" rb:as="extra">
+      <param name="n" expr="1"/>
+    </invoke>
+    <transition event="error.Lost.Watch_Watching_invoke_beat" target="Watch_Offline"/>
+    <transition event="done.invoke.Watch_Watching_invoke_files" target="Watch_Copied">
+      <assign location="copied" expr="result"/>
+    </transition>
+    <transition event="error.Busy.Watch_Watching_invoke_files" type="internal">
+      <assign location="busy" expr="busy + 1"/>
+    </transition>
+    <transition event="error.Full.Watch_Watching_invoke_files" target="Watch_Stopped"/>
+    <transition event="roadbook.after.Watch_Watching.4" target="Watch_Stopped"/>
+    <transition event="Stop" target="Watch_Stopped"/>
+    <state id="Watch_Watching_Inner">
+      <invoke id="Watch_Watching_Inner_invoke" type="urn:roadbook:task" src="work">
+        <param name="n" expr="2"/>
+      </invoke>
+    </state>
+  </state>
+  <final id="Watch_Copied">
+    <donedata>
+      <content expr="copied"/>
+    </donedata>
+  </final>
+  <final id="Watch_Offline">
+    <donedata>
+      <content expr="busy"/>
+    </donedata>
+  </final>
+  <final id="Watch_Stopped">
+    <donedata>
+      <content expr="busy"/>
+    </donedata>
+  </final>
+</scxml>

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/streams.road",
@@ -152,27 +152,29 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "ticks",
-              "to": null,
-              "as": "clock",
-              "args": [
-                {
-                  "kind": "lit",
-                  "value": 1000,
-                  "type": "duration",
-                  "text": "1s"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "ticks",
+                "to": null,
+                "as": "clock",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 5,
+                  "endLine": 18,
+                  "endCol": 30
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 18,
-                "col": 5,
-                "endLine": 18,
-                "endCol": 30
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
@@ -271,7 +273,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -337,7 +339,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -353,7 +355,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

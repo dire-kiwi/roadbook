@@ -585,14 +585,30 @@ pub struct State {
     pub entry: Vec<Effect>,
     /// Effects run on exit, in source order.
     pub exit: Vec<Effect>,
-    /// The task or machine run while the state is active, if any.
-    pub invoke: Option<Invoke>,
+    /// The tasks and machines run while the state is active, in the order written. When
+    /// there are several, each has an `as`, and no two the same.
+    pub invokes: Vec<Invoke>,
     /// Transitions, in document order. Traces refer to them by index.
     pub transitions: Vec<Transition>,
     /// A top-level final state's result, if it has one.
     pub output: Option<Expr>,
     /// A top-level final state's failure, if it has one.
     pub fail: Option<Expr>,
+}
+
+impl State {
+    /// The invoke whose `as` is `alias`: what an `invoke.done` or `invoke.fail` trigger's
+    /// `as`, or a `child` or `task` address's `name`, names. `None` names a state's one
+    /// invoke when it has no `as`.
+    pub fn invoke_named(&self, alias: Option<&str>) -> Option<&Invoke> {
+        self.invokes.iter().find(|i| i.alias.as_deref() == alias)
+    }
+
+    /// Whether the state has more than one invoke, so that its snapshot entries and
+    /// `invoke.started` records carry `as`.
+    pub fn has_several_invokes(&self) -> bool {
+        self.invokes.len() > 1
+    }
 }
 
 /// Whether an invoke runs a task or a machine, or calls a peer.
@@ -622,8 +638,9 @@ pub struct Invoke {
     pub to: Option<Address>,
     /// The name given with `invoke Machine(…) as name` or `invoke task(…) as name`,
     /// through which the state and its descendants send to the child and receive what
-    /// it or the task emits. `None` without `as`; always `None` for a call, and for a task
-    /// that declares no `emits`.
+    /// it or the task emits, and by which its outcomes' triggers name it. `None` without
+    /// `as`. In a state with one invoke, always `None` for a call and for a task that
+    /// declares no `emits`; in a state with several, always set.
     #[serde(rename = "as")]
     pub alias: Option<String>,
     /// Arguments, positional, in parameter order.
@@ -816,10 +833,18 @@ pub enum Trigger {
     Done,
     /// `done` inside `invoke { }`: the invoked task or machine succeeded.
     #[serde(rename = "invoke.done")]
-    InvokeDone,
+    InvokeDone {
+        /// The `as` of the invoke it belongs to, one of the state's `invokes`; `None` for
+        /// a state's one invoke when it has no `as`.
+        #[serde(rename = "as")]
+        alias: Option<String>,
+    },
     /// `fail E` inside `invoke { }`: it failed with error `E`.
     #[serde(rename = "invoke.fail")]
     InvokeFail {
+        /// The `as` of the invoke it belongs to, as for [`Trigger::InvokeDone`].
+        #[serde(rename = "as")]
+        alias: Option<String>,
         /// The error's name, or `"*"` for the declared errors not listed. For
         /// a call, it may be [`UNANSWERED`], and `"*"` covers it too.
         error: String,
@@ -1032,7 +1057,7 @@ fn state_messaging(s: &State) -> Option<String> {
         alias: Some(a),
         src,
         ..
-    }) = &s.invoke
+    }) = s.invokes.iter().find(|i| i.alias.is_some())
     {
         return Some(format!("`invoke {src}(…) as {a}` in state `{}`", s.id));
     }

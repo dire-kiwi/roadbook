@@ -1,6 +1,6 @@
 ## Attach
 
-`examples/upload/attach.road:26`
+`examples/upload/attach.road:32`
 
 ```text
 Attach a file to a message: store it with a task that reports its progress, then wait for
@@ -10,23 +10,27 @@ the user to confirm, showing how long they have waited.
 ```mermaid
 stateDiagram-v2
   Storing: invoke storeFile(file) as store
+  Storing: invoke keepAlive() as session
   Storing: on store.Progress / do showProgress(event.percent)
   Storing: on store.Retrying / do showRetrying(event.attempt)
   Confirming: invoke ticks(1s) as clock
   Confirming: on clock.Tick / set waited = waited + 1, do showWaiting(waited)
   Attached: output url
   Failed: fail failure
+  SignedOut: fail ended
   [*] --> Storing
-  Storing --> Confirming: done / set url = result
-  Storing --> Failed: fail UploadFailed / set failure = error
+  Storing --> Confirming: store#58; done / set url = result
+  Storing --> Failed: store#58; fail UploadFailed / set failure = error
+  Storing --> SignedOut: session#58; fail SessionEnded / set ended = error
   Confirming --> Attached: Confirm
   Attached --> [*]
   Failed --> [*]
+  SignedOut --> [*]
 ```
 
 ## AttachMany
 
-`examples/upload/attach.road:58`
+`examples/upload/attach.road:70`
 
 ```text
 Attach several files at once: one `storeFile` task per file, keyed by the file's name, in a

@@ -41,7 +41,7 @@ export interface PipelineDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable.road",
@@ -289,31 +289,34 @@ const ir: unknown = {
               }
             ],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "step",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "lit",
-                  "value": 1,
-                  "type": "int",
-                  "text": "1"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "step",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 1,
+                    "type": "int",
+                    "text": "1"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 26,
-                "col": 5,
-                "endLine": 28,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -385,31 +388,34 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "step",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "lit",
-                  "value": 2,
-                  "type": "int",
-                  "text": "2"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "step",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 2,
+                    "type": "int",
+                    "text": "2"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 32,
+                  "col": 5,
+                  "endLine": 34,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 32,
-                "col": 5,
-                "endLine": 34,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -481,7 +487,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -586,31 +592,34 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "step",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "lit",
-                  "value": 3,
-                  "type": "int",
-                  "text": "3"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "step",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 3,
+                    "type": "int",
+                    "text": "3"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 46,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 44,
-                "col": 5,
-                "endLine": 46,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -682,7 +691,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -711,7 +720,7 @@ const ir: unknown = {
             ]
           }
         ],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -817,34 +826,37 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "machine",
-              "src": "Pipeline",
-              "to": null,
-              "as": "pipeline",
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "id"
-                  ],
-                  "state": null,
-                  "type": "string",
-                  "text": "id"
+            "invokes": [
+              {
+                "kind": "machine",
+                "src": "Pipeline",
+                "to": null,
+                "as": "pipeline",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "id"
+                    ],
+                    "state": null,
+                    "type": "string",
+                    "text": "id"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 62,
+                  "col": 5,
+                  "endLine": 64,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 62,
-                "col": 5,
-                "endLine": 64,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": "pipeline"
                 },
                 "group": 0,
                 "guard": null,
@@ -977,31 +989,34 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "step",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "lit",
-                  "value": 4,
-                  "type": "int",
-                  "text": "4"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "step",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 4,
+                    "type": "int",
+                    "text": "4"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 70,
+                  "col": 5,
+                  "endLine": 72,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 70,
-                "col": 5,
-                "endLine": 72,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -1041,7 +1056,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -1072,7 +1087,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "op",
@@ -1093,7 +1108,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -1222,7 +1237,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1342,7 +1357,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -1350,7 +1365,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -1423,31 +1438,34 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "step",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "lit",
-                  "value": 1,
-                  "type": "int",
-                  "text": "1"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "step",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 1,
+                    "type": "int",
+                    "text": "1"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 102,
+                  "col": 5,
+                  "endLine": 104,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 102,
-                "col": 5,
-                "endLine": 104,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -1518,7 +1536,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1595,7 +1613,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -1611,7 +1629,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -1698,31 +1716,34 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "step",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "lit",
-                  "value": 1,
-                  "type": "int",
-                  "text": "1"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "step",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 1,
+                    "type": "int",
+                    "text": "1"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 122,
+                  "col": 5,
+                  "endLine": 124,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 122,
-                "col": 5,
-                "endLine": 124,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -1762,7 +1783,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -1778,7 +1799,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [
           {
             "trigger": {
@@ -1986,7 +2007,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -2147,34 +2168,37 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "step",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "work"
-                  ],
-                  "state": null,
-                  "type": "int",
-                  "text": "work"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "step",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "work"
+                    ],
+                    "state": null,
+                    "type": "int",
+                    "text": "work"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 150,
+                  "col": 5,
+                  "endLine": 152,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 150,
-                "col": 5,
-                "endLine": 152,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -2246,7 +2270,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -2277,7 +2301,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "op",
@@ -2298,7 +2322,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -2495,7 +2519,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -2819,7 +2843,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -2835,7 +2859,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -2928,43 +2952,46 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "machine",
-              "src": "Adder",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "counter"
-                  ],
-                  "state": null,
-                  "type": "ref Counter",
-                  "text": "counter"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "goal"
-                  ],
-                  "state": null,
-                  "type": "int",
-                  "text": "goal"
+            "invokes": [
+              {
+                "kind": "machine",
+                "src": "Adder",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "counter"
+                    ],
+                    "state": null,
+                    "type": "ref Counter",
+                    "text": "counter"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "goal"
+                    ],
+                    "state": null,
+                    "type": "int",
+                    "text": "goal"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 193,
+                  "col": 5,
+                  "endLine": 195,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 193,
-                "col": 5,
-                "endLine": 195,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -3019,7 +3046,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -3035,7 +3062,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -3122,31 +3149,34 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "progress",
-              "to": null,
-              "as": "job",
-              "args": [
-                {
-                  "kind": "lit",
-                  "value": 1,
-                  "type": "int",
-                  "text": "1"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "progress",
+                "to": null,
+                "as": "job",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 1,
+                    "type": "int",
+                    "text": "1"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 214,
+                  "col": 5,
+                  "endLine": 216,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 214,
-                "col": 5,
-                "endLine": 216,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": "job"
                 },
                 "group": 0,
                 "guard": null,
@@ -3256,7 +3286,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -3272,7 +3302,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -3409,7 +3439,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -3594,7 +3624,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -3610,7 +3640,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -3740,7 +3770,7 @@ const ir: unknown = {
               }
             ],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -3785,7 +3815,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -3871,7 +3901,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -3887,7 +3917,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

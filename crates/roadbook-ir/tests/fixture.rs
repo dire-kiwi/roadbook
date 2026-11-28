@@ -177,7 +177,7 @@ fn state_exprs_mut(s: &mut State, f: &mut impl FnMut(&mut Expr)) {
     };
     effects(&mut s.entry, f);
     effects(&mut s.exit, f);
-    if let Some(inv) = &mut s.invoke {
+    for inv in &mut s.invokes {
         inv.args.iter_mut().for_each(|a| exprs_mut(a, f));
     }
     for t in &mut s.transitions {
@@ -233,7 +233,7 @@ fn hash_ignores_docs_spans_and_text() {
         states_mut(&mut m.root, &mut |s| {
             s.doc = format!("{} doc", s.name);
             s.span = moved;
-            if let Some(inv) = &mut s.invoke {
+            for inv in &mut s.invokes {
                 inv.span = moved;
             }
             for t in &mut s.transitions {
@@ -322,6 +322,49 @@ fn hash_writes_one_target_as_before() {
     assert!(t["target"].is_string(), "{t}");
 }
 
+/// IR 0.12's `invokes` and the `as` of outcome triggers leave the hash of a machine with no
+/// state of several invokes as it was in 0.11: its view writes such a state's `invoke` and its
+/// triggers without `as`. A second invoke is written as it is, and changes the hash.
+#[test]
+fn hash_writes_a_state_with_one_invoke_as_0_11_did() {
+    let ir = fixture();
+    let view = roadbook_ir::semantic_view(&ir, "Checkout").unwrap();
+    let charging = &view["machines"]["Checkout"]["root"]["states"][0];
+    assert!(charging.get("invokes").is_none(), "{charging}");
+    assert_eq!(charging["invoke"]["src"], "chargeCard");
+    let backoff = &view["machines"]["Checkout"]["root"]["states"][1];
+    assert!(backoff["invoke"].is_null(), "{backoff}");
+    let trigger = &charging["transitions"][0]["trigger"];
+    assert_eq!(*trigger, serde_json::json!({"kind": "invoke.done"}));
+
+    let checkout = machine_hash(&ir, "Checkout").unwrap();
+    let mut two = ir.clone();
+    let charging = &mut two.machines["Checkout"].root.states[0];
+    let mut second = charging.invokes[0].clone();
+    second.alias = Some("again".into());
+    charging.invokes[0].alias = Some("first".into());
+    charging.invokes.push(second);
+    for t in &mut charging.transitions {
+        if let Trigger::InvokeDone { alias } | Trigger::InvokeFail { alias, .. } = &mut t.trigger {
+            *alias = Some("first".into());
+        }
+    }
+    let several = machine_hash(&two, "Checkout").unwrap();
+    assert_ne!(several, checkout);
+    let view = roadbook_ir::semantic_view(&two, "Checkout").unwrap();
+    let charging = &view["machines"]["Checkout"]["root"]["states"][0];
+    assert_eq!(charging["invokes"].as_array().unwrap().len(), 2);
+    assert_eq!(charging["transitions"][0]["trigger"]["as"], "first");
+    // Which invoke an outcome belongs to is part of the hash.
+    let mut swapped = two.clone();
+    if let Trigger::InvokeDone { alias } =
+        &mut swapped.machines["Checkout"].root.states[0].transitions[0].trigger
+    {
+        *alias = Some("again".into());
+    }
+    assert_ne!(machine_hash(&swapped, "Checkout").unwrap(), several);
+}
+
 /// IR 0.11's `internalEvents` is left out of the view when it is empty, so a machine with no
 /// internal event keeps its 0.10 hash; one with an internal event, or a `raise`, hashes
 /// differently.
@@ -357,7 +400,7 @@ fn hash_leaves_out_empty_internal_events() {
     assert_ne!(machine_hash(&changed, "Checkout").unwrap(), with_ping);
 }
 
-/// IR 0.12's state `params` and `vars`, a transition's `args`, and the `state` of a `ref`
+/// IR 0.13's state `params` and `vars`, a transition's `args`, and the `state` of a `ref`
 /// expression and a `set` effect are left out of the view when they are empty or `null`, so a
 /// machine with no state parameters or variables keeps its 0.11 hash (the stored hashes of
 /// both fixtures were written by the 0.11 compiler, and `bless_or_check_hashes` checks them).
@@ -512,7 +555,7 @@ fn hash_sees_task_emits_task_addresses_and_task_collections() {
     // machine, with `event` of type `chargeCard.Progress`.
     let mut on = emitting.clone();
     let charging = &mut on.machines["Checkout"].root.states[0];
-    charging.invoke.as_mut().unwrap().alias = Some("pay".into());
+    charging.invokes[0].alias = Some("pay".into());
     let mut t = charging.transitions[0].clone();
     t.trigger = Trigger::Emitted {
         from: roadbook_ir::Address {
@@ -617,14 +660,14 @@ fn hash_handles_recursion_and_reports_missing_declarations() {
     // A machine that invokes itself (legal with an event or `after` between).
     let mut ir = fixture();
     let backoff = &mut ir.machines["Checkout"].root.states[1];
-    backoff.invoke = Some(roadbook_ir::Invoke {
+    backoff.invokes = vec![roadbook_ir::Invoke {
         kind: roadbook_ir::InvokeKind::Machine,
         src: "Checkout".into(),
         to: None,
         alias: None,
         args: vec![],
         span: backoff.span,
-    });
+    }];
     assert!(machine_hash(&ir, "Checkout").is_ok());
 
     let mut ir = fixture();
@@ -653,7 +696,7 @@ fn messaging_fixture_round_trips_and_matches_the_schema() {
 
     // Order's call to the warehouse, the Release it sends when the payment is declined, and
     // Inventory's taking of the call and its reply.
-    let call = "/machines/Order/root/states/0/invoke";
+    let call = "/machines/Order/root/states/0/invokes/0";
     let release = "/machines/Order/root/states/1/transitions/1/effects/0";
     let cases: Vec<(String, Value)> = vec![
         (format!("{call}/to/kind"), "child".into()),
@@ -676,7 +719,8 @@ fn messaging_fixture_round_trips_and_matches_the_schema() {
             "ref inventory".into(),
         ),
         ("/sources/1/package".into(), "".into()),
-        // `as` on a call; on a task it is allowed from IR 0.10 (for a task that emits).
+        // `as` on a call, the state's one invoke; on a task it is allowed from IR 0.10 (for a
+        // task that emits), and on either from 0.12 in a state with several invokes.
         (format!("{call}/as"), "reserving".into()),
     ];
     for (pointer, value) in cases {

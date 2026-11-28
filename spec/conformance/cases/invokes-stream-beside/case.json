@@ -1,0 +1,33 @@
+{
+  "description": "A stream task `clock` beside `job`: its two ticks are counted through `on clock.Tick` while `job` runs, and `job`'s `done` leaves the state, which cancels `clock`.",
+  "requires": [
+    "messaging",
+    "task-emits",
+    "invokes"
+  ],
+  "chart": "charts/invokes.road",
+  "machine": "Ticker",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "ticks",
+      "emit": {
+        "_tag": "Tick"
+      }
+    },
+    {
+      "task": "ticks",
+      "emit": {
+        "_tag": "Tick"
+      }
+    },
+    {
+      "task": "work",
+      "done": 9
+    }
+  ],
+  "status": "done"
+}

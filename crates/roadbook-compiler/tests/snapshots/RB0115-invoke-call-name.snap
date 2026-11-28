@@ -1,0 +1,32 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0117]: `beat` does not emit the event `Tick`
+  --> RB0115-invoke-call-name.road:21:10
+   |
+21 |     on b.Tick -> B
+   |          ^^^^ `beat` declares no `emits`
+   |
+   = help: declare it in `beat`: `emits Tick`
+
+error[RB0115]: `p` names the call `peer.ask` that `M.A` invokes, which takes no events and emits none
+  --> RB0115-invoke-call-name.road:22:16
+   |
+16 |     invoke peer.ask() as p {
+   |                          - named here
+...
+22 |     entry send p.Poke
+   |                ^
+   |
+   = help: a call is answered once, with its outcome; talk to the machine through its `ref` instead
+
+error[RB0115]: `p` names the call `peer.ask` that `M.A` invokes, which takes no events and emits none
+  --> RB0115-invoke-call-name.road:23:8
+   |
+16 |     invoke peer.ask() as p {
+   |                          - named here
+...
+23 |     on p.Done -> B
+   |        ^
+   |
+   = help: a call is answered once, with its outcome; talk to the machine through its `ref` instead

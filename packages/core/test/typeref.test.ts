@@ -238,7 +238,7 @@ describe("hostile IR", () => {
     expect(aliasCycle({ types } as unknown as Ir)).toBe("Boom")
     expect(aliasCycle({ types: { Loop: alias([], "map<string, Twice>[]"), Twice: alias([], "Loop") } } as unknown as Ir)).toBeDefined()
     expect(aliasCycle({ types: { A: alias([], "int"), B: alias([], "A[]") } } as unknown as Ir)).toBeUndefined()
-    const doc = { irVersion: "0.12", sources: [], types, functions: {}, actions: {}, tasks: {}, machines: {} }
+    const doc = { irVersion: "0.13", sources: [], types, functions: {}, actions: {}, tasks: {}, machines: {} }
     expect(() => loadIr(doc)).toThrow(/refers to itself/)
   })
 })

@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0206]: `M.A` has several invokes, so this one needs a name
+  --> RB0206-invoke-without-as.road:11:5
+   |
+11 |     invoke two() {
+   |     ^^^^^^^^^^
+   |
+   = help: each invoke of a state with several says which one its outcomes belong to by its `as` name: add `as <name>`
+
+error[RB0206]: `M.A` has several invokes, so this one needs a name
+  --> RB0206-invoke-without-as.road:14:5
+   |
+14 |     invoke three()
+   |     ^^^^^^^^^^^^
+   |
+   = help: each invoke of a state with several says which one its outcomes belong to by its `as` name: add `as <name>`

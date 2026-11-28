@@ -1,0 +1,51 @@
+// Viewer test chart: several invokes in one state, each named with `as`.
+
+error Lost
+error Busy
+
+/// Fails when the server stops answering.
+task heartbeat(server: string) ! Lost
+
+/// Copies the folder. Returns how many files it copied.
+task syncFiles(folder: string) -> int ! Busy
+
+/// Answers a poke.
+machine Helper() {
+  event Poke
+  event Quit
+  emits Poked
+
+  initial Idle
+
+  state Idle {
+    on Poke          emit Poked
+    on Quit -> Gone
+  }
+
+  final state Gone {}
+}
+
+/// Watches a server while it syncs a folder, with a helper beside them.
+machine Watch(server: string, folder: string) -> int {
+  var synced: int = 0
+
+  event Stop
+
+  initial Watching
+
+  state Watching {
+    invoke heartbeat(server) as beat {
+      fail Lost -> Offline
+    }
+    invoke syncFiles(folder) as sync {
+      done   -> Synced   set synced = result
+      fail * -> Offline
+    }
+    invoke Helper() as helper
+    on helper.Poked             set synced = 0
+    on Stop         -> Offline
+  }
+
+  final state Synced  { output synced }
+  final state Offline { output 0 }
+}

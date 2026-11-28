@@ -101,6 +101,19 @@ machine Checked(check: int) {
   check can finish
   on Go set check = never
 }
+machine Watch(server: string, folder: string) {
+  initial Watching
+  state Watching {
+    invoke heartbeat(server) as beat { fail Lost -> Offline }
+    invoke syncFiles(folder) as sync {
+      done   -> Synced
+      fail * -> Offline
+    }
+    invoke ticks(1s) as clock
+  }
+  final state Synced {}
+  final state Offline {}
+}
 "unterminated
 
 // State parameters, state variables and target arguments.

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "spec/conformance/charts/strict-calls.road",
@@ -175,7 +175,7 @@
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -235,7 +235,7 @@
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -288,7 +288,7 @@
             ],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -403,7 +403,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -433,7 +433,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -515,29 +515,32 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "call",
-              "src": "ask",
-              "to": {
-                "kind": "ref",
-                "name": "desk",
-                "machine": "Desk",
-                "state": null
-              },
-              "as": null,
-              "args": [],
-              "span": {
-                "file": 0,
-                "line": 43,
-                "col": 5,
-                "endLine": 46,
-                "endCol": 6
+            "invokes": [
+              {
+                "kind": "call",
+                "src": "ask",
+                "to": {
+                  "kind": "ref",
+                  "name": "desk",
+                  "machine": "Desk",
+                  "state": null
+                },
+                "as": null,
+                "args": [],
+                "span": {
+                  "file": 0,
+                  "line": 43,
+                  "col": 5,
+                  "endLine": 46,
+                  "endCol": 6
+                }
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -573,6 +576,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "Unanswered"
                 },
                 "group": 1,
@@ -613,7 +617,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -644,7 +648,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "lit",
@@ -657,7 +661,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -739,29 +743,32 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "call",
-              "src": "hold",
-              "to": {
-                "kind": "ref",
-                "name": "desk",
-                "machine": "Desk",
-                "state": null
-              },
-              "as": null,
-              "args": [],
-              "span": {
-                "file": 0,
-                "line": 60,
-                "col": 5,
-                "endLine": 63,
-                "endCol": 6
+            "invokes": [
+              {
+                "kind": "call",
+                "src": "hold",
+                "to": {
+                  "kind": "ref",
+                  "name": "desk",
+                  "machine": "Desk",
+                  "state": null
+                },
+                "as": null,
+                "args": [],
+                "span": {
+                  "file": 0,
+                  "line": 60,
+                  "col": 5,
+                  "endLine": 63,
+                  "endCol": 6
+                }
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -797,6 +804,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "Unanswered"
                 },
                 "group": 1,
@@ -837,7 +845,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -868,7 +876,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "lit",
@@ -881,7 +889,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

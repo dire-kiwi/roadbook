@@ -1,0 +1,69 @@
+error Lost
+error Busy
+error Full
+
+/// A heartbeat that fails when the server stops answering.
+task heartbeat(server: string) ! Lost
+task syncFiles(folder: string) -> int ! Busy | Full
+task ticks(every: duration) emits Tick
+task fetch(id: string) -> string
+
+machine Worker() {
+  event Poke
+  emits Done
+  initial Idle
+  state Idle { on Poke -> Over }
+  final state Over { entry emit Done }
+}
+
+machine Peer() {
+  call ask() -> int
+  event Stop
+  initial A
+  state A {
+    on ask reply call done 1
+    on Stop -> Over
+  }
+  final state Over {}
+}
+
+/// Several invokes in one state, each named with `as`: a task without `emits`, a stream task,
+/// the same task twice, machines and a call among them.
+machine Watch(server: string, folder: string, peer: ref Peer) {
+  event Stop
+  var synced: int = 0
+  var ticks: int = 0
+  var answer: int = 0
+
+  initial Watching
+  state Watching {
+    invoke heartbeat(server) as beat { fail Lost -> Offline }
+    invoke syncFiles(folder) as sync {
+      done          -> Synced  set synced = result
+      fail Busy     send left.Poke
+      fail *        -> Failed
+    }
+    invoke ticks(1s) as clock
+    invoke Worker() as left { done -> Synced }
+    invoke Worker() as right
+    invoke peer.ask() as asked {
+      done          set answer = result
+      fail *        -> Failed
+    }
+    on clock.Tick set ticks = ticks + 1
+    on left.Done  send right.Poke
+    on Stop       -> Twice
+    after 5m      -> Failed
+  }
+  state Twice {
+    invoke fetch("a") as a { done -> Synced }
+    invoke fetch("b") as b { done -> Failed }
+  }
+  final state Synced {}
+  final state Offline {}
+  final state Failed {}
+
+  check reachable Offline
+  check reachable Twice
+  check can finish
+}

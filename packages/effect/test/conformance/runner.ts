@@ -46,6 +46,7 @@ type Step =
     readonly run?: string
     /** The key of the spawned task or stubbed child meant, when a run has several. */
     readonly key?: Core.Json
+    readonly as?: string
     readonly done?: Core.Json
     readonly fail?: Core.Tagged
     readonly defect?: string
@@ -99,6 +100,7 @@ export const supported: ReadonlyArray<string> = [
   "ended",
   "task-emits",
   "raise",
+  "invokes",
   "locals"
 ]
 
@@ -201,6 +203,8 @@ interface Scripted {
   readonly name: string
   readonly run: string
   readonly invoke: number
+  /** The invoke's `as`, if it has one. */
+  readonly as: string | undefined
   /** The emitter the driver gave a scripted task; `undefined` for a stubbed machine. */
   readonly emit: ((event: unknown) => Effect.Effect<void>) | undefined
   resume: (effect: Effect.Effect<unknown, unknown>) => void
@@ -270,6 +274,7 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
           name: src,
           run: String(annotations["roadbook.run"]),
           invoke: Number(annotations["roadbook.invoke"]),
+          as: annotations["roadbook.as"] === undefined ? undefined : String(annotations["roadbook.as"]),
           emit,
           resume
         }
@@ -546,15 +551,16 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
 
   /** The running scripted invoke a `task` step refers to. */
   const findScripted = (
-    step: { readonly task: string; readonly run?: string; readonly key?: Core.Json },
+    step: { readonly task: string; readonly run?: string; readonly key?: Core.Json; readonly as?: string },
     taken: ReadonlySet<Scripted>
   ) => {
     const matches = [...scripted].filter((s) =>
       s.name === step.task && !taken.has(s) && (step.run === undefined || s.run === step.run) &&
-      (step.key === undefined || Core.canonicalJson(spawnedOf(s)?.key ?? null) === Core.canonicalJson(step.key))
+      (step.key === undefined || Core.canonicalJson(spawnedOf(s)?.key ?? null) === Core.canonicalJson(step.key)) &&
+      (step.as === undefined || s.as === step.as)
     )
     if (matches.length !== 1) {
-      const where = `${step.run ? ` in ${step.run}` : ""}${step.key !== undefined ? ` with key ${Core.canonicalJson(step.key)}` : ""}`
+      const where = `${step.run ? ` in ${step.run}` : ""}${step.key !== undefined ? ` with key ${Core.canonicalJson(step.key)}` : ""}${step.as !== undefined ? ` as ${step.as}` : ""}`
       fail(`${matches.length === 0 ? "no" : "more than one"} running invoke of ${step.task}${where}`)
     }
     return matches[0]!

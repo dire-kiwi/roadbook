@@ -1,4 +1,4 @@
-// Data local to a state (IR 0.12): state parameters and state variables in the diagram, the
+// Data local to a state (IR 0.13): state parameters and state variables in the diagram, the
 // details panel, simulate and replay, for the test chart locals.road.
 
 import { describe, expect, it } from 'vitest'

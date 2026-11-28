@@ -49,9 +49,29 @@ machine N() {
   final state Done {}
 }
 
+// With several invokes, an outcome of one finds the others running, unless it leaves the
+// state; an outcome of `a` never finds `a` running.
+machine S() {
+  initial Both
+  state Both {
+    invoke Child() as a {
+      done            send b.Poke
+    }
+    invoke Child() as b {
+      done -> Done    send a.Poke
+    }
+    invoke Child() as c {
+      done            send c.Poke
+    }
+  }
+  final state Done {}
+}
+
 // expect: RB0213 at 14:16
 // expect: RB0213 at 15:15
 // expect: RB0213 at 17:26
 // expect: RB0213 at 20:28
 // expect: RB0213 at 26:33
 // expect: RB0213 at 42:37
+// expect: RB0213 at 61:28
+// expect: RB0213 at 64:28

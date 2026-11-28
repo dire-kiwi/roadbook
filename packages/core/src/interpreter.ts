@@ -9,6 +9,7 @@ import {
   type Effect,
   type Expr,
   getMachine,
+  type Invoke,
   type Ir,
   isHistory,
   type Machine,
@@ -153,7 +154,7 @@ export const restore = (
     vars: saved.vars,
     // Written only when not empty.
     locals: saved.locals ?? {},
-    invokes: saved.invokes.map(({ id, src, state }) => ({ id, state, src })),
+    invokes: saved.invokes.map(({ as, id, src, state }) => (as === undefined ? { id, state, src } : { id, state, src, as })),
     // A snapshot with pending calls is refused (`calls`), so the restored run has none.
     calls: [],
     spawned: (saved.spawned ?? []).map(({ args, children, id, key }) => ({ id, children, key, args })),
@@ -461,7 +462,8 @@ class Macrostep {
         }
         if (input.kind === "invoke.done") {
           bindings = { result: input.value }
-          selected = this.selectOutcome(inv, (t) => t.trigger.kind === "invoke.done", bindings)
+          const as = this.invokeOf(inv)?.as ?? null
+          selected = this.selectOutcome(inv, (t) => t.trigger.kind === "invoke.done" && t.trigger.as === as, bindings)
         } else {
           bindings = { error: input.error }
           selected = this.selectFail(inv, input.error, bindings)
@@ -590,7 +592,7 @@ class Macrostep {
 
   /** The errors invoke `inv` may fail with: its task's, machine's, or call's, and `Unanswered` for a call. */
   private declaredErrors(inv: InvokeEntry): ReadonlyArray<string> {
-    const invoke = this.index.state(inv.state).invoke
+    const invoke = this.invokeOf(inv)
     if (invoke?.kind === "call") return [...(this.callDecl(invoke)?.errors ?? []), UNANSWERED]
     return this.srcErrors(invoke?.src ?? inv.src)
   }
@@ -602,7 +604,7 @@ class Macrostep {
   }
 
   /** The declaration of the call a call invoke makes, in the callee's machine. */
-  private callDecl(invoke: NonNullable<State["invoke"]>) {
+  private callDecl(invoke: Invoke) {
     const callee = invoke.to === null ? undefined : this.ir.machines[invoke.to.machine]
     return callee !== undefined && Object.hasOwn(callee.calls, invoke.src) ? callee.calls[invoke.src] : undefined
   }
@@ -745,10 +747,21 @@ class Macrostep {
     return this.selectByWalks(() => matches, bindings)
   }
 
+  /** The invoke a snapshot entry runs: its state's invoke with its `as`, or the state's one invoke. */
+  private invokeOf(inv: InvokeEntry): Invoke | undefined {
+    const invokes = this.index.state(inv.state).invokes
+    return inv.as === undefined ? invokes[0] : invokes.find((i) => i.as === inv.as)
+  }
+
+  /** Whether snapshot entry `inv` runs the invoke that `address`, of kind `child` or `task`, names. */
+  private entryNamed(inv: InvokeEntry | undefined, address: Address): boolean {
+    return inv !== undefined && inv.state === address.state && this.invokeOf(inv)?.as === address.name
+  }
+
   /** Whether `address` names the invoked or spawned task with id `id`. */
   private namesTask(address: Address, id: number): boolean {
     if (address.task === undefined) return false
-    if (address.kind === "task") return this.invokes.find((i) => i.id === id)?.state === address.state
+    if (address.kind === "task") return this.entryNamed(this.invokes.find((i) => i.id === id), address)
     return this.spawned.find((c) => c.id === id)?.children === address.name
   }
 
@@ -756,7 +769,7 @@ class Macrostep {
   private namesSender(address: Address, input: Extract<Input, { readonly kind: "emitted" }>): boolean {
     if (address.task !== undefined) return false
     if (address.kind === "child") {
-      return input.invoke !== null && this.invokes.find((i) => i.id === input.invoke)?.state === address.state
+      return input.invoke !== null && this.entryNamed(this.invokes.find((i) => i.id === input.invoke), address)
     }
     if (address.kind === "children") {
       return input.invoke !== null && this.spawned.find((c) => c.id === input.invoke)?.children === address.name
@@ -777,7 +790,9 @@ class Macrostep {
 
   private selectFail(inv: InvokeEntry, error: Tagged, bindings: Bindings): Array<Selected> {
     const state = this.index.state(inv.state)
-    const isFail = (name: string) => (t: Transition) => t.trigger.kind === "invoke.fail" && t.trigger.error === name
+    const as = this.invokeOf(inv)?.as ?? null
+    const isFail = (name: string) => (t: Transition) =>
+      t.trigger.kind === "invoke.fail" && t.trigger.as === as && t.trigger.error === name
     const named = isFail(error._tag)
     const matches = state.transitions.some(named) ? named : isFail("*")
     return listOf(this.firstEnabled(state, matches, bindings))
@@ -939,9 +954,9 @@ class Macrostep {
   }
 
   private exitState(state: State) {
-    const inv = this.invokes.find((i) => i.state === state.id)
-    if (inv !== undefined) {
-      this.invokes = this.invokes.filter((i) => i !== inv)
+    const mine = this.invokes.filter((i) => i.state === state.id).sort((a, b) => a.id - b.id)
+    this.invokes = this.invokes.filter((i) => i.state !== state.id)
+    for (const inv of mine) {
       this.trace({ kind: "invoke.cancelled", invoke: inv.id, state: state.id, src: inv.src })
       this.commands.push({ kind: "invoke.cancel", invoke: inv.id })
     }
@@ -1122,8 +1137,8 @@ class Macrostep {
             to = `${this.snapshot.run}.${ch.id}`
             invoke = ch.id
           } else if (effect.to.kind === "child") {
-            const state = effect.to.state
-            const inv = this.invokes.find((i) => i.state === state)
+            const address = effect.to
+            const inv = this.invokes.find((i) => this.entryNamed(i, address))
             value = this.eval(effect.value, bindings) as Tagged
             if (inv === undefined) {
               const shown = redactor(this.ir).sent(effect.to.machine, value) as Tagged
@@ -1306,11 +1321,13 @@ class Macrostep {
     for (const id of [...this.active]) {
       if (!this.entered.has(id)) continue
       const state = this.index.state(id)
-      if (state.invoke !== null) {
+      const several = state.invokes.length > 1
+      for (const invoke of state.invokes) {
         const invokeId = this.nextInvoke
         this.nextInvoke += 1
-        this.invokes.push({ id: invokeId, state: id, src: invokeSrc(state.invoke) })
-        this.startInvoke(state, invokeId)
+        const src = invokeSrc(invoke)
+        this.invokes.push(several && invoke.as !== null ? { id: invokeId, state: id, src, as: invoke.as } : { id: invokeId, state: id, src })
+        this.startInvoke(state, invoke, invokeId)
       }
       const groups = new Set<number>()
       state.transitions.forEach((transition, index) => {
@@ -1327,11 +1344,10 @@ class Macrostep {
   }
 
   /**
-   * Trace and start invoke `invokeId` of `state`, its arguments evaluated now, its child run
-   * restored from `saved` if it has one.
+   * Trace and start `invoke` of `state` as invoke `invokeId`, its arguments evaluated now, its
+   * child run restored from `saved` if it has one.
    */
-  private startInvoke(state: State, invokeId: number, saved: Saved | null = null) {
-    const invoke = state.invoke!
+  private startInvoke(state: State, invoke: Invoke, invokeId: number, saved: Saved | null = null) {
     // A call's peer is read before its arguments are evaluated, as a `send`'s address is.
     const to = invoke.kind === "call" && invoke.to !== null ? this.readName(invoke.to.name) as string : null
     const params = invoke.kind === "task"
@@ -1343,7 +1359,12 @@ class Macrostep {
     invoke.args.forEach((arg, i) => {
       args[params[i]?.name ?? String(i)] = this.eval(arg, NO_BINDINGS)
     })
-    this.trace({ kind: "invoke.started", invoke: invokeId, state: state.id, src: invokeSrc(invoke), args })
+    const src = invokeSrc(invoke)
+    this.trace(
+      state.invokes.length > 1 && invoke.as !== null
+        ? { kind: "invoke.started", invoke: invokeId, state: state.id, src, as: invoke.as, args }
+        : { kind: "invoke.started", invoke: invokeId, state: state.id, src, args }
+    )
     this.commands.push({
       kind: "invoke.start",
       invoke: invokeId,
@@ -1366,8 +1387,11 @@ class Macrostep {
     for (const ch of this.spawned) this.startChild(ch, saved.spawned?.find((c) => c.id === ch.id)?.child ?? null)
     for (const id of this.active) {
       const state = this.index.state(id)
-      const inv = this.invokes.find((i) => i.state === id)
-      if (inv !== undefined) this.startInvoke(state, inv.id, saved.invokes.find((i) => i.id === inv.id)?.child ?? null)
+      const mine = this.invokes.filter((i) => i.state === id).sort((a, b) => a.id - b.id)
+      for (const inv of mine) {
+        const invoke = this.invokeOf(inv)
+        if (invoke !== undefined) this.startInvoke(state, invoke, inv.id, saved.invokes.find((i) => i.id === inv.id)?.child ?? null)
+      }
       const timers = saved.timers.filter((t) => t.state === id && t.due > now).sort((a, b) => a.id - b.id)
       for (const tm of timers) {
         const delay = tm.due - now
@@ -1555,7 +1579,7 @@ class Macrostep {
 }
 
 /** An invoke's `src` in the snapshot and the records: for a call, the address and the call, `inventory.reserve`. */
-const invokeSrc = (invoke: NonNullable<State["invoke"]>): string =>
+const invokeSrc = (invoke: Invoke): string =>
   invoke.kind === "call" && invoke.to !== null ? `${invoke.to.name}.${invoke.src}` : invoke.src
 
 const listOf = <A>(a: A | undefined): Array<A> => (a === undefined ? [] : [a])

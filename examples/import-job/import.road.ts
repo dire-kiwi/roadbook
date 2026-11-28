@@ -62,7 +62,7 @@ export interface ImportJobDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.12",
+  "irVersion": "0.13",
   "sources": [
     {
       "path": "examples/import-job/import.road",
@@ -558,34 +558,37 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "validateUpload",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "upload"
-                  ],
-                  "state": null,
-                  "type": "Upload",
-                  "text": "upload"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "validateUpload",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "upload"
+                    ],
+                    "state": null,
+                    "type": "Upload",
+                    "text": "upload"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 33,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 30,
-                "col": 5,
-                "endLine": 33,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -621,6 +624,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "InvalidFile"
                 },
                 "group": 1,
@@ -692,52 +696,55 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "processBatch",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "upload"
-                      ],
-                      "state": null,
-                      "type": "Upload",
-                      "text": "upload"
-                    },
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "plan"
-                      ],
-                      "state": null,
-                      "type": "ImportPlan",
-                      "text": "plan"
-                    },
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "batch"
-                      ],
-                      "state": null,
-                      "type": "int",
-                      "text": "batch"
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "processBatch",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "upload"
+                        ],
+                        "state": null,
+                        "type": "Upload",
+                        "text": "upload"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "plan"
+                        ],
+                        "state": null,
+                        "type": "ImportPlan",
+                        "text": "plan"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "batch"
+                        ],
+                        "state": null,
+                        "type": "int",
+                        "text": "batch"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 45,
+                      "col": 7,
+                      "endLine": 55,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 45,
-                    "col": 7,
-                    "endLine": 55,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": {
@@ -819,7 +826,8 @@ const ir: unknown = {
                   },
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": {
@@ -887,7 +895,8 @@ const ir: unknown = {
                   },
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -948,6 +957,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "TransientBatchError"
                     },
                     "group": 1,
@@ -1063,6 +1073,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "TransientBatchError"
                     },
                     "group": 1,
@@ -1119,7 +1130,7 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -1203,7 +1214,7 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -1245,7 +1256,7 @@ const ir: unknown = {
             ],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1331,7 +1342,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "record",
@@ -1410,7 +1421,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -1441,7 +1452,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -1494,7 +1505,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -1520,7 +1531,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [
           {
             "trigger": {

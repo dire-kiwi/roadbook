@@ -44,8 +44,8 @@ pub(crate) struct TransitionReads {
 #[derive(Clone, Debug)]
 pub(crate) struct StateInfo {
     pub name_span: Span,
-    /// `invoke name`, if the state has an invoke.
-    pub invoke_span: Option<Span>,
+    /// `invoke name` of each of the state's invokes, in the order written.
+    pub invoke_spans: Vec<Span>,
     /// The trigger of each of the state's IR transitions, by index.
     pub triggers: Vec<Span>,
     /// The name in `initial Name`, for a compound state.
@@ -53,7 +53,7 @@ pub(crate) struct StateInfo {
     /// What each IR `entry` and `exit` effect reads, by index.
     pub entry_reads: Vec<Reads>,
     pub exit_reads: Vec<Reads>,
-    /// What the invoke's arguments read.
+    /// What the invokes' arguments read: they are all evaluated as the state's work starts.
     pub invoke_reads: Reads,
     /// What `output` or `fail` reads.
     pub result_reads: Reads,
@@ -142,11 +142,12 @@ pub(crate) enum Place {
     /// The `exit` of a state.
     Exit(usize),
     /// A transition written in a state, with its domain (`None` with no target: it leaves
-    /// nothing), and whether it is an outcome of the state's invoke.
+    /// nothing), and, for an outcome of one of the state's invokes, which one (its position
+    /// among the state's invokes).
     Transition {
         node: usize,
         domain: Option<usize>,
-        outcome: bool,
+        outcome: Option<usize>,
     },
 }
 
@@ -214,12 +215,22 @@ struct Node<'p> {
     /// `None` for the machine's root.
     state: Option<&'p State>,
     depth: usize,
-    /// `invoke Machine(…) as name` or `invoke task(…) as name`: the name and the callee.
-    alias: Option<(&'p Ident, String)>,
+    /// The `as` names of the state's invokes, in the order written.
+    aliases: Vec<Alias<'p>>,
     /// The state's symbol (the machine's, for the root).
     symbol: Option<SymbolId>,
-    /// The symbol of the `as` name.
-    alias_symbol: Option<SymbolId>,
+}
+
+/// `invoke Machine(…) as name` or `invoke task(…) as name`.
+#[derive(Clone)]
+struct Alias<'p> {
+    name: &'p Ident,
+    /// What is invoked, as written: `Upload`, `upload`, or for a call `inventory.reserve`.
+    callee: String,
+    /// The invoke's position among the state's invokes.
+    index: usize,
+    /// The symbol of the name.
+    symbol: Option<SymbolId>,
 }
 
 pub(crate) struct Var {
@@ -658,9 +669,8 @@ pub(crate) fn lower<'p>(
         body: &m.body,
         state: None,
         depth: 0,
-        alias: None,
+        aliases: Vec::new(),
         symbol,
-        alias_symbol: None,
     });
     cx.build_tree(0);
     cx.check_aliases();
@@ -848,15 +858,6 @@ impl<'p> Cx<'_, 'p> {
             }
             let idx = self.nodes.len();
             let id = format!("{}.{}", self.nodes[parent].id, s.name.name);
-            let invoke = s.body.invokes().next();
-            let alias = invoke.and_then(|inv| {
-                let a = inv.alias.as_ref()?;
-                let callee = match &inv.to {
-                    Some(to) => format!("{}.{}", to.name, inv.callee.name),
-                    None => inv.callee.name.clone(),
-                };
-                Some((a, callee))
-            });
             let word = match s.kind {
                 StateKind::Normal => "state",
                 StateKind::Final => "final state",
@@ -870,17 +871,44 @@ impl<'p> Cx<'_, 'p> {
                 &s.doc,
                 format!("{word} {id}"),
             );
-            let alias_symbol = invoke.and_then(|inv| {
-                let a = inv.alias.as_ref()?;
-                Some(self.ck.define(
+            let mut aliases: Vec<Alias<'p>> = Vec::new();
+            for (index, inv) in s.body.invokes().enumerate() {
+                let Some(a) = inv.alias.as_ref() else {
+                    continue;
+                };
+                if let Some(first) = aliases.iter().find(|x| x.name.name == a.name) {
+                    self.ck.diags.push(
+                        Diagnostic::error(
+                            codes::DUPLICATE_NAME,
+                            a.span,
+                            format!("`{}` already names an invoke of `{id}`", a.name),
+                        )
+                        .with_secondary(first.name.span, "named here")
+                        .with_help(
+                            "each invoke of a state needs a name of its own; choose another",
+                        ),
+                    );
+                    continue;
+                }
+                let callee = match &inv.to {
+                    Some(to) => format!("{}.{}", to.name, inv.callee.name),
+                    None => inv.callee.name.clone(),
+                };
+                let symbol = self.ck.define(
                     SymbolKind::InvokeName,
                     a,
                     a.span,
                     Some(symbol),
                     &None,
                     format!("invoke {}(…) as {}", inv.callee.name, a.name),
-                ))
-            });
+                );
+                aliases.push(Alias {
+                    name: a,
+                    callee,
+                    index,
+                    symbol: Some(symbol),
+                });
+            }
             self.nodes.push(Node {
                 name: s.name.name.clone(),
                 name_span: s.name.span,
@@ -893,9 +921,8 @@ impl<'p> Cx<'_, 'p> {
                 body: &s.body,
                 state: Some(s),
                 depth: self.nodes[parent].depth + 1,
-                alias,
+                aliases,
                 symbol: Some(symbol),
-                alias_symbol,
             });
             self.nodes[parent].children.push(idx);
             self.nodes[parent].order.push(idx);
@@ -962,9 +989,8 @@ impl<'p> Cx<'_, 'p> {
             body: self.nodes[parent].body,
             state: None,
             depth: self.nodes[parent].depth + 1,
-            alias: None,
+            aliases: Vec::new(),
             symbol: Some(symbol),
-            alias_symbol: None,
         });
         self.nodes[parent].histories.push(idx);
         self.nodes[parent].order.push(idx);
@@ -998,7 +1024,7 @@ impl<'p> Cx<'_, 'p> {
             id.clone(),
             StateInfo {
                 name_span: h.name.span,
-                invoke_span: None,
+                invoke_spans: Vec::new(),
                 triggers: Vec::new(),
                 initial_span: None,
                 entry_reads: Vec::new(),
@@ -1027,7 +1053,7 @@ impl<'p> Cx<'_, 'p> {
             states: Vec::new(),
             entry: Vec::new(),
             exit: Vec::new(),
-            invoke: None,
+            invokes: Vec::new(),
             transitions: Vec::new(),
             output: None,
             fail: None,
@@ -1038,14 +1064,23 @@ impl<'p> Cx<'_, 'p> {
     /// or the name of an invoke around it. Such a name is not in scope.
     fn check_aliases(&mut self) {
         for i in 0..self.nodes.len() {
-            let Some((alias, callee)) = self.nodes[i].alias.clone() else {
-                continue;
-            };
-            let word = callee_word(&callee);
-            self.key_as_name(alias, &format!("an invoked {word}"));
-            let mut bad = None;
-            if callee.contains('.') {
-                bad = Some(
+            // In a state with several invokes, `as` names each of them, whatever it runs.
+            let several = self.nodes[i].body.invokes().nth(1).is_some();
+            for Alias {
+                name: alias,
+                callee,
+                index,
+                ..
+            } in self.nodes[i].aliases.clone()
+            {
+                let word = callee_word(&callee);
+                self.key_as_name(alias, &format!("an invoked {word}"));
+                let mut bad = None;
+                // In a state with several invokes, `as` on a call or on a task that emits
+                // nothing is only a label, reported where the name is used to talk to it; it
+                // still shares the machine's namespace.
+                if !several && callee.contains('.') {
+                    bad = Some(
                     Diagnostic::error(
                         codes::ALIAS_ON_TASK,
                         alias.span,
@@ -1056,14 +1091,14 @@ impl<'p> Cx<'_, 'p> {
                     )
                     .with_help("a call is answered once, with its outcome; talk to the machine through its `ref` instead; remove `as …`"),
                 );
-            } else if word == "task" && self.task_emits(&callee) == Some(false) {
-                let declared = self
-                    .ck
-                    .sigs
-                    .get(&callee)
-                    .map(|s| s.name_span)
-                    .filter(|_| !self.ck.is_compiled(self.file));
-                let mut d = Diagnostic::error(
+                } else if !several && word == "task" && self.task_emits(&callee) == Some(false) {
+                    let declared = self
+                        .ck
+                        .sigs
+                        .get(&callee)
+                        .map(|s| s.name_span)
+                        .filter(|_| !self.ck.is_compiled(self.file));
+                    let mut d = Diagnostic::error(
                     codes::ALIAS_ON_TASK,
                     alias.span,
                     format!(
@@ -1074,13 +1109,13 @@ impl<'p> Cx<'_, 'p> {
                 .with_help(
                     "a task's `as` name receives what it emits: declare `emits Event` on the task, or remove `as …`",
                 );
-                if let Some(span) = declared {
-                    d = d.with_secondary(span, "declared here");
-                }
-                bad = Some(d);
-            } else if let Some(v) = self.vars.get(&alias.name) {
-                let what = if v.param { "a parameter" } else { "a variable" };
-                bad = Some(
+                    if let Some(span) = declared {
+                        d = d.with_secondary(span, "declared here");
+                    }
+                    bad = Some(d);
+                } else if let Some(v) = self.vars.get(&alias.name) {
+                    let what = if v.param { "a parameter" } else { "a variable" };
+                    bad = Some(
                     Diagnostic::error(
                         codes::DUPLICATE_NAME,
                         alias.span,
@@ -1088,8 +1123,8 @@ impl<'p> Cx<'_, 'p> {
                     )
                     .with_help("an `as` name shares the machine's names with its parameters and variables; choose another"),
                 );
-            } else if self.collections.contains_key(&alias.name) {
-                bad = Some(
+                } else if self.collections.contains_key(&alias.name) {
+                    bad = Some(
                     Diagnostic::error(
                         codes::DUPLICATE_NAME,
                         alias.span,
@@ -1100,34 +1135,50 @@ impl<'p> Cx<'_, 'p> {
                     )
                     .with_help("an `as` name shares the machine's names with its collections; choose another"),
                 );
-            } else {
-                let mut up = self.nodes[i].parent;
-                while let Some(a) = up {
-                    if let Some((outer, _)) = &self.nodes[a].alias
-                        && outer.name == alias.name
-                    {
-                        bad = Some(
+                } else if let Some(&raise) = self.raise_names.get(&alias.name) {
+                    bad = Some(
+                        Diagnostic::error(
+                            codes::DUPLICATE_NAME,
+                            alias.span,
+                            format!(
+                                "`{}` is already the name of a delayed raise of `{}`",
+                                alias.name, self.machine
+                            ),
+                        )
+                        .with_secondary(raise, "named here")
+                        .with_help("an `as` name shares the machine's names with its delayed raises; choose another"),
+                    );
+                } else {
+                    let mut up = self.nodes[i].parent;
+                    while let Some(a) = up {
+                        if let Some(outer) = self.nodes[a]
+                            .aliases
+                            .iter()
+                            .find(|x| x.name.name == alias.name)
+                        {
+                            bad = Some(
                             Diagnostic::error(
                                 codes::DUPLICATE_NAME,
                                 alias.span,
                                 format!(
                                     "`{}` already names the {} invoked by `{}`, which contains this state",
                                     alias.name,
-                                    callee_word(&self.nodes[a].alias.as_ref().map_or(String::new(), |x| x.1.clone())),
+                                    callee_word(&outer.callee),
                                     self.nodes[a].id
                                 ),
                             )
-                            .with_secondary(outer.span, "named here")
+                            .with_secondary(outer.name.span, "named here")
                             .with_help("choose another name: both invokes run at once here"),
                         );
-                        break;
+                            break;
+                        }
+                        up = self.nodes[a].parent;
                     }
-                    up = self.nodes[a].parent;
                 }
-            }
-            if let Some(d) = bad {
-                self.ck.diags.push(d);
-                self.nodes[i].alias = None;
+                if let Some(d) = bad {
+                    self.ck.diags.push(d);
+                    self.nodes[i].aliases.retain(|x| x.index != index);
+                }
             }
         }
     }
@@ -1281,13 +1332,11 @@ impl<'p> Cx<'_, 'p> {
             (0..self.nodes.len())
                 .filter(|&n| n == i || self.inside(n, i) || self.inside(i, n))
                 .find_map(|n| {
-                    let (a, _) = self.nodes[n].alias.as_ref()?;
-                    (a.name == name.name).then(|| {
-                        (
-                            format!("the `as` name of the invoke of `{}`", self.nodes[n].id),
-                            Some(a.span),
-                        )
-                    })
+                    let a = self.alias_of(n, &name.name)?;
+                    Some((
+                        format!("the `as` name of an invoke of `{}`", self.nodes[n].id),
+                        Some(a.name.span),
+                    ))
                 })
         };
         let Some((what, first)) = clash else {
@@ -1340,6 +1389,18 @@ impl<'p> Cx<'_, 'p> {
             .map(|n| self.nodes[n].id.as_str())
     }
 
+    /// The `as` name `name` of one of node `a`'s invokes.
+    fn alias_of(&self, a: usize, name: &str) -> Option<&Alias<'p>> {
+        self.nodes[a].aliases.iter().find(|x| x.name.name == name)
+    }
+
+    /// The first state with an invoke named `name`, wherever it is, and the alias.
+    fn alias_anywhere(&self, name: &str) -> Option<(&Node<'p>, &Alias<'p>)> {
+        self.nodes
+            .iter()
+            .find_map(|n| Some((n, n.aliases.iter().find(|x| x.name.name == name)?)))
+    }
+
     /// For a declared task, whether it declares any `emits`; `None` for anything else.
     pub(crate) fn task_emits(&self, name: &str) -> Option<bool> {
         match self.ck.names.lookup(self.file, name) {
@@ -1369,11 +1430,32 @@ impl<'p> Cx<'_, 'p> {
     fn address(&mut self, node: usize, name: &Ident) -> Option<(ir::Address, Option<usize>)> {
         let mut up = Some(node);
         while let Some(a) = up {
-            if let Some((alias, callee)) = &self.nodes[a].alias
-                && alias.name == name.name
+            if let Some(Alias {
+                callee,
+                symbol,
+                name: alias,
+                ..
+            }) = self.alias_of(a, &name.name).cloned()
             {
-                if let Some(symbol) = self.nodes[a].alias_symbol {
+                let callee = &callee;
+                if let Some(symbol) = symbol {
                     self.ck.index.refer(symbol, name.span);
+                }
+                if callee.contains('.') {
+                    // `as` on a call names it only among its state's several invokes.
+                    self.ck.diags.push(
+                        Diagnostic::error(
+                            codes::UNKNOWN_ADDRESS,
+                            name.span,
+                            format!(
+                                "`{}` names the call `{callee}` that `{}` invokes, which takes no events and emits none",
+                                name.name, self.nodes[a].id
+                            ),
+                        )
+                        .with_secondary(alias.span, "named here")
+                        .with_help("a call is answered once, with its outcome; talk to the machine through its `ref` instead"),
+                    );
+                    return None;
                 }
                 // An invoke of a machine or task that is not declared (already reported) names
                 // a child with no known events: the name is in scope, but nothing is checked
@@ -1454,10 +1536,9 @@ impl<'p> Cx<'_, 'p> {
             );
             return None;
         }
-        let elsewhere = self.nodes.iter().find_map(|n| match &n.alias {
-            Some((a, callee)) if a.name == name.name => Some((n.id.clone(), callee_word(callee))),
-            _ => None,
-        });
+        let elsewhere = self
+            .alias_anywhere(&name.name)
+            .map(|(n, a)| (n.id.clone(), callee_word(&a.callee)));
         let mut d = match &elsewhere {
             Some((state, word)) => Diagnostic::error(
                 codes::UNKNOWN_ADDRESS,
@@ -1478,9 +1559,7 @@ impl<'p> Cx<'_, 'p> {
             let mut candidates: Vec<String> = Vec::new();
             let mut up = Some(node);
             while let Some(a) = up {
-                if let Some((alias, _)) = &self.nodes[a].alias {
-                    candidates.push(alias.name.clone());
-                }
+                candidates.extend(self.nodes[a].aliases.iter().map(|x| x.name.name.clone()));
                 up = self.nodes[a].parent;
             }
             for (n, v) in &self.vars {
@@ -1515,12 +1594,16 @@ impl<'p> Cx<'_, 'p> {
         };
         let mut up = Some(node);
         while let Some(a) = up {
-            if let Some((alias, callee)) = &self.nodes[a].alias
-                && alias.name == name.name
+            if let Some(Alias {
+                name: alias,
+                callee,
+                symbol,
+                ..
+            }) = self.alias_of(a, &name.name).cloned()
             {
                 let (span, state) = (alias.span, self.nodes[a].id.clone());
-                let word = callee_word(callee);
-                if let Some(symbol) = self.nodes[a].alias_symbol {
+                let word = callee_word(&callee);
+                if let Some(symbol) = symbol {
                     self.ck.index.refer(symbol, name.span);
                 }
                 self.ck.diags.push(
@@ -1591,13 +1674,8 @@ impl<'p> Cx<'_, 'p> {
             return None;
         }
         let elsewhere = self
-            .nodes
-            .iter()
-            .find(|n| n.alias.as_ref().is_some_and(|(a, _)| a.name == name.name))
-            .map(|n| {
-                let (a, callee) = n.alias.as_ref().expect("found by its alias");
-                (n.id.clone(), Some(a.span), callee_word(callee))
-            });
+            .alias_anywhere(&name.name)
+            .map(|(n, a)| (n.id.clone(), Some(a.name.span), callee_word(&a.callee)));
         if let Some((state, span, word)) = elsewhere {
             let mut d = Diagnostic::error(
                 codes::ENDED_NOT_A_PEER,
@@ -1650,6 +1728,7 @@ impl<'p> Cx<'_, 'p> {
     /// stops it before its effects run.
     fn check_running(&mut self, place: Place, invoking: usize, name: &Ident) {
         let state = self.nodes[invoking].id.clone();
+        let invoke = self.alias_of(invoking, &name.name).map(|a| a.index);
         let why = match place {
             Place::Entry(n) if n == invoking => Some(format!(
                 "in the `entry` of `{state}`, its child has not started yet: it starts once the step that enters `{state}` has settled"
@@ -1659,11 +1738,15 @@ impl<'p> Cx<'_, 'p> {
             )),
             Place::Transition {
                 node,
-                outcome: true,
+                outcome: Some(k),
                 ..
-            } if node == invoking => Some(format!(
-                "in an outcome of the invoke of `{state}`, its child has already ended"
-            )),
+            } if node == invoking && Some(k) == invoke => {
+                Some(if self.nodes[invoking].body.invokes().nth(1).is_some() {
+                    format!("in an outcome of `{}`, it has already ended", name.name)
+                } else {
+                    format!("in an outcome of the invoke of `{state}`, its child has already ended")
+                })
+            }
             // A transition exits the states below its domain (for an internal one written in a
             // parallel state, below some of its regions): the invoking state is the state the
             // transition is written in or one around it, so it is exited when it is below the
@@ -1936,10 +2019,7 @@ impl<'p> Cx<'_, 'p> {
             }
             return Some(c);
         }
-        let alias = self
-            .nodes
-            .iter()
-            .any(|n| n.alias.as_ref().is_some_and(|(a, _)| a.name == name.name));
+        let alias = self.alias_anywhere(&name.name).is_some();
         let what = if self.vars.contains_key(&name.name) {
             format!(
                 "`{}` is a parameter or variable, not a children collection",
@@ -2046,7 +2126,7 @@ impl<'p> Cx<'_, 'p> {
             id.clone(),
             StateInfo {
                 name_span,
-                invoke_span: None,
+                invoke_spans: Vec::new(),
                 triggers: Vec::new(),
                 initial_span: if kind == ir::StateKind::Compound {
                     body.initials().next().map(|n| n.span)
@@ -2066,7 +2146,8 @@ impl<'p> Cx<'_, 'p> {
 
         let mut entry = Vec::new();
         let mut exit = Vec::new();
-        let mut invoke = None;
+        let mut invokes: Vec<ir::Invoke> = Vec::new();
+        let several = body.invokes().nth(1).is_some();
         let mut transitions = Vec::new();
         let mut triggers: Vec<Span> = Vec::new();
         let mut keys: HashMap<String, Span> = HashMap::new();
@@ -2138,7 +2219,7 @@ impl<'p> Cx<'_, 'p> {
                         t,
                         trigger,
                         &scope,
-                        (group, false),
+                        (group, None),
                         &mut transitions,
                         &mut triggers,
                     );
@@ -2146,33 +2227,48 @@ impl<'p> Cx<'_, 'p> {
                 }
                 Item::Invoke(inv) => {
                     let first = transitions.len();
-                    let (lowered, reads, declared) =
-                        self.invoke(idx, inv, &mut group, &mut transitions, &mut triggers);
-                    if invoke.is_none()
-                        && let Some(r) = &inv.retry
-                    {
-                        retry = Some(retry::Plan {
-                            inv,
-                            retry: r,
-                            outcomes: first..transitions.len(),
-                            declared,
-                        });
+                    let index = invokes.len();
+                    let (lowered, reads, declared) = self.invoke(
+                        idx,
+                        inv,
+                        (index, several),
+                        &mut group,
+                        &mut transitions,
+                        &mut triggers,
+                    );
+                    if let Some(r) = &inv.retry {
+                        if several {
+                            self.ck.diags.push(
+                                Diagnostic::error(
+                                    codes::RETRY_WITH_CHILDREN,
+                                    r.span,
+                                    format!("`{id}` has other invokes, so this one cannot `retry`"),
+                                )
+                                .with_help("`retry` gives the state the children `Attempt` and `Backoff`, which hold its one invoke; move the retried invoke into a state of its own, such as a region of a parallel state"),
+                            );
+                        } else {
+                            retry = Some(retry::Plan {
+                                inv,
+                                retry: r,
+                                outcomes: first..transitions.len(),
+                                declared,
+                            });
+                        }
                     }
-                    if invoke.is_some() {
+                    if several && inv.alias.is_none() {
                         self.ck.diags.push(
                             Diagnostic::error(
                                 codes::SECOND_INVOKE,
                                 invoke_head(inv),
-                                format!("`{id}` already has an `invoke`"),
+                                format!("`{id}` has several invokes, so this one needs a name"),
                             )
-                            .with_help("a state runs at most one task or machine; put the second in a state of its own"),
+                            .with_help("each invoke of a state with several says which one its outcomes belong to by its `as` name: add `as <name>`"),
                         );
-                    } else {
-                        invoke = Some(lowered);
-                        invoke_reads = reads;
-                        if let Some(info) = self.info.states.get_mut(&id) {
-                            info.invoke_span = Some(invoke_head(inv));
-                        }
+                    }
+                    invokes.push(lowered);
+                    invoke_reads.extend(reads);
+                    if let Some(info) = self.info.states.get_mut(&id) {
+                        info.invoke_spans.push(invoke_head(inv));
                     }
                 }
                 Item::Output(v) | Item::Fail(v) => {
@@ -2272,7 +2368,7 @@ impl<'p> Cx<'_, 'p> {
             states,
             entry,
             exit,
-            invoke,
+            invokes,
             transitions,
             output,
             fail,
@@ -2812,7 +2908,7 @@ impl<'p> Cx<'_, 'p> {
     }
 
     /// The branches of a transition written in node `idx`; `(group, outcome)` is its group
-    /// and whether it is an outcome of the state's invoke.
+    /// and, for an outcome of one of the state's invokes, which one.
     #[allow(clippy::too_many_arguments)]
     fn branches(
         &mut self,
@@ -2820,7 +2916,7 @@ impl<'p> Cx<'_, 'p> {
         t: &Transition,
         trigger: ir::Trigger,
         scope: &Scope,
-        (group, outcome): (u32, bool),
+        (group, outcome): (u32, Option<usize>),
         out: &mut Vec<ir::Transition>,
         triggers: &mut Vec<Span>,
     ) {
@@ -3855,11 +3951,7 @@ impl<'p> Cx<'_, 'p> {
         if let Found::Decl(id) = self.ck.names.lookup(self.file, &n.name) {
             return self.ck.names.wrong_kind(n, id, "a variable");
         }
-        if let Some(state) = self
-            .nodes
-            .iter()
-            .find(|x| x.alias.as_ref().is_some_and(|(a, _)| a.name == n.name))
-        {
+        if let Some((state, _)) = self.alias_anywhere(&n.name) {
             return Diagnostic::error(
                 codes::UNKNOWN_VARIABLE,
                 n.span,
@@ -4056,10 +4148,13 @@ impl<'p> Cx<'_, 'p> {
             .collect()
     }
 
+    /// Checks and lowers an invoke of node `idx`, the `index`th of its state's, and its
+    /// outcomes; `several` when the state has more than one.
     fn invoke(
         &mut self,
         idx: usize,
         inv: &Invoke,
+        (index, several): (usize, bool),
         group: &mut u32,
         transitions: &mut Vec<ir::Transition>,
         triggers: &mut Vec<Span>,
@@ -4091,6 +4186,13 @@ impl<'p> Cx<'_, 'p> {
             to.as_ref().map(|a| (a.name.as_str(), a.peer())),
         );
         let arg_reads = std::mem::take(&mut self.reads);
+        // The name the IR gives the invoke, and its outcomes' triggers: on a call, only in a
+        // state with several invokes, where it says which one an outcome belongs to.
+        let alias = inv
+            .alias
+            .as_ref()
+            .filter(|_| several || !is_call)
+            .map(|a| a.name.clone());
         // What the invoke can fail with: a call also with `Unanswered`.
         let errors: Option<Vec<String>> = sig.as_ref().map(|s| {
             let mut e = s.errors.clone();
@@ -4168,7 +4270,9 @@ impl<'p> Cx<'_, 'p> {
                         },
                         None => Implicit::Has(Ty::Unknown),
                     };
-                    ir::Trigger::InvokeDone
+                    ir::Trigger::InvokeDone {
+                        alias: alias.clone(),
+                    }
                 }
                 Trigger::Fail(Pattern::Name(n)) if n.name == UNANSWERED && !is_call => {
                     scope.error = Implicit::Has(Ty::Unknown);
@@ -4177,6 +4281,7 @@ impl<'p> Cx<'_, 'p> {
                         &format!("`{callee}` is not a call, so it is never `Unanswered`"),
                     ));
                     ir::Trigger::InvokeFail {
+                        alias: alias.clone(),
                         error: n.name.clone(),
                     }
                 }
@@ -4219,6 +4324,7 @@ impl<'p> Cx<'_, 'p> {
                         }
                     }
                     ir::Trigger::InvokeFail {
+                        alias: alias.clone(),
                         error: n.name.clone(),
                     }
                 }
@@ -4251,17 +4357,22 @@ impl<'p> Cx<'_, 'p> {
                         }
                         None => Implicit::Has(Ty::Unknown),
                     };
-                    ir::Trigger::InvokeFail { error: "*".into() }
+                    ir::Trigger::InvokeFail {
+                        alias: alias.clone(),
+                        error: "*".into(),
+                    }
                 }
                 // The parser accepts only `done` and `fail` here.
-                _ => ir::Trigger::InvokeDone,
+                _ => ir::Trigger::InvokeDone {
+                    alias: alias.clone(),
+                },
             };
             self.branches(
                 idx,
                 o,
                 trigger,
                 &scope,
-                (*group, true),
+                (*group, Some(index)),
                 transitions,
                 triggers,
             );
@@ -4278,11 +4389,7 @@ impl<'p> Cx<'_, 'p> {
             },
             src: inv.callee.name.clone(),
             to,
-            alias: inv
-                .alias
-                .as_ref()
-                .filter(|_| !is_call)
-                .map(|a| a.name.clone()),
+            alias,
             args,
             span: ir_span(inv.span),
         };

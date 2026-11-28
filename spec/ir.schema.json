@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Roadbook IR 0.12",
+  "title": "Roadbook IR 0.13",
   "description": "The compiled form of a Roadbook project: one document per entry file. See spec/ir.md for what each member means. Every member listed is required; absent values are null, missing docs are \"\", and empty lists and maps are [] and {}.",
   "type": "object",
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.12" },
+    "irVersion": { "const": "0.13" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -345,7 +345,7 @@
       "additionalProperties": false,
       "required": [
         "id", "name", "kind", "doc", "span", "params", "vars", "initial", "states", "entry",
-        "exit", "invoke", "transitions", "output", "fail"
+        "exit", "invokes", "transitions", "output", "fail"
       ],
       "properties": {
         "id": { "$ref": "#/$defs/stateId" },
@@ -366,7 +366,11 @@
         "states": { "type": "array", "items": { "$ref": "#/$defs/state" } },
         "entry": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
         "exit": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
-        "invoke": { "oneOf": [{ "$ref": "#/$defs/invoke" }, { "type": "null" }] },
+        "invokes": {
+          "description": "The invokes, in the order written. When there are several, each has an as, and no two the same.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/invoke" }
+        },
         "transitions": { "type": "array", "items": { "$ref": "#/$defs/transition" } },
         "output": { "oneOf": [{ "$ref": "#/$defs/expr" }, { "type": "null" }] },
         "fail": { "oneOf": [{ "$ref": "#/$defs/expr" }, { "type": "null" }] }
@@ -390,7 +394,7 @@
               "vars": { "maxItems": 0 },
               "entry": { "maxItems": 0 },
               "exit": { "maxItems": 0 },
-              "invoke": { "type": "null" },
+              "invokes": { "maxItems": 0 },
               "transitions": { "maxItems": 0 }
             }
           }
@@ -398,6 +402,21 @@
         {
           "if": { "properties": { "kind": { "const": "parallel" } } },
           "then": { "properties": { "states": { "minItems": 1 } } }
+        },
+        {
+          "description": "With several invokes, each has an as. With one, a call has none.",
+          "if": { "properties": { "invokes": { "minItems": 2 } } },
+          "then": { "properties": { "invokes": { "items": { "properties": { "as": { "type": "string" } } } } } },
+          "else": {
+            "properties": {
+              "invokes": {
+                "items": {
+                  "if": { "properties": { "kind": { "const": "call" } } },
+                  "then": { "properties": { "as": { "type": "null" } } }
+                }
+              }
+            }
+          }
         },
         {
           "if": { "properties": { "kind": { "not": { "const": "final" } } } },
@@ -436,8 +455,7 @@
           "then": {
             "properties": {
               "src": { "$ref": "#/$defs/lowerName" },
-              "to": { "$ref": "#/$defs/address", "properties": { "kind": { "const": "ref" } } },
-              "as": { "type": "null" }
+              "to": { "$ref": "#/$defs/address", "properties": { "kind": { "const": "ref" } } }
             }
           }
         }
@@ -519,7 +537,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["kind"],
-          "properties": { "kind": { "enum": ["any", "always", "done", "invoke.done"] } }
+          "properties": { "kind": { "enum": ["any", "always", "done"] } }
         },
         {
           "type": "object",
@@ -530,9 +548,19 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "error"],
+          "required": ["kind", "as"],
+          "properties": {
+            "kind": { "const": "invoke.done" },
+            "as": { "oneOf": [{ "$ref": "#/$defs/lowerName" }, { "type": "null" }] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "as", "error"],
           "properties": {
             "kind": { "const": "invoke.fail" },
+            "as": { "oneOf": [{ "$ref": "#/$defs/lowerName" }, { "type": "null" }] },
             "error": { "oneOf": [{ "$ref": "#/$defs/upperName" }, { "const": "*" }] }
           }
         },

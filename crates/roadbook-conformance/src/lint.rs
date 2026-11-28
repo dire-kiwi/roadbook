@@ -626,10 +626,25 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     bad(format!("invoke started in {s}, which is not active"));
                 }
                 if let Some(st) = machine.and_then(|m| find_state(&m.root, &s)) {
-                    let want = st.invoke.as_ref().map(|inv| match &inv.to {
-                        Some(to) => format!("{}.{}", to.name, inv.src),
-                        None => inv.src.clone(),
-                    });
+                    // A record names its invoke with `as` exactly when the state has several.
+                    let alias = r.get("as").and_then(Value::as_str);
+                    let inv = match (alias, st.has_several_invokes()) {
+                        (Some(a), true) => st.invoke_named(Some(a)),
+                        (None, false) => st.invokes.first(),
+                        (Some(_), false) => {
+                            bad(format!(
+                                "invoke {n} has `as`, but {s} has at most one invoke"
+                            ));
+                            None
+                        }
+                        (None, true) => {
+                            bad(format!(
+                                "invoke {n} has no `as`, but {s} has several invokes"
+                            ));
+                            None
+                        }
+                    };
+                    let want = inv.map(|inv| inv.callee());
                     if want.as_deref() != Some(src.as_str()) {
                         bad(format!("{s} does not invoke {src}"));
                     }

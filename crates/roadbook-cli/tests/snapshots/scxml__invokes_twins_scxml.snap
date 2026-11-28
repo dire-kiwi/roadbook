@@ -1,0 +1,39 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: doc
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Two children in one state: each is sent to and heard from by its name, and the outcome of
+  one may send to the other, which is still running.
+-->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Twins" datamodel="roadbook" initial="Twins_Both" rb:returns="int">
+  <datamodel>
+    <data id="heard" expr="0" rb:type="int"/>
+  </datamodel>
+  <state id="Twins_Both">
+    <invoke id="Twins_Both_invoke_left" type="http://www.w3.org/TR/scxml/" src="Kid.scxml" rb:as="left"/>
+    <invoke id="Twins_Both_invoke_right" type="http://www.w3.org/TR/scxml/" src="Kid.scxml" rb:as="right"/>
+    <transition event="done.invoke.Twins_Both_invoke_left" type="internal">
+      <send event="Poke" target="#_Twins_Both_invoke_right"/>
+    </transition>
+    <transition event="done.invoke.Twins_Both_invoke_right" target="Twins_Over"/>
+    <transition event="Go" type="internal">
+      <send event="Poke" target="#_Twins_Both_invoke_left"/>
+    </transition>
+    <transition event="Next" type="internal">
+      <send event="Quit" target="#_Twins_Both_invoke_left"/>
+    </transition>
+    <transition event="left.Poked" type="internal">
+      <assign location="heard" expr="heard + 1"/>
+    </transition>
+    <transition event="right.Poked" target="Twins_Over">
+      <assign location="heard" expr="heard + 10"/>
+    </transition>
+  </state>
+  <final id="Twins_Over">
+    <donedata>
+      <content expr="heard"/>
+    </donedata>
+  </final>
+</scxml>

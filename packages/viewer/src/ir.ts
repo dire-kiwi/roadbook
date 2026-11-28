@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.12) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.13) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -85,7 +85,8 @@ export interface Invoke {
   to: Address | null
   /**
    * `invoke Machine(…) as name` or `invoke task(…) as name` (a task that emits): the name the
-   * state sends to and receives from, or null.
+   * state sends to and receives from, and its outcomes' triggers name it by, or null. Always
+   * set in a state with several invokes.
    */
   as: string | null
   args: Expr[]
@@ -131,8 +132,9 @@ export type Trigger =
   | { kind: 'after'; delay: Expr }
   | { kind: 'always' }
   | { kind: 'done' }
-  | { kind: 'invoke.done' }
-  | { kind: 'invoke.fail'; error: string }
+  /** `as` names the invoke of the state it belongs to; null for a state's one invoke without `as`. */
+  | { kind: 'invoke.done'; as: string | null }
+  | { kind: 'invoke.fail'; as: string | null; error: string }
   | { kind: 'call'; call: string }
   /** `on name.done`: a spawned child of the collection `children` ended with an output. */
   | { kind: 'spawn.done'; children: string }
@@ -197,7 +199,8 @@ export interface State {
   states: State[]
   entry: Effect[]
   exit: Effect[]
-  invoke: Invoke | null
+  /** The invokes, in the order written. With several, each has an `as`, and no two the same. */
+  invokes: Invoke[]
   transitions: Transition[]
   output: Expr | null
   fail: Expr | null
@@ -255,4 +258,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.12'
+export const IR_VERSION = '0.13'

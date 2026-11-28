@@ -1,0 +1,639 @@
+{
+  "irVersion": "0.13",
+  "sources": [
+    {
+      "path": "packages/viewer/test/charts/invokes.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Lost": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 3,
+        "col": 1,
+        "endLine": 3,
+        "endCol": 11
+      }
+    },
+    "Busy": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 11
+      }
+    }
+  },
+  "functions": {},
+  "actions": {},
+  "tasks": {
+    "heartbeat": {
+      "params": [
+        {
+          "name": "server",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [
+        "Lost"
+      ],
+      "emits": {},
+      "doc": "Fails when the server stops answering.",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 38
+      }
+    },
+    "syncFiles": {
+      "params": [
+        {
+          "name": "folder",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [
+        "Busy"
+      ],
+      "emits": {},
+      "doc": "Copies the folder. Returns how many files it copied.",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 45
+      }
+    }
+  },
+  "machines": {
+    "Helper": {
+      "doc": "Answers a poke.",
+      "span": {
+        "file": 0,
+        "line": 13,
+        "col": 1,
+        "endLine": 26,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Poke": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 13
+          }
+        },
+        "Quit": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {
+        "Poked": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 14
+          }
+        }
+      },
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Helper",
+        "name": "Helper",
+        "kind": "compound",
+        "doc": "Answers a poke.",
+        "span": {
+          "file": 0,
+          "line": 13,
+          "col": 1,
+          "endLine": 26,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Helper.Idle",
+        "states": [
+          {
+            "id": "Helper.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 20,
+              "col": 3,
+              "endLine": 23,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Poke"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "emit",
+                    "event": "Poked",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Poked",
+                      "text": "Poked"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 5,
+                  "endLine": 21,
+                  "endCol": 32
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Quit"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Helper.Gone"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 20
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Helper.Gone",
+            "name": "Gone",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 25,
+              "col": 3,
+              "endLine": 25,
+              "endCol": 22
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:352bf18340b84cef2f59982a5cd05312fc1404f8079324ab7d6ed06fb9795dab"
+    },
+    "Watch": {
+      "doc": "Watches a server while it syncs a folder, with a helper beside them.",
+      "span": {
+        "file": 0,
+        "line": 29,
+        "col": 1,
+        "endLine": 51,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "server",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "folder",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "synced",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 30,
+            "col": 3,
+            "endLine": 30,
+            "endCol": 22
+          }
+        }
+      ],
+      "events": {
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 32,
+            "col": 3,
+            "endLine": 32,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Watch",
+        "name": "Watch",
+        "kind": "compound",
+        "doc": "Watches a server while it syncs a folder, with a helper beside them.",
+        "span": {
+          "file": 0,
+          "line": 29,
+          "col": 1,
+          "endLine": 51,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Watch.Watching",
+        "states": [
+          {
+            "id": "Watch.Watching",
+            "name": "Watching",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 36,
+              "col": 3,
+              "endLine": 47,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "heartbeat",
+                "to": null,
+                "as": "beat",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "server"
+                    ],
+                    "state": null,
+                    "type": "string",
+                    "text": "server"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 39,
+                  "endCol": 6
+                }
+              },
+              {
+                "kind": "task",
+                "src": "syncFiles",
+                "to": null,
+                "as": "sync",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "folder"
+                    ],
+                    "state": null,
+                    "type": "string",
+                    "text": "folder"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 40,
+                  "col": 5,
+                  "endLine": 43,
+                  "endCol": 6
+                }
+              },
+              {
+                "kind": "machine",
+                "src": "Helper",
+                "to": null,
+                "as": "helper",
+                "args": [],
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 44,
+                  "endCol": 30
+                }
+              }
+            ],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "as": "beat",
+                  "error": "Lost"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Watch.Offline"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 38,
+                  "col": 7,
+                  "endLine": 38,
+                  "endCol": 27
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.done",
+                  "as": "sync"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Watch.Synced"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "synced",
+                    "state": null,
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "state": null,
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 41,
+                  "col": 7,
+                  "endLine": 41,
+                  "endCol": 45
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "as": "sync",
+                  "error": "*"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [
+                  "Watch.Offline"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 42,
+                  "col": 7,
+                  "endLine": 42,
+                  "endCol": 24
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "child",
+                    "name": "helper",
+                    "machine": "Helper",
+                    "state": "Watch.Watching"
+                  },
+                  "event": "Poked"
+                },
+                "group": 3,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "synced",
+                    "state": null,
+                    "value": {
+                      "kind": "lit",
+                      "value": 0,
+                      "type": "int",
+                      "text": "0"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 45,
+                  "col": 5,
+                  "endLine": 45,
+                  "endCol": 47
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 4,
+                "guard": null,
+                "targets": [
+                  "Watch.Offline"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 46,
+                  "col": 5,
+                  "endLine": 46,
+                  "endCol": 31
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Watch.Synced",
+            "name": "Synced",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 49,
+              "col": 3,
+              "endLine": 49,
+              "endCol": 40
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "synced"
+              ],
+              "state": null,
+              "type": "int",
+              "text": "synced"
+            },
+            "fail": null
+          },
+          {
+            "id": "Watch.Offline",
+            "name": "Offline",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 50,
+              "col": 3,
+              "endLine": 50,
+              "endCol": 35
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": 0,
+              "type": "int",
+              "text": "0"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:ac8a83e59da4b93ad250dc632e21e5039558b730a9458c0043c69e474cd0fe0e"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+task ping()
+
+machine M() {
+  initial A
+  state A {
+    invoke ping() as p { done -> Done }
+    invoke ping() as p { done -> Done }
+  }
+  final state Done {}
+}
+
+// expect: RB0108 at 7:22

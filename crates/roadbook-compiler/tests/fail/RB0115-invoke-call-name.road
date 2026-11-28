@@ -1,0 +1,30 @@
+machine Peer() {
+  event Poke
+  emits Done
+  call ask()
+  initial A
+  state A { on ask reply call done }
+}
+
+task beat()
+
+// In a state with several invokes, `as` names a call too, but only to say which invoke an
+// outcome belongs to: a call takes no events and emits none.
+machine M(peer: ref Peer) {
+  initial A
+  state A {
+    invoke peer.ask() as p {
+      done   -> B
+      fail * -> B
+    }
+    invoke beat() as b
+    on b.Tick -> B
+    entry send p.Poke
+    on p.Done -> B
+  }
+  final state B {}
+}
+
+// expect: RB0117 at 21:10
+// expect: RB0115 at 22:16
+// expect: RB0115 at 23:8
