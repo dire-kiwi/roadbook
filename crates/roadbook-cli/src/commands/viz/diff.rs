@@ -1676,7 +1676,10 @@ machine M() {
             .collect();
         assert_eq!(changed, [("M.A", 1, Status::Changed, vec!["target"])]);
         let state = &d.ir.machines["M"].root.states[0];
-        assert_eq!(trigger_text(state, &state.transitions[1].trigger), "b: done");
+        assert_eq!(
+            trigger_text(state, &state.transitions[1].trigger),
+            "b: done"
+        );
 
         let swapped = INVOKES.replace(
             "    invoke one() as a { done -> B }\n    invoke two() as b { done -> C }",

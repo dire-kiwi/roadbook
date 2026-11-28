@@ -775,7 +775,9 @@ impl<'p> Cx<'_, 'p> {
                             format!("`{}` already names an invoke of `{id}`", a.name),
                         )
                         .with_secondary(first.name.span, "named here")
-                        .with_help("each invoke of a state needs a name of its own; choose another"),
+                        .with_help(
+                            "each invoke of a state needs a name of its own; choose another",
+                        ),
                     );
                     continue;
                 }
@@ -959,14 +961,14 @@ impl<'p> Cx<'_, 'p> {
                 ..
             } in self.nodes[i].aliases.clone()
             {
-            let word = callee_word(&callee);
-            self.key_as_name(alias, &format!("an invoked {word}"));
-            let mut bad = None;
-            if several {
-                // Only a label: a call or a task that emits nothing is reported where the
-                // name is used to talk to it.
-            } else if callee.contains('.') {
-                bad = Some(
+                let word = callee_word(&callee);
+                self.key_as_name(alias, &format!("an invoked {word}"));
+                let mut bad = None;
+                if several {
+                    // Only a label: a call or a task that emits nothing is reported where the
+                    // name is used to talk to it.
+                } else if callee.contains('.') {
+                    bad = Some(
                     Diagnostic::error(
                         codes::ALIAS_ON_TASK,
                         alias.span,
@@ -977,14 +979,14 @@ impl<'p> Cx<'_, 'p> {
                     )
                     .with_help("a call is answered once, with its outcome; talk to the machine through its `ref` instead; remove `as …`"),
                 );
-            } else if word == "task" && self.task_emits(&callee) == Some(false) {
-                let declared = self
-                    .ck
-                    .sigs
-                    .get(&callee)
-                    .map(|s| s.name_span)
-                    .filter(|_| !self.ck.is_compiled(self.file));
-                let mut d = Diagnostic::error(
+                } else if word == "task" && self.task_emits(&callee) == Some(false) {
+                    let declared = self
+                        .ck
+                        .sigs
+                        .get(&callee)
+                        .map(|s| s.name_span)
+                        .filter(|_| !self.ck.is_compiled(self.file));
+                    let mut d = Diagnostic::error(
                     codes::ALIAS_ON_TASK,
                     alias.span,
                     format!(
@@ -995,13 +997,13 @@ impl<'p> Cx<'_, 'p> {
                 .with_help(
                     "a task's `as` name receives what it emits: declare `emits Event` on the task, or remove `as …`",
                 );
-                if let Some(span) = declared {
-                    d = d.with_secondary(span, "declared here");
-                }
-                bad = Some(d);
-            } else if let Some(v) = self.vars.get(&alias.name) {
-                let what = if v.param { "a parameter" } else { "a variable" };
-                bad = Some(
+                    if let Some(span) = declared {
+                        d = d.with_secondary(span, "declared here");
+                    }
+                    bad = Some(d);
+                } else if let Some(v) = self.vars.get(&alias.name) {
+                    let what = if v.param { "a parameter" } else { "a variable" };
+                    bad = Some(
                     Diagnostic::error(
                         codes::DUPLICATE_NAME,
                         alias.span,
@@ -1009,8 +1011,8 @@ impl<'p> Cx<'_, 'p> {
                     )
                     .with_help("an `as` name shares the machine's names with its parameters and variables; choose another"),
                 );
-            } else if self.collections.contains_key(&alias.name) {
-                bad = Some(
+                } else if self.collections.contains_key(&alias.name) {
+                    bad = Some(
                     Diagnostic::error(
                         codes::DUPLICATE_NAME,
                         alias.span,
@@ -1021,13 +1023,15 @@ impl<'p> Cx<'_, 'p> {
                     )
                     .with_help("an `as` name shares the machine's names with its collections; choose another"),
                 );
-            } else {
-                let mut up = self.nodes[i].parent;
-                while let Some(a) = up {
-                    if let Some(outer) =
-                        self.nodes[a].aliases.iter().find(|x| x.name.name == alias.name)
-                    {
-                        bad = Some(
+                } else {
+                    let mut up = self.nodes[i].parent;
+                    while let Some(a) = up {
+                        if let Some(outer) = self.nodes[a]
+                            .aliases
+                            .iter()
+                            .find(|x| x.name.name == alias.name)
+                        {
+                            bad = Some(
                             Diagnostic::error(
                                 codes::DUPLICATE_NAME,
                                 alias.span,
@@ -1041,15 +1045,15 @@ impl<'p> Cx<'_, 'p> {
                             .with_secondary(outer.name.span, "named here")
                             .with_help("choose another name: both invokes run at once here"),
                         );
-                        break;
+                            break;
+                        }
+                        up = self.nodes[a].parent;
                     }
-                    up = self.nodes[a].parent;
                 }
-            }
-            if let Some(d) = bad {
-                self.ck.diags.push(d);
-                self.nodes[i].aliases.retain(|x| x.index != index);
-            }
+                if let Some(d) = bad {
+                    self.ck.diags.push(d);
+                    self.nodes[i].aliases.retain(|x| x.index != index);
+                }
             }
         }
     }
@@ -1405,13 +1409,13 @@ impl<'p> Cx<'_, 'p> {
                 node,
                 outcome: Some(k),
                 ..
-            } if node == invoking && Some(k) == invoke => Some(
-                if self.nodes[invoking].body.invokes().nth(1).is_some() {
+            } if node == invoking && Some(k) == invoke => {
+                Some(if self.nodes[invoking].body.invokes().nth(1).is_some() {
                     format!("in an outcome of `{}`, it has already ended", name.name)
                 } else {
                     format!("in an outcome of the invoke of `{state}`, its child has already ended")
-                },
-            ),
+                })
+            }
             // A transition exits the states below its domain (for an internal one written in a
             // parallel state, below some of its regions): the invoking state is the state the
             // transition is written in or one around it, so it is exited when it is below the

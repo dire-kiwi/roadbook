@@ -1687,7 +1687,11 @@ fn several_invokes_in_a_state() {
         let loc = c
             .request("textDocument/definition", at(&uri, SEVERAL, from))
             .unwrap();
-        assert_eq!(loc["range"]["start"], position(SEVERAL, to), "{from} -> {to}");
+        assert_eq!(
+            loc["range"]["start"],
+            position(SEVERAL, to),
+            "{from} -> {to}"
+        );
     }
     let hover = c
         .request("textDocument/hover", at(&uri, SEVERAL, "on ^right.Poked"))

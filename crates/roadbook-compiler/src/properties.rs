@@ -675,7 +675,10 @@ impl<'a> Eval<'a> {
             }
             Assumption::TimerFirst { state, index } => format!(
                 "`{}` in `{}` expires before the other running timers",
-                trigger_text(self.state(*state), &self.state(*state).transitions[*index].trigger),
+                trigger_text(
+                    self.state(*state),
+                    &self.state(*state).transitions[*index].trigger
+                ),
                 self.relative(self.graph.state_id(*state))
             ),
             Assumption::Machine(input) => match input {

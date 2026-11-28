@@ -120,10 +120,19 @@ fn export_scxml_snapshots_tasks_that_emit() {
 /// and sends by those ids.
 #[test]
 fn export_scxml_snapshots_several_invokes() {
-    for (machine, snapshot) in [("Watch", "invokes_watch_scxml"), ("Twins", "invokes_twins_scxml")] {
+    for (machine, snapshot) in [
+        ("Watch", "invokes_watch_scxml"),
+        ("Twins", "invokes_twins_scxml"),
+    ] {
         let out = roadbook(
             &repo(),
-            &["export", "scxml", "spec/conformance/charts/invokes.road", "--machine", machine],
+            &[
+                "export",
+                "scxml",
+                "spec/conformance/charts/invokes.road",
+                "--machine",
+                machine,
+            ],
         );
         assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
         let doc = text(&out.stdout);

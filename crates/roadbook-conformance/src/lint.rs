@@ -585,11 +585,15 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                         (Some(a), true) => st.invoke_named(Some(a)),
                         (None, false) => st.invokes.first(),
                         (Some(_), false) => {
-                            bad(format!("invoke {n} has `as`, but {s} has at most one invoke"));
+                            bad(format!(
+                                "invoke {n} has `as`, but {s} has at most one invoke"
+                            ));
                             None
                         }
                         (None, true) => {
-                            bad(format!("invoke {n} has no `as`, but {s} has several invokes"));
+                            bad(format!(
+                                "invoke {n} has no `as`, but {s} has several invokes"
+                            ));
                             None
                         }
                     };

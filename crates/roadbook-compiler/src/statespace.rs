@@ -623,12 +623,18 @@ impl Graph {
                 invoke,
                 error,
             } => {
-                format!("fail {error} of the {} in {}", nth_invoke(*invoke), id(state))
+                format!(
+                    "fail {error} of the {} in {}",
+                    nth_invoke(*invoke),
+                    id(state)
+                )
             }
             Input::After { state, index } => format!("the after at #{index} of {}", id(state)),
             Input::Emitted { from, event } => match from {
                 Sender::Child(s, 0) => format!("{event} from the child of {}", id(s)),
-                Sender::Child(s, k) => format!("{event} from the child of invoke #{k} of {}", id(s)),
+                Sender::Child(s, k) => {
+                    format!("{event} from the child of invoke #{k} of {}", id(s))
+                }
                 Sender::Refs(names) => format!("{}.{event}", names.join(" = ")),
                 Sender::Children(c) => format!("{c}.{event}"),
                 Sender::Callers => format!("{event} from a caller"),
@@ -1590,64 +1596,64 @@ impl<'a> Chart<'a> {
         for &s in &cfg.active {
             let state = self.states[s as usize];
             for (k, inv) in state.invokes.iter().enumerate() {
-            if cfg.consumed.contains(&(s, invoke_slot(k))) {
-                continue;
-            }
-            let alias = inv.alias.as_deref();
-            self.one_state(
-                cfg,
-                s,
-                invoke_slot(k),
-                Input::InvokeDone {
-                    state: StateIndex(s),
-                    invoke: k,
-                },
-                &Cand::InvokeDone(alias),
-                &mut out,
-            );
-            let mut errors: Vec<&str> = match inv.kind {
-                InvokeKind::Task => self.ir.tasks.get(&inv.src).map(|t| &t.errors[..]),
-                InvokeKind::Machine => self.ir.machines.get(&inv.src).map(|m| &m.errors[..]),
-                InvokeKind::Call => inv
-                    .to
-                    .as_ref()
-                    .and_then(|to| self.ir.machines.get(to.peer()))
-                    .and_then(|m| m.calls.get(&inv.src))
-                    .map(|c| &c.errors[..]),
-            }
-            .unwrap_or(&[])
-            .iter()
-            .map(String::as_str)
-            .collect();
-            // Every call can fail with `Unanswered` besides its declared errors.
-            if inv.kind == InvokeKind::Call {
-                errors.push(ir::UNANSWERED);
-            }
-            for e in errors {
+                if cfg.consumed.contains(&(s, invoke_slot(k))) {
+                    continue;
+                }
+                let alias = inv.alias.as_deref();
                 self.one_state(
                     cfg,
                     s,
                     invoke_slot(k),
-                    Input::InvokeFail {
+                    Input::InvokeDone {
                         state: StateIndex(s),
                         invoke: k,
-                        error: e.to_string(),
                     },
-                    &Cand::InvokeFail(alias, e),
+                    &Cand::InvokeDone(alias),
                     &mut out,
                 );
-            }
-            for &event in &self.child_events[s as usize][k] {
-                self.by_walks(
-                    cfg,
-                    Input::Emitted {
-                        from: Sender::Child(StateIndex(s), k),
-                        event: event.to_string(),
-                    },
-                    &Cand::Emitted(SenderRef::Child(s, k), event),
-                    &mut out,
-                );
-            }
+                let mut errors: Vec<&str> = match inv.kind {
+                    InvokeKind::Task => self.ir.tasks.get(&inv.src).map(|t| &t.errors[..]),
+                    InvokeKind::Machine => self.ir.machines.get(&inv.src).map(|m| &m.errors[..]),
+                    InvokeKind::Call => inv
+                        .to
+                        .as_ref()
+                        .and_then(|to| self.ir.machines.get(to.peer()))
+                        .and_then(|m| m.calls.get(&inv.src))
+                        .map(|c| &c.errors[..]),
+                }
+                .unwrap_or(&[])
+                .iter()
+                .map(String::as_str)
+                .collect();
+                // Every call can fail with `Unanswered` besides its declared errors.
+                if inv.kind == InvokeKind::Call {
+                    errors.push(ir::UNANSWERED);
+                }
+                for e in errors {
+                    self.one_state(
+                        cfg,
+                        s,
+                        invoke_slot(k),
+                        Input::InvokeFail {
+                            state: StateIndex(s),
+                            invoke: k,
+                            error: e.to_string(),
+                        },
+                        &Cand::InvokeFail(alias, e),
+                        &mut out,
+                    );
+                }
+                for &event in &self.child_events[s as usize][k] {
+                    self.by_walks(
+                        cfg,
+                        Input::Emitted {
+                            from: Sender::Child(StateIndex(s), k),
+                            event: event.to_string(),
+                        },
+                        &Cand::Emitted(SenderRef::Child(s, k), event),
+                        &mut out,
+                    );
+                }
             }
         }
         // Timers.
@@ -2554,7 +2560,10 @@ mod tests {
         assert_eq!(assumed_by(&g, "the after at #1 of M.A"), vec![vec![race]]);
         assert_eq!(
             assumed_by(&g, "done of the invoke in M.A"),
-            vec![vec![Assumption::Machine(Input::InvokeDone { state: a, invoke: 0 })]]
+            vec![vec![Assumption::Machine(Input::InvokeDone {
+                state: a,
+                invoke: 0
+            })]]
         );
         // No other machine live: nothing to race.
         let g = graph(
