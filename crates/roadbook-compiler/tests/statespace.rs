@@ -154,6 +154,8 @@ struct Replay<'g> {
     ending: bool,
     invokes: HashMap<u64, StateIndex>,
     timers: HashMap<u64, (StateIndex, usize)>,
+    /// The delayed raises started, by timer id: their names and events.
+    raises: HashMap<u64, (Option<String>, String)>,
     spawns: HashMap<u64, String>,
     /// The run id each parameter and variable holds, for those that hold a string.
     holders: HashMap<String, String>,
@@ -175,6 +177,7 @@ impl<'g> Replay<'g> {
             ending: false,
             invokes: HashMap::new(),
             timers: HashMap::new(),
+            raises: HashMap::new(),
             spawns: HashMap::new(),
             holders: HashMap::new(),
             microsteps: 0,
@@ -234,6 +237,15 @@ impl<'g> Replay<'g> {
                     let s = self.state(&r["state"])?;
                     self.active.insert(s);
                 }
+                // A raised event is taken while the run settles: its microstep is one of
+                // settling, and one that enables nothing has no edge.
+                "event" | "dropped" if r["event"]["kind"] == "raised" => {
+                    self.close()?;
+                    if kind == "event" {
+                        let tag = r["event"]["value"]["_tag"].as_str().unwrap_or("");
+                        self.input = Some(Input::Raised(tag.to_string()));
+                    }
+                }
                 "event" | "dropped" | "stale" => {
                     self.close()?;
                     self.settled()?;
@@ -250,7 +262,10 @@ impl<'g> Replay<'g> {
                         self.input = Some(input);
                     } else if matches!(
                         input,
-                        Input::InvokeDone { .. } | Input::InvokeFail { .. } | Input::After { .. }
+                        Input::InvokeDone { .. }
+                            | Input::InvokeFail { .. }
+                            | Input::After { .. }
+                            | Input::RaiseExpired { name: Some(_), .. }
                     ) {
                         // Dropped, but consumed.
                         self.follow(&input, &[])?;
@@ -264,6 +279,12 @@ impl<'g> Replay<'g> {
                     let s = self.state(&r["state"])?;
                     let index = r["index"].as_u64().unwrap() as usize;
                     self.timers.insert(r["timer"].as_u64().unwrap(), (s, index));
+                }
+                "raise.scheduled" => {
+                    let name = r["name"].as_str().map(str::to_string);
+                    let event = r["value"]["_tag"].as_str().unwrap_or("").to_string();
+                    self.raises
+                        .insert(r["timer"].as_u64().unwrap(), (name, event));
                 }
                 "spawn.started" => {
                     let c = r["children"].as_str().unwrap().to_string();
@@ -336,6 +357,12 @@ impl<'g> Replay<'g> {
             let index = tm["index"].as_u64().unwrap() as usize;
             self.timers.insert(tm["id"].as_u64().unwrap(), (s, index));
         }
+        for sc in list("scheduled") {
+            let name = sc["name"].as_str().map(str::to_string);
+            let event = sc["value"]["_tag"].as_str().unwrap_or("").to_string();
+            self.raises
+                .insert(sc["id"].as_u64().unwrap(), (name, event));
+        }
         for inv in list("invokes") {
             let s = self.state(&inv["state"])?;
             self.invokes.insert(inv["id"].as_u64().unwrap(), s);
@@ -393,8 +420,14 @@ impl<'g> Replay<'g> {
             },
             "after" => {
                 let id = event["timer"].as_u64().unwrap();
-                let &(state, index) = self.timers.get(&id).ok_or(format!("no timer {id}"))?;
-                Input::After { state, index }
+                match (self.timers.get(&id), self.raises.get(&id)) {
+                    (Some(&(state, index)), _) => Input::After { state, index },
+                    (None, Some((name, event))) => Input::RaiseExpired {
+                        name: name.clone(),
+                        event: event.clone(),
+                    },
+                    (None, None) => return Err(format!("no timer {id}")),
+                }
             }
             "spawn.done" => Input::SpawnDone {
                 children: spawn("spawn")?,
@@ -526,6 +559,7 @@ impl<'g> Replay<'g> {
             for &e in self.g.outgoing(n) {
                 let edge = self.g.edge(e);
                 let same_input = match &input {
+                    Some(i @ Input::Raised(_)) => edge.settling && edge.input == *i,
                     Some(i) => !edge.settling && self.same_input(&edge.input, i),
                     None => {
                         edge.settling && matches!(edge.input, Input::Always | Input::Done { .. })
