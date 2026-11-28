@@ -45,7 +45,7 @@ export interface SatisfactionSurveyDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "examples/large/survey.road",
@@ -621,6 +621,7 @@ const ir: unknown = {
       "errors": [
         "ClassifierUnavailable"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -649,6 +650,7 @@ const ir: unknown = {
       "errors": [
         "NoAgentAvailable"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -671,6 +673,7 @@ const ir: unknown = {
       "errors": [
         "TrackerUnavailable"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -691,6 +694,7 @@ const ir: unknown = {
       ],
       "returns": "bool",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -711,6 +715,7 @@ const ir: unknown = {
       ],
       "returns": "string",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -733,6 +738,7 @@ const ir: unknown = {
       "errors": [
         "MailBounced"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -755,6 +761,7 @@ const ir: unknown = {
       "errors": [
         "NotAnsweredYet"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,

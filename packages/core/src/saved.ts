@@ -98,7 +98,8 @@ const nestedOf = (ir: Ir, m: Machine | undefined, saved: Saved) => {
   for (const ch of saved.spawned ?? []) {
     if (ch.child === undefined) continue
     const decl = m !== undefined && Object.hasOwn(m.children, ch.children) ? m.children[ch.children] : undefined
-    const machine = decl !== undefined && Object.hasOwn(ir.machines, decl.machine) ? decl.machine : undefined
+    // A spawned task is not a child run, so a snapshot nested in its entry starts no machine.
+    const machine = decl?.kind === "machine" && Object.hasOwn(ir.machines, decl.src) ? decl.src : undefined
     found.push({ what: `spawned child ${ch.id}`, id: ch.id, machine, child: ch.child })
   }
   return found
@@ -458,8 +459,8 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
     if (decl === undefined) return `spawned child ${ch.id} is of ${ch.children}, which is not a collection of the machine`
     const keyIssue = valueIssue(ir, decl.key, ch.key, `the key of spawned child ${ch.id}`)
     if (keyIssue !== undefined) return keyIssue
-    const child = ir.machines[decl.machine]
-    if (child === undefined) return `the machine of ${ch.children} is not in the IR`
+    const child = decl.kind === "task" ? ir.tasks[decl.src] : ir.machines[decl.src]
+    if (child === undefined) return `the ${decl.kind} of ${ch.children} is not in the IR`
     const names = new Set(child.params.map((p) => p.name))
     const absent = child.params.find((p) => !Object.hasOwn(ch.args, p.name))
     if (absent !== undefined) return `spawned child ${ch.id} has no argument ${absent.name}`
@@ -631,9 +632,16 @@ export const valueIssue = (ir: Ir, type: TypeRef | string, value: Json, what: st
       return isRunId(value["from"]) && isId(value["invoke"]) ? undefined : fail("a pending call")
     }
     case "event": {
-      // One the machine accepts or emits.
+      // One the machine accepts or emits, or, for a lower-case name, one the task emits.
+      const task = Object.hasOwn(ir.tasks, t.machine) ? ir.tasks[t.machine] : undefined
       const m = Object.hasOwn(ir.machines, t.machine) ? ir.machines[t.machine] : undefined
-      const decl = m === undefined ? undefined : Object.hasOwn(m.events, t.event) ? m.events[t.event] : m.emits[t.event]
+      const decl = task !== undefined
+        ? Object.hasOwn(task.emits, t.event) ? task.emits[t.event] : undefined
+        : m === undefined
+        ? undefined
+        : Object.hasOwn(m.events, t.event)
+        ? m.events[t.event]
+        : m.emits[t.event]
       if (decl === undefined) return `${what} has unknown type ${t.machine}.${t.event}`
       return taggedIssue(ir, t.event, decl.fields, value, what)
     }

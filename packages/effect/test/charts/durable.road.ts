@@ -4,6 +4,11 @@ import { Schema } from "effect"
 import type { Duration } from "effect"
 import * as Roadbook from "@dire-kiwi/roadbook-effect"
 
+// ---- task: progress ----
+
+export const Reached = Schema.TaggedStruct("Reached", { percent: Schema.Int })
+export type Reached = typeof Reached.Type
+
 // ---- machine: Pipeline ----
 
 export const Nudge = Schema.TaggedStruct("Nudge", { by: Schema.Int })
@@ -36,7 +41,7 @@ export interface PipelineDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable.road",
@@ -51,9 +56,9 @@ const ir: unknown = {
       "doc": "How long `Waiting` waits for a nudge.",
       "span": {
         "file": 0,
-        "line": 9,
+        "line": 10,
         "col": 1,
-        "endLine": 9,
+        "endLine": 10,
         "endCol": 26
       }
     },
@@ -63,9 +68,9 @@ const ir: unknown = {
       "doc": "How long a Parent waits for its Pipeline.",
       "span": {
         "file": 0,
-        "line": 11,
+        "line": 12,
         "col": 1,
-        "endLine": 11,
+        "endLine": 12,
         "endCol": 26
       }
     }
@@ -83,10 +88,28 @@ const ir: unknown = {
       "doc": "Write a line to the log.",
       "span": {
         "file": 0,
-        "line": 5,
+        "line": 6,
         "col": 1,
-        "endLine": 5,
+        "endLine": 6,
         "endCol": 25
+      }
+    },
+    "note": {
+      "params": [
+        {
+          "name": "percent",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "Note how far a task has got.",
+      "span": {
+        "file": 0,
+        "line": 202,
+        "col": 1,
+        "endLine": 202,
+        "endCol": 26
       }
     }
   },
@@ -102,13 +125,54 @@ const ir: unknown = {
       ],
       "returns": "int",
       "errors": [],
+      "emits": {},
       "doc": "One step of work, which a crash must not repeat once it has finished.",
       "span": {
         "file": 0,
-        "line": 7,
+        "line": 8,
         "col": 1,
-        "endLine": 7,
+        "endLine": 8,
         "endCol": 25
+      }
+    },
+    "progress": {
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "emits": {
+        "Reached": {
+          "fields": [
+            {
+              "name": "percent",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 205,
+            "col": 30,
+            "endLine": 205,
+            "endCol": 60
+          }
+        }
+      },
+      "doc": "One step of work that says how far it has got as it goes. Gives `n * 10`.",
+      "span": {
+        "file": 0,
+        "line": 205,
+        "col": 1,
+        "endLine": 205,
+        "endCol": 60
       }
     }
   },
@@ -117,9 +181,9 @@ const ir: unknown = {
       "doc": "Three steps, with a wait between the second and the third for a nudge or a timer.",
       "span": {
         "file": 0,
-        "line": 14,
+        "line": 15,
         "col": 1,
-        "endLine": 49,
+        "endLine": 50,
         "endCol": 2
       },
       "strict": false,
@@ -147,9 +211,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 15,
+            "line": 16,
             "col": 3,
-            "endLine": 15,
+            "endLine": 16,
             "endCol": 21
           }
         }
@@ -167,9 +231,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 17,
+            "line": 18,
             "col": 3,
-            "endLine": 17,
+            "endLine": 18,
             "endCol": 26
           }
         }
@@ -184,9 +248,9 @@ const ir: unknown = {
         "doc": "Three steps, with a wait between the second and the third for a nudge or a timer.",
         "span": {
           "file": 0,
-          "line": 14,
+          "line": 15,
           "col": 1,
-          "endLine": 49,
+          "endLine": 50,
           "endCol": 2
         },
         "initial": "Pipeline.One",
@@ -198,9 +262,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 23,
+              "line": 24,
               "col": 3,
-              "endLine": 28,
+              "endLine": 29,
               "endCol": 4
             },
             "initial": null,
@@ -235,9 +299,9 @@ const ir: unknown = {
               ],
               "span": {
                 "file": 0,
-                "line": 25,
+                "line": 26,
                 "col": 5,
-                "endLine": 27,
+                "endLine": 28,
                 "endCol": 6
               }
             },
@@ -284,9 +348,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 26,
+                  "line": 27,
                   "col": 7,
-                  "endLine": 26,
+                  "endLine": 27,
                   "endCol": 46
                 }
               }
@@ -301,9 +365,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 30,
+              "line": 31,
               "col": 3,
-              "endLine": 34,
+              "endLine": 35,
               "endCol": 4
             },
             "initial": null,
@@ -325,9 +389,9 @@ const ir: unknown = {
               ],
               "span": {
                 "file": 0,
-                "line": 31,
+                "line": 32,
                 "col": 5,
-                "endLine": 33,
+                "endLine": 34,
                 "endCol": 6
               }
             },
@@ -374,9 +438,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 32,
+                  "line": 33,
                   "col": 7,
-                  "endLine": 32,
+                  "endLine": 33,
                   "endCol": 50
                 }
               }
@@ -391,9 +455,9 @@ const ir: unknown = {
             "doc": "Whichever comes first: a nudge, or the timer.",
             "span": {
               "file": 0,
-              "line": 37,
+              "line": 38,
               "col": 3,
-              "endLine": 40,
+              "endLine": 41,
               "endCol": 4
             },
             "initial": null,
@@ -446,9 +510,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 38,
+                  "line": 39,
                   "col": 5,
-                  "endLine": 38,
+                  "endLine": 39,
                   "endCol": 60
                 }
               },
@@ -472,9 +536,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 39,
+                  "line": 40,
                   "col": 5,
-                  "endLine": 39,
+                  "endLine": 40,
                   "endCol": 30
                 }
               }
@@ -489,9 +553,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 42,
+              "line": 43,
               "col": 3,
-              "endLine": 46,
+              "endLine": 47,
               "endCol": 4
             },
             "initial": null,
@@ -513,9 +577,9 @@ const ir: unknown = {
               ],
               "span": {
                 "file": 0,
-                "line": 43,
+                "line": 44,
                 "col": 5,
-                "endLine": 45,
+                "endLine": 46,
                 "endCol": 6
               }
             },
@@ -562,9 +626,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 44,
+                  "line": 45,
                   "col": 7,
-                  "endLine": 44,
+                  "endLine": 45,
                   "endCol": 47
                 }
               }
@@ -579,9 +643,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 48,
+              "line": 49,
               "col": 3,
-              "endLine": 48,
+              "endLine": 49,
               "endCol": 36
             },
             "initial": null,
@@ -627,9 +691,9 @@ const ir: unknown = {
       "doc": "Runs a Pipeline as a child and passes nudges on to it. Past its deadline it cancels the\nPipeline and does a fourth step instead.",
       "span": {
         "file": 0,
-        "line": 53,
+        "line": 54,
         "col": 1,
-        "endLine": 76,
+        "endLine": 77,
         "endCol": 2
       },
       "strict": false,
@@ -657,9 +721,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 54,
+            "line": 55,
             "col": 3,
-            "endLine": 54,
+            "endLine": 55,
             "endCol": 21
           }
         }
@@ -677,9 +741,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 56,
+            "line": 57,
             "col": 3,
-            "endLine": 56,
+            "endLine": 57,
             "endCol": 25
           }
         }
@@ -694,9 +758,9 @@ const ir: unknown = {
         "doc": "Runs a Pipeline as a child and passes nudges on to it. Past its deadline it cancels the\nPipeline and does a fourth step instead.",
         "span": {
           "file": 0,
-          "line": 53,
+          "line": 54,
           "col": 1,
-          "endLine": 76,
+          "endLine": 77,
           "endCol": 2
         },
         "initial": "Parent.Running",
@@ -708,9 +772,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 60,
+              "line": 61,
               "col": 3,
-              "endLine": 66,
+              "endLine": 67,
               "endCol": 4
             },
             "initial": null,
@@ -734,9 +798,9 @@ const ir: unknown = {
               ],
               "span": {
                 "file": 0,
-                "line": 61,
+                "line": 62,
                 "col": 5,
-                "endLine": 63,
+                "endLine": 64,
                 "endCol": 6
               }
             },
@@ -767,9 +831,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 62,
+                  "line": 63,
                   "col": 7,
-                  "endLine": 62,
+                  "endLine": 63,
                   "endCol": 39
                 }
               },
@@ -816,9 +880,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 64,
+                  "line": 65,
                   "col": 5,
-                  "endLine": 64,
+                  "endLine": 65,
                   "endCol": 71
                 }
               },
@@ -842,9 +906,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 65,
+                  "line": 66,
                   "col": 5,
-                  "endLine": 65,
+                  "endLine": 66,
                   "endCol": 33
                 }
               }
@@ -859,9 +923,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 68,
+              "line": 69,
               "col": 3,
-              "endLine": 72,
+              "endLine": 73,
               "endCol": 4
             },
             "initial": null,
@@ -883,9 +947,9 @@ const ir: unknown = {
               ],
               "span": {
                 "file": 0,
-                "line": 69,
+                "line": 70,
                 "col": 5,
-                "endLine": 71,
+                "endLine": 72,
                 "endCol": 6
               }
             },
@@ -903,9 +967,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 70,
+                  "line": 71,
                   "col": 7,
-                  "endLine": 70,
+                  "endLine": 71,
                   "endCol": 21
                 }
               }
@@ -920,9 +984,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 74,
+              "line": 75,
               "col": 3,
-              "endLine": 74,
+              "endLine": 75,
               "endCol": 38
             },
             "initial": null,
@@ -948,9 +1012,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 75,
+              "line": 76,
               "col": 3,
-              "endLine": 75,
+              "endLine": 76,
               "endCol": 35
             },
             "initial": null,
@@ -989,9 +1053,9 @@ const ir: unknown = {
       "doc": "Adds what it is sent, and emits each new total to the runs holding a `ref` to it.",
       "span": {
         "file": 0,
-        "line": 79,
+        "line": 80,
         "col": 1,
-        "endLine": 94,
+        "endLine": 95,
         "endCol": 2
       },
       "strict": false,
@@ -1012,9 +1076,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 80,
+            "line": 81,
             "col": 3,
-            "endLine": 80,
+            "endLine": 81,
             "endCol": 17
           }
         }
@@ -1032,9 +1096,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 82,
+            "line": 83,
             "col": 3,
-            "endLine": 82,
+            "endLine": 83,
             "endCol": 26
           }
         },
@@ -1043,9 +1107,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 83,
+            "line": 84,
             "col": 3,
-            "endLine": 83,
+            "endLine": 84,
             "endCol": 14
           }
         }
@@ -1063,9 +1127,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 84,
+            "line": 85,
             "col": 3,
-            "endLine": 84,
+            "endLine": 85,
             "endCol": 25
           }
         }
@@ -1079,9 +1143,9 @@ const ir: unknown = {
         "doc": "Adds what it is sent, and emits each new total to the runs holding a `ref` to it.",
         "span": {
           "file": 0,
-          "line": 79,
+          "line": 80,
           "col": 1,
-          "endLine": 94,
+          "endLine": 95,
           "endCol": 2
         },
         "initial": "Counter.Counting",
@@ -1093,9 +1157,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 88,
+              "line": 89,
               "col": 3,
-              "endLine": 91,
+              "endLine": 92,
               "endCol": 4
             },
             "initial": null,
@@ -1168,9 +1232,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 89,
+                  "line": 90,
                   "col": 5,
-                  "endLine": 89,
+                  "endLine": 90,
                   "endCol": 66
                 }
               },
@@ -1188,9 +1252,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 90,
+                  "line": 91,
                   "col": 5,
-                  "endLine": 90,
+                  "endLine": 91,
                   "endCol": 23
                 }
               }
@@ -1205,9 +1269,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 93,
+              "line": 94,
               "col": 3,
-              "endLine": 93,
+              "endLine": 94,
               "endCol": 24
             },
             "initial": null,
@@ -1233,9 +1297,9 @@ const ir: unknown = {
       "doc": "Works out an amount, sends it to a Counter, and ends once the Counter's total reaches `goal`.",
       "span": {
         "file": 0,
-        "line": 97,
+        "line": 98,
         "col": 1,
-        "endLine": 109,
+        "endLine": 110,
         "endCol": 2
       },
       "strict": false,
@@ -1267,9 +1331,9 @@ const ir: unknown = {
         "doc": "Works out an amount, sends it to a Counter, and ends once the Counter's total reaches `goal`.",
         "span": {
           "file": 0,
-          "line": 97,
+          "line": 98,
           "col": 1,
-          "endLine": 109,
+          "endLine": 110,
           "endCol": 2
         },
         "initial": "Adder.Working",
@@ -1281,9 +1345,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 100,
+              "line": 101,
               "col": 3,
-              "endLine": 104,
+              "endLine": 105,
               "endCol": 4
             },
             "initial": null,
@@ -1305,9 +1369,9 @@ const ir: unknown = {
               ],
               "span": {
                 "file": 0,
-                "line": 101,
+                "line": 102,
                 "col": 5,
-                "endLine": 103,
+                "endLine": 104,
                 "endCol": 6
               }
             },
@@ -1355,9 +1419,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 102,
+                  "line": 103,
                   "col": 7,
-                  "endLine": 102,
+                  "endLine": 103,
                   "endCol": 55
                 }
               }
@@ -1372,9 +1436,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 106,
+              "line": 107,
               "col": 3,
-              "endLine": 106,
+              "endLine": 107,
               "endCol": 67
             },
             "initial": null,
@@ -1427,9 +1491,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 106,
+                  "line": 107,
                   "col": 19,
-                  "endLine": 106,
+                  "endLine": 107,
                   "endCol": 65
                 }
               }
@@ -1444,9 +1508,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 108,
+              "line": 109,
               "col": 3,
-              "endLine": 108,
+              "endLine": 109,
               "endCol": 38
             },
             "initial": null,
@@ -1479,9 +1543,9 @@ const ir: unknown = {
       "doc": "Counts the ends of its Counter it takes, while it works: once, however the processes\nrunning it crash.",
       "span": {
         "file": 0,
-        "line": 113,
+        "line": 114,
         "col": 1,
-        "endLine": 127,
+        "endLine": 128,
         "endCol": 2
       },
       "strict": false,
@@ -1509,9 +1573,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 114,
+            "line": 115,
             "col": 3,
-            "endLine": 114,
+            "endLine": 115,
             "endCol": 20
           }
         }
@@ -1527,9 +1591,9 @@ const ir: unknown = {
         "doc": "Counts the ends of its Counter it takes, while it works: once, however the processes\nrunning it crash.",
         "span": {
           "file": 0,
-          "line": 113,
+          "line": 114,
           "col": 1,
-          "endLine": 127,
+          "endLine": 128,
           "endCol": 2
         },
         "initial": "Watcher.Working",
@@ -1541,9 +1605,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 120,
+              "line": 121,
               "col": 3,
-              "endLine": 124,
+              "endLine": 125,
               "endCol": 4
             },
             "initial": null,
@@ -1565,9 +1629,9 @@ const ir: unknown = {
               ],
               "span": {
                 "file": 0,
-                "line": 121,
+                "line": 122,
                 "col": 5,
-                "endLine": 123,
+                "endLine": 124,
                 "endCol": 6
               }
             },
@@ -1585,9 +1649,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 122,
+                  "line": 123,
                   "col": 7,
-                  "endLine": 122,
+                  "endLine": 123,
                   "endCol": 19
                 }
               }
@@ -1602,9 +1666,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 126,
+              "line": 127,
               "col": 3,
-              "endLine": 126,
+              "endLine": 127,
               "endCol": 35
             },
             "initial": null,
@@ -1672,9 +1736,9 @@ const ir: unknown = {
             ],
             "span": {
               "file": 0,
-              "line": 116,
+              "line": 117,
               "col": 3,
-              "endLine": 116,
+              "endLine": 117,
               "endCol": 39
             }
           }
@@ -1688,9 +1752,9 @@ const ir: unknown = {
       "doc": "One session of a Hub: adds up the pings it is sent, does a step of work when asked, and\ngives up once it has waited `patience()` for anything.",
       "span": {
         "file": 0,
-        "line": 131,
+        "line": 132,
         "col": 1,
-        "endLine": 156,
+        "endLine": 157,
         "endCol": 2
       },
       "strict": false,
@@ -1718,9 +1782,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 132,
+            "line": 133,
             "col": 3,
-            "endLine": 132,
+            "endLine": 133,
             "endCol": 21
           }
         },
@@ -1737,9 +1801,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 133,
+            "line": 134,
             "col": 3,
-            "endLine": 133,
+            "endLine": 134,
             "endCol": 21
           }
         }
@@ -1757,9 +1821,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 135,
+            "line": 136,
             "col": 3,
-            "endLine": 135,
+            "endLine": 136,
             "endCol": 26
           }
         },
@@ -1775,9 +1839,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 136,
+            "line": 137,
             "col": 3,
-            "endLine": 136,
+            "endLine": 137,
             "endCol": 25
           }
         },
@@ -1786,9 +1850,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 137,
+            "line": 138,
             "col": 3,
-            "endLine": 137,
+            "endLine": 138,
             "endCol": 14
           }
         }
@@ -1803,9 +1867,9 @@ const ir: unknown = {
         "doc": "One session of a Hub: adds up the pings it is sent, does a step of work when asked, and\ngives up once it has waited `patience()` for anything.",
         "span": {
           "file": 0,
-          "line": 131,
+          "line": 132,
           "col": 1,
-          "endLine": 156,
+          "endLine": 157,
           "endCol": 2
         },
         "initial": "Session.Waiting",
@@ -1817,9 +1881,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 141,
+              "line": 142,
               "col": 3,
-              "endLine": 146,
+              "endLine": 147,
               "endCol": 4
             },
             "initial": null,
@@ -1870,9 +1934,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 142,
+                  "line": 143,
                   "col": 5,
-                  "endLine": 142,
+                  "endLine": 143,
                   "endCol": 62
                 }
               },
@@ -1904,9 +1968,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 143,
+                  "line": 144,
                   "col": 5,
-                  "endLine": 143,
+                  "endLine": 144,
                   "endCol": 52
                 }
               },
@@ -1924,9 +1988,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 144,
+                  "line": 145,
                   "col": 5,
-                  "endLine": 144,
+                  "endLine": 145,
                   "endCol": 29
                 }
               },
@@ -1950,9 +2014,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 145,
+                  "line": 146,
                   "col": 5,
-                  "endLine": 145,
+                  "endLine": 146,
                   "endCol": 32
                 }
               }
@@ -1967,9 +2031,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 148,
+              "line": 149,
               "col": 3,
-              "endLine": 152,
+              "endLine": 153,
               "endCol": 4
             },
             "initial": null,
@@ -1993,9 +2057,9 @@ const ir: unknown = {
               ],
               "span": {
                 "file": 0,
-                "line": 149,
+                "line": 150,
                 "col": 5,
-                "endLine": 151,
+                "endLine": 152,
                 "endCol": 6
               }
             },
@@ -2042,9 +2106,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 150,
+                  "line": 151,
                   "col": 7,
-                  "endLine": 150,
+                  "endLine": 151,
                   "endCol": 50
                 }
               }
@@ -2059,9 +2123,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 154,
+              "line": 155,
               "col": 3,
-              "endLine": 154,
+              "endLine": 155,
               "endCol": 39
             },
             "initial": null,
@@ -2087,9 +2151,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 155,
+              "line": 156,
               "col": 3,
-              "endLine": 155,
+              "endLine": 156,
               "endCol": 36
             },
             "initial": null,
@@ -2128,9 +2192,9 @@ const ir: unknown = {
       "doc": "Spawns a Session per key and passes pings, work and leaving on to it. Adds up what the\nsessions that end give, and gives the sum when it is finished.",
       "span": {
         "file": 0,
-        "line": 160,
+        "line": 161,
         "col": 1,
-        "endLine": 183,
+        "endLine": 184,
         "endCol": 2
       },
       "strict": false,
@@ -2158,9 +2222,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 161,
+            "line": 162,
             "col": 3,
-            "endLine": 161,
+            "endLine": 162,
             "endCol": 21
           }
         }
@@ -2178,9 +2242,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 163,
+            "line": 164,
             "col": 3,
-            "endLine": 163,
+            "endLine": 164,
             "endCol": 31
           }
         },
@@ -2202,9 +2266,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 164,
+            "line": 165,
             "col": 3,
-            "endLine": 164,
+            "endLine": 165,
             "endCol": 40
           }
         },
@@ -2226,9 +2290,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 165,
+            "line": 166,
             "col": 3,
-            "endLine": 165,
+            "endLine": 166,
             "endCol": 39
           }
         },
@@ -2244,9 +2308,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 166,
+            "line": 167,
             "col": 3,
-            "endLine": 166,
+            "endLine": 167,
             "endCol": 31
           }
         },
@@ -2255,9 +2319,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 167,
+            "line": 168,
             "col": 3,
-            "endLine": 167,
+            "endLine": 168,
             "endCol": 15
           }
         }
@@ -2266,14 +2330,15 @@ const ir: unknown = {
       "calls": {},
       "children": {
         "sessions": {
-          "machine": "Session",
+          "kind": "machine",
+          "src": "Session",
           "key": "string",
           "doc": "",
           "span": {
             "file": 0,
-            "line": 169,
+            "line": 170,
             "col": 3,
-            "endLine": 169,
+            "endLine": 170,
             "endCol": 39
           }
         }
@@ -2285,9 +2350,9 @@ const ir: unknown = {
         "doc": "Spawns a Session per key and passes pings, work and leaving on to it. Adds up what the\nsessions that end give, and gives the sum when it is finished.",
         "span": {
           "file": 0,
-          "line": 160,
+          "line": 161,
           "col": 1,
-          "endLine": 183,
+          "endLine": 184,
           "endCol": 2
         },
         "initial": "Hub.Serving",
@@ -2299,9 +2364,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 173,
+              "line": 174,
               "col": 3,
-              "endLine": 180,
+              "endLine": 181,
               "endCol": 4
             },
             "initial": null,
@@ -2323,7 +2388,7 @@ const ir: unknown = {
                   {
                     "kind": "spawn",
                     "children": "sessions",
-                    "machine": "Session",
+                    "src": "Session",
                     "key": {
                       "kind": "ref",
                       "path": [
@@ -2348,9 +2413,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 174,
+                  "line": 175,
                   "col": 5,
-                  "endLine": 174,
+                  "endLine": 175,
                   "endCol": 77
                 }
               },
@@ -2405,9 +2470,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 175,
+                  "line": 176,
                   "col": 5,
-                  "endLine": 175,
+                  "endLine": 176,
                   "endCol": 77
                 }
               },
@@ -2462,9 +2527,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 176,
+                  "line": 177,
                   "col": 5,
-                  "endLine": 176,
+                  "endLine": 177,
                   "endCol": 75
                 }
               },
@@ -2506,9 +2571,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 177,
+                  "line": 178,
                   "col": 5,
-                  "endLine": 177,
+                  "endLine": 178,
                   "endCol": 61
                 }
               },
@@ -2567,9 +2632,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 178,
+                  "line": 179,
                   "col": 5,
-                  "endLine": 178,
+                  "endLine": 179,
                   "endCol": 70
                 }
               },
@@ -2587,9 +2652,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 179,
+                  "line": 180,
                   "col": 5,
-                  "endLine": 179,
+                  "endLine": 180,
                   "endCol": 29
                 }
               }
@@ -2604,9 +2669,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 182,
+              "line": 183,
               "col": 3,
-              "endLine": 182,
+              "endLine": 183,
               "endCol": 36
             },
             "initial": null,
@@ -2639,9 +2704,9 @@ const ir: unknown = {
       "doc": "Runs an Adder as its child, which hears the Counter.",
       "span": {
         "file": 0,
-        "line": 186,
+        "line": 187,
         "col": 1,
-        "endLine": 198,
+        "endLine": 199,
         "endCol": 2
       },
       "strict": false,
@@ -2675,9 +2740,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 187,
+            "line": 188,
             "col": 3,
-            "endLine": 187,
+            "endLine": 188,
             "endCol": 19
           }
         }
@@ -2693,9 +2758,9 @@ const ir: unknown = {
         "doc": "Runs an Adder as its child, which hears the Counter.",
         "span": {
           "file": 0,
-          "line": 186,
+          "line": 187,
           "col": 1,
-          "endLine": 198,
+          "endLine": 199,
           "endCol": 2
         },
         "initial": "Relay.Running",
@@ -2707,9 +2772,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 191,
+              "line": 192,
               "col": 3,
-              "endLine": 195,
+              "endLine": 196,
               "endCol": 4
             },
             "initial": null,
@@ -2741,9 +2806,9 @@ const ir: unknown = {
               ],
               "span": {
                 "file": 0,
-                "line": 192,
+                "line": 193,
                 "col": 5,
-                "endLine": 194,
+                "endLine": 195,
                 "endCol": 6
               }
             },
@@ -2774,9 +2839,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 193,
+                  "line": 194,
                   "col": 7,
-                  "endLine": 193,
+                  "endLine": 194,
                   "endCol": 37
                 }
               }
@@ -2791,9 +2856,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 197,
+              "line": 198,
               "col": 3,
-              "endLine": 197,
+              "endLine": 198,
               "endCol": 34
             },
             "initial": null,
@@ -2821,6 +2886,550 @@ const ir: unknown = {
         "fail": null
       },
       "hash": "sha256:d60cedc07d477e69337a56e98b398717194e91e83457c8e5299b9cc9a5191aee"
+    },
+    "Tracker": {
+      "doc": "Notes each `Reached` of its task, and gives how many it took once the task is done.",
+      "span": {
+        "file": 0,
+        "line": 208,
+        "col": 1,
+        "endLine": 221,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "seen",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 209,
+            "col": 3,
+            "endLine": 209,
+            "endCol": 20
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Tracker",
+        "name": "Tracker",
+        "kind": "compound",
+        "doc": "Notes each `Reached` of its task, and gives how many it took once the task is done.",
+        "span": {
+          "file": 0,
+          "line": 208,
+          "col": 1,
+          "endLine": 221,
+          "endCol": 2
+        },
+        "initial": "Tracker.Working",
+        "states": [
+          {
+            "id": "Tracker.Working",
+            "name": "Working",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 213,
+              "col": 3,
+              "endLine": 218,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "progress",
+              "to": null,
+              "as": "job",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": 1,
+                  "type": "int",
+                  "text": "1"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 214,
+                "col": 5,
+                "endLine": 216,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Tracker.Done"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 215,
+                  "col": 7,
+                  "endLine": 215,
+                  "endCol": 19
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "task",
+                    "name": "job",
+                    "task": "progress",
+                    "state": "Tracker.Working"
+                  },
+                  "event": "Reached"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "seen",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "seen"
+                          ],
+                          "type": "int",
+                          "text": "seen"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "seen + 1"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "percent"
+                        ],
+                        "type": "int",
+                        "text": "event.percent"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 217,
+                  "col": 5,
+                  "endLine": 217,
+                  "endCol": 63
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Tracker.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 220,
+              "col": 3,
+              "endLine": 220,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "seen"
+              ],
+              "type": "int",
+              "text": "seen"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:e37931f56ccaea907b9e0c020d0ce16986346e2eca534f40fe65a6482cfea17f"
+    },
+    "Crew": {
+      "doc": "Spawns a `progress` task per key, notes what they say, and adds up what they give.",
+      "span": {
+        "file": 0,
+        "line": 224,
+        "col": 1,
+        "endLine": 242,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "total",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 225,
+            "col": 3,
+            "endLine": 225,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Hire": {
+          "fields": [
+            {
+              "name": "key",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            },
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 227,
+            "col": 3,
+            "endLine": 227,
+            "endCol": 39
+          }
+        },
+        "Finish": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 228,
+            "col": 3,
+            "endLine": 228,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {
+        "jobs": {
+          "kind": "task",
+          "src": "progress",
+          "key": "string",
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 230,
+            "col": 3,
+            "endLine": 230,
+            "endCol": 36
+          }
+        }
+      },
+      "root": {
+        "id": "Crew",
+        "name": "Crew",
+        "kind": "compound",
+        "doc": "Spawns a `progress` task per key, notes what they say, and adds up what they give.",
+        "span": {
+          "file": 0,
+          "line": 224,
+          "col": 1,
+          "endLine": 242,
+          "endCol": 2
+        },
+        "initial": "Crew.Working",
+        "states": [
+          {
+            "id": "Crew.Working",
+            "name": "Working",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 234,
+              "col": 3,
+              "endLine": 239,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Hire"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "spawn",
+                    "children": "jobs",
+                    "src": "progress",
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "key"
+                      ],
+                      "type": "string",
+                      "text": "event.key"
+                    },
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "n"
+                        ],
+                        "type": "int",
+                        "text": "event.n"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 235,
+                  "col": 5,
+                  "endLine": 235,
+                  "endCol": 66
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "children",
+                    "name": "jobs",
+                    "task": "progress",
+                    "state": null
+                  },
+                  "event": "Reached"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "percent"
+                        ],
+                        "type": "int",
+                        "text": "event.percent"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 236,
+                  "col": 5,
+                  "endLine": 236,
+                  "endCol": 47
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "spawn.done",
+                  "children": "jobs"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "total",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "total"
+                          ],
+                          "type": "int",
+                          "text": "total"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "result"
+                          ],
+                          "type": "int",
+                          "text": "result"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "total + result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 237,
+                  "col": 5,
+                  "endLine": 237,
+                  "endCol": 51
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Finish"
+                },
+                "group": 3,
+                "guard": null,
+                "targets": [
+                  "Crew.Done"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 238,
+                  "col": 5,
+                  "endLine": 238,
+                  "endCol": 22
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Crew.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 241,
+              "col": 3,
+              "endLine": 241,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "total"
+              ],
+              "type": "int",
+              "text": "total"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:54b9564ac1a34004e7ba65cb1b02ee4646f2cfa7ec1cb2b850e3eb9f19eed3be"
     }
   }
 }
@@ -3004,15 +3613,15 @@ export type Assign = typeof Assign.Type
 export const Part = Schema.TaggedStruct("Part", { key: Schema.String })
 export type Part = typeof Part.Type
 
-export const Finish = Schema.TaggedStruct("Finish", {})
-export type Finish = typeof Finish.Type
+export const HubFinish = Schema.TaggedStruct("Finish", {})
+export type HubFinish = typeof HubFinish.Type
 
 export interface HubDef extends Roadbook.MachineDef {
   readonly name: "Hub"
   readonly input: { readonly id: string }
   readonly output: number
   readonly error: never
-  readonly event: Join | Tell | Assign | Part | Finish
+  readonly event: Join | Tell | Assign | Part | HubFinish
   readonly emits: never
   readonly state: "Hub" | "Hub.Serving" | "Hub.Done"
   readonly fns: {}
@@ -3057,3 +3666,61 @@ export interface RelayDef extends Roadbook.MachineDef {
 
 /** Runs an Adder as its child, which hears the Counter. */
 export const Relay = Roadbook.make<RelayDef>(ir, "Relay", errors)
+
+// ---- machine: Tracker ----
+
+export interface TrackerDef extends Roadbook.MachineDef {
+  readonly name: "Tracker"
+  readonly input: { readonly id: string }
+  readonly output: number
+  readonly error: never
+  readonly event: never
+  readonly emits: never
+  readonly state: "Tracker" | "Tracker.Working" | "Tracker.Done"
+  readonly fns: {}
+  readonly actions: { readonly note: { readonly percent: number } }
+  readonly tasks: {
+    readonly progress: {
+      readonly args: { readonly n: number }
+      readonly success: number
+      readonly error: never
+      readonly emits: Reached
+    }
+  }
+  readonly machines: {}
+}
+
+/** Notes each `Reached` of its task, and gives how many it took once the task is done. */
+export const Tracker = Roadbook.make<TrackerDef>(ir, "Tracker", errors)
+
+// ---- machine: Crew ----
+
+export const Hire = Schema.TaggedStruct("Hire", { key: Schema.String, n: Schema.Int })
+export type Hire = typeof Hire.Type
+
+export const CrewFinish = Schema.TaggedStruct("Finish", {})
+export type CrewFinish = typeof CrewFinish.Type
+
+export interface CrewDef extends Roadbook.MachineDef {
+  readonly name: "Crew"
+  readonly input: { readonly id: string }
+  readonly output: number
+  readonly error: never
+  readonly event: Hire | CrewFinish
+  readonly emits: never
+  readonly state: "Crew" | "Crew.Working" | "Crew.Done"
+  readonly fns: {}
+  readonly actions: { readonly note: { readonly percent: number } }
+  readonly tasks: {
+    readonly progress: {
+      readonly args: { readonly n: number }
+      readonly success: number
+      readonly error: never
+      readonly emits: Reached
+    }
+  }
+  readonly machines: {}
+}
+
+/** Spawns a `progress` task per key, notes what they say, and adds up what they give. */
+export const Crew = Roadbook.make<CrewDef>(ir, "Crew", errors)

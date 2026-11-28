@@ -54,6 +54,8 @@ describe("parseTypeRef", () => {
         "ref Inventory",
         "ref Inventory[]?",
         "Upload.Progress",
+        "upload.Progress",
+        "upload.Progress[]?",
         "map<string, int>",
         "map<UserId, Order[]>?",
         "Page<Order>",
@@ -78,6 +80,8 @@ describe("parseTypeRef", () => {
       value: { kind: "named", name: "Page", args: [{ kind: "named", name: "Order", args: [] }] }
     })
     expect(parseTypeRef("Upload.Progress")).toEqual({ kind: "event", machine: "Upload", event: "Progress" })
+    // A task's emitted event: the sender is the task, whose name is lower-case.
+    expect(parseTypeRef("upload.Progress")).toEqual({ kind: "event", machine: "upload", event: "Progress" })
     expect(parseTypeRef("ref Inventory[]")).toEqual({ kind: "list", of: { kind: "ref", machine: "Inventory" } })
   })
 
@@ -108,7 +112,12 @@ describe("parseTypeRef", () => {
         "Page <Order>",
         "page<Order>",
         "ref Page<Order>",
-        "Upload.Progress<int>"
+        "Upload.Progress<int>",
+        "upload.progress",
+        "upload.Progress<int>",
+        "ref upload.Progress",
+        "up_load.Progress",
+        "a.b.C"
       ]
     ) {
       expect(() => parseTypeRef(text), text).toThrow(IrError)
@@ -229,7 +238,7 @@ describe("hostile IR", () => {
     expect(aliasCycle({ types } as unknown as Ir)).toBe("Boom")
     expect(aliasCycle({ types: { Loop: alias([], "map<string, Twice>[]"), Twice: alias([], "Loop") } } as unknown as Ir)).toBeDefined()
     expect(aliasCycle({ types: { A: alias([], "int"), B: alias([], "A[]") } } as unknown as Ir)).toBeUndefined()
-    const doc = { irVersion: "0.9", sources: [], types, functions: {}, actions: {}, tasks: {}, machines: {} }
+    const doc = { irVersion: "0.10", sources: [], types, functions: {}, actions: {}, tasks: {}, machines: {} }
     expect(() => loadIr(doc)).toThrow(/refers to itself/)
   })
 })

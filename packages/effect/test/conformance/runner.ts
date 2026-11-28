@@ -32,6 +32,7 @@ import { createHash } from "node:crypto"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { Codec } from "../../src/internal/codec.ts"
+import { emitterInput } from "../../src/internal/driver.ts"
 import { Durable } from "../../src/entry-durable.ts"
 import * as Roadbook from "../../src/index.ts"
 
@@ -43,9 +44,13 @@ type Step =
   | {
     readonly task: string
     readonly run?: string
+    /** The key of the spawned task or stubbed child meant, when a run has several. */
+    readonly key?: Core.Json
     readonly done?: Core.Json
     readonly fail?: Core.Tagged
     readonly defect?: string
+    /** An event the task emits through its emitter, ending nothing. */
+    readonly emit?: Core.Tagged
   }
   | { readonly cancel: true; readonly run?: string }
   | {
@@ -84,7 +89,16 @@ export const conformanceDir = path.resolve(import.meta.dirname, "../../../../spe
  * The features of case.schema.json's `requires` this runtime implements. A case that requires
  * another is skipped, not failed.
  */
-export const supported: ReadonlyArray<string> = ["messaging", "parallel", "snapshots", "calls", "history", "spawn", "ended"]
+export const supported: ReadonlyArray<string> = [
+  "messaging",
+  "parallel",
+  "snapshots",
+  "calls",
+  "history",
+  "spawn",
+  "ended",
+  "task-emits"
+]
 
 /** Whether this runtime implements everything case `name` requires. */
 export const isSupported = (name: string): boolean => {
@@ -185,6 +199,8 @@ interface Scripted {
   readonly name: string
   readonly run: string
   readonly invoke: number
+  /** The emitter the driver gave a scripted task; `undefined` for a stubbed machine. */
+  readonly emit: ((event: unknown) => Effect.Effect<void>) | undefined
   resume: (effect: Effect.Effect<unknown, unknown>) => void
 }
 
@@ -242,15 +258,17 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
       })
   }
 
-  // Scripted invokes: tasks and stubbed machines wait until the script ends them.
+  // Scripted invokes: tasks and stubbed machines wait until the script ends them. A task keeps
+  // the emitter the driver gave it, which `emit` steps emit through.
   const scripted = new Set<Scripted>()
-  const scriptedInvoke = (src: string) => () =>
+  const scriptedInvoke = (src: string) => (_args?: unknown, emit?: (event: unknown) => Effect.Effect<void>) =>
     Effect.flatMap(References.CurrentLogAnnotations, (annotations) =>
       Effect.callback<unknown, unknown>((resume) => {
         const entry: Scripted = {
           name: src,
           run: String(annotations["roadbook.run"]),
           invoke: Number(annotations["roadbook.invoke"]),
+          emit,
           resume
         }
         scripted.add(entry)
@@ -280,7 +298,7 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
       return entry === undefined ? Effect.void : Effect.die(new Error(entry.defect))
     }
   }
-  const taskImpls: Record<string, () => Effect.Effect<unknown, unknown>> = {}
+  const taskImpls: Record<string, ReturnType<typeof scriptedInvoke>> = {}
   for (const task of Object.keys(ir.tasks)) taskImpls[task] = scriptedInvoke(task)
   const machineImpls: Record<string, unknown> = {}
   const implemented = new Map<string, Roadbook.Implemented<any, never>>()
@@ -521,21 +539,44 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
   const actorOf = (run: string) => actors.get(run) ?? fail(`no top-level run ${run}`)
   const statuses = new Map<string, Core.Status>([["r1", spec.status]])
 
+  /** The entry of the spawned child or task that scripted invoke `entry` is in its run, if it is one. */
+  const spawnedOf = (entry: Scripted) => runs.get(entry.run)?.snapshot().spawned.find((c) => c.id === entry.invoke)
+
   /** The running scripted invoke a `task` step refers to. */
-  const findScripted = (step: { readonly task: string; readonly run?: string }, taken: ReadonlySet<Scripted>) => {
+  const findScripted = (
+    step: { readonly task: string; readonly run?: string; readonly key?: Core.Json },
+    taken: ReadonlySet<Scripted>
+  ) => {
     const matches = [...scripted].filter((s) =>
-      s.name === step.task && !taken.has(s) && (step.run === undefined || s.run === step.run)
+      s.name === step.task && !taken.has(s) && (step.run === undefined || s.run === step.run) &&
+      (step.key === undefined || Core.canonicalJson(spawnedOf(s)?.key ?? null) === Core.canonicalJson(step.key))
     )
     if (matches.length !== 1) {
-      fail(`${matches.length === 0 ? "no" : "more than one"} running invoke of ${step.task}${step.run ? ` in ${step.run}` : ""}`)
+      const where = `${step.run ? ` in ${step.run}` : ""}${step.key !== undefined ? ` with key ${Core.canonicalJson(step.key)}` : ""}`
+      fail(`${matches.length === 0 ? "no" : "more than one"} running invoke of ${step.task}${where}`)
     }
     return matches[0]!
   }
 
   const outcomeOf = (step: Extract<Step, { readonly task: string }>, entry: Scripted): Core.Input => {
+    // A spawned child's or task's outcome is a `spawn.*` input.
+    if (spawnedOf(entry) !== undefined) {
+      if (step.done !== undefined) return { kind: "spawn.done", spawn: entry.invoke, value: step.done }
+      if (step.fail !== undefined) return { kind: "spawn.fail", spawn: entry.invoke, error: step.fail }
+      return { kind: "spawn.defect", spawn: entry.invoke, defect: { kind: "host", message: step.defect ?? "" } }
+    }
     if (step.done !== undefined) return { kind: "invoke.done", invoke: entry.invoke, value: step.done }
     if (step.fail !== undefined) return { kind: "invoke.fail", invoke: entry.invoke, error: step.fail }
     return { kind: "invoke.defect", invoke: entry.invoke, defect: { kind: "host", message: step.defect ?? "" } }
+  }
+
+  /** The emitter of scripted task `entry` and the host value of `event`, one of its `emits`. */
+  const emitOf = (entry: Scripted, event: Core.Tagged) => {
+    const decl = Object.hasOwn(ir.tasks, entry.name) ? ir.tasks[entry.name]!.emits[event._tag] : undefined
+    if (entry.emit === undefined || decl === undefined) return fail(`${entry.name} does not emit ${event._tag}`)
+    const fields: Record<string, unknown> = {}
+    for (const field of decl.fields) fields[field.name] = codec.decode(field.type, event[field.name] ?? null)
+    return { emit: entry.emit, value: { ...fields, _tag: event._tag } }
   }
 
   const returnsOf = (src: string): string | null =>
@@ -567,6 +608,10 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
     } else if ("event" in step) {
       const run = step.run ?? "r1"
       await exec(actorOf(run).send(decodeEvent(run, step.event)))
+    } else if ("task" in step && step.emit !== undefined) {
+      // Through the emitter: the task keeps running.
+      const { emit, value } = emitOf(findScripted(step, new Set()), step.emit)
+      await exec(emit(value))
     } else if ("task" in step) {
       const entry = findScripted(step, new Set())
       scripted.delete(entry)
@@ -600,7 +645,13 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
       const taken = new Set<Scripted>()
       for (const item of step.together) {
         if ("event" in item) inputs.push({ run: item.run ?? "r1", input: { kind: "event", value: item.event } })
-        else if ("task" in item) {
+        else if ("task" in item && item.emit !== undefined) {
+          // What the emitter would push now, or nothing; the invoke still runs after it.
+          const entry = findScripted(item, taken)
+          const { emit, value } = emitOf(entry, item.emit)
+          const input = emitterInput(emit, value)
+          if (input !== undefined) inputs.push({ run: entry.run, input })
+        } else if ("task" in item) {
           const entry = findScripted(item, taken)
           taken.add(entry)
           inputs.push({ run: entry.run, input: outcomeOf(item, entry) })
@@ -615,6 +666,8 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
       }
       // Never ended otherwise: the driver drops them when the core takes their outcomes.
       for (const entry of taken) scripted.delete(entry)
+      // Only emits nothing hears: nothing to append.
+      if (inputs.length === 0 && step.together.length > 0) return
       const run = inputs[0]?.run
       if (run === undefined) fail("an empty together step")
       if (inputs.some((i) => i.run !== run)) fail("a together step with inputs for two runs")

@@ -14,7 +14,8 @@ const BUILTINS: ReadonlyArray<string> = ["string", "int", "float", "bool", "dura
  * list of optional strings. A `named` type is a declared type (or, inside a generic declaration,
  * one of its parameters, or a bare event name of the machine it is used in); `args` is empty
  * unless it is an instance of a generic declaration, `Page<Order>`. An `event` is a dotted
- * `Machine.Event`. A `call` is a pending call of the machine it is used in, `call reserve`.
+ * `Machine.Event`, or `task.Event` for an event a task emits: `machine` is then the task's
+ * name, which is lower-case, so it is never a machine's. A `call` is a pending call of the machine it is used in, `call reserve`.
  */
 export type TypeRef =
   | { readonly kind: "builtin"; readonly name: Builtin }
@@ -38,7 +39,7 @@ const MAX_PARSED = 10_000
 
 /**
  * Read a type reference in canonical form (spec/ir.md): a base (a builtin, an upper-case name
- * with optional type arguments, `Machine.Event`, `ref Machine`, `call name` or `map<K, V>`, arguments
+ * with optional type arguments, `Machine.Event`, `task.Event`, `ref Machine`, `call name` or `map<K, V>`, arguments
  * separated by `, `) and any number of `[]` and `?`. Throws an `IrError` for anything else.
  */
 export const parseTypeRef = (text: string): TypeRef => {
@@ -91,7 +92,7 @@ export const parseTypeRef = (text: string): TypeRef => {
         const dot = base.indexOf(".")
         const machine = base.slice(0, dot)
         const event = base.slice(dot + 1)
-        if (dot === -1 || !UPPER.test(machine) || !UPPER.test(event)) fail()
+        if (dot === -1 || !(UPPER.test(machine) || LOWER.test(machine)) || !UPPER.test(event)) fail()
         t = { kind: "event", machine, event }
       }
     }

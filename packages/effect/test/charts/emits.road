@@ -1,0 +1,42 @@
+// Chart for the tests of tasks that emit with real host code (packages/effect/test/emits.test.ts):
+// an upload that says how far it has got, and a stream task that ticks until it is cancelled.
+
+/// Store a file of `size` bytes in `chunks` chunks, saying how far it has got after each.
+task upload(size: int, chunks: int) -> int
+  /// How much of the file is stored, in percent.
+  emits Progress { percent: int }
+  /// Which stage the upload has reached. The machine does not hear it.
+  emits Stage { name: string }
+
+/// A tick every `every`, until it is cancelled.
+task ticks(every: duration) emits Tick
+
+/// Uploads a file, showing its progress, then counts seconds until it is stopped.
+machine Uploader(size: int) -> int {
+  var percent: int = 0
+  var stored:  int = 0
+  var seconds: int = 0
+
+  event Stop
+
+  initial Uploading
+
+  state Uploading {
+    invoke upload(size, 4) as up {
+      done -> Waiting  set stored = result
+    }
+    on up.Progress set percent = event.percent
+  }
+
+  state Waiting {
+    invoke ticks(1s) as clock
+    on clock.Tick set seconds = seconds + 1
+    on Stop -> Stopped
+  }
+
+  state Stopped {
+    on Stop -> Done
+  }
+
+  final state Done { output seconds }
+}

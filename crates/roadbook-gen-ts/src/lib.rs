@@ -9,6 +9,8 @@
 //!   interface for a record, `Schema.Literals` for an enum, a `Schema.TaggedError` class for
 //!   an error, the aliased schema for an alias. Types come in source order, except that a
 //!   type follows the types of this file its schema refers to;
+//! - for every task that emits, a `Schema.TaggedStruct` per event it emits, which its
+//!   signature in a definition interface names as its `emits`;
 //! - for every machine, a `Schema.TaggedStruct` per event it accepts and per event it emits, a
 //!   definition interface (`<Name>Def`) with its input, output, errors, events, emitted events,
 //!   state ids and the signatures of the functions, actions, tasks and machines it uses, and a
@@ -54,8 +56,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
 
 use roadbook_ir::{
-    Builtin, Effect, Expr, ExprKind, Field, InvokeKind, Ir, Machine, State, Trigger, TypeDecl,
-    TypeDef, TypeRef,
+    Builtin, ChildrenKind, Effect, Expr, ExprKind, Field, InvokeKind, Ir, Machine, State, Trigger,
+    TypeDecl, TypeDef, TypeRef,
 };
 
 /// Lines longer than this are broken, where the generator knows how.
@@ -153,7 +155,8 @@ impl fmt::Display for GenError {
                 f,
                 "the generated module would declare `{name}` twice, or hide a name it uses; \
                  rename a declaration or type parameter (machine `M` also declares `MDef`; an \
-                 event declared by two machines of the file is named `<Machine><Event>`; \
+                 event declared by two machines or tasks of the file is named `<Machine><Event>`, \
+                 or `<Task><Event>` with the task's name capitalised; \
                  `Schema`, `Duration` and `Roadbook` are imported names, and `Record`, \
                  `Readonly` and `ReadonlyArray` are TypeScript's)"
             ),
@@ -213,11 +216,31 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
         .iter()
         .filter(|(_, m)| m.span.file == 0)
         .collect();
-    let mut event_count: HashMap<&str, usize> = HashMap::new();
-    for (_, m) in &machines {
-        for e in m.events.keys().chain(m.emits.keys()) {
-            *event_count.entry(e).or_default() += 1;
+    let event_count = event_counts(ir, 0);
+    // The events each task of the file emits, a schema each, before the machines that hear them.
+    for (task, decl) in ir
+        .tasks
+        .iter()
+        .filter(|(_, t)| t.span.file == 0 && !t.emits.is_empty())
+    {
+        let mut section = Vec::new();
+        for (event, e) in &decl.emits {
+            let ident = event_ident(&event_count, &pascal(task), event);
+            g.schema = true;
+            let fields = g.schema_fields(&e.fields, None)?;
+            section.push(format!(
+                "{}{}\nexport type {ident} = typeof {ident}.Type",
+                jsdoc(&e.doc),
+                block(
+                    &format!("export const {ident} = Schema.TaggedStruct(\"{event}\", "),
+                    &fields,
+                    ")"
+                )
+            ));
+            names.push(ident);
         }
+        section[0] = format!("// ---- task: {task} ----\n\n{}", section[0]);
+        items.extend(section);
     }
     for (i, (name, m)) in machines.iter().enumerate() {
         let mut section = Vec::new();
@@ -225,11 +248,7 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
         let mut emitted = Vec::new();
         let declared = m.events.iter().map(|e| (e, false));
         for ((event, decl), emits) in declared.chain(m.emits.iter().map(|e| (e, true))) {
-            let ident = if event_count[event.as_str()] > 1 {
-                format!("{name}{event}")
-            } else {
-                event.clone()
-            };
+            let ident = event_ident(&event_count, name, event);
             g.schema = true;
             let fields = g.schema_fields(&decl.fields, None)?;
             section.push(format!(
@@ -775,6 +794,28 @@ export type {name}<{}> = {ts}",
         Ok(format!("{}{body}", jsdoc(&decl.doc)))
     }
 
+    /// The union of the schemas of the events task `name` emits, imported if another file
+    /// declares the task: named there as that file's own module names them.
+    fn task_emits(&mut self, name: &str, t: &'a roadbook_ir::TaskDecl) -> Ty {
+        let file = t.span.file;
+        let counts = event_counts(self.ir, file);
+        let idents: Vec<String> = t
+            .emits
+            .keys()
+            .map(|e| event_ident(&counts, &pascal(name), e))
+            .collect();
+        if file != 0 {
+            let imports = self.imports.entry(file).or_default();
+            for ident in &idents {
+                imports.insert(Import {
+                    name: ident.clone(),
+                    type_only: true,
+                });
+            }
+        }
+        Ty::union(idents)
+    }
+
     /// `export interface <Name>Def extends Roadbook.MachineDef { … }`.
     fn definition(
         &mut self,
@@ -830,11 +871,16 @@ export type {name}<{}> = {ts}",
             .iter()
             .filter(|(n, _)| uses.tasks.contains(n.as_str()))
         {
-            let sig = vec![
+            let mut sig = vec![
                 ("args".into(), self.params(&t.params)?),
                 ("success".into(), self.returns(t.returns.as_ref())?),
                 ("error".into(), self.errors(&t.errors)?),
             ];
+            // What the task's emitter takes. A task that emits nothing has no `emits`: its
+            // emitter's parameter is then `never`.
+            if !t.emits.is_empty() {
+                sig.push(("emits".into(), self.task_emits(n, t)));
+            }
             tasks.push((n.clone(), Ty::Obj(sig)));
         }
         let mut machines = Vec::new();
@@ -873,6 +919,43 @@ export type {name}<{}> = {ts}",
     }
 }
 
+/// How many times each event name is declared in file `file`: by its machines, as an event or an
+/// emitted event, and by its tasks' `emits`. A name declared more than once is prefixed, in each
+/// module that names it, by its machine's or task's name (see [`event_ident`]).
+fn event_counts(ir: &Ir, file: u32) -> HashMap<&str, usize> {
+    let mut count: HashMap<&str, usize> = HashMap::new();
+    for m in ir.machines.values().filter(|m| m.span.file == file) {
+        for e in m.events.keys().chain(m.emits.keys()) {
+            *count.entry(e).or_default() += 1;
+        }
+    }
+    for t in ir.tasks.values().filter(|t| t.span.file == file) {
+        for e in t.emits.keys() {
+            *count.entry(e).or_default() += 1;
+        }
+    }
+    count
+}
+
+/// The name the module of its file gives event `event` of `owner` (a machine, or a task's name
+/// capitalised): the event's own, or `<Owner><Event>` when the file declares the name twice.
+fn event_ident(counts: &HashMap<&str, usize>, owner: &str, event: &str) -> String {
+    if counts.get(event).copied().unwrap_or_default() > 1 {
+        format!("{owner}{event}")
+    } else {
+        event.to_owned()
+    }
+}
+
+/// A task's name with its first letter in upper case: `signIn` gives `SignIn`.
+fn pascal(task: &str) -> String {
+    let mut chars = task.chars();
+    match chars.next() {
+        Some(c) => c.to_uppercase().chain(chars).collect(),
+        None => String::new(),
+    }
+}
+
 /// Every state id under `s`, `s` included, in document order. History states are left out:
 /// they are never active, so host code never sees one.
 fn state_ids(s: &State, out: &mut Vec<String>) {
@@ -901,10 +984,13 @@ impl<'a> Uses<'a> {
                 self.expr(e);
             }
         }
-        // A collection's children run its machine, through the same implementation as an
-        // invoke of it.
+        // A collection's children run its machine or task, through the same implementation as
+        // an invoke of it.
         for c in m.children.values() {
-            self.machines.insert(&c.src);
+            match c.kind {
+                ChildrenKind::Machine => self.machines.insert(&c.src),
+                ChildrenKind::Task => self.tasks.insert(&c.src),
+            };
         }
         self.state(&m.root);
     }
@@ -1128,6 +1214,9 @@ fn file_refs(ir: &Ir) -> Vec<BTreeSet<u32>> {
         add(d.span.file, fields(&d.params));
         add(d.span.file, d.returns.iter().flat_map(ty).collect());
         add(d.span.file, errors(&d.errors));
+        for e in d.emits.values() {
+            add(d.span.file, fields(&e.fields));
+        }
     }
     for m in ir.machines.values() {
         let file = m.span.file;

@@ -63,7 +63,7 @@ describe("compareCodePoints", () => {
 
 describe("loadIr", () => {
   it("refuses another IR version, naming both", () => {
-    expect(() => loadIr({ irVersion: "0.8" })).toThrow(/"0\.8".*0\.9/)
+    expect(() => loadIr({ irVersion: "0.8" })).toThrow(/"0\.8".*0\.10/)
     expect(() => loadIr([])).toThrow(IrError)
   })
   it("refuses a machine the IR does not have", () => {
@@ -101,6 +101,121 @@ describe("messaging", () => {
     ])
     const peer = step(ir, started.snapshot, { kind: "emitted", from: "r2", invoke: null, message: 1, value: progress }, noFns)
     expect(peer.commands.map((c) => c.kind === "trace" && c.record.kind)).toEqual(["dropped"])
+  })
+})
+
+describe("tasks that emit", () => {
+  const ir = readIr("task-emits.ir.json")
+  const progress = (invoke: number, percent: number): Input => ({
+    kind: "task.emitted",
+    invoke,
+    value: { _tag: "Progress", percent }
+  })
+  const kinds = (commands: ReadonlyArray<Command>) => commands.flatMap((c) => (c.kind === "trace" ? [c.record.kind] : []))
+
+  it("hears a task's emits by the task's name, only those it has an `on` for", () => {
+    expect([...heard(ir, "Publish", "upload")]).toEqual(["Progress"])
+    expect([...heard(ir, "Login", "signIn")]).toEqual(["Step"])
+    expect(heard(ir, "Login", "upload").size).toBe(0)
+  })
+
+  it("takes an emit through the `as` name of the invoke that runs, and keeps the invoke", () => {
+    const started = start(ir, "Publish", "r1", { size: 100 }, noFns)
+    expect(started.commands.at(-1)).toMatchObject({ kind: "invoke.start", invoke: 1, srcKind: "task", as: "up" })
+    const taken = step(ir, started.snapshot, progress(1, 40), noFns)
+    expect(taken.snapshot.vars).toMatchObject({ percent: 40 })
+    expect(taken.snapshot.invokes).toEqual(started.snapshot.invokes)
+    expect(taken.commands).toContainEqual({ kind: "action", action: "showProgress", args: { percent: 40 } })
+    // Another invoke's id, an ended one's: stale, and nothing else changes.
+    const stale = step(ir, started.snapshot, progress(7, 40), noFns)
+    expect(kinds(stale.commands)).toEqual(["stale"])
+    expect(stale.snapshot).toEqual(started.snapshot)
+    // An event the machine has no `on` for: dropped, the strict check aside.
+    const stage = step(ir, started.snapshot, { kind: "task.emitted", invoke: 1, value: { _tag: "Stage", name: "x" } }, noFns)
+    expect(kinds(stage.commands)).toEqual(["dropped"])
+  })
+
+  it("never takes a run's emitted event through a task's address, nor a task's through a child's", () => {
+    const started = start(ir, "Publish", "r1", { size: 100 }, noFns)
+    const fromRun = step(
+      ir,
+      started.snapshot,
+      { kind: "emitted", from: "r1.1", invoke: 1, message: 1, value: { _tag: "Progress", percent: 40 } },
+      noFns
+    )
+    expect(kinds(fromRun.commands)).toEqual(["dropped"])
+    const upload = readIr("upload.ir.json")
+    const child = start(upload, "Publish", "r1", { size: 200 }, noFns)
+    const fromTask = step(upload, child.snapshot, { kind: "task.emitted", invoke: 1, value: { _tag: "Progress", offset: 1 } }, noFns)
+    expect(kinds(fromTask.commands)).toEqual(["dropped"])
+  })
+
+  it("drops an emit a strict machine does not take: it is not one of its own events", () => {
+    const started = start(ir, "Gauge", "r1", { size: 100 }, noFns)
+    const dropped = step(ir, started.snapshot, progress(1, 0), noFns)
+    expect(dropped.snapshot.status).toBe("running")
+    expect(kinds(dropped.commands)).toEqual(["dropped"])
+  })
+
+  it("redacts a task's emitted event by the task's declaration, and a stale one by every task's", () => {
+    const started = start(ir, "Login", "r1", { user: "ada" }, noFns)
+    const value = { _tag: "Step", name: "sent", code: "123456" }
+    const taken = step(ir, started.snapshot, { kind: "task.emitted", invoke: 1, value }, noFns)
+    expect(taken.commands[0]).toEqual({
+      kind: "trace",
+      record: { kind: "event", event: { kind: "task.emitted", invoke: 1, value: { ...value, code: "<redacted>" } } }
+    })
+    expect(taken.snapshot.vars).toMatchObject({ step: "sent" })
+    const stale = step(ir, started.snapshot, { kind: "task.emitted", invoke: 5, value }, noFns)
+    expect(stale.commands).toEqual([{
+      kind: "trace",
+      record: { kind: "stale", event: { kind: "task.emitted", invoke: 5, value: { ...value, code: "<redacted>" } } }
+    }])
+  })
+})
+
+describe("spawned tasks", () => {
+  const ir = readIr("spawn-tasks.ir.json")
+  const add = (name: string, size: number): Input => ({ kind: "event", value: { _tag: "Add", name, size } })
+  const traced = (commands: ReadonlyArray<Command>) => commands.flatMap((c) => (c.kind === "trace" ? [c.record] : []))
+
+  it("starts a task with srcKind task and no saved snapshot, and takes its emits with `key`", () => {
+    const started = start(ir, "Batch", "r1", {}, noFns)
+    const a = step(ir, started.snapshot, add("a", 10), noFns)
+    expect(a.commands.at(-1)).toEqual({ kind: "spawn.start", spawn: 1, src: "upload", srcKind: "task", args: { size: 10 }, saved: null })
+    expect(a.snapshot.spawned).toEqual([{ id: 1, children: "uploads", key: "a", args: { size: 10 } }])
+    const emitted = step(ir, a.snapshot, { kind: "task.emitted", invoke: 1, value: { _tag: "Progress", percent: 50 } }, noFns)
+    expect(emitted.commands).toContainEqual({ kind: "action", action: "showProgress", args: { name: "a", percent: 50 } })
+    expect(emitted.snapshot.spawned).toEqual(a.snapshot.spawned)
+    // Its outcomes are spawn.* inputs, with `key`; an error it does not declare is a defect.
+    const done = step(ir, a.snapshot, { kind: "spawn.done", spawn: 1, value: 10 }, noFns)
+    expect(done.commands).toContainEqual({ kind: "action", action: "showStored", args: { name: "a", size: 10 } })
+    expect(done.snapshot.spawned).toEqual([])
+    const odd = step(ir, a.snapshot, { kind: "spawn.fail", spawn: 1, error: { _tag: "Nope" } }, noFns)
+    expect(odd.snapshot.result).toEqual({ defect: { kind: "undeclared", error: "Nope" } })
+  })
+
+  it("makes an emit of a stopped task stale", () => {
+    const started = start(ir, "Batch", "r1", {}, noFns)
+    const a = step(ir, started.snapshot, add("a", 10), noFns)
+    const stopped = step(ir, a.snapshot, { kind: "event", value: { _tag: "Cancel", name: "a" } }, noFns)
+    expect(stopped.commands).toContainEqual({ kind: "spawn.stop", spawn: 1 })
+    const stale = step(ir, stopped.snapshot, { kind: "task.emitted", invoke: 1, value: { _tag: "Progress", percent: 50 } }, noFns)
+    expect(traced(stale.commands).map((r) => r.kind)).toEqual(["stale"])
+  })
+
+  it("restarts a spawned task on restore with its id and saved arguments, and saves no child for it", () => {
+    const started = start(ir, "Batch", "r1", {}, noFns)
+    const a = step(ir, started.snapshot, add("a", 10), noFns)
+    const saved = toSaved(a.snapshot, () => 0)
+    const checked = checkSaved(ir, "Batch", JSON.parse(JSON.stringify(saved)))
+    expect(checked.ok).toBe(true)
+    const restored = restore(ir, saved, "r2", 0, null, noFns)
+    expect(restored.commands.at(-1)).toEqual({ kind: "spawn.start", spawn: 1, src: "upload", srcKind: "task", args: { size: 10 }, saved: null })
+    // A child nested in a spawned task's entry is refused: a task is not a run.
+    const nested = { ...saved, spawned: [{ ...saved.spawned![0]!, child: { ...saved, run: "r1.1" } }] }
+    const refused = checkSaved(ir, "Batch", JSON.parse(JSON.stringify(nested)))
+    expect(refused.ok).toBe(false)
   })
 })
 

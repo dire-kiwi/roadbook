@@ -50,7 +50,7 @@ export interface OrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "examples/orders/orders.road",
@@ -249,6 +249,7 @@ const ir: unknown = {
       "errors": [
         "PaymentDeclined"
       ],
+      "emits": {},
       "doc": "Charge the customer for the order.",
       "span": {
         "file": 0,
@@ -283,6 +284,7 @@ const ir: unknown = {
       "errors": [
         "OutOfStock"
       ],
+      "emits": {},
       "doc": "Hold `items` for an order, or fail if the warehouse cannot supply them all.",
       "span": {
         "file": 1,

@@ -9,6 +9,8 @@ export { CurrentInvoke, type InvokeContext, type CancelToken, type Port } from "
 export type {
   Actor,
   Callable,
+  Emit,
+  EmitsOf,
   Handle,
   Handlers,
   Implemented,

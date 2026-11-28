@@ -53,7 +53,7 @@ export interface InventoryDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "examples/inventory/inventory.road",
@@ -190,6 +190,7 @@ const ir: unknown = {
       "errors": [
         "OutOfStock"
       ],
+      "emits": {},
       "doc": "Hold `items` for an order, or fail if the warehouse cannot supply them all.",
       "span": {
         "file": 0,

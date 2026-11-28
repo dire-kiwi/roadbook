@@ -57,3 +57,56 @@ export const mistakes = () => {
   // @ts-expect-error  a state Nest does not have
   Effect.map(Effect.scoped(NestLive.spawn({})), (actor) => Effect.map(actor.snapshot, (s) => s.matches("Nest.Inner")))
 }
+
+interface Progress {
+  readonly _tag: "Progress"
+  readonly percent: number
+}
+
+interface FeedDef extends Roadbook.MachineDef {
+  readonly name: "Feed"
+  readonly input: {}
+  readonly output: void
+  readonly error: never
+  readonly event: never
+  readonly state: "Feed"
+  readonly fns: {}
+  readonly actions: {}
+  readonly tasks: {
+    readonly upload: {
+      readonly args: { readonly size: number }
+      readonly success: number
+      readonly error: never
+      readonly emits: Progress
+    }
+    readonly ping: { readonly args: {}; readonly success: void; readonly error: never }
+  }
+  readonly machines: {}
+}
+
+const Feed = Roadbook.make<FeedDef>(ir, "Feed")
+
+// A task that emits is given its emitter; one that ignores it, or emits nothing, needs no change.
+export const FeedLive = Feed.implement({
+  tasks: {
+    upload: ({ size }, emit) => Effect.as(emit({ _tag: "Progress", percent: 50 }), size),
+    ping: () => Effect.void
+  }
+})
+
+export const emitMistakes = () => {
+  Feed.implement({
+    tasks: {
+      // @ts-expect-error  upload emits only Progress
+      upload: (_, emit) => Effect.as(emit({ _tag: "Stage", name: "x" }), 1),
+      ping: () => Effect.void
+    }
+  })
+  Feed.implement({
+    tasks: {
+      upload: () => Effect.succeed(1),
+      // @ts-expect-error  ping emits nothing: its emitter takes `never`
+      ping: (_, emit) => emit({ _tag: "Progress", percent: 1 })
+    }
+  })
+}

@@ -32,7 +32,7 @@ export interface DeskDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable-calls.road",

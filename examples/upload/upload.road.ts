@@ -70,7 +70,7 @@ export interface UploadDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "examples/upload/upload.road",
@@ -210,6 +210,7 @@ const ir: unknown = {
       "errors": [
         "UploadFailed"
       ],
+      "emits": {},
       "doc": "Store the chunk of `file` that starts at `offset`. Returns the offset after it.",
       "span": {
         "file": 0,
@@ -232,6 +233,7 @@ const ir: unknown = {
       "errors": [
         "UploadFailed"
       ],
+      "emits": {},
       "doc": "Ask the storage service to assemble the stored chunks, and return the file's address.",
       "span": {
         "file": 0,
