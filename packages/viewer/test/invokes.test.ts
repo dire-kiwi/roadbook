@@ -1,4 +1,4 @@
-// Several invokes in one state, each named with `as` (IR 0.11): their rows, the labels of their
+// Several invokes in one state, each named with `as` (IR 0.12): their rows, the labels of their
 // outcomes, the details panel, simulate and replay, for test/charts/invokes.road and the
 // conformance chart invokes.road.
 
