@@ -796,8 +796,7 @@ pub fn guard_text(s: &ir::State, index: usize) -> Option<String> {
     if let Some(g) = &t.guard {
         return Some(g.text.clone());
     }
-    let first = s.transitions.iter().position(|o| o.group == t.group);
-    (first != Some(index)).then(|| "else".to_string())
+    s.is_else(index).then(|| "else".to_string())
 }
 
 // ---------------------------------------------------------------------------------------------

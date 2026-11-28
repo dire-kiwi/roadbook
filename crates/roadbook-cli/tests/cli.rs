@@ -1059,6 +1059,33 @@ fn export_mermaid_snapshots_state_locals() {
     insta::assert_snapshot!("locals_mermaid", text(&out.stdout));
 }
 
+/// The copies an `on A | B` is lowered to are one arrow, labelled `A | B`, with `[else]` only on
+/// a block's last branch; one with no target is one line of its state's description.
+#[test]
+fn export_mermaid_merges_or_events() {
+    let out = roadbook(
+        &repo(),
+        &[
+            "export",
+            "mermaid",
+            "spec/conformance/charts/or-events.road",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let md = text(&out.stdout);
+    assert!(
+        md.contains("Idle --> Connecting: Retry | Reconnect [attempts < 2] / set reason = event.reason, set attempts = attempts + 1"),
+        "{md}"
+    );
+    assert_eq!(
+        md.matches("Connecting --> Idle: Drop | Retry [event.reason == \"\"]")
+            .count(),
+        1,
+        "{md}"
+    );
+    insta::assert_snapshot!("or_events_mermaid", md);
+}
+
 /// A transition with several targets is an arrow to each, with the same label.
 #[test]
 fn export_mermaid_snapshots_several_targets() {

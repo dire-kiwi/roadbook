@@ -2,7 +2,7 @@
 
 import type { Effect, Ir } from './ir.ts'
 import { own } from './ir.ts'
-import { callOfType, effectText, invokeText, isHistory, isTaskName, kindText, peer, triggerText, walkStates } from './model.ts'
+import { callOfType, drawnIndex, effectText, invokeText, isCopy, isHistory, isTaskName, kindText, peer, triggerText, walkStates } from './model.ts'
 
 export type SearchKind = 'state' | 'event' | 'call' | 'task' | 'machine' | 'error' | 'action'
 
@@ -69,13 +69,14 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
       effects(s.exit, `exit of ${machine}.${short(s.id)}`, state)
       s.transitions.forEach((t, index) => {
         const where = `${machine}.${short(s.id)} → ${t.targets.length ? t.targets.map(short).join(', ') : '(stays)'}`
-        const target = { type: 'transition' as const, state: s.id, index }
+        // A copy of an `on A | B` is found by its own event, and goes to the edge drawn for them all.
+        const target = { type: 'transition' as const, state: s.id, index: drawnIndex(s, index) }
         if (t.trigger.kind === 'event' || t.trigger.kind === 'emitted') out.push({ kind: 'event', name: t.trigger.event, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
         if (t.trigger.kind === 'call') out.push({ kind: 'call', name: t.trigger.call, label: `on ${t.trigger.call}: ${where}`, machine, target })
         if (t.trigger.kind === 'invoke.fail' || t.trigger.kind === 'spawn.fail') out.push({ kind: 'error', name: t.trigger.error, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
         // A peer's end is found through the peer's machine: `Inventory` finds `inventory.ended`.
         if (t.trigger.kind === 'ended') out.push({ kind: 'machine', name: peer(t.trigger.from), label: `on ${triggerText(t.trigger)}: ${where}`, machine, target })
-        effects(t.effects, where, target)
+        if (!isCopy(s, index)) effects(t.effects, where, target)
       })
     })
   }

@@ -329,7 +329,13 @@ module.exports = grammar({
         $.peer_ended,
       ),
 
-    event_pattern: ($) => field('event', $.type_identifier),
+    // `on Submit`, or `on Retry | Reconnect`: one transition for several of the machine's own
+    // events.
+    event_pattern: ($) =>
+      seq(
+        field('event', $.type_identifier),
+        repeat(seq('|', field('event', $.type_identifier))),
+      ),
 
     // `on reserve`: taking a call the machine declares. Lower case, and no `.` after it.
     call_pattern: ($) => field('call', $.identifier),

@@ -14,7 +14,7 @@ import type { Ir } from '../ir.ts'
 import { own } from '../ir.ts'
 import type { ElkLike, Layout } from '../layout.ts'
 import { defaultCollapsed, layoutMachine } from '../layout.ts'
-import { ancestorIds, isTaskEvent, openingMachine, parseEventKey, transitionId, walkStates } from '../model.ts'
+import { ancestorIds, drawnIndex, findState, isTaskEvent, openingMachine, parseEventKey, transitionId, walkStates } from '../model.ts'
 import type { Measure } from '../model.ts'
 import { panelHtml } from '../panel.ts'
 import type { Selection } from '../panel.ts'
@@ -295,8 +295,15 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
 
   // ───────────── selection ─────────────
   const q = (s: string) => s.replace(/["\\]/g, '\\$&')
-  function transitionEls(stateId: string, index: number | string): Element[] {
+  /** The transition drawn for transition `index` of a state of the current machine: the first copy of an `on A | B`, or itself. */
+  function drawn(stateId: string, index: number): number {
+    const m = own(ir.machines, current)
+    const st = m ? findState(m, stateId) : null
+    return st ? drawnIndex(st, index) : index
+  }
+  function transitionEls(stateId: string, at: number): Element[] {
     if (!svg) return []
+    const index = drawn(stateId, at)
     return [...svg.querySelectorAll(`[data-state="${q(stateId)}"][data-transition="${index}"], [data-state="${q(stateId)}"] .rb-row[data-transition="${index}"]`)]
   }
   function stateEl(id: string): Element | null {
@@ -340,13 +347,14 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     if (!sel || !layout) return
     if (sel.type === 'state') viewport.reveal(layout.nodes[visibleId(sel.id)])
     else if (sel.type === 'transition') {
-      const e = layout.edges[transitionId(sel.state, sel.index)]
+      const e = layout.edges[transitionId(sel.state, drawn(sel.state, sel.index))]
       viewport.reveal(e?.label ?? layout.nodes[visibleId(sel.state)])
     }
   }
 
   function select(sel: Selection, opts: { reveal?: boolean } = {}) {
-    selection = sel
+    // A copy of an `on A | B` (a trace names the one taken) selects the edge drawn for them all.
+    selection = sel?.type === 'transition' ? { ...sel, index: drawn(sel.state, sel.index) } : sel
     applyClasses()
     renderPanel()
     if (opts.reveal) reveal(sel)
@@ -493,7 +501,7 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   // Hovering an arrow lights up its label, and the other way round.
   const hover = (ev: Event, on: boolean) => {
     const el = (ev.target as Element).closest?.<SVGElement>('.rb-edge[data-transition], .rb-label[data-transition]')
-    if (el) transitionEls(el.dataset.state!, el.dataset.transition!).forEach((e) => e.classList.toggle('rb-hover', on))
+    if (el) transitionEls(el.dataset.state!, Number(el.dataset.transition)).forEach((e) => e.classList.toggle('rb-hover', on))
   }
   canvas.addEventListener('pointerover', (ev) => hover(ev, true))
   canvas.addEventListener('pointerout', (ev) => hover(ev, false))

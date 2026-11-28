@@ -39,6 +39,11 @@ fn each_syntax_error_has_its_code() {
         ("machine M(p: ref) {}".into(), "RB0010"),
         ("machine M(p: ref int) {}".into(), "RB0010"),
         (s("    on Go send upload"), "RB0010"),
+        (s("    on A | * -> S"), "RB0010"),
+        (s("    on * | A -> S"), "RB0010"),
+        (s("    on up.Progress | A -> S"), "RB0010"),
+        (s("    on A | up.Progress -> S"), "RB0010"),
+        (s("    on A | reserve -> S"), "RB0010"),
         (s("    on Go send upload.pause"), "RB0012"),
         (s("    on Go emit progress"), "RB0012"),
         (
@@ -250,6 +255,27 @@ fn a_broken_check_does_not_hide_the_next_one() {
     let (_, machine) = file.machines().next().unwrap();
     assert_eq!(machine.body.checks().count(), 2);
     assert_eq!(machine.body.states().count(), 1);
+}
+
+#[test]
+fn or_lists_only_the_machines_own_events() {
+    let message = |src: &str| {
+        let (_, diags) = parse_file(FileId(0), &s(src));
+        assert_eq!(diags.len(), 1, "{diags:#?}");
+        diags[0].message.clone()
+    };
+    assert_eq!(
+        message("    on A | up.Progress -> S"),
+        "expected the name of one of the machine's events after `|`, found `up`"
+    );
+    assert_eq!(
+        message("    on * | A -> S"),
+        "`|` joins only the machine's own events, as in `on A | B`"
+    );
+    assert_eq!(
+        message("    on up.Progress | A -> S"),
+        "`|` joins only the machine's own events, as in `on A | B`"
+    );
 }
 
 #[test]

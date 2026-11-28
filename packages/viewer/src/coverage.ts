@@ -8,9 +8,9 @@
 // counted in a warning, since its states and transitions may not be the chart's. Pure and
 // DOM-free.
 
-import type { Ir, Machine } from './ir.ts'
+import type { Ir, Machine, State } from './ir.ts'
 import { own } from './ir.ts'
-import { allStates, isHistory, transitionId } from './model.ts'
+import { allStates, drawnIndex, findState, isCopy, isHistory, transitionId } from './model.ts'
 import type { Annotations, Mark } from './render.ts'
 import { parseTrace } from './replay.ts'
 
@@ -19,7 +19,7 @@ export interface MachineCoverage {
   runs: number
   /** Times each state was entered, by id; for a history state, times a transition to it was taken. */
   states: Record<string, number>
-  /** Times each transition was taken, by `stateId#index`. */
+  /** Times each transition was taken, by `stateId#index`: the copies of an `on A | B` under the first's index. */
   transitions: Record<string, number>
 }
 
@@ -67,6 +67,13 @@ export function coverage(ir: Ir, traces: { name: string; text: string }[]): Cove
     if (!set) histories.set(machine, (set = new Set(allStates(own(ir.machines, machine)!).filter(isHistory).map((s) => s.id))))
     return set
   }
+  // The states transitions are taken from, by machine and id.
+  const states = new Map<string, State | null>()
+  const stateOf = (machine: string, id: string) => {
+    const key = `${machine}\u0000${id}`
+    if (!states.has(key)) states.set(key, findState(own(ir.machines, machine)!, id))
+    return states.get(key)!
+  }
   for (const t of traces) {
     const { records, problems } = parseTrace(t.text)
     out.problems.push(...problems.map((p) => `${t.name}: ${p}`))
@@ -100,7 +107,9 @@ export function coverage(ir: Ir, traces: { name: string; text: string }[]): Cove
       const mc = out.machines[run.machine]!
       if (r.kind === 'entered' && typeof r.state === 'string') mc.states[r.state] = (mc.states[r.state] ?? 0) + 1
       else if (r.kind === 'transition' && typeof r.from === 'string' && typeof r.index === 'number') {
-        const key = transitionId(r.from, r.index)
+        // The copies of an `on A | B` are one edge: each counts for the first.
+        const from = stateOf(run.machine, r.from)
+        const key = transitionId(r.from, from ? drawnIndex(from, r.index) : r.index)
         mc.transitions[key] = (mc.transitions[key] ?? 0) + 1
         for (const to of Array.isArray(r.to) ? r.to : []) {
           if (typeof to === 'string' && historiesOf(run.machine).has(to)) mc.states[to] = (mc.states[to] ?? 0) + 1
@@ -111,10 +120,13 @@ export function coverage(ir: Ir, traces: { name: string; text: string }[]): Cove
   return out
 }
 
-/** Every transition of a machine, with how often it was taken. */
+/** Every transition of a machine as drawn, with how often it was taken: the copies of an `on A | B` once, with the times each was taken summed. */
 export function transitionCounts(m: Machine, mc: MachineCoverage | undefined): { state: string; index: number; count: number }[] {
   const out: { state: string; index: number; count: number }[] = []
-  for (const s of allStates(m)) s.transitions.forEach((_t, i) => out.push({ state: s.id, index: i, count: mc?.transitions[transitionId(s.id, i)] ?? 0 }))
+  for (const s of allStates(m))
+    s.transitions.forEach((_t, i) => {
+      if (!isCopy(s, i)) out.push({ state: s.id, index: i, count: mc?.transitions[transitionId(s.id, i)] ?? 0 })
+    })
   return out
 }
 

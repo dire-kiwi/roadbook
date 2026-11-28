@@ -1,0 +1,12 @@
+// A field of `event` in `on A | B` is sensitive if it is sensitive in any of the events.
+machine M() {
+  var token: string = ""
+  event Login { sensitive token: string }
+  event Refresh { token: string }
+  initial A
+  state A {
+    on Refresh | Login -> A  set token = event.token
+  }
+}
+
+// expect: RB0320 at 8:42

@@ -185,6 +185,27 @@ impl Cx<'_, '_> {
                         );
                         Ty::Unknown
                     }
+                    Some((Implicit::OneOf(events), _)) => {
+                        let shared = self.shared_fields(events);
+                        let help = match shared.first() {
+                            Some(f) => format!("read a field they all have: `event.{f}`"),
+                            None => {
+                                format!("{} have no field of the same type", names_text(events))
+                            }
+                        };
+                        self.ck.diags.push(
+                            Diagnostic::error(
+                                codes::UNTYPED_EVENT,
+                                n.span,
+                                format!(
+                                    "`event` has no single type in `on {}`, which takes events of different types: it is read only through the fields they all have",
+                                    events.join(" | ")
+                                ),
+                            )
+                            .with_help(help),
+                        );
+                        Ty::Unknown
+                    }
                     Some((Implicit::Ended, _)) => {
                         self.ck.diags.push(
                             Diagnostic::error(
@@ -246,6 +267,21 @@ impl Cx<'_, '_> {
                     .ck
                     .sensitive
                     .is(&Sensitive::call(&self.machine, c), &f.name);
+                let path = vec!["event".to_string(), f.name.clone()];
+                (node(K::Ref { path, state: None }, &ty, e), ty)
+            }
+            ExprKind::Field(base, f)
+                if matches!(&base.kind, ExprKind::Var(n) if n.name == "event")
+                    && matches!(scope.event, Implicit::OneOf(_)) =>
+            {
+                let Implicit::OneOf(events) = &scope.event else {
+                    unreachable!("matched above")
+                };
+                let ty = self.shared_field(events, f);
+                let machine = self.machine.clone();
+                self.sens = events
+                    .iter()
+                    .any(|ev| self.ck.sensitive.is(&format!("{machine}.{ev}"), &f.name));
                 let path = vec!["event".to_string(), f.name.clone()];
                 (node(K::Ref { path, state: None }, &ty, e), ty)
             }
@@ -878,6 +914,84 @@ impl Cx<'_, '_> {
         }
     }
 
+    /// The fields every one of `events`, the machine's own events, has with the same type: the
+    /// fields `event` has in `on A | B`. In the first event's order.
+    fn shared_fields(&self, events: &[String]) -> Vec<String> {
+        let all: Vec<Vec<(String, Ty)>> = events
+            .iter()
+            .map(|ev| self.event_fields(ev).unwrap_or_default())
+            .collect();
+        let Some((first, rest)) = all.split_first() else {
+            return Vec::new();
+        };
+        first
+            .iter()
+            .filter(|(name, t)| {
+                rest.iter()
+                    .all(|fs| fs.iter().any(|(n, u)| n == name && self.ck.env.same(t, u)))
+            })
+            .map(|(name, _)| name.clone())
+            .collect()
+    }
+
+    /// The type of `event.f` in `on A | B` (`events`): the type field `f` has in every one of
+    /// them. Reports an event without it, or two events that give it different types.
+    fn shared_field(&mut self, events: &[String], f: &roadbook_syntax::ast::Ident) -> Ty {
+        let trigger = format!("on {}", events.join(" | "));
+        let mut found: Option<(&str, Ty)> = None;
+        let mut problem = None;
+        for ev in events {
+            let fields = self.event_fields(ev).unwrap_or_default();
+            let Some((_, t)) = fields.iter().find(|(n, _)| *n == f.name) else {
+                problem.get_or_insert_with(|| {
+                    format!(
+                        "`{ev}` has no field `{}`, so `event` in `{trigger}` does not have it",
+                        f.name
+                    )
+                });
+                continue;
+            };
+            let owner = self.type_symbol(&Ty::Event(ev.clone()));
+            self.ck.refer_member(self.file, owner, f);
+            match &found {
+                None => found = Some((ev, t.clone())),
+                Some((first, u)) if !self.ck.env.same(u, t) => {
+                    problem.get_or_insert_with(|| {
+                        format!(
+                            "`event.{}` is `{u}` in `{first}` and `{t}` in `{ev}`, so `event` in `{trigger}` has no single type for it",
+                            f.name
+                        )
+                    });
+                }
+                Some(_) => {}
+            }
+        }
+        let Some(message) = problem else {
+            return found.map_or(Ty::Unknown, |(_, t)| t);
+        };
+        let shared = self.shared_fields(events);
+        let mut d = Diagnostic::error(codes::UNKNOWN_FIELD, f.span, message);
+        if let Some(s) = suggest(&f.name, shared.iter().map(String::as_str)) {
+            d = d.with_help(format!("did you mean `{s}`?")).with_fix(
+                format!("replace with `{s}`"),
+                f.span,
+                s,
+            );
+        } else if shared.is_empty() {
+            d = d.with_help(format!(
+                "{} have no field of the same type; read `event` in an `on` of each event's own",
+                names_text(events)
+            ));
+        } else {
+            d = d.with_help(format!(
+                "the fields they all have are {}",
+                shared.join(", ")
+            ));
+        }
+        self.ck.diags.push(d);
+        Ty::Unknown
+    }
+
     /// The type of argument `f` of the machine's call `c`, read as `event.f` in `on c`.
     fn call_argument(&mut self, c: &str, f: &roadbook_syntax::ast::Ident) -> Ty {
         let Some(sig) = self.calls.get(c).cloned() else {
@@ -1032,5 +1146,14 @@ fn unify(pattern: &Ty, got: &Ty, out: &mut HashMap<String, Vec<Ty>>) {
             }
         }
         _ => {}
+    }
+}
+
+/// `` `A` and `B` ``, `` `A`, `B` and `C` ``.
+fn names_text(names: &[String]) -> String {
+    let quoted: Vec<String> = names.iter().map(|n| format!("`{n}`")).collect();
+    match quoted.split_last() {
+        Some((last, init)) if !init.is_empty() => format!("{} and {last}", init.join(", ")),
+        _ => quoted.join(""),
     }
 }

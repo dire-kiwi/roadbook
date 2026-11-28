@@ -893,3 +893,45 @@
 #                    ^ punctuation.section.braces.roadbook
 >}
 #^ punctuation.section.braces.roadbook
+>
+>// One transition for several events.
+#^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.double-slash.roadbook
+>machine Several() {
+#^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
+#        ^^^^^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
+#               ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#                ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                  ^ punctuation.section.braces.roadbook
+>  on Reset | Drop -> A
+#  ^^ keyword.control.trigger.roadbook
+#     ^^^^^ entity.name.type.event.roadbook
+#           ^ keyword.operator.event.roadbook
+#             ^^^^ entity.name.type.event.roadbook
+#                  ^^ keyword.operator.arrow.roadbook
+#                     ^ entity.name.type.state.roadbook
+>  state A {
+#  ^^^^^ storage.type.state.roadbook
+#        ^ entity.name.type.state.roadbook
+#          ^ punctuation.section.braces.roadbook
+>    on Retry|Reconnect if attempts < 3 -> A  set reason = event.reason
+#    ^^ keyword.control.trigger.roadbook
+#       ^^^^^ entity.name.type.event.roadbook
+#            ^ keyword.operator.event.roadbook
+#             ^^^^^^^^^ entity.name.type.event.roadbook
+#                       ^^ keyword.control.if.roadbook
+#                          ^^^^^^^^ variable.other.roadbook
+#                                   ^ keyword.operator.comparison.roadbook
+#                                     ^ constant.numeric.integer.roadbook
+#                                       ^^ keyword.operator.arrow.roadbook
+#                                          ^ entity.name.type.state.roadbook
+#                                             ^^^ keyword.other.effect.roadbook
+#                                                 ^^^^^^ variable.other.roadbook
+#                                                        ^ keyword.operator.assignment.roadbook
+#                                                          ^^^^^ variable.language.roadbook
+#                                                               ^ punctuation.accessor.roadbook
+#                                                                ^^^^^^ variable.other.property.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>}
+#^ punctuation.section.braces.roadbook

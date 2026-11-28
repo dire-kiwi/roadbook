@@ -17,12 +17,15 @@ import {
   eventDecl,
   eventDeclText,
   eventKey,
+  copiesOf,
+  drawnIndex,
   findState,
   guardText,
   historyText,
   invokeCall,
   invokeNamed,
   invokeText,
+  isCopy,
   isHistory,
   isOutcomeOf,
   isTaskEvent,
@@ -36,6 +39,8 @@ import {
   spawnSites,
   talks,
   targetsText,
+  transitionSource,
+  transitionTrigger,
   triggerKind,
   triggerSource,
   triggerText,
@@ -195,7 +200,9 @@ function signatureKv(ir: Ir, decl: { params: { name: string; type: string; doc: 
   )
 }
 
-function transitionSummary(ctx: PanelContext, state: State, index: number, withSource: boolean): string {
+/** A transition as a line that selects it: the copy of an `on A | B` as the edge drawn for them all. */
+function transitionSummary(ctx: PanelContext, state: State, at: number, withSource: boolean): string {
+  const index = drawnIndex(state, at)
   const t = state.transitions[index]!
   const g = guardText(state, index)
   const kind = triggerKind(t.trigger)
@@ -206,7 +213,7 @@ function transitionSummary(ctx: PanelContext, state: State, index: number, withS
   return (
     `<button class="rb-tlink" type="button" data-select-transition="${esc(JSON.stringify([state.id, index]))}">` +
     (withSource ? `<span class="rb-arrow-text">${esc(shortId(ctx, state.id))}: </span>` : '') +
-    `<b class="${cls}">${esc(triggerText(t.trigger, state))}</b>${g ? ' ' + esc(g) : ''} <span class="rb-arrow-text">→</span> ${esc(target)}` +
+    `<b class="${cls}">${esc(transitionTrigger(state, index))}</b>${g ? ' ' + esc(g) : ''} <span class="rb-arrow-text">→</span> ${esc(target)}` +
     t.effects.map((e) => `<span class="rb-sub">${esc(effectText(e))}</span>`).join('') +
     `</button>`
   )
@@ -343,8 +350,8 @@ function callItems(machine: string, calls: Record<string, CallDecl>): string {
 function spawnSiteLink(ctx: PanelContext, m: Machine, site: SpawnSite): string {
   const short = shortId(ctx, site.state)
   if (typeof site.at !== 'number') return stateLink(ctx, site.state, `${short} (${site.at})`)
-  const t = findState(m, site.state)?.transitions[site.at]
-  const label = t ? `${short}: ${triggerSource(t.trigger)}` : short
+  const st = findState(m, site.state)
+  const label = st?.transitions[site.at] ? `${short}: ${transitionSource(st, site.at)}` : short
   return `<button class="rb-link rb-mono" type="button" data-select-transition="${esc(JSON.stringify([site.state, site.at]))}">${esc(label)}</button>`
 }
 
@@ -420,7 +427,7 @@ export function historyPanel(ctx: PanelContext, state: State): string {
   let incoming = ''
   walkStates(m.root, (s) => {
     s.transitions.forEach((t, i) => {
-      if (t.targets.includes(state.id)) incoming += transitionSummary(ctx, s, i, true)
+      if (t.targets.includes(state.id) && !isCopy(s, i)) incoming += transitionSummary(ctx, s, i, true)
     })
   })
   return (
@@ -442,16 +449,17 @@ export function statePanel(ctx: PanelContext, state: State): string {
   walkStates(m.root, (s) => {
     if (state.id !== s.id && state.id.startsWith(s.id + '.')) parents.push(s)
     s.transitions.forEach((t, i) => {
-      if (t.targets.includes(state.id)) incoming += transitionSummary(ctx, s, i, true)
+      if (t.targets.includes(state.id) && !isCopy(s, i)) incoming += transitionSummary(ctx, s, i, true)
     })
   })
   const parent = parents[parents.length - 1]
   const isInitial = parent !== undefined && parent.initial === state.id
-  const out = state.transitions.map((_t, i) => transitionSummary(ctx, state, i, false)).join('')
+  const drawnOf = (st: State) => st.transitions.flatMap((_t, i) => (isCopy(st, i) ? [] : [transitionSummary(ctx, st, i, false)])).join('')
+  const out = drawnOf(state)
   let inherited = ''
   for (const p of parents.slice().reverse()) {
     if (!p.transitions.length) continue
-    inherited += `<p class="rb-empty">from ${stateLink(ctx, p.id, p.id === m.root.id ? p.name : undefined)}</p>` + p.transitions.map((_t, i) => transitionSummary(ctx, p, i, false)).join('')
+    inherited += `<p class="rb-empty">from ${stateLink(ctx, p.id, p.id === m.root.id ? p.name : undefined)}</p>` + drawnOf(p)
   }
   const result = state.output ? code(`output ${state.output.text}`) : state.fail ? code(`fail ${state.fail.text}`) : ''
   const collapsed = ctx.collapsed.has(state.id)
@@ -493,7 +501,8 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
   const { ir } = ctx
   const t = state.transitions[index]!
   const m = own(ir.machines, ctx.machine)!
-  const group = state.transitions.map((o, i) => [o, i] as const).filter(([o]) => o.group === t.group)
+  // The branches of its block, the copies of an `on A | B` once.
+  const group = state.transitions.map((o, i) => [o, i] as const).filter(([o, i]) => o.group === t.group && !isCopy(state, i))
   const pos = group.findIndex(([, i]) => i === index) + 1
   // The invoke an outcome belongs to.
   const inv = t.trigger.kind === 'invoke.done' || t.trigger.kind === 'invoke.fail' ? state.invokes.find((i) => i.as === (t.trigger as { as: string | null }).as) : undefined
@@ -504,16 +513,28 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
   const short = shortId(ctx, state.id)
   switch (t.trigger.kind) {
     case 'event': {
-      const accepted = own(m.events, t.trigger.event)
-      const e = accepted ?? own(m.internalEvents ?? {}, t.trigger.event)
-      what = accepted || !e ? `Event ${t.trigger.event} arrives.` : `The run raised ${t.trigger.event}, an internal event: only this machine raises it.`
-      if (e)
-        extra = section(
-          'Event',
-          code(eventDeclText(t.trigger.event, e, false, !accepted)) +
-            docHtml(e.doc) +
-            `<p>${eventLink({ machine: ctx.machine, event: t.trigger.event }, `${accepted ? 'Who sends' : 'Where it is raised'} ${t.trigger.event} →`)}</p>`,
-        )
+      // Every event of an `on A | B`, whose copies the IR holds one per event.
+      const events = copiesOf(state, index).flatMap((i) => {
+        const c = state.transitions[i]!.trigger
+        return c.kind === 'event' ? [c.event] : []
+      })
+      const whats: string[] = []
+      for (const name of events) {
+        const accepted = own(m.events, name)
+        const e = accepted ?? own(m.internalEvents ?? {}, name)
+        whats.push(accepted || !e ? `Event ${name} arrives.` : `The run raised ${name}, an internal event: only this machine raises it.`)
+        if (e)
+          extra += section(
+            'Event',
+            code(eventDeclText(name, e, false, !accepted)) +
+              docHtml(e.doc) +
+              `<p>${eventLink({ machine: ctx.machine, event: name }, `${accepted ? 'Who sends' : 'Where it is raised'} ${name} →`)}</p>`,
+          )
+      }
+      what =
+        events.length > 1
+          ? `Any of ${events.join(', ')} arrives: one transition for each, taken as separate on transitions would be. event has the fields they all have.`
+          : (whats[0] ?? '')
       break
     }
     case 'emitted': {
@@ -615,7 +636,7 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
   }
   const guard = t.guard ? code(t.guard.text) : group.length > 1 ? code('else') : ''
   const branchNote =
-    group.length > 1 ? `<p class="rb-empty">Branch ${pos} of ${group.length} for <code>${esc(triggerSource(t.trigger))}</code>; branches are tried in order.</p>` : ''
+    group.length > 1 ? `<p class="rb-empty">Branch ${pos} of ${group.length} for <code>${esc(transitionSource(state, index))}</code>; branches are tried in order.</p>` : ''
   const title = `${esc(short)} <span class="rb-arrow-text">→</span> ${esc(targetsText(t, (x) => shortId(ctx, x), '(stays)'))}`
   const toText = (id: string) => {
     const target = findState(m, id)
@@ -633,7 +654,7 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
   return (
     head(title, 'transition', true) +
     `<p class="rb-path">${esc(sourceText(ir, t.span))}</p>` +
-    section('Trigger', code(triggerSource(t.trigger)) + `<p class="rb-empty">${esc(what)}</p>`) +
+    section('Trigger', code(transitionSource(state, index)) + `<p class="rb-empty">${esc(what)}</p>`) +
     section('Guard', guard + branchNote) +
     section('Effects', list(t.effects.map((e) => effectHtml(ctx, e))) || '<p class="rb-empty">None.</p>') +
     section(
@@ -659,8 +680,9 @@ function siteLink(ir: Ir, machine: string, site: { state: string; at: MessageSit
   const m = own(ir.machines, machine)
   const short = (id: string) => id.slice(machine.length + 1) || id
   if (typeof site.at !== 'number') return gotoLink(machine, { type: 'state', id: site.state }, `${machine} · ${short(site.state)} (${site.at})`)
-  const t = m && findState(m, site.state)?.transitions[site.at]
-  const label = t ? `${short(site.state)}: ${triggerSource(t.trigger)} → ${targetsText(t, short, '(stays)')}` : short(site.state)
+  const st = m ? findState(m, site.state) : null
+  const t = st?.transitions[site.at]
+  const label = st && t ? `${short(site.state)}: ${transitionSource(st, site.at)} → ${targetsText(t, short, '(stays)')}` : short(site.state)
   return gotoLink(machine, { type: 'transition', state: site.state, index: site.at }, `${machine} · ${label}`)
 }
 

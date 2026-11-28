@@ -315,7 +315,7 @@ A child or a task is addressed only from its invoking state and that state's des
 | Member | Meaning |
 | --- | --- |
 | `trigger` | What enables it. See below. |
-| `group` | The index, from 0, of the trigger block the transition was written in, among the blocks of its state. A single-line trigger is a block with one branch. The branches of one block are consecutive and share `group`; guards within a group are tried in order. |
+| `group` | The index, from 0, of the trigger block the transition was written in, among the blocks of its state. A single-line trigger is a block with one branch. The branches of one block are consecutive and share `group`; guards within a group are tried in order. The copies an [`on A | B`](#several-events) is lowered to share it too. |
 | `guard` | Boolean expression, or `null` for an unguarded branch (including `else`). |
 | `targets` | Ids of the target states, in the order written; a history state may be among them. `[]` for a transition with no target, which leaves and enters no state. A transition with no target and no effects is an `ignore`: it takes its event and does nothing. Only an `on` transition (`event`, `emitted`, `ended` or `any`) is ever one. With more than one, no target is another's ancestor or descendant, and any two have a parallel state as their nearest common ancestor (a history state counting as a child of its parent, or as the parallel state itself when its parent is one), so they are in different regions of it. |
 | `internal` | `true` for an internal transition (`-> .X`), whose domain is its own state, which it does not leave: every target is a proper descendant of that state, which is not the root. `false` for every other, a transition with no target among them ([a microstep](execution.md#a-microstep)). |
@@ -324,6 +324,12 @@ A child or a task is addressed only from its invoking state and that state's des
 | `span` | For a single-branch trigger, from the trigger keyword to the end of the branch. For a branch in a block, from its `if` or `else` to the end of the branch. |
 
 **Transitions are identified by position**: the id of the state they belong to and their index in its `transitions`. The trace's `transition` records name a transition this way, with `from` and `index`.
+
+### Several events
+
+`on A | B` (two or more of the machine's own events, never `*` or an emitted event) has no trigger of its own. It is lowered to one copy of its branches per event, in the order the events are written: every branch for `A`, then every branch for `B`. Each copy is an `event` trigger for its event, and the copies are otherwise alike: the copies of one branch have the same guard, targets, arguments, effects and `span`, and all of them have the block's `group`. A run takes them as it would separate `on A` and `on B` transitions, and a trace's `transition` record names the copy it took by its index.
+
+Among a state's transitions, only the copies of one branch of an `on A | B` share both `group` and `span`. A reader can therefore merge transitions with the same `group` and `span` back into one, triggered by every event among them: the viewer draws one edge labelled `A | B`, Mermaid export one arrow and SCXML export one `<transition event="A B">`. A branch of the block is an `else` when it is unguarded and its span is not that of the block's first transition.
 
 ### Triggers
 
@@ -443,7 +449,7 @@ A runtime checks the version before anything else and refuses an IR it does not 
 
 Version 0.14 adds the small language additions from the XState comparison (SM-30). Its new members are left out of the [machine hash](#the-machine-hash) when unused, and `tags` and `meta` always, so a machine that uses none of the new features has the hash it had in 0.13, and its saved snapshots still restore. The bullets below are filled in as each feature is built.
 
-- `on A | B` adds no trigger: it is lowered to one transition per event, in the order written, and only one `on A | B` gives transitions of a state the same `group` and `span`, so a reader can merge them back into one edge.
+- `on A | B` adds no trigger: it is lowered to one copy of its branches per event, in the order written, and only the copies of one of its branches share both `group` and `span` among a state's transitions, so a reader can merge them back into one edge ([several events](#several-events)). No member changes, so no hash does.
 - A [history state](#history-states) has `default`, the ids of the states it enters when it has no record; `[]` for none, and left out of the hash when `[]`.
 - The state kind `choice`: a pseudo-state whose transitions are all `always`, the last unguarded.
 - The [expression](#expressions) kind `in`, true when a state is active.

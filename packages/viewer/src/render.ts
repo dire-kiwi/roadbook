@@ -6,7 +6,7 @@ import type { Ir, State } from './ir.ts'
 import { own } from './ir.ts'
 import type { Layout, Point, Box } from './layout.ts'
 import { machineView, stateBox } from './layout.ts'
-import { METRICS, eventKey, estimateWidth, historyMark, historyText, isHistory, refMachine, targetEdgeId, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
+import { METRICS, eventKey, estimateWidth, historyMark, historyText, isCopy, isHistory, refMachine, targetEdgeId, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
 import type { EdgeKind, EventRef, Measure, Row } from './model.ts'
 import { DARK, DIAGRAM_CSS, FONTS, LIGHT } from './style.ts'
 
@@ -362,7 +362,8 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
       }
     }
     state.transitions.forEach((t, index) => {
-      if (!t.targets.length) return
+      // The copies of an `on A | B` are one edge, the first's.
+      if (!t.targets.length || isCopy(state, index)) return
       const id = transitionId(state.id, index)
       const kind = triggerKind(t.trigger)
       const inner = view.visible(state.id) !== state.id

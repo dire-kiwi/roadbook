@@ -1,0 +1,21 @@
+// `event` in `on A | B` has only the fields every listed event has, with the same type.
+machine M() {
+  var n: int    = 0
+  var s: string = ""
+  event Go { n: int, s: string }
+  event Stop { n: string }
+  event Pause { s: string }
+  initial A
+  state A {
+    on Go | Stop -> B  set s = event.s
+  }
+  state B {
+    on Go | Stop -> A  set n = event.n
+  }
+  state C {
+    on Go | Pause if event.s == "" -> A
+  }
+}
+
+// expect: RB0304 at 10:38
+// expect: RB0304 at 13:38

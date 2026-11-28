@@ -99,6 +99,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | `entry set ... ` / `entry do ...` | Run when the state is entered. |
 | `exit set ...` / `exit do ...` | Run when the state is left. |
 | `on Event ...` | Transition on one of the machine's own events: an external one, or one the machine [raises](#events-a-machine-raises). `on *` matches any of the machine's own events, internal ones included, that this state has no `on` for. |
+| `on A \| B ...` | One transition for several of the machine's own events (see [several events](#several-events)). |
 | `on name.Event ...` | Transition on an event emitted by the machine or task `name` addresses: an invoked child or task (`invoke … as name`), a `ref` parameter or variable, or any child of a `children` collection. |
 | `on name.done ...` / `on name.fail Err ...` | Transition when a spawned child of the collection `name` ends (see [many children](#many-children)). |
 | `on name.ended ...` | Transition when the run a `ref` parameter or variable `name` holds ends (see [when a peer ends](#when-a-peer-ends)). |
@@ -152,6 +153,20 @@ state Session {
 - In a state with a [`retry`](#retrying-an-invoke) the dot names nothing: such a state has no children of its own, and the states the retry writes out cannot be named.
 
 **Several targets** are written with commas, `-> Player.Playback.Paused, Player.Volume.Muted`: the transition enters the parallel state with each target in its region, and every other region by its `initial`. Any two of the targets must be in different regions of a parallel state, at any depth: two in one compound state, or one inside another, is an error (`RB0222`). The dot belongs to the transition, so either every target has it or none does (`RB0221`): `on Sleep -> .Playback.Paused, .Volume.Muted` written in `Player`.
+
+**Several events** share one transition when their names are joined with `|`, instead of an `on` for each with the same branches:
+
+```
+state Idle {
+  on Retry | Reconnect if attempts < 3 -> Connecting  set reason = event.reason
+  on Drop | Reset                      -> Offline
+}
+```
+
+- Only the machine's own events can be listed: not `*`, an event another machine or task emits (`on name.Event`), a call, or a child's `done`, `fail` or `ended` (`RB0010`). Each of those takes an `on` of its own.
+- Each event is still a trigger of its own. One listed twice, or also named by another `on` of the same state, is an error (`RB0205`), as `on A` written twice is, and the state's `on *` does not take it.
+- `event` has the fields every listed event has with the same type, aliases expanded: `event.reason` above is a `string` in `Retry` and in `Reconnect`. A field that one of them lacks, or has with another type, is an error (`RB0304`) that names the event or the two types. `event` used whole is an error (`RB0309`), as in `on *`. A field is sensitive if it is sensitive in any of the events.
+- It is taken as separate `on`s would be: the compiler writes one copy of its branches per event, in the order written ([the IR](../../spec/ir.md#several-events)), so the rules below apply to each event on its own, and a trace names the copy that was taken. The viewer, Mermaid and SCXML export draw the copies as one edge, labelled `Retry | Reconnect`.
 
 `entry`, `exit`, `on`, `after` and `always` may also be written directly in the machine body, where they apply to the whole machine.
 
@@ -261,7 +276,7 @@ Every expression has a type, and the compiler checks it wherever a value goes: a
 
 The implicit names have these types:
 
-- `event`, in `on E`, has type `E`, and `event.field` the type of the event's field; in `on name.E`, the event `E` that `name`'s machine or task emits. In `on *` it matches events of different types and cannot be used.
+- `event`, in `on E`, has type `E`, and `event.field` the type of the event's field; in `on name.E`, the event `E` that `name`'s machine or task emits. In `on *` it matches events of different types and cannot be used. In `on A | B` it is read only through the fields every listed event has with the same type ([several events](#several-events)).
 - `result`, in an invoke's `done`, has the return type of the task or machine. If it returns nothing, `result` cannot be used.
 - `error`, in an invoke's `fail E`, has type `E`. In `fail *` it has a type only if exactly one declared error is left for `*` to cover. For a call, `Unanswered` is among the errors `fail *` covers.
 - `event`, in `on name` for a call, is the call's arguments, read only through their fields: `event.items` has the type of the parameter `items`, and `event` alone is an error (`RB0309`). `call` has the type `call name`.
@@ -1102,7 +1117,7 @@ Both runtimes keep reading an unassigned variable as a runtime error (`unassigne
 The layout, as implemented in `roadbook-syntax`. The example files and the charts on these pages are written in it.
 
 - **Lines.** Two-space indentation, one item per line, and no line wrapping. A file with syntax errors is not formatted.
-- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses or the angle brackets of type arguments (`map<string, int>`, `type Page<T>`). A `retry` clause is written `retry 3 on A | B after delay`, one space between its parts. In a transition the target (several separated by `, `) and each `set`, `do`, `send`, `emit`, `reply`, `spawn` or `stop` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Every `set` comes first, then the other clauses in the order written; consecutive clauses of one kind are merged for `set` and `do`: `do f()  set a = 1  set b = 2` is written `set a = 1, b = 2  do f()`. Each `send`, `emit`, `reply`, `spawn` and `stop` is a clause of its own, and an empty body is dropped: `send upload.Pause {}` is written `send upload.Pause`. No space goes inside the brackets of a key: `sessions[event.id]`, `sessions.*`.
+- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses or the angle brackets of type arguments (`map<string, int>`, `type Page<T>`). A `retry` clause is written `retry 3 on A | B after delay`, one space between its parts, and the events of a trigger `on A | B`. In a transition the target (several separated by `, `) and each `set`, `do`, `send`, `emit`, `reply`, `spawn` or `stop` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Every `set` comes first, then the other clauses in the order written; consecutive clauses of one kind are merged for `set` and `do`: `do f()  set a = 1  set b = 2` is written `set a = 1, b = 2  do f()`. Each `send`, `emit`, `reply`, `spawn` and `stop` is a clause of its own, and an empty body is dropped: `send upload.Pause {}` is written `send upload.Pause`. No space goes inside the brackets of a key: `sessions[event.id]`, `sessions.*`.
 - **Blank lines** between items are kept, at most one. There are none at the start or end of a block or file.
 - **Lists.** No trailing commas. A list in a declaration (import names, fields, enum variants, parameters) with a line break right after its opening bracket stays multi-line: its elements are indented one level, keep the author's line breaks between them, and the closing bracket goes on its own line. Every other list is printed on one line.
 - **Tasks that emit.** A task with exactly one `emits` clause keeps it on the line of its signature, `task ticks(every: duration) emits Tick`, unless the clause has a doc comment, which must stay right above it. A task with several writes each on a line of its own, indented two spaces, under the signature, aligned as `emits` lines are. There is no rule by width. An `invoke` with no outcomes is written with no braces: `invoke ticks(1s) as clock`.
@@ -1187,7 +1202,7 @@ The compiler's codes:
 | `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }`, `machine M() { initial A }` |
 | `RB0203` | An `initial` that is not a child state, is written twice, or is in a state without children. | `initial Strat`, `initial Previous` for `history Previous` |
 | `RB0204` | An `invoke` that leaves a declared error unhandled, or for a call `Unanswered`. | see above |
-| `RB0205` | The same trigger twice in one state or one `invoke`. | `on Go -> A` and `on Go -> B` |
+| `RB0205` | The same trigger twice in one state or one `invoke`, an event of an `on A \| B` among them, or an event listed twice in one. | `on Go -> A` and `on Go -> B`, `on Go \| Go -> A` |
 | `RB0206` | An `invoke` without `as` in a state with several invokes. | `state A { invoke f() as a  invoke g() }` |
 | `RB0207` | An outcome, or a retry, for an error the task, machine or call does not declare (a call's `Unanswered` cannot be retried). | `fail Timeout -> A`, `retry 3 on Timeout` |
 | `RB0208` | `output` or `fail` outside a top-level final state, or two of them. | `state A { output 1 }` |
@@ -1211,12 +1226,12 @@ The compiler's codes:
 | `RB0301` | A value of the wrong type. | `var ratio: float = 1` |
 | `RB0302` | The wrong number of arguments. | `retryDelay(1, 2)` |
 | `RB0303` | An operator on operands it is not defined on, or `==` on a type with a part that cannot be compared. | `attempts + 1.5`, `payload == other` for a `json` |
-| `RB0304` | A field the record, error or event does not have. | `order.idd` |
+| `RB0304` | A field the record, error or event does not have; in `on A \| B`, a field one of the events lacks or has with another type. | `order.idd` |
 | `RB0305` | A record or error value without one of its fields. | `CardDeclined {}` |
 | `RB0306` | A field read from a value that has none, or that is optional. | `attempts.size`, `draft.coupon.code`, `event.x` in `on Cancel` where `event Cancel` has no fields |
 | `RB0307` | `result` after a task or machine that returns nothing. | `done set n = result` |
 | `RB0308` | `error` in a `fail *` that covers several errors, or none. | `fail * set why = error.reason` |
-| `RB0309` | `event` in `on *`, or used whole in an `on name` that takes a call or an `on name.ended`. | `on * do log(event)`, `on reserve do log(event)`, `on peer.ended do log(event)` |
+| `RB0309` | `event` in `on *`, or used whole in an `on A \| B`, an `on name` that takes a call or an `on name.ended`. | `on * do log(event)`, `on Go \| Stop do log(event)`, `on reserve do log(event)`, `on peer.ended do log(event)` |
 | `RB0310` | `output` in a machine that returns nothing. | `machine M() { … output 1 }` |
 | `RB0311` | A `fail` value that is not a declared error of the machine. | `fail "late"` |
 | `RB0312` | An `int` or `duration` literal beyond ±(2^53 − 1). | `9007199254740992` |
@@ -1383,7 +1398,7 @@ Rules the grammar does not express:
 - Nesting is at most 64 levels deep, counting states, parentheses, operators (each `+` in `a + b + c` is a level), field reads and type suffixes (`[]`, `?`), so every tool that walks the tree stays within its stack.
 - A final state holds only `entry`, `exit`, `output`, `fail` and variables.
 - A target's arguments follow the state's name directly; the `(` after a target's name always starts them, since effects start with a keyword.
-- `ignore` is an action only in an `on` transition (`on Event`, `on *`, `on name.Event`).
+- `ignore` is an action only in an `on` transition (`on Event`, `on A | B`, `on *`, `on name.Event`).
 - Declaration names are unique among the files compiled together: an entry file and everything it imports, directly or not, because the IR is keyed by name. Two charts that do not import one another may use the same names. A file can use only what it declares or imports. An event cannot have the name of a type, error or machine either, because the IR names the type of `event` in `on Name` by the event's name.
 
 Common mistakes, each reported by the compiler but easy to make:

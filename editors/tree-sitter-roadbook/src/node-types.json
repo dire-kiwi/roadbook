@@ -1422,7 +1422,7 @@
     "named": true,
     "fields": {
       "event": {
-        "multiple": false,
+        "multiple": true,
         "required": true,
         "types": [
           {

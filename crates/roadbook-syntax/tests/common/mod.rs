@@ -87,6 +87,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  state A {\n    on Go -> B(1, event.code).C  set n = 1\n    on Back -> .Inner(n), D(\"x\")\n    state Inner(n: int) {}\n  }\n  /// Takes a token.\n  state B(n: int, sensitive code: string) {\n    /// Counts.\n    var tries: int = n\n    sensitive var secret: string\n    on Go -> B(n + 1)\n    initial C\n    state C {}\n  }\n  parallel state P(x: int) {}\n  final state F(reason: string) { output reason }\n}\n",
     ),
     (
+        "or_events",
+        "machine M() {\n  event A\n  event B\n  event C { reason: string }\n  on A | B -> S\n  state S {\n    on B | C | A if n < 3 -> S  set r = event.reason\n    on A|C {\n      if ok -> S\n      else ignore\n    }\n  }\n}\n",
+    ),
+    (
         "ended",
         "machine M(peer: ref Peer) {\n  var ended: int = 0\n  on peer.ended if event.status == Ended.Defect -> A\n  state A {\n    on peer.ended {\n      if event.status == Ended.Done -> A  set ended = ended + 1\n      else -> A\n    }\n  }\n}\n",
     ),

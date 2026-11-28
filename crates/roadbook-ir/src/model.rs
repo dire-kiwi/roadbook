@@ -609,6 +609,34 @@ impl State {
     pub fn has_several_invokes(&self) -> bool {
         self.invokes.len() > 1
     }
+
+    /// The transitions that transition `index` stands for when they are drawn as one: itself
+    /// and the later copies of its branch of an `on A | B`, those with its `group` and `span`.
+    /// Empty if `index` is itself a later copy, drawn with the first.
+    pub fn copies(&self, index: usize) -> Vec<usize> {
+        let t = &self.transitions[index];
+        let same = |o: &Transition| o.group == t.group && o.span == t.span;
+        if self.transitions[..index].iter().any(same) {
+            return Vec::new();
+        }
+        let later = self.transitions[index..].iter().enumerate();
+        later
+            .filter(|(_, o)| same(o))
+            .map(|(k, _)| index + k)
+            .collect()
+    }
+
+    /// Whether transition `index` is the `else` of its block: unguarded, and not the block's
+    /// first branch, whose span the first transition of its group has.
+    pub fn is_else(&self, index: usize) -> bool {
+        let t = &self.transitions[index];
+        t.guard.is_none()
+            && self
+                .transitions
+                .iter()
+                .find(|o| o.group == t.group)
+                .is_some_and(|first| first.span != t.span)
+    }
 }
 
 /// Whether an invoke runs a task or a machine, or calls a peer.

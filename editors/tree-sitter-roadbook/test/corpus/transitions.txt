@@ -513,3 +513,64 @@ machine M() {
               (type_identifier)
               (type_identifier)
               (type_identifier))))))))
+
+================================================================================
+Several events in one trigger
+================================================================================
+
+machine M() {
+  on Reset | Drop -> A
+  state A {
+    on Retry | Reconnect | Resume if attempts < 3 -> A  set reason = event.reason
+    on Drop|Reset {
+      if quiet ignore
+      else -> A
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (on_transition
+        (event_pattern
+          (type_identifier)
+          (type_identifier))
+        (target
+          (type_identifier)))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier)
+              (type_identifier)
+              (type_identifier))
+            (guard
+              (binary_expression
+                (identifier)
+                (integer)))
+            (target
+              (type_identifier))
+            (set
+              (assignment
+                (identifier)
+                (field_expression
+                  (implicit_name)
+                  (identifier)))))
+          (on_transition
+            (event_pattern
+              (type_identifier)
+              (type_identifier))
+            (branches
+              (branch
+                (guard
+                  (identifier))
+                (ignore))
+              (else_branch
+                (target
+                  (type_identifier))))))))))

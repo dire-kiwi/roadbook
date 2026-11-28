@@ -2008,3 +2008,68 @@ fn state_parameters_and_state_variables() {
     assert_eq!(confirming["children"][0]["detail"], "Token");
     c.shutdown();
 }
+
+const OR_EVENTS: &str = "machine Link() {
+  var reason: string = \"\"
+  event Retry { reason: string }
+  event Reconnect { reason: string, at: int }
+  initial Idle
+  state Idle {
+    on Retry | Reconnect -> Busy  set reason = event.reason
+  }
+  state Busy {
+    on Retry -> Idle
+    on Reconnect -> Idle  set reason = event.reason
+  }
+}
+";
+
+#[test]
+fn several_events_in_one_on() {
+    let p = Project::new("or-events", &[("c.road", OR_EVENTS)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, OR_EVENTS);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // Each event of an `on A | B` goes to its declaration, and so does a field of `event` they
+    // share, to the first event's.
+    let definitions = [
+        ("on ^Retry | Reconnect", "event ^Retry"),
+        ("on Retry | ^Reconnect", "event ^Reconnect"),
+        ("Busy  set reason = event.^reason", "Retry { ^reason"),
+    ];
+    for (from, to) in definitions {
+        let loc = c
+            .request("textDocument/definition", at(&uri, OR_EVENTS, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(OR_EVENTS, to),
+            "{from} -> {to}"
+        );
+    }
+    // The references of an event and of a field include the ones in `on A | B`.
+    let refs = |c: &mut Client, needle: &str| {
+        let mut params = at(&uri, OR_EVENTS, needle);
+        params["context"] = json!({ "includeDeclaration": false });
+        let found = c.request("textDocument/references", params).unwrap();
+        let mut lines: Vec<u64> = found
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|l| l["range"]["start"]["line"].as_u64().unwrap() + 1)
+            .collect();
+        lines.sort();
+        lines
+    };
+    assert_eq!(refs(&mut c, "event ^Reconnect"), [7, 11]);
+    assert_eq!(refs(&mut c, "Reconnect { ^reason"), [7, 11]);
+    assert_eq!(refs(&mut c, "Retry { ^reason"), [7]);
+
+    // Renaming an event renames it in the `on A | B` too.
+    let text = rename(&mut c, &uri, OR_EVENTS, "event ^Reconnect", "Resume");
+    assert!(text.contains("on Retry | Resume -> Busy"), "{text}");
+    assert!(text.contains("on Resume -> Idle"), "{text}");
+    c.shutdown();
+}

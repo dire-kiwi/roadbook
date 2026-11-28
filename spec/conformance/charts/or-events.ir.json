@@ -1,0 +1,694 @@
+{
+  "irVersion": "0.14",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/or-events.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "reason",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 27
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Link": {
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 27,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "attempts",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 24
+          }
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 28
+          }
+        }
+      ],
+      "events": {
+        "Retry": {
+          "fields": [
+            {
+              "name": "reason",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            },
+            {
+              "name": "attempts",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 52
+          }
+        },
+        "Reconnect": {
+          "fields": [
+            {
+              "name": "reason",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 37
+          }
+        },
+        "Drop": {
+          "fields": [
+            {
+              "name": "reason",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 37
+          }
+        },
+        "Reset": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 14
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Link",
+        "name": "Link",
+        "kind": "compound",
+        "doc": "",
+        "span": {
+          "file": 0,
+          "line": 9,
+          "col": 1,
+          "endLine": 27,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Link.Idle",
+        "states": [
+          {
+            "id": "Link.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 19,
+              "col": 3,
+              "endLine": 19,
+              "endCol": 120
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Retry"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "<",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "attempts"
+                      ],
+                      "state": null,
+                      "type": "int",
+                      "text": "attempts"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 2,
+                      "type": "int",
+                      "text": "2"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "attempts < 2"
+                },
+                "targets": [
+                  "Link.Connecting"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "reason",
+                    "state": null,
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "reason"
+                      ],
+                      "state": null,
+                      "type": "string",
+                      "text": "event.reason"
+                    }
+                  },
+                  {
+                    "kind": "set",
+                    "var": "attempts",
+                    "state": null,
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "attempts"
+                          ],
+                          "state": null,
+                          "type": "int",
+                          "text": "attempts"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "attempts + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 19,
+                  "col": 16,
+                  "endLine": 19,
+                  "endCol": 118
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Reconnect"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "<",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "attempts"
+                      ],
+                      "state": null,
+                      "type": "int",
+                      "text": "attempts"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 2,
+                      "type": "int",
+                      "text": "2"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "attempts < 2"
+                },
+                "targets": [
+                  "Link.Connecting"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "reason",
+                    "state": null,
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "reason"
+                      ],
+                      "state": null,
+                      "type": "string",
+                      "text": "event.reason"
+                    }
+                  },
+                  {
+                    "kind": "set",
+                    "var": "attempts",
+                    "state": null,
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "attempts"
+                          ],
+                          "state": null,
+                          "type": "int",
+                          "text": "attempts"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "attempts + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 19,
+                  "col": 16,
+                  "endLine": 19,
+                  "endCol": 118
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Link.Connecting",
+            "name": "Connecting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 20,
+              "col": 3,
+              "endLine": 26,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Drop"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "reason"
+                      ],
+                      "state": null,
+                      "type": "string",
+                      "text": "event.reason"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": "",
+                      "type": "string",
+                      "text": "\"\""
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.reason == \"\""
+                },
+                "targets": [
+                  "Link.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 7,
+                  "endLine": 22,
+                  "endCol": 36
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Drop"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Link.Connecting"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "reason",
+                    "state": null,
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "reason"
+                      ],
+                      "state": null,
+                      "type": "string",
+                      "text": "event.reason"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "reason"
+                        ],
+                        "state": null,
+                        "type": "string",
+                        "text": "event.reason"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 7,
+                  "endLine": 23,
+                  "endCol": 91
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Retry"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "reason"
+                      ],
+                      "state": null,
+                      "type": "string",
+                      "text": "event.reason"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": "",
+                      "type": "string",
+                      "text": "\"\""
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.reason == \"\""
+                },
+                "targets": [
+                  "Link.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 7,
+                  "endLine": 22,
+                  "endCol": 36
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Retry"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Link.Connecting"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "reason",
+                    "state": null,
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "reason"
+                      ],
+                      "state": null,
+                      "type": "string",
+                      "text": "event.reason"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "reason"
+                        ],
+                        "state": null,
+                        "type": "string",
+                        "text": "event.reason"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 7,
+                  "endLine": 23,
+                  "endCol": 91
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Reconnect"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Link.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 5,
+                  "endLine": 25,
+                  "endCol": 36
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Reset"
+            },
+            "group": 0,
+            "guard": null,
+            "targets": [
+              "Link.Idle"
+            ],
+            "internal": false,
+            "args": [],
+            "effects": [
+              {
+                "kind": "set",
+                "var": "attempts",
+                "state": null,
+                "value": {
+                  "kind": "lit",
+                  "value": 0,
+                  "type": "int",
+                  "text": "0"
+                }
+              }
+            ],
+            "span": {
+              "file": 0,
+              "line": 18,
+              "col": 3,
+              "endLine": 18,
+              "endCol": 44
+            }
+          },
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Drop"
+            },
+            "group": 0,
+            "guard": null,
+            "targets": [
+              "Link.Idle"
+            ],
+            "internal": false,
+            "args": [],
+            "effects": [
+              {
+                "kind": "set",
+                "var": "attempts",
+                "state": null,
+                "value": {
+                  "kind": "lit",
+                  "value": 0,
+                  "type": "int",
+                  "text": "0"
+                }
+              }
+            ],
+            "span": {
+              "file": 0,
+              "line": 18,
+              "col": 3,
+              "endLine": 18,
+              "endCol": 44
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:a3f6b9233e0c969e42925673e1a3f8509c5d54dd0e21a9fc0ff1886f44caf786"
+    }
+  }
+}

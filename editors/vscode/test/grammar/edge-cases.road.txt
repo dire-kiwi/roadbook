@@ -136,3 +136,11 @@ machine Locals() {
     reason: string,
   ) { output reason }
 }
+
+// One transition for several events.
+machine Several() {
+  on Reset | Drop -> A
+  state A {
+    on Retry|Reconnect if attempts < 3 -> A  set reason = event.reason
+  }
+}

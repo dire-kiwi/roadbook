@@ -164,6 +164,9 @@ pub(crate) enum Implicit {
     /// `event` in `on name.ended`: read only through its field `status`, of the built-in enum
     /// `Ended`.
     Ended,
+    /// `event` in `on A | B`: one of these events of the machine's own, read only through the
+    /// fields they all have.
+    OneOf(Vec<String>),
 }
 
 #[derive(Clone, Debug)]
@@ -727,6 +730,10 @@ fn trigger_key(t: &Trigger) -> String {
     };
     match t {
         Trigger::On(p) => format!("on {}", pattern(p)),
+        Trigger::OneOf(names) => {
+            let names: Vec<&str> = names.iter().map(|n| n.name.as_str()).collect();
+            format!("on {}", names.join(" | "))
+        }
         Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
         Trigger::Call(n) => format!("on {}", n.name),
         Trigger::ChildDone { from } => format!("on {}.done", from.name),
@@ -2214,6 +2221,7 @@ impl<'p> Cx<'_, 'p> {
                 Item::Transition(t) => {
                     self.duplicate_trigger(&mut keys, t, &id, "");
                     let (trigger, scope) = self.state_trigger(idx, &t.trigger);
+                    let first = transitions.len();
                     self.branches(
                         idx,
                         t,
@@ -2223,6 +2231,24 @@ impl<'p> Cx<'_, 'p> {
                         &mut transitions,
                         &mut triggers,
                     );
+                    if let Trigger::OneOf(names) = &t.trigger {
+                        // One copy of the branches per other event, sharing their group and
+                        // spans: checked once, taken as if written as separate `on`s.
+                        let count = transitions.len() - first;
+                        let reads = self.transition_reads.len() - count;
+                        for n in &names[1..] {
+                            for k in 0..count {
+                                let mut copy = transitions[first + k].clone();
+                                copy.trigger = ir::Trigger::Event {
+                                    event: n.name.clone(),
+                                };
+                                transitions.push(copy);
+                                triggers.push(triggers[first + k]);
+                                let r = self.transition_reads[reads + k].clone();
+                                self.transition_reads.push(r);
+                            }
+                        }
+                    }
                     group += 1;
                 }
                 Item::Invoke(inv) => {
@@ -2624,7 +2650,37 @@ impl<'p> Cx<'_, 'p> {
         owner: &str,
         prefix: &str,
     ) {
+        if let Trigger::OneOf(names) = &t.trigger {
+            // Each event is a trigger of its own: `on A | B` and `on B` both handle `B`.
+            for (i, n) in names.iter().enumerate() {
+                if names[..i].iter().any(|m| m.name == n.name) {
+                    let all = trigger_key(&t.trigger);
+                    self.ck.diags.push(
+                        Diagnostic::error(
+                            codes::DUPLICATE_TRIGGER,
+                            n.span,
+                            format!("event `{}` is listed twice in `{all}`", n.name),
+                        )
+                        .with_help("list each event once"),
+                    );
+                    continue;
+                }
+                self.duplicate_key(keys, format!("on {}", n.name), n.span, owner, prefix);
+            }
+            return;
+        }
         let key = trigger_key(&t.trigger);
+        self.duplicate_key(keys, key, t.trigger_span, owner, prefix);
+    }
+
+    fn duplicate_key(
+        &mut self,
+        keys: &mut HashMap<String, Span>,
+        key: String,
+        span: Span,
+        owner: &str,
+        prefix: &str,
+    ) {
         if let Some(first) = keys.get(&key) {
             let what = if prefix.is_empty() {
                 format!("trigger `{key}` is written twice in `{owner}`")
@@ -2632,15 +2688,55 @@ impl<'p> Cx<'_, 'p> {
                 format!("outcome `{key}` is written twice in {prefix}")
             };
             self.ck.diags.push(
-                Diagnostic::error(codes::DUPLICATE_TRIGGER, t.trigger_span, what)
+                Diagnostic::error(codes::DUPLICATE_TRIGGER, span, what)
                     .with_secondary(*first, "first written here")
                     .with_help(format!(
                         "put every branch in one block, where their order is explicit: `{key} {{ if … -> A  else -> B }}`"
                     )),
             );
         } else {
-            keys.insert(key, t.trigger_span);
+            keys.insert(key, span);
         }
+    }
+
+    /// Records a use of `n`, one of the machine's own events in an `on`, for references and
+    /// the unused-event warning; reports it if the machine does not declare it.
+    fn own_event(&mut self, n: &Ident) -> bool {
+        self.ck.refer_member(self.file, self.symbol, n);
+        if self.events.contains_key(&n.name) {
+            self.info.used_events.insert(n.name.clone());
+            return true;
+        }
+        let declared: Vec<String> = self
+            .info
+            .events
+            .iter()
+            .map(|(e, _)| format!("`{e}`"))
+            .collect();
+        let mut d = Diagnostic::error(
+            codes::UNKNOWN_EVENT,
+            n.span,
+            format!("unknown event `{}`", n.name),
+        )
+        .with_label(if declared.is_empty() {
+            format!("`{}` declares no events", self.machine)
+        } else {
+            format!("`{}` declares {}", self.machine, declared.join(", "))
+        });
+        if let Some(s) = suggest(&n.name, self.info.events.iter().map(|(e, _)| e.as_str())) {
+            d = d.with_help(format!("did you mean `{s}`?")).with_fix(
+                format!("replace with `{s}`"),
+                n.span,
+                s,
+            );
+        } else {
+            d = d.with_help(format!(
+                "declare it in the machine body: `event {}`",
+                n.name
+            ));
+        }
+        self.ck.diags.push(d);
+        false
     }
 
     /// The IR trigger and the implicit names in scope for an `on`, `after`, `always` or `done`
@@ -2701,46 +2797,28 @@ impl<'p> Cx<'_, 'p> {
                 }
             }
             Trigger::On(Pattern::Name(n)) => {
-                self.ck.refer_member(self.file, self.symbol, n);
-                if self.events.contains_key(&n.name) {
-                    self.info.used_events.insert(n.name.clone());
-                    scope.event = Implicit::Has(Ty::Event(n.name.clone()));
+                scope.event = if self.own_event(n) {
+                    Implicit::Has(Ty::Event(n.name.clone()))
                 } else {
-                    let declared: Vec<String> = self
-                        .info
-                        .events
-                        .iter()
-                        .map(|(e, _)| format!("`{e}`"))
-                        .collect();
-                    let mut d = Diagnostic::error(
-                        codes::UNKNOWN_EVENT,
-                        n.span,
-                        format!("unknown event `{}`", n.name),
-                    )
-                    .with_label(if declared.is_empty() {
-                        format!("`{}` declares no events", self.machine)
-                    } else {
-                        format!("`{}` declares {}", self.machine, declared.join(", "))
-                    });
-                    if let Some(s) =
-                        suggest(&n.name, self.info.events.iter().map(|(e, _)| e.as_str()))
-                    {
-                        d = d.with_help(format!("did you mean `{s}`?")).with_fix(
-                            format!("replace with `{s}`"),
-                            n.span,
-                            s,
-                        );
-                    } else {
-                        d = d.with_help(format!(
-                            "declare it in the machine body: `event {}`",
-                            n.name
-                        ));
-                    }
-                    self.ck.diags.push(d);
-                    scope.event = Implicit::Has(Ty::Unknown);
-                }
+                    Implicit::Has(Ty::Unknown)
+                };
                 ir::Trigger::Event {
                     event: n.name.clone(),
+                }
+            }
+            Trigger::OneOf(names) => {
+                let mut known = true;
+                for n in names {
+                    known &= self.own_event(n);
+                }
+                scope.event = if known {
+                    Implicit::OneOf(names.iter().map(|n| n.name.clone()).collect())
+                } else {
+                    Implicit::Has(Ty::Unknown)
+                };
+                // The first event's: the caller copies the transition for each other one.
+                ir::Trigger::Event {
+                    event: names[0].name.clone(),
                 }
             }
             Trigger::Ended { from } => {

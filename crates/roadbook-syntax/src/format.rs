@@ -893,6 +893,10 @@ fn trigger(t: &Trigger) -> String {
     };
     match t {
         Trigger::On(p) => format!("on {}", pattern(p)),
+        Trigger::OneOf(names) => {
+            let names: Vec<&str> = names.iter().map(|n| n.name.as_str()).collect();
+            format!("on {}", names.join(" | "))
+        }
         Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
         Trigger::Call(n) => format!("on {}", n.name),
         Trigger::ChildDone { from } => format!("on {}.done", from.name),

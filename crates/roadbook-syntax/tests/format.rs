@@ -36,6 +36,11 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  state B(\n    a: int,\n    b: string,\n  ) {\n    on Go -> B(1, \"x\")\n  }\n}\n",
         "machine M() {\n  state B(\n    a: int,\n    b: string\n  ) {\n    on Go -> B(1, \"x\")\n  }\n}\n",
     ),
+    // The events of an `on A | B` are joined by ` | `.
+    (
+        "machine M() {\n  on A|B  |C -> S\n  state S { on  B |A ignore }\n}\n",
+        "machine M() {\n  on A | B | C -> S\n  state S { on B | A ignore }\n}\n",
+    ),
     // `sensitive` comes first, on fields, parameters and variables.
     (
         "type T {sensitive   a:int,b:int}\nmachine M( sensitive  k :string) {\n  sensitive   var t:int=1\n  var u: int\n}\n",

@@ -134,6 +134,8 @@ describe('scopes', () => {
     expect(await scopesAt(line, 'Charging')).toContain('entity.name.type.state.roadbook')
     expect(await scopesAt('on upload.Progress -> A', 'Progress')).toContain('entity.name.type.event.roadbook')
     expect(await scopesAt('on upload.Progress -> A', 'upload')).toContain('variable.other.roadbook')
+    expect(await scopesAt('on Retry | Reconnect -> A', 'Reconnect')).toContain('entity.name.type.event.roadbook')
+    expect(await scopesAt('on Retry | Reconnect -> A', '|')).toContain('keyword.operator.event.roadbook')
   })
 
   it('marks a peer’s end, and ended as a name elsewhere', async () => {

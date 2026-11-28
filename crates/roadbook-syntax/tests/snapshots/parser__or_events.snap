@@ -1,0 +1,90 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          strict: false
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - event:
+                name: A
+                fields: []
+            - event:
+                name: B
+                fields: []
+            - event:
+                name: C
+                fields:
+                  - name: reason
+                    ty:
+                      builtin: string
+            - transition:
+                trigger:
+                  oneOf:
+                    - A
+                    - B
+                branches:
+                  single:
+                    guard: ~
+                    targets:
+                      - dot: false
+                        path:
+                          - S
+                    effects: []
+                    ignore: false
+            - state:
+                kind: normal
+                name: S
+                body:
+                  - transition:
+                      trigger:
+                        oneOf:
+                          - B
+                          - C
+                          - A
+                      branches:
+                        single:
+                          guard:
+                            binary:
+                              - "<"
+                              - var: n
+                              - int: 3
+                          targets:
+                            - dot: false
+                              path:
+                                - S
+                          effects:
+                            - set:
+                                var: r
+                                value:
+                                  field:
+                                    - var: event
+                                    - reason
+                          ignore: false
+                  - transition:
+                      trigger:
+                        oneOf:
+                          - A
+                          - C
+                      branches:
+                        block:
+                          branches:
+                            - guard:
+                                var: ok
+                              targets:
+                                - dot: false
+                                  path:
+                                    - S
+                              effects: []
+                              ignore: false
+                            - guard: ~
+                              targets: []
+                              effects: []
+                              ignore: true
+comments: []

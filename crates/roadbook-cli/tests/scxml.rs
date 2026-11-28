@@ -223,6 +223,20 @@ fn export_scxml_snapshots_state_locals() {
     insta::assert_snapshot!("locals_reset_scxml", xml);
 }
 
+/// The copies an `on A | B` is lowered to are one `<transition>` whose `event` lists each.
+#[test]
+fn export_scxml_merges_or_events() {
+    let chart = "spec/conformance/charts/or-events.road";
+    let out = roadbook(&repo(), &["export", "scxml", chart]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let xml = text(&out.stdout);
+    roxmltree::Document::parse(&xml).unwrap();
+    assert_eq!(xml.matches("event=\"Retry Reconnect\"").count(), 1, "{xml}");
+    assert_eq!(xml.matches("event=\"Drop Retry\"").count(), 2, "{xml}");
+    assert_eq!(xml.matches("event=\"Reset Drop\"").count(), 1, "{xml}");
+    insta::assert_snapshot!("or_events_scxml", xml);
+}
+
 /// History states are `<history type="shallow|deep">` in their parent, with the default
 /// transition SCXML requires: the parent's default entry, its `initial` or every region.
 #[test]

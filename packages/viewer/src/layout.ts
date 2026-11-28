@@ -5,7 +5,7 @@
 import type { ElkExtendedEdge, ElkNode, LayoutOptions as ElkOptions } from 'elkjs/lib/elk-api.js'
 import type { Machine, State, Ir } from './ir.ts'
 import { own } from './ir.ts'
-import { METRICS, ancestorIds, descendantCount, estimateWidth, isHistory, rootIsVisible, stateRows, targetEdgeId, transitionId, transitionLines, walkStates } from './model.ts'
+import { METRICS, ancestorIds, descendantCount, estimateWidth, isCopy, isHistory, rootIsVisible, stateRows, targetEdgeId, transitionId, transitionLines, walkStates } from './model.ts'
 import type { Measure, Row, LabelLine } from './model.ts'
 
 /** What `layoutMachine` needs of elkjs. */
@@ -254,9 +254,10 @@ export function buildElkGraph(ir: Ir, machineName: string, opts: LayoutOptions =
   }
 
   // Every transition with a target, from the box that stands for its source to the one for each
-  // of its targets: the first arrow carries the label, the others none.
+  // of its targets: the first arrow carries the label, the others none. The copies of an
+  // `on A | B` are one transition, drawn as the first.
   walkStates(machine.root, (state) => {
-    state.transitions.forEach((t, index) => t.targets.forEach((target, k) => {
+    state.transitions.forEach((t, index) => !isCopy(state, index) && t.targets.forEach((target, k) => {
       const src = view.visible(state.id)
       const tgt = view.visible(target)
       if (!drawn.has(src) || !drawn.has(tgt)) return

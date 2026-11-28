@@ -1150,10 +1150,23 @@ impl Parser<'_> {
                 } else if self.at(T::Lower) {
                     Trigger::Call(self.bump_ident())
                 } else {
-                    Trigger::On(
-                        self.pattern("an event name, `*`, `name.Event` or the name of a call")?,
-                    )
+                    match self.pattern("an event name, `*`, `name.Event` or the name of a call")? {
+                        Pattern::Name(first) if self.at_p(P::Pipe) => {
+                            let mut names = vec![first];
+                            while self.eat_p(P::Pipe).is_some() {
+                                if !self.at(T::Upper) {
+                                    return Err(self.or_scope());
+                                }
+                                names.push(self.bump_ident());
+                            }
+                            Trigger::OneOf(names)
+                        }
+                        p => Trigger::On(p),
+                    }
                 };
+                if self.at_p(P::Pipe) {
+                    return Err(self.or_scope());
+                }
                 Item::Transition(self.transition(t.span, trigger)?)
             }
             K::After => {
@@ -1515,6 +1528,25 @@ impl Parser<'_> {
         })
     }
 
+    /// A `|` in an `on` trigger next to something other than one of the machine's events:
+    /// `on A | *`, `on * | A`, `on up.Progress | A`, `on A | reserve`. Reported at what follows
+    /// the `|` in a list of events, else at the `|`.
+    fn or_scope(&mut self) -> Fail {
+        let msg = if self.at_p(P::Pipe) {
+            "`|` joins only the machine's own events, as in `on A | B`".to_string()
+        } else {
+            format!(
+                "expected the name of one of the machine's events after `|`, found {}",
+                self.found()
+            )
+        };
+        let d = Diagnostic::error(codes::UNEXPECTED_TOKEN, self.tok().span, msg).with_help(
+            "`on *`, an event another machine or task emits (`on name.Event`), a call, and a child's `done`, `fail` or `ended` each take an `on` of their own",
+        );
+        self.error(d);
+        Fail
+    }
+
     fn pattern(&mut self, what: &str) -> PResult<Pattern> {
         match self.eat_p(P::Star) {
             Some(t) => Ok(Pattern::Any { span: t.span }),
@@ -1543,7 +1575,7 @@ impl Parser<'_> {
         let trigger_span = self.since(start);
         let ignore = matches!(
             trigger,
-            Trigger::On(_) | Trigger::Receive { .. } | Trigger::Ended { .. }
+            Trigger::On(_) | Trigger::OneOf(_) | Trigger::Receive { .. } | Trigger::Ended { .. }
         );
         let branches = self.branches(trigger_span, ignore)?;
         Ok(Transition {

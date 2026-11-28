@@ -633,6 +633,8 @@ pub struct Transition {
 pub enum Trigger {
     /// `on Event` or `on *`
     On(Pattern),
+    /// `on A | B`: two or more of the machine's own events, in the order written.
+    OneOf(Vec<Ident>),
     /// `on name.Event`: an event emitted by an invoked child, a `ref` or a spawned child.
     Receive {
         from: Ident,

@@ -216,3 +216,91 @@ fn ended_brings_the_builtin_enum_and_only_the_peers_interface() {
         serde_json::json!({ "kind": "enum", "variants": roadbook_ir::ENDED_VARIANTS })
     );
 }
+
+/// The `.road` files under `dir`, at any depth, sorted.
+fn road_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in entries {
+        let p = e.unwrap().path();
+        if p.is_dir() && !p.ends_with("node_modules") {
+            road_files(&p, out);
+        } else if p.extension().is_some_and(|x| x == "road") {
+            out.push(p);
+        }
+    }
+}
+
+/// What spec/ir.md guarantees the viewer and the exporters, which merge the copies back
+/// into one edge: in every chart of the repository, transitions of a state share their group
+/// and span only as the copies of one `on A | B`, each for a different event of the
+/// machine's own, and the copies of each branch are alike but for their trigger.
+#[test]
+fn only_or_events_give_transitions_the_same_group_and_span() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut files = Vec::new();
+    for dir in [
+        "examples",
+        "spec/conformance",
+        "packages/viewer/test/charts",
+        "packages/effect/test/charts",
+        "crates/roadbook/tests/charts",
+        "crates/roadbook-compiler/tests/pass",
+        "crates/roadbook-compiler/tests/fail",
+    ] {
+        road_files(&root.join(dir), &mut files);
+    }
+    files.sort();
+    let (mut machines, mut merged) = (0, 0);
+    for f in &files {
+        let rel = f
+            .strip_prefix(&root)
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/");
+        let mut loader = FsLoader::new(&root);
+        let Ok(out) = compile(&mut loader, &rel, &Options::default()) else {
+            continue;
+        };
+        let Some(ir) = out.ir else {
+            continue;
+        };
+        for (name, m) in &ir.machines {
+            machines += 1;
+            let mut stack = vec![&m.root];
+            while let Some(s) = stack.pop() {
+                stack.extend(&s.states);
+                for (i, t) in s.transitions.iter().enumerate() {
+                    for u in &s.transitions[..i] {
+                        if u.group != t.group || u.span != t.span {
+                            continue;
+                        }
+                        merged += 1;
+                        let (
+                            roadbook_ir::Trigger::Event { event: a },
+                            roadbook_ir::Trigger::Event { event: b },
+                        ) = (&u.trigger, &t.trigger)
+                        else {
+                            panic!(
+                                "{rel}: {name} {}: transitions {i} and an earlier one share a group and span, and are not `on` events",
+                                s.id
+                            );
+                        };
+                        assert_ne!(
+                            a, b,
+                            "{rel}: {name} {}: `{a}` twice in one group and span",
+                            s.id
+                        );
+                        let mut same = u.clone();
+                        same.trigger = t.trigger.clone();
+                        assert_eq!(&same, t, "{rel}: {name} {}: copies differ", s.id);
+                    }
+                }
+            }
+        }
+    }
+    assert!(machines > 100, "{machines} machines");
+    // The `on A | B` of tests/pass/or-events.road and of the conformance chart at least.
+    assert!(merged >= 8, "{merged} copies");
+}

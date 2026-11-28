@@ -1,0 +1,28 @@
+// `on A | B`: one transition for several of the machine's own events, reading the fields
+// they all have.
+type Reason = string
+
+action log(what: string)
+
+machine Link() {
+  var attempts: int = 0
+  var reason:   string = ""
+  event Retry     { reason: string, attempts: int }
+  event Reconnect { reason: Reason, sensitive token: string }
+  event Reset
+  event Drop      { reason: string }
+  initial Idle
+  on Reset | Drop -> Idle
+  state Idle {
+    on Retry | Reconnect if attempts < 3 -> Connecting  set reason = event.reason, attempts = attempts + 1
+    on Drop                              ignore
+  }
+  state Connecting {
+    on Retry | Reconnect | Drop {
+      if event.reason == ""     -> Idle
+      else                      -> Connecting  do log(event.reason)
+    }
+    after 5s                    -> Idle
+  }
+  check reachable Connecting
+}
