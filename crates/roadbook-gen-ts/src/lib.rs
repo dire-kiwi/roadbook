@@ -1056,6 +1056,13 @@ impl<'a> Uses<'a> {
                 }
             }
             Effect::Stop { key, .. } => self.expr(key),
+            Effect::Raise { value, delay, .. } => {
+                self.expr(value);
+                if let Some(d) = delay {
+                    self.expr(d);
+                }
+            }
+            Effect::Cancel { .. } => {}
             Effect::Reply { call, value, .. } => {
                 self.expr(call);
                 if let Some(v) = value {

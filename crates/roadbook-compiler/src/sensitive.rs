@@ -65,7 +65,9 @@ impl Sensitive {
                     fields(&mut s, name, &m.params);
                     for item in &m.body.items {
                         match item {
-                            ast::Item::Event(e) | ast::Item::Emits(e) => {
+                            ast::Item::Event(e)
+                            | ast::Item::InternalEvent(e)
+                            | ast::Item::Emits(e) => {
                                 fields(&mut s, &format!("{name}.{}", e.name.name), &e.fields)
                             }
                             _ => {}
@@ -146,7 +148,11 @@ impl Checker<'_> {
                 let Some(iface) = self.interfaces.get(m) else {
                     return false;
                 };
-                let fields = iface.events.get(e).or_else(|| iface.emits.get(e));
+                let fields = iface
+                    .events
+                    .get(e)
+                    .or_else(|| iface.internal.get(e))
+                    .or_else(|| iface.emits.get(e));
                 fields.is_some_and(|fs| {
                     fs.iter().any(|(f, ft)| {
                         self.sensitive.is(&key, f) || self.carries(ft, machine, seen)

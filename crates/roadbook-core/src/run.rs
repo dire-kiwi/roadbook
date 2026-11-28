@@ -12,7 +12,7 @@ use crate::eval::{Fns, Scope, eval};
 use crate::program::{MachineIndex, Program};
 use crate::{
     CallEntry, Command, Defect, Input, InvokeEntry, Object, Record, RunResult, SETTLE_LIMIT, Saved,
-    Snapshot, SpawnedEntry, SrcKind, Status, TimerEntry,
+    ScheduledEntry, Snapshot, SpawnedEntry, SrcKind, Status, TimerEntry,
 };
 
 /// The built-in error every call can fail with: `{"_tag": "Unanswered"}`.
@@ -42,6 +42,14 @@ type Implicit<'a> = &'a [(&'static str, Value)];
 /// A transition: its state's index and its index in that state's `transitions`.
 type Tr = (usize, usize);
 
+/// An entry of the internal queue (`spec/execution.md#settling`).
+enum Queued {
+    /// The completion of a compound or parallel state, by index.
+    Completion(usize),
+    /// An event a `raise` put on the queue.
+    Raised(Value),
+}
+
 struct Ctx<'p, 'f, 'g> {
     program: &'p Program,
     m: &'p Machine,
@@ -51,7 +59,8 @@ struct Ctx<'p, 'f, 'g> {
     active: Vec<usize>,
     cmds: Vec<Command>,
     entered: Vec<bool>,
-    completion: VecDeque<usize>,
+    /// The internal queue: completions and raised events, in the order they were queued.
+    queue: VecDeque<Queued>,
     /// The children spawned during this macrostep, not started yet: collection, key, args.
     pending: Vec<(String, Value, Object)>,
     /// `key`, while the transitions an input from a spawned child takes are selected and run.
@@ -86,6 +95,7 @@ impl Program {
             calls: Vec::new(),
             spawned: Vec::new(),
             timers: Vec::new(),
+            scheduled: Vec::new(),
             next_invoke: 1,
             next_timer: 1,
             next_message: 1,
@@ -202,7 +212,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             active,
             cmds: Vec::new(),
             entered: vec![false; idx.parents.len()],
-            completion: VecDeque::new(),
+            queue: VecDeque::new(),
             pending: Vec::new(),
             key: None,
             fns,
@@ -357,10 +367,24 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 });
             }
         }
-        let mut due: Vec<_> = saved.timers.iter().filter(|t| t.due <= now).collect();
-        due.sort_by_key(|t| (t.due, t.id));
-        for tm in due {
-            self.cmds.push(Command::TimerFire { timer: tm.id });
+        // Delayed raises belong to no state: after every state's work.
+        for sc in saved.scheduled.iter().filter(|s| s.due > now) {
+            let delay = sc.due - now;
+            self.trace(Record::RaiseScheduled {
+                timer: sc.id,
+                name: sc.name.clone(),
+                delay,
+                value: sc.value.clone(),
+            });
+            self.cmds.push(Command::TimerStart {
+                timer: sc.id,
+                delay,
+            });
+        }
+        let mut due: Vec<(u64, u64)> = saved.dues().filter(|&(_, d)| d <= now).collect();
+        due.sort_by_key(|&(id, d)| (d, id));
+        for (timer, _) in due {
+            self.cmds.push(Command::TimerFire { timer });
         }
         Ok(())
     }
@@ -378,6 +402,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         });
         let chosen: Vec<Tr>;
         let bound: Vec<(&'static str, Value)>;
+        // Whether the input is a delayed raise's expiry, which a strict machine must take.
+        let mut raised = false;
         match &input {
             Input::Cancel => return self.cancel_run(),
             Input::InvokeDone { invoke, .. }
@@ -499,10 +525,18 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             }
             Input::After { timer } => {
                 let Some(pos) = self.snap.timers.iter().position(|t| t.id == *timer) else {
-                    self.trace(Record::Stale {
-                        event: shown.unwrap_or(input),
-                    });
-                    return Ok(());
+                    // A delayed raise's expiry consumes the raise and selects its event.
+                    let Some(pos) = self.snap.scheduled.iter().position(|s| s.id == *timer) else {
+                        self.trace(Record::Stale {
+                            event: shown.unwrap_or(input),
+                        });
+                        return Ok(());
+                    };
+                    let sc = self.snap.scheduled.remove(pos);
+                    raised = true;
+                    chosen = self.select_event(&sc.value)?;
+                    bound = vec![("event", sc.value)];
+                    return self.taken(input, shown, chosen, bound, raised);
                 };
                 let tm = self.snap.timers.remove(pos);
                 let owner = self.index_of(&tm.state);
@@ -518,7 +552,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     .into_iter()
                     .collect();
             }
-            Input::Event { value } | Input::Message { value, .. } => {
+            Input::Event { value } | Input::Message { value, .. } | Input::Raised { value } => {
                 bound = vec![("event", value.clone())];
                 chosen = self.select_event(value)?;
             }
@@ -597,10 +631,28 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             }
             Input::Defect { .. } => unreachable!("handled by step"),
         }
+        self.taken(input, shown, chosen, bound, raised)
+    }
+
+    /// The rest of [`Ctx::take`] once the transitions `chosen` are selected: `dropped` (or,
+    /// in a strict machine, `unhandled`) if there are none, else `event` and [`Ctx::go`].
+    /// `raised` is whether the input is a delayed raise's expiry.
+    fn taken(
+        &mut self,
+        input: Input,
+        shown: Option<Input>,
+        chosen: Vec<Tr>,
+        bound: Vec<(&'static str, Value)>,
+        raised: bool,
+    ) -> R {
         if chosen.is_empty() {
-            // A strict machine fails on one of its own events, or a message, that it does not
-            // handle (a call is above).
-            if self.m.strict && matches!(input, Input::Event { .. } | Input::Message { .. }) {
+            // A strict machine fails on one of its own events, a message or a delayed raise
+            // that it does not handle (a call is above).
+            let own = matches!(
+                input,
+                Input::Event { .. } | Input::Message { .. } | Input::Raised { .. }
+            );
+            if self.m.strict && (own || raised) {
                 return Err(Defect::Unhandled {
                     event: Box::new(input.clone()),
                 });
@@ -614,6 +666,16 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             event: shown.unwrap_or(input),
         });
         self.go(&chosen, &bound)
+    }
+
+    /// The input `input` as its record shows it: redacted, when the IR marks anything.
+    fn shown(&self, input: &Input) -> Input {
+        let mut shown = input.clone();
+        let redactor = self.program.redactor();
+        if redactor.active() {
+            redactor.input(self.m, &self.snap.invokes, &self.snap.spawned, &mut shown);
+        }
+        shown
     }
 
     /// The rest of a step that takes `chosen`: its microstep, settling, and starting work.
@@ -1129,9 +1191,13 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         self.run_effects(&self.state(s).exit, &[])?;
         self.active.retain(|&a| a != s);
         // A state's completion goes with it, and so does every completion of a state around
-        // it: an internal transition that exits a final state takes back its parent's.
+        // it: an internal transition that exits a final state takes back its parent's. A
+        // raised event stays: it belongs to the run.
         let parents = &self.idx.parents;
-        self.completion.retain(|&c| {
+        self.queue.retain(|q| {
+            let &Queued::Completion(c) = q else {
+                return true;
+            };
             let mut up = Some(s);
             while let Some(x) = up {
                 if x == c {
@@ -1172,7 +1238,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         let mut s = f;
         if let Some(p) = self.idx.parents[f] {
             if self.state(p).kind == StateKind::Compound {
-                self.completion.push_back(p);
+                self.queue.push_back(Queued::Completion(p));
                 s = p;
             }
         }
@@ -1180,7 +1246,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             if self.state(p).kind != StateKind::Parallel || !self.in_final(p) {
                 break;
             }
-            self.completion.push_back(p);
+            self.queue.push_back(Queued::Completion(p));
             s = p;
         }
     }
@@ -1219,6 +1285,51 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         for e in effects {
             match e {
                 Effect::Set { .. } => {}
+                Effect::Raise {
+                    value, delay: None, ..
+                } => {
+                    let v = self.eval(value, implicit)?;
+                    self.trace(Record::Raised { value: v.clone() });
+                    self.queue.push_back(Queued::Raised(v));
+                }
+                Effect::Raise {
+                    value,
+                    delay: Some(delay),
+                    name,
+                    ..
+                } => {
+                    // The delay, then the value; then the pending raise of its name goes.
+                    let d = self.eval(delay, implicit)?;
+                    let d = d.as_u64().ok_or_else(|| {
+                        Defect::host(format!(
+                            "the delay `{}` is {d}, which is not a duration",
+                            delay.text
+                        ))
+                    })?;
+                    let v = self.eval(value, implicit)?;
+                    if let Some(n) = name {
+                        self.cancel_raise(n);
+                    }
+                    let id = self.snap.next_timer;
+                    self.snap.next_timer += 1;
+                    self.snap.scheduled.push(ScheduledEntry {
+                        id,
+                        name: name.clone(),
+                        delay: d,
+                        value: v.clone(),
+                    });
+                    self.trace(Record::RaiseScheduled {
+                        timer: id,
+                        name: name.clone(),
+                        delay: d,
+                        value: v,
+                    });
+                    self.cmds.push(Command::TimerStart {
+                        timer: id,
+                        delay: d,
+                    });
+                }
+                Effect::Cancel { name } => self.cancel_raise(name),
                 Effect::Do { action, args } => {
                     let decl = &self.program.ir().actions[action.as_str()];
                     let mut obj = Map::new();
@@ -1436,6 +1547,35 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         }
     }
 
+    /// Cancels the pending delayed raise named `name`, if there is one.
+    fn cancel_raise(&mut self, name: &str) {
+        if let Some(pos) = self
+            .snap
+            .scheduled
+            .iter()
+            .position(|s| s.name.as_deref() == Some(name))
+        {
+            let sc = self.snap.scheduled.remove(pos);
+            self.trace(Record::RaiseCancelled {
+                timer: sc.id,
+                name: sc.name,
+            });
+            self.cmds.push(Command::TimerCancel { timer: sc.id });
+        }
+    }
+
+    /// When the run finishes or is cancelled, after its children are stopped: cancels every
+    /// pending delayed raise, in the order they were started.
+    fn cancel_raises(&mut self) {
+        for sc in std::mem::take(&mut self.snap.scheduled) {
+            self.trace(Record::RaiseCancelled {
+                timer: sc.id,
+                name: sc.name,
+            });
+            self.cmds.push(Command::TimerCancel { timer: sc.id });
+        }
+    }
+
     /// When the run finishes or is cancelled, after every exit: stops every child still
     /// running, in the order they started, and drops the pending ones.
     fn stop_children(&mut self) {
@@ -1483,6 +1623,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
 
     // ---- settling and work ---------------------------------------------------------------
 
+    /// `always` first, then the internal queue front to back: completions and raised events.
     fn settle(&mut self) -> R {
         let mut count = 0;
         loop {
@@ -1492,11 +1633,36 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             let mut t = self.select_walks(|cx, s| {
                 cx.select_in(s, &[], |t| matches!(t, Trigger::Always), None)
             })?;
+            let mut bound = Vec::new();
             while t.is_empty() {
-                let Some(p) = self.completion.pop_front() else {
+                let Some(q) = self.queue.pop_front() else {
                     break;
                 };
-                t.extend(self.select_in(p, &[], |t| matches!(t, Trigger::Done), None)?);
+                match q {
+                    Queued::Completion(p) => {
+                        t.extend(self.select_in(p, &[], |t| matches!(t, Trigger::Done), None)?);
+                    }
+                    Queued::Raised(value) => {
+                        t = self.select_event(&value)?;
+                        let input = Input::Raised { value };
+                        if t.is_empty() {
+                            if self.m.strict {
+                                return Err(Defect::Unhandled {
+                                    event: Box::new(input),
+                                });
+                            }
+                            let event = self.shown(&input);
+                            self.trace(Record::Dropped { event });
+                        } else {
+                            let event = self.shown(&input);
+                            self.trace(Record::Event { event });
+                            let Input::Raised { value } = input else {
+                                unreachable!()
+                            };
+                            bound = vec![("event", value)];
+                        }
+                    }
+                }
             }
             if t.is_empty() {
                 return Ok(());
@@ -1505,7 +1671,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             if count > SETTLE_LIMIT {
                 return Err(Defect::Limit);
             }
-            self.microstep(&t, &[])?;
+            self.microstep(&t, &bound)?;
         }
     }
 
@@ -1637,13 +1803,14 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             self.exit_state(s)?;
         }
         self.stop_children();
+        self.cancel_raises();
         self.snap.result = Some(if status == Status::Done {
             RunResult::Output(value.clone())
         } else {
             RunResult::Error(value.clone())
         });
         self.snap.status = status;
-        self.completion.clear();
+        self.queue.clear();
         let state = fs.id.clone();
         self.trace(if status == Status::Done {
             Record::Done {
@@ -1664,6 +1831,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             self.exit_state(s)?;
         }
         self.stop_children();
+        self.cancel_raises();
+        self.queue.clear();
         self.snap.status = Status::Cancelled;
         self.trace(Record::Cancelled);
         Ok(())
@@ -1679,6 +1848,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         self.pending.clear();
         for tm in std::mem::take(&mut self.snap.timers) {
             self.cmds.push(Command::TimerCancel { timer: tm.id });
+        }
+        for sc in std::mem::take(&mut self.snap.scheduled) {
+            self.cmds.push(Command::TimerCancel { timer: sc.id });
         }
         self.snap.status = Status::Defect;
         self.snap.result = Some(RunResult::Defect(d.clone()));

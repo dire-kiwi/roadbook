@@ -22,9 +22,9 @@ export TREE_SITTER_DIR="$work"
 export TREE_SITTER_LIBDIR="$work/lib"
 mkdir -p "$work/lib"
 
-step "the committed parser is what grammar.js generates"
+step "the committed parser is what grammar.js generates (scanner.c is written by hand)"
 tree-sitter generate --output "$work/src"
-if ! diff -r -q src "$work/src"; then
+if ! diff -r -q -x scanner.c src "$work/src"; then
   echo "src/ is stale: run \`tree-sitter generate\` in editors/tree-sitter-roadbook and commit it" >&2
   exit 1
 fi

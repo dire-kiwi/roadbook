@@ -626,6 +626,7 @@ impl Formatter<'_> {
                 Some(Group::Children),
             ),
             Item::Event(e) => self.event_line("event", e, indent),
+            Item::InternalEvent(e) => self.event_line("internal event", e, indent),
             Item::Emits(e) => self.emits_line(e, indent),
             Item::Call(c) => {
                 let head = format!("call {}", c.name.name);
@@ -815,6 +816,7 @@ fn inline_item(item: &Item) -> Option<String> {
         }
         Item::Var(_)
         | Item::Event(_)
+        | Item::InternalEvent(_)
         | Item::Emits(_)
         | Item::Call(_)
         | Item::Children(_)
@@ -918,9 +920,9 @@ fn bare_record(e: &Expr) -> bool {
 }
 
 /// Consecutive `set`s, and consecutive `do`s, share a clause; clauses are separated by two
-/// spaces. Every `set` comes first, then the `do`, `send`, `emit`, `reply`, `spawn` and `stop`
-/// effects, each in the order written: the order they run in. A `send`, `emit`, `reply`,
-/// `spawn` or `stop` is a clause of its own.
+/// spaces. Every `set` comes first, then the `do`, `send`, `emit`, `reply`, `spawn`, `stop`,
+/// `raise` and `cancel` effects, each in the order written: the order they run in. Each but
+/// `set` and `do` is a clause of its own.
 fn effects(effects: &[Effect]) -> String {
     let mut out = String::new();
     let mut last: Option<&'static str> = None;
@@ -935,6 +937,8 @@ fn effects(effects: &[Effect]) -> String {
             Effect::Reply(_) => "reply",
             Effect::Spawn(_) => "spawn",
             Effect::Stop(_) => "stop",
+            Effect::Raise(_) => "raise",
+            Effect::Cancel(_) => "cancel",
         };
         if last == Some(kw) && matches!(kw, "set" | "do") {
             out.push_str(", ");
@@ -964,6 +968,16 @@ fn effects(effects: &[Effect]) -> String {
                 exprs(&sp.args)
             )),
             Effect::Stop(st) => out.push_str(&format!("{}[{}]", st.children.name, expr(&st.key))),
+            Effect::Raise(r) => {
+                out.push_str(&message(&r.message));
+                if let Some(d) = &r.delay {
+                    out.push_str(&format!(" after {}", expr(d)));
+                }
+                if let Some(n) = &r.name {
+                    out.push_str(&format!(" as {}", n.name));
+                }
+            }
+            Effect::Cancel(c) => out.push_str(&c.name.name),
         }
         last = Some(kw);
     }

@@ -25,7 +25,7 @@ The rejected row is the important one. A global registry lets any machine reach 
 
 ## Talking to an invoked child
 
-A machine's `event` declarations are what it accepts. A new `emits` declaration is what it sends out. Together with its parameters, result and errors they are its complete interface.
+A machine's `event` declarations are what it accepts. A new `emits` declaration is what it sends out. Together with its parameters, result and errors they are its complete interface. An `internal event` is not part of it: only the machine itself raises one ([events a machine raises](language.md#events-a-machine-raises)), so no other machine can send it, and a holder's hash leaves it out.
 
 ```
 /// Upload a file in chunks. Can be paused.

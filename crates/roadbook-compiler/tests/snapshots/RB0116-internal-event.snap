@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0116]: `Child` does not accept the event `Ping`
+  --> RB0116-internal-event.road:18:22
+   |
+18 |     on Go send child.Ping
+   |                      ^^^^ `Child` accepts `Go`
+   |
+   = help: `Ping` is an internal event of `Child`: only `Child` raises it, so no other machine can send it

@@ -1,0 +1,29 @@
+// Conformance chart: one region of a parallel state signals another with a raised event,
+// which is taken in both regions in one microstep.
+
+action log(what: string)
+
+machine Regions() {
+  event Go
+  internal event Signal
+
+  initial P
+
+  parallel state P {
+    state Left {
+      initial L1
+
+      state L1 { on Go -> L2  raise Signal }
+
+      state L2 { on Signal do log("left") }
+    }
+
+    state Right {
+      initial R1
+
+      state R1 { on Signal -> R2 }
+
+      state R2 {}
+    }
+  }
+}

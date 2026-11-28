@@ -415,6 +415,12 @@ pub struct Machine {
     pub vars: Vec<Var>,
     /// Events the machine accepts, keyed by name, in source order.
     pub events: IndexMap<String, EventDecl>,
+    /// Events only the machine itself raises (`internal event Name { fields }`), keyed by
+    /// name, in source order. Host code and other runs cannot send them, and they are not
+    /// part of the machine's interface. No name is in two of `events`, `internal_events`
+    /// and `emits`.
+    #[serde(rename = "internalEvents")]
+    pub internal_events: IndexMap<String, EventDecl>,
     /// Events the machine emits (`emits Name { fields }`), keyed by name, in
     /// source order. No name is both in `events` and in `emits`.
     pub emits: IndexMap<String, EventDecl>,
@@ -898,6 +904,57 @@ pub enum Effect {
         /// The child's key.
         key: Expr,
     },
+    /// `raise Event [{ fields }]`, on the run's internal queue, or
+    /// `raise Event [{ fields }] after delay [as name]`, a delayed raise: a timer of the run.
+    Raise {
+        /// The event's name, a key of the machine's [`Machine::events`] or
+        /// [`Machine::internal_events`].
+        event: String,
+        /// The event's value: a `record` expression whose type is the event's bare name.
+        value: Expr,
+        /// The delay, a `duration` expression, or `None` for an immediate raise.
+        delay: Option<Expr>,
+        /// The delayed raise's name, which `cancel` names it by, or `None`. Always `None`
+        /// when `delay` is.
+        name: Option<String>,
+    },
+    /// `cancel name`: cancel the pending delayed raise of that name, if there is one.
+    Cancel {
+        /// The name of one of the machine's delayed raises.
+        name: String,
+    },
+}
+
+impl Machine {
+    /// The machine's own event `name`: one of its `events` or `internal_events`.
+    pub fn own_event(&self, name: &str) -> Option<&EventDecl> {
+        self.events
+            .get(name)
+            .or_else(|| self.internal_events.get(name))
+    }
+
+    /// The names of the machine's delayed raises (`raise … after … as name`), each once, in
+    /// document order.
+    pub fn raise_names(&self) -> Vec<&str> {
+        fn walk<'a>(s: &'a State, out: &mut Vec<&'a str>) {
+            let effects = s
+                .entry
+                .iter()
+                .chain(&s.exit)
+                .chain(s.transitions.iter().flat_map(|t| &t.effects));
+            for e in effects {
+                if let Effect::Raise { name: Some(n), .. } = e
+                    && !out.contains(&n.as_str())
+                {
+                    out.push(n);
+                }
+            }
+            s.states.iter().for_each(|c| walk(c, out));
+        }
+        let mut out = Vec::new();
+        walk(&self.root, &mut out);
+        out
+    }
 }
 
 /// How a `reply` answers a call.

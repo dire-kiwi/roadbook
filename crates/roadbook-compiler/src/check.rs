@@ -54,6 +54,8 @@ impl Sig {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Interface {
     pub events: IndexMap<String, Vec<(String, Ty)>>,
+    /// The machine's internal events: only it raises them, so no other machine sees them.
+    pub internal: IndexMap<String, Vec<(String, Ty)>>,
     pub emits: IndexMap<String, Vec<(String, Ty)>>,
     pub calls: IndexMap<String, Sig>,
 }
@@ -300,6 +302,7 @@ impl<'p> Checker<'p> {
                     for item in &m.body.items {
                         let (kind, word, e) = match item {
                             ast::Item::Event(e) => (SymbolKind::Event, "event", e),
+                            ast::Item::InternalEvent(e) => (SymbolKind::Event, "internal event", e),
                             ast::Item::Emits(e) => (SymbolKind::EmittedEvent, "emits", e),
                             _ => continue,
                         };
@@ -339,6 +342,9 @@ impl<'p> Checker<'p> {
                             );
                         }
                     }
+                    if !self.is_compiled(self.names.decls[i].file) {
+                        self.index_raise_names(id, &m.body);
+                    }
                 }
                 _ => {}
             }
@@ -346,6 +352,70 @@ impl<'p> Checker<'p> {
         for (span, id) in std::mem::take(&mut self.names.imported) {
             let symbol = self.decl_symbols[id.0];
             self.index.refer(symbol, span);
+        }
+    }
+
+    /// Indexes the names of a machine's delayed raises (`raise … after d as name`): each is
+    /// defined at its first raise and used at the other raises of it and at each
+    /// `cancel name`. Its signature lists every raise of the name.
+    fn index_raise_names(&mut self, machine: SymbolId, body: &ast::Body) {
+        let effects = body.all_effects();
+        let mut raises: Vec<(&Ident, Vec<&ast::Raise>)> = Vec::new();
+        for e in &effects {
+            if let ast::Effect::Raise(r) = e
+                && let Some(n) = &r.name
+            {
+                match raises.iter_mut().find(|(first, _)| first.name == n.name) {
+                    Some((_, rs)) => rs.push(r),
+                    None => raises.push((n, vec![r])),
+                }
+            }
+        }
+        for (n, rs) in raises {
+            // A name the machine already has (a parameter, a variable, a collection) is an
+            // error, which lowering reports.
+            if self.member_symbol(machine, &n.name).is_some() {
+                continue;
+            }
+            let signature: Vec<String> = rs
+                .iter()
+                .map(|r| {
+                    let fields = if r.message.fields.is_empty() {
+                        ""
+                    } else {
+                        " { … }"
+                    };
+                    let delay = r.delay.as_ref().map_or_else(String::new, |d| {
+                        format!(" after {}", roadbook_syntax::expr_text(d))
+                    });
+                    format!(
+                        "raise {}{fields}{delay} as {}",
+                        r.message.event.name, n.name
+                    )
+                })
+                .collect();
+            let signature = signature.join("\n");
+            let id = self.member(
+                machine,
+                SymbolKind::RaiseName,
+                n,
+                rs[0].span,
+                &None,
+                signature,
+            );
+            for r in &rs[1..] {
+                if let Some(other) = &r.name {
+                    self.index.refer(id, other.span);
+                }
+            }
+        }
+        for e in &effects {
+            if let ast::Effect::Cancel(c) = e
+                && let Some(id) = self.member_symbol(machine, &c.name.name)
+                && self.index.symbol(id).kind == SymbolKind::RaiseName
+            {
+                self.index.refer(id, c.name.span);
+            }
         }
     }
 
@@ -484,13 +554,16 @@ impl<'p> Checker<'p> {
                 continue;
             };
             let mut iface = Interface::default();
-            for (emits, e) in m
+            for (kind, e) in m
                 .body
                 .events()
-                .map(|e| (false, e))
-                .chain(m.body.emits().map(|e| (true, e)))
+                .map(|e| (0, e))
+                .chain(m.body.internal_events().map(|e| (1, e)))
+                .chain(m.body.emits().map(|e| (2, e)))
             {
-                if iface.events.contains_key(&e.name.name) || iface.emits.contains_key(&e.name.name)
+                if iface.events.contains_key(&e.name.name)
+                    || iface.internal.contains_key(&e.name.name)
+                    || iface.emits.contains_key(&e.name.name)
                 {
                     continue;
                 }
@@ -502,10 +575,10 @@ impl<'p> Checker<'p> {
                     self.no_ref(file, &f.ty, &t, &what);
                     fields.push((f.name.name.clone(), t));
                 }
-                let map = if emits {
-                    &mut iface.emits
-                } else {
-                    &mut iface.events
+                let map = match kind {
+                    0 => &mut iface.events,
+                    1 => &mut iface.internal,
+                    _ => &mut iface.emits,
                 };
                 map.insert(e.name.name.clone(), fields);
             }

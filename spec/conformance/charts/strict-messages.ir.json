@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/strict-messages.road",
@@ -67,6 +67,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {
         "Opened": {
           "fields": [],
@@ -297,6 +298,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

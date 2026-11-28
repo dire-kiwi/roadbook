@@ -72,6 +72,10 @@ export type MergeInto = typeof MergeInto.Type
 export const GiveUp = Schema.TaggedStruct("GiveUp", {})
 export type GiveUp = typeof GiveUp.Type
 
+/** The agent asks to be reminded of the ticket after a while, whatever happens to it meanwhile. */
+export const FollowUpIn = Schema.TaggedStruct("FollowUpIn", { delay: Schema.Duration })
+export type FollowUpIn = typeof FollowUpIn.Type
+
 export interface SupportTicketDef extends Roadbook.MachineDef {
   readonly name: "SupportTicket"
   readonly input: { readonly ticket: Ticket }
@@ -95,6 +99,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
     | MarkOutOfScope
     | MergeInto
     | GiveUp
+    | FollowUpIn
   readonly emits: never
   readonly state:
     | "SupportTicket"
@@ -227,7 +232,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -965,7 +970,7 @@ const ir: unknown = {
         "file": 0,
         "line": 12,
         "col": 1,
-        "endLine": 274,
+        "endLine": 284,
         "endCol": 2
       },
       "strict": false,
@@ -1392,6 +1397,37 @@ const ir: unknown = {
             "endLine": 42,
             "endCol": 15
           }
+        },
+        "FollowUpIn": {
+          "fields": [
+            {
+              "name": "delay",
+              "type": "duration",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "The agent asks to be reminded of the ticket after a while, whatever happens to it meanwhile.",
+          "span": {
+            "file": 0,
+            "line": 44,
+            "col": 3,
+            "endLine": 44,
+            "endCol": 39
+          }
+        }
+      },
+      "internalEvents": {
+        "FollowUp": {
+          "fields": [],
+          "doc": "The reminder the agent asked for. Only the ticket raises it.",
+          "span": {
+            "file": 0,
+            "line": 46,
+            "col": 3,
+            "endLine": 46,
+            "endCol": 26
+          }
         }
       },
       "emits": {},
@@ -1406,7 +1442,7 @@ const ir: unknown = {
           "file": 0,
           "line": 12,
           "col": 1,
-          "endLine": 274,
+          "endLine": 284,
           "endCol": 2
         },
         "initial": "SupportTicket.Intake",
@@ -1418,9 +1454,9 @@ const ir: unknown = {
             "doc": "Classify the new ticket and screen out spam and duplicates.",
             "span": {
               "file": 0,
-              "line": 47,
+              "line": 51,
               "col": 3,
-              "endLine": 79,
+              "endLine": 83,
               "endCol": 4
             },
             "initial": "SupportTicket.Intake.Classifying",
@@ -1432,9 +1468,9 @@ const ir: unknown = {
                 "doc": "",
                 "span": {
                   "file": 0,
-                  "line": 52,
+                  "line": 56,
                   "col": 5,
-                  "endLine": 60,
+                  "endLine": 64,
                   "endCol": 6
                 },
                 "initial": null,
@@ -1458,9 +1494,9 @@ const ir: unknown = {
                   ],
                   "span": {
                     "file": 0,
-                    "line": 53,
+                    "line": 57,
                     "col": 7,
-                    "endLine": 59,
+                    "endLine": 63,
                     "endCol": 8
                   }
                 },
@@ -1517,9 +1553,9 @@ const ir: unknown = {
                     ],
                     "span": {
                       "file": 0,
-                      "line": 54,
+                      "line": 58,
                       "col": 9,
-                      "endLine": 54,
+                      "endLine": 58,
                       "endCol": 139
                     }
                   },
@@ -1558,9 +1594,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 56,
+                      "line": 60,
                       "col": 11,
-                      "endLine": 56,
+                      "endLine": 60,
                       "endCol": 54
                     }
                   },
@@ -1578,9 +1614,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 57,
+                      "line": 61,
                       "col": 11,
-                      "endLine": 57,
+                      "endLine": 61,
                       "endCol": 51
                     }
                   }
@@ -1595,9 +1631,9 @@ const ir: unknown = {
                 "doc": "Retry loop: the classifier is down, wait and try again.",
                 "span": {
                   "file": 0,
-                  "line": 63,
+                  "line": 67,
                   "col": 5,
-                  "endLine": 66,
+                  "endLine": 70,
                   "endCol": 6
                 },
                 "initial": null,
@@ -1662,9 +1698,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 65,
+                      "line": 69,
                       "col": 7,
-                      "endLine": 65,
+                      "endLine": 69,
                       "endCol": 53
                     }
                   }
@@ -1679,9 +1715,9 @@ const ir: unknown = {
                 "doc": "",
                 "span": {
                   "file": 0,
-                  "line": 68,
+                  "line": 72,
                   "col": 5,
-                  "endLine": 74,
+                  "endLine": 78,
                   "endCol": 6
                 },
                 "initial": null,
@@ -1718,9 +1754,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 70,
+                      "line": 74,
                       "col": 9,
-                      "endLine": 70,
+                      "endLine": 74,
                       "endCol": 47
                     }
                   },
@@ -1752,9 +1788,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 71,
+                      "line": 75,
                       "col": 9,
-                      "endLine": 71,
+                      "endLine": 75,
                       "endCol": 52
                     }
                   },
@@ -1771,9 +1807,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 72,
+                      "line": 76,
                       "col": 9,
-                      "endLine": 72,
+                      "endLine": 76,
                       "endCol": 51
                     }
                   }
@@ -1788,9 +1824,9 @@ const ir: unknown = {
                 "doc": "The classifier stayed down: carry on with normal priority and no category.",
                 "span": {
                   "file": 0,
-                  "line": 77,
+                  "line": 81,
                   "col": 5,
-                  "endLine": 77,
+                  "endLine": 81,
                   "endCol": 32
                 },
                 "initial": null,
@@ -1809,9 +1845,9 @@ const ir: unknown = {
                 "doc": "",
                 "span": {
                   "file": 0,
-                  "line": 78,
+                  "line": 82,
                   "col": 5,
-                  "endLine": 78,
+                  "endLine": 82,
                   "endCol": 77
                 },
                 "initial": null,
@@ -1862,9 +1898,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 50,
+                  "line": 54,
                   "col": 5,
-                  "endLine": 50,
+                  "endLine": 54,
                   "endCol": 19
                 }
               }
@@ -1879,9 +1915,9 @@ const ir: unknown = {
             "doc": "Find an owner. Unowned past the triage SLA pages the on-call lead.",
             "span": {
               "file": 0,
-              "line": 82,
+              "line": 86,
               "col": 3,
-              "endLine": 103,
+              "endLine": 107,
               "endCol": 4
             },
             "initial": "SupportTicket.Triage.Routing",
@@ -1893,9 +1929,9 @@ const ir: unknown = {
                 "doc": "",
                 "span": {
                   "file": 0,
-                  "line": 92,
+                  "line": 96,
                   "col": 5,
-                  "endLine": 97,
+                  "endLine": 101,
                   "endCol": 6
                 },
                 "initial": null,
@@ -1927,9 +1963,9 @@ const ir: unknown = {
                   ],
                   "span": {
                     "file": 0,
-                    "line": 93,
+                    "line": 97,
                     "col": 7,
-                    "endLine": 96,
+                    "endLine": 100,
                     "endCol": 8
                   }
                 },
@@ -1960,9 +1996,9 @@ const ir: unknown = {
                     ],
                     "span": {
                       "file": 0,
-                      "line": 94,
+                      "line": 98,
                       "col": 9,
-                      "endLine": 94,
+                      "endLine": 98,
                       "endCol": 64
                     }
                   },
@@ -1980,9 +2016,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 95,
+                      "line": 99,
                       "col": 9,
-                      "endLine": 95,
+                      "endLine": 99,
                       "endCol": 40
                     }
                   }
@@ -1997,9 +2033,9 @@ const ir: unknown = {
                 "doc": "Nobody is free: try again every 15 minutes.",
                 "span": {
                   "file": 0,
-                  "line": 100,
+                  "line": 104,
                   "col": 5,
-                  "endLine": 100,
+                  "endLine": 104,
                   "endCol": 42
                 },
                 "initial": null,
@@ -2027,9 +2063,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 100,
+                      "line": 104,
                       "col": 20,
-                      "endLine": 100,
+                      "endLine": 104,
                       "endCol": 40
                     }
                   }
@@ -2044,9 +2080,9 @@ const ir: unknown = {
                 "doc": "",
                 "span": {
                   "file": 0,
-                  "line": 102,
+                  "line": 106,
                   "col": 5,
-                  "endLine": 102,
+                  "endLine": 106,
                   "endCol": 79
                 },
                 "initial": null,
@@ -2140,9 +2176,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 85,
+                  "line": 89,
                   "col": 5,
-                  "endLine": 85,
+                  "endLine": 89,
                   "endCol": 75
                 }
               },
@@ -2174,9 +2210,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 86,
+                  "line": 90,
                   "col": 5,
-                  "endLine": 86,
+                  "endLine": 90,
                   "endCol": 78
                 }
               },
@@ -2194,9 +2230,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 87,
+                  "line": 91,
                   "col": 5,
-                  "endLine": 87,
+                  "endLine": 91,
                   "endCol": 44
                 }
               },
@@ -2214,9 +2250,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 88,
+                  "line": 92,
                   "col": 5,
-                  "endLine": 88,
+                  "endLine": 92,
                   "endCol": 43
                 }
               },
@@ -2233,9 +2269,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 90,
+                  "line": 94,
                   "col": 5,
-                  "endLine": 90,
+                  "endLine": 94,
                   "endCol": 19
                 }
               }
@@ -2250,9 +2286,9 @@ const ir: unknown = {
             "doc": "The ticket has an owner and is being worked.",
             "span": {
               "file": 0,
-              "line": 106,
+              "line": 110,
               "col": 3,
-              "endLine": 243,
+              "endLine": 252,
               "endCol": 4
             },
             "initial": "SupportTicket.Active.Working",
@@ -2264,9 +2300,9 @@ const ir: unknown = {
                 "doc": "",
                 "span": {
                   "file": 0,
-                  "line": 114,
+                  "line": 123,
                   "col": 5,
-                  "endLine": 147,
+                  "endLine": 156,
                   "endCol": 6
                 },
                 "initial": "SupportTicket.Active.Working.WithAgent",
@@ -2278,9 +2314,9 @@ const ir: unknown = {
                     "doc": "The agent owns the next move. Nudge them after every 2 hours of silence.",
                     "span": {
                       "file": 0,
-                      "line": 120,
+                      "line": 129,
                       "col": 7,
-                      "endLine": 126,
+                      "endLine": 135,
                       "endCol": 8
                     },
                     "initial": null,
@@ -2337,9 +2373,9 @@ const ir: unknown = {
                         ],
                         "span": {
                           "file": 0,
-                          "line": 121,
+                          "line": 130,
                           "col": 9,
-                          "endLine": 121,
+                          "endLine": 130,
                           "endCol": 88
                         }
                       },
@@ -2381,9 +2417,9 @@ const ir: unknown = {
                         ],
                         "span": {
                           "file": 0,
-                          "line": 122,
+                          "line": 131,
                           "col": 9,
-                          "endLine": 122,
+                          "endLine": 131,
                           "endCol": 82
                         }
                       },
@@ -2401,9 +2437,9 @@ const ir: unknown = {
                         "effects": [],
                         "span": {
                           "file": 0,
-                          "line": 123,
+                          "line": 132,
                           "col": 9,
-                          "endLine": 123,
+                          "endLine": 132,
                           "endCol": 35
                         }
                       },
@@ -2421,9 +2457,9 @@ const ir: unknown = {
                         "effects": [],
                         "span": {
                           "file": 0,
-                          "line": 124,
+                          "line": 133,
                           "col": 9,
-                          "endLine": 124,
+                          "endLine": 133,
                           "endCol": 38
                         }
                       },
@@ -2441,9 +2477,9 @@ const ir: unknown = {
                         "effects": [],
                         "span": {
                           "file": 0,
-                          "line": 125,
+                          "line": 134,
                           "col": 9,
-                          "endLine": 125,
+                          "endLine": 134,
                           "endCol": 38
                         }
                       }
@@ -2458,9 +2494,9 @@ const ir: unknown = {
                     "doc": "The ball is in the customer's court. Two weeks of silence closes the ticket.",
                     "span": {
                       "file": 0,
-                      "line": 129,
+                      "line": 138,
                       "col": 7,
-                      "endLine": 140,
+                      "endLine": 149,
                       "endCol": 8
                     },
                     "initial": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
@@ -2472,9 +2508,9 @@ const ir: unknown = {
                         "doc": "",
                         "span": {
                           "file": 0,
-                          "line": 135,
+                          "line": 144,
                           "col": 9,
-                          "endLine": 135,
+                          "endLine": 144,
                           "endCol": 87
                         },
                         "initial": null,
@@ -2523,9 +2559,9 @@ const ir: unknown = {
                             ],
                             "span": {
                               "file": 0,
-                              "line": 135,
+                              "line": 144,
                               "col": 25,
-                              "endLine": 135,
+                              "endLine": 144,
                               "endCol": 85
                             }
                           }
@@ -2540,9 +2576,9 @@ const ir: unknown = {
                         "doc": "",
                         "span": {
                           "file": 0,
-                          "line": 137,
+                          "line": 146,
                           "col": 9,
-                          "endLine": 137,
+                          "endLine": 146,
                           "endCol": 89
                         },
                         "initial": null,
@@ -2591,9 +2627,9 @@ const ir: unknown = {
                             ],
                             "span": {
                               "file": 0,
-                              "line": 137,
+                              "line": 146,
                               "col": 26,
-                              "endLine": 137,
+                              "endLine": 146,
                               "endCol": 87
                             }
                           }
@@ -2608,9 +2644,9 @@ const ir: unknown = {
                         "doc": "",
                         "span": {
                           "file": 0,
-                          "line": 139,
+                          "line": 148,
                           "col": 9,
-                          "endLine": 139,
+                          "endLine": 148,
                           "endCol": 26
                         },
                         "initial": null,
@@ -2646,9 +2682,9 @@ const ir: unknown = {
                         "effects": [],
                         "span": {
                           "file": 0,
-                          "line": 132,
+                          "line": 141,
                           "col": 9,
-                          "endLine": 132,
+                          "endLine": 141,
                           "endCol": 41
                         }
                       },
@@ -2666,9 +2702,9 @@ const ir: unknown = {
                         "effects": [],
                         "span": {
                           "file": 0,
-                          "line": 133,
+                          "line": 142,
                           "col": 9,
-                          "endLine": 133,
+                          "endLine": 142,
                           "endCol": 40
                         }
                       }
@@ -2683,9 +2719,9 @@ const ir: unknown = {
                     "doc": "Parked by the agent, for example while waiting on a third party.",
                     "span": {
                       "file": 0,
-                      "line": 143,
+                      "line": 152,
                       "col": 7,
-                      "endLine": 146,
+                      "endLine": 155,
                       "endCol": 8
                     },
                     "initial": null,
@@ -2708,9 +2744,9 @@ const ir: unknown = {
                         "effects": [],
                         "span": {
                           "file": 0,
-                          "line": 144,
+                          "line": 153,
                           "col": 9,
-                          "endLine": 144,
+                          "endLine": 153,
                           "endCol": 32
                         }
                       },
@@ -2762,9 +2798,9 @@ const ir: unknown = {
                         ],
                         "span": {
                           "file": 0,
-                          "line": 145,
+                          "line": 154,
                           "col": 9,
-                          "endLine": 145,
+                          "endLine": 154,
                           "endCol": 81
                         }
                       }
@@ -2791,9 +2827,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 117,
+                      "line": 126,
                       "col": 7,
-                      "endLine": 117,
+                      "endLine": 126,
                       "endCol": 32
                     }
                   }
@@ -2808,9 +2844,9 @@ const ir: unknown = {
                 "doc": "Escalation tiers. Each tier has a deadline before it moves up.",
                 "span": {
                   "file": 0,
-                  "line": 150,
+                  "line": 159,
                   "col": 5,
-                  "endLine": 194,
+                  "endLine": 203,
                   "endCol": 6
                 },
                 "initial": "SupportTicket.Active.Escalation.Tier2",
@@ -2822,9 +2858,9 @@ const ir: unknown = {
                     "doc": "",
                     "span": {
                       "file": 0,
-                      "line": 156,
+                      "line": 165,
                       "col": 7,
-                      "endLine": 159,
+                      "endLine": 168,
                       "endCol": 8
                     },
                     "initial": null,
@@ -2873,9 +2909,9 @@ const ir: unknown = {
                         "effects": [],
                         "span": {
                           "file": 0,
-                          "line": 158,
+                          "line": 167,
                           "col": 9,
-                          "endLine": 158,
+                          "endLine": 167,
                           "endCol": 26
                         }
                       }
@@ -2890,9 +2926,9 @@ const ir: unknown = {
                     "doc": "",
                     "span": {
                       "file": 0,
-                      "line": 161,
+                      "line": 170,
                       "col": 7,
-                      "endLine": 164,
+                      "endLine": 173,
                       "endCol": 8
                     },
                     "initial": null,
@@ -2941,9 +2977,9 @@ const ir: unknown = {
                         "effects": [],
                         "span": {
                           "file": 0,
-                          "line": 163,
+                          "line": 172,
                           "col": 9,
-                          "endLine": 163,
+                          "endLine": 172,
                           "endCol": 33
                         }
                       }
@@ -2958,9 +2994,9 @@ const ir: unknown = {
                     "doc": "Engineering owns it: file a bug and wait for the fix.",
                     "span": {
                       "file": 0,
-                      "line": 167,
+                      "line": 176,
                       "col": 7,
-                      "endLine": 193,
+                      "endLine": 202,
                       "endCol": 8
                     },
                     "initial": "SupportTicket.Active.Escalation.Engineering.FilingBug",
@@ -2972,9 +3008,9 @@ const ir: unknown = {
                         "doc": "",
                         "span": {
                           "file": 0,
-                          "line": 172,
+                          "line": 181,
                           "col": 9,
-                          "endLine": 180,
+                          "endLine": 189,
                           "endCol": 10
                         },
                         "initial": null,
@@ -2998,9 +3034,9 @@ const ir: unknown = {
                           ],
                           "span": {
                             "file": 0,
-                            "line": 173,
+                            "line": 182,
                             "col": 11,
-                            "endLine": 179,
+                            "endLine": 188,
                             "endCol": 12
                           }
                         },
@@ -3031,9 +3067,9 @@ const ir: unknown = {
                             ],
                             "span": {
                               "file": 0,
-                              "line": 174,
+                              "line": 183,
                               "col": 13,
-                              "endLine": 174,
+                              "endLine": 183,
                               "endCol": 71
                             }
                           },
@@ -3086,9 +3122,9 @@ const ir: unknown = {
                             ],
                             "span": {
                               "file": 0,
-                              "line": 176,
+                              "line": 185,
                               "col": 15,
-                              "endLine": 176,
+                              "endLine": 185,
                               "endCol": 85
                             }
                           },
@@ -3135,9 +3171,9 @@ const ir: unknown = {
                             ],
                             "span": {
                               "file": 0,
-                              "line": 177,
+                              "line": 186,
                               "col": 15,
-                              "endLine": 177,
+                              "endLine": 186,
                               "endCol": 104
                             }
                           }
@@ -3152,9 +3188,9 @@ const ir: unknown = {
                         "doc": "",
                         "span": {
                           "file": 0,
-                          "line": 182,
+                          "line": 191,
                           "col": 9,
-                          "endLine": 185,
+                          "endLine": 194,
                           "endCol": 10
                         },
                         "initial": null,
@@ -3211,9 +3247,9 @@ const ir: unknown = {
                             "effects": [],
                             "span": {
                               "file": 0,
-                              "line": 184,
+                              "line": 193,
                               "col": 11,
-                              "endLine": 184,
+                              "endLine": 193,
                               "endCol": 39
                             }
                           }
@@ -3228,9 +3264,9 @@ const ir: unknown = {
                         "doc": "",
                         "span": {
                           "file": 0,
-                          "line": 187,
+                          "line": 196,
                           "col": 9,
-                          "endLine": 190,
+                          "endLine": 199,
                           "endCol": 10
                         },
                         "initial": null,
@@ -3253,9 +3289,9 @@ const ir: unknown = {
                             "effects": [],
                             "span": {
                               "file": 0,
-                              "line": 188,
+                              "line": 197,
                               "col": 11,
-                              "endLine": 188,
+                              "endLine": 197,
                               "endCol": 39
                             }
                           },
@@ -3273,9 +3309,9 @@ const ir: unknown = {
                             "effects": [],
                             "span": {
                               "file": 0,
-                              "line": 189,
+                              "line": 198,
                               "col": 11,
-                              "endLine": 189,
+                              "endLine": 198,
                               "endCol": 41
                             }
                           }
@@ -3290,9 +3326,9 @@ const ir: unknown = {
                         "doc": "",
                         "span": {
                           "file": 0,
-                          "line": 192,
+                          "line": 201,
                           "col": 9,
-                          "endLine": 192,
+                          "endLine": 201,
                           "endCol": 34
                         },
                         "initial": null,
@@ -3322,9 +3358,9 @@ const ir: unknown = {
                         "effects": [],
                         "span": {
                           "file": 0,
-                          "line": 170,
+                          "line": 179,
                           "col": 9,
-                          "endLine": 170,
+                          "endLine": 179,
                           "endCol": 26
                         }
                       }
@@ -3351,9 +3387,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 153,
+                      "line": 162,
                       "col": 7,
-                      "endLine": 153,
+                      "endLine": 162,
                       "endCol": 31
                     }
                   },
@@ -3371,9 +3407,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 154,
+                      "line": 163,
                       "col": 7,
-                      "endLine": 154,
+                      "endLine": 163,
                       "endCol": 33
                     }
                   }
@@ -3388,9 +3424,9 @@ const ir: unknown = {
                 "doc": "Two things at once: check the fix holds, and draft the message to the customer.",
                 "span": {
                   "file": 0,
-                  "line": 197,
+                  "line": 206,
                   "col": 5,
-                  "endLine": 226,
+                  "endLine": 235,
                   "endCol": 6
                 },
                 "initial": null,
@@ -3402,9 +3438,9 @@ const ir: unknown = {
                     "doc": "",
                     "span": {
                       "file": 0,
-                      "line": 200,
+                      "line": 209,
                       "col": 7,
-                      "endLine": 213,
+                      "endLine": 222,
                       "endCol": 8
                     },
                     "initial": "SupportTicket.Active.Resolving.FixCheck.Verifying",
@@ -3416,9 +3452,9 @@ const ir: unknown = {
                         "doc": "",
                         "span": {
                           "file": 0,
-                          "line": 203,
+                          "line": 212,
                           "col": 9,
-                          "endLine": 210,
+                          "endLine": 219,
                           "endCol": 10
                         },
                         "initial": null,
@@ -3442,9 +3478,9 @@ const ir: unknown = {
                           ],
                           "span": {
                             "file": 0,
-                            "line": 204,
+                            "line": 213,
                             "col": 11,
-                            "endLine": 209,
+                            "endLine": 218,
                             "endCol": 12
                           }
                         },
@@ -3469,9 +3505,9 @@ const ir: unknown = {
                             "effects": [],
                             "span": {
                               "file": 0,
-                              "line": 206,
+                              "line": 215,
                               "col": 15,
-                              "endLine": 206,
+                              "endLine": 215,
                               "endCol": 36
                             }
                           },
@@ -3517,9 +3553,9 @@ const ir: unknown = {
                             ],
                             "span": {
                               "file": 0,
-                              "line": 207,
+                              "line": 216,
                               "col": 15,
-                              "endLine": 207,
+                              "endLine": 216,
                               "endCol": 83
                             }
                           }
@@ -3534,9 +3570,9 @@ const ir: unknown = {
                         "doc": "",
                         "span": {
                           "file": 0,
-                          "line": 212,
+                          "line": 221,
                           "col": 9,
-                          "endLine": 212,
+                          "endLine": 221,
                           "endCol": 32
                         },
                         "initial": null,
@@ -3563,9 +3599,9 @@ const ir: unknown = {
                     "doc": "",
                     "span": {
                       "file": 0,
-                      "line": 215,
+                      "line": 224,
                       "col": 7,
-                      "endLine": 225,
+                      "endLine": 234,
                       "endCol": 8
                     },
                     "initial": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
@@ -3577,9 +3613,9 @@ const ir: unknown = {
                         "doc": "",
                         "span": {
                           "file": 0,
-                          "line": 218,
+                          "line": 227,
                           "col": 9,
-                          "endLine": 222,
+                          "endLine": 231,
                           "endCol": 10
                         },
                         "initial": null,
@@ -3603,9 +3639,9 @@ const ir: unknown = {
                           ],
                           "span": {
                             "file": 0,
-                            "line": 219,
+                            "line": 228,
                             "col": 11,
-                            "endLine": 221,
+                            "endLine": 230,
                             "endCol": 12
                           }
                         },
@@ -3636,9 +3672,9 @@ const ir: unknown = {
                             ],
                             "span": {
                               "file": 0,
-                              "line": 220,
+                              "line": 229,
                               "col": 13,
-                              "endLine": 220,
+                              "endLine": 229,
                               "endCol": 53
                             }
                           }
@@ -3653,9 +3689,9 @@ const ir: unknown = {
                         "doc": "",
                         "span": {
                           "file": 0,
-                          "line": 224,
+                          "line": 233,
                           "col": 9,
-                          "endLine": 224,
+                          "endLine": 233,
                           "endCol": 31
                         },
                         "initial": null,
@@ -3716,9 +3752,9 @@ const ir: unknown = {
                     ],
                     "span": {
                       "file": 0,
-                      "line": 198,
+                      "line": 207,
                       "col": 7,
-                      "endLine": 198,
+                      "endLine": 207,
                       "endCol": 71
                     }
                   }
@@ -3733,9 +3769,9 @@ const ir: unknown = {
                 "doc": "Resolved on our side. The customer confirms, reopens or goes quiet.",
                 "span": {
                   "file": 0,
-                  "line": 229,
+                  "line": 238,
                   "col": 5,
-                  "endLine": 233,
+                  "endLine": 242,
                   "endCol": 6
                 },
                 "initial": null,
@@ -3758,9 +3794,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 230,
+                      "line": 239,
                       "col": 7,
-                      "endLine": 230,
+                      "endLine": 239,
                       "endCol": 38
                     }
                   },
@@ -3778,9 +3814,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 231,
+                      "line": 240,
                       "col": 7,
-                      "endLine": 231,
+                      "endLine": 240,
                       "endCol": 39
                     }
                   },
@@ -3803,9 +3839,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 232,
+                      "line": 241,
                       "col": 7,
-                      "endLine": 232,
+                      "endLine": 241,
                       "endCol": 38
                     }
                   }
@@ -3820,9 +3856,9 @@ const ir: unknown = {
                 "doc": "Reopen loop: back to the agent, or straight to escalation from the third reopen.",
                 "span": {
                   "file": 0,
-                  "line": 236,
+                  "line": 245,
                   "col": 5,
-                  "endLine": 242,
+                  "endLine": 251,
                   "endCol": 6
                 },
                 "initial": null,
@@ -3892,9 +3928,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 239,
+                      "line": 248,
                       "col": 9,
-                      "endLine": 239,
+                      "endLine": 248,
                       "endCol": 34
                     }
                   },
@@ -3911,9 +3947,9 @@ const ir: unknown = {
                     "effects": [],
                     "span": {
                       "file": 0,
-                      "line": 240,
+                      "line": 249,
                       "col": 9,
-                      "endLine": 240,
+                      "endLine": 249,
                       "endCol": 37
                     }
                   }
@@ -3974,9 +4010,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 109,
+                  "line": 113,
                   "col": 5,
-                  "endLine": 109,
+                  "endLine": 113,
                   "endCol": 73
                 }
               },
@@ -4016,9 +4052,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 110,
+                  "line": 114,
                   "col": 5,
-                  "endLine": 110,
+                  "endLine": 114,
                   "endCol": 79
                 }
               },
@@ -4036,9 +4072,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 111,
+                  "line": 115,
                   "col": 5,
-                  "endLine": 111,
+                  "endLine": 115,
                   "endCol": 47
                 }
               },
@@ -4056,10 +4092,96 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 112,
+                  "line": 116,
                   "col": 5,
-                  "endLine": 112,
+                  "endLine": 116,
                   "endCol": 44
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "FollowUpIn"
+                },
+                "group": 4,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "raise",
+                    "event": "FollowUp",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "FollowUp",
+                      "text": "FollowUp"
+                    },
+                    "delay": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "delay"
+                      ],
+                      "type": "duration",
+                      "text": "event.delay"
+                    },
+                    "name": "followUp"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 120,
+                  "col": 5,
+                  "endLine": 120,
+                  "endCol": 63
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "FollowUp"
+                },
+                "group": 5,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "notifyAgent",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "agentId"
+                        ],
+                        "type": "string",
+                        "text": "agentId"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "ticket"
+                        ],
+                        "type": "Ticket",
+                        "text": "ticket"
+                      },
+                      {
+                        "kind": "lit",
+                        "value": "follow_up",
+                        "type": "string",
+                        "text": "\"follow_up\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 121,
+                  "col": 5,
+                  "endLine": 121,
+                  "endCol": 63
                 }
               }
             ],
@@ -4073,9 +4195,9 @@ const ir: unknown = {
             "doc": "Ask the customer how we did, then close.",
             "span": {
               "file": 0,
-              "line": 246,
+              "line": 255,
               "col": 3,
-              "endLine": 258,
+              "endLine": 268,
               "endCol": 4
             },
             "initial": "SupportTicket.Closing.Surveying",
@@ -4087,9 +4209,9 @@ const ir: unknown = {
                 "doc": "",
                 "span": {
                   "file": 0,
-                  "line": 251,
+                  "line": 261,
                   "col": 5,
-                  "endLine": 255,
+                  "endLine": 265,
                   "endCol": 6
                 },
                 "initial": null,
@@ -4113,9 +4235,9 @@ const ir: unknown = {
                   ],
                   "span": {
                     "file": 0,
-                    "line": 252,
+                    "line": 262,
                     "col": 7,
-                    "endLine": 254,
+                    "endLine": 264,
                     "endCol": 8
                   }
                 },
@@ -4146,9 +4268,9 @@ const ir: unknown = {
                     ],
                     "span": {
                       "file": 0,
-                      "line": 253,
+                      "line": 263,
                       "col": 9,
-                      "endLine": 253,
+                      "endLine": 263,
                       "endCol": 46
                     }
                   }
@@ -4163,9 +4285,9 @@ const ir: unknown = {
                 "doc": "",
                 "span": {
                   "file": 0,
-                  "line": 257,
+                  "line": 267,
                   "col": 5,
-                  "endLine": 257,
+                  "endLine": 267,
                   "endCol": 28
                 },
                 "initial": null,
@@ -4178,7 +4300,12 @@ const ir: unknown = {
                 "fail": null
               }
             ],
-            "entry": [],
+            "entry": [
+              {
+                "kind": "cancel",
+                "name": "followUp"
+              }
+            ],
             "exit": [],
             "invoke": null,
             "transitions": [
@@ -4195,9 +4322,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 249,
+                  "line": 259,
                   "col": 5,
-                  "endLine": 249,
+                  "endLine": 259,
                   "endCol": 21
                 }
               }
@@ -4212,9 +4339,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 260,
+              "line": 270,
               "col": 3,
-              "endLine": 260,
+              "endLine": 270,
               "endCol": 76
             },
             "initial": null,
@@ -4264,9 +4391,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 261,
+              "line": 271,
               "col": 3,
-              "endLine": 261,
+              "endLine": 271,
               "endCol": 87
             },
             "initial": null,
@@ -4314,9 +4441,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 262,
+              "line": 272,
               "col": 3,
-              "endLine": 262,
+              "endLine": 272,
               "endCol": 81
             },
             "initial": null,
@@ -4364,9 +4491,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 263,
+              "line": 273,
               "col": 3,
-              "endLine": 263,
+              "endLine": 273,
               "endCol": 86
             },
             "initial": null,
@@ -4414,9 +4541,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 264,
+              "line": 274,
               "col": 3,
-              "endLine": 264,
+              "endLine": 274,
               "endCol": 86
             },
             "initial": null,
@@ -4464,9 +4591,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 265,
+              "line": 275,
               "col": 3,
-              "endLine": 265,
+              "endLine": 275,
               "endCol": 87
             },
             "initial": null,
@@ -4514,9 +4641,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 266,
+              "line": 276,
               "col": 3,
-              "endLine": 266,
+              "endLine": 276,
               "endCol": 83
             },
             "initial": null,
@@ -4564,9 +4691,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 267,
+              "line": 277,
               "col": 3,
-              "endLine": 267,
+              "endLine": 277,
               "endCol": 89
             },
             "initial": null,
@@ -4615,7 +4742,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:30fd463681592918319ff50bc6832a919f7b71adad871f3287cf0cbc147078aa"
+      "hash": "sha256:0248d4e56a45aa9625e222e27892c9099942015f2a10ae9578b666ed4a658d1c"
     },
     "SatisfactionSurvey": {
       "doc": "Send a satisfaction survey and wait up to a week for the answer.",
@@ -4692,6 +4819,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

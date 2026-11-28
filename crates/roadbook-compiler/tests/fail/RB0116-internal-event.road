@@ -1,0 +1,22 @@
+machine Child() {
+  event Go
+  internal event Ping
+  initial A
+  state A {
+    on Go raise Ping
+    on Ping -> A
+  }
+}
+
+machine M() {
+  event Go
+  initial A
+  state A {
+    invoke Child() as child {
+      done -> A
+    }
+    on Go send child.Ping
+  }
+}
+
+// expect: RB0116 at 18:22

@@ -1,0 +1,4 @@
+{"input":{},"ir":"sha256:d5d85409efcaf8f8e0be4ebed154a7c27815f961166bb3594af6a742e520f454","kind":"started","machine":"Loop","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Loop","t":0}
+{"kind":"entered","run":"r1","state":"Loop.A","t":0}
+{"defect":{"kind":"limit"},"kind":"defect","run":"r1","t":0}

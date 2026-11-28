@@ -3,7 +3,7 @@
  * starts a run from one (execution.md, "Restoring a snapshot"), in the order the spec gives
  * them, each refusal with its reason.
  */
-import { childrenOf, type Field, type Ir, isHistory, type Machine, type State } from "./ir.ts"
+import { childrenOf, type Field, type Ir, isHistory, type Machine, ownEvent, raiseNames, type State } from "./ir.ts"
 import { copyJson, type Json } from "./json.ts"
 import { expandType, fieldsOf, isOptionalType, type TypeRef } from "./typeref.ts"
 import type { Saved, Snapshot } from "./types.ts"
@@ -34,8 +34,9 @@ export type Checked =
   | ({ readonly ok: false } & Refusal)
 
 /**
- * The saved form of `snapshot`: the version (always 4) added, each timer's due time from `due`,
- * and `calls` only when the run has pending calls. No child run is nested in it: see
+ * The saved form of `snapshot`: the version (always 4) added, the due time of each timer and
+ * delayed raise from `due` (given its timer id), `calls` only when the run has pending calls and
+ * `scheduled` only when it has pending delayed raises. No child run is nested in it: see
  * `withChildren`.
  */
 export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Saved => ({
@@ -51,6 +52,7 @@ export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Sav
   ...(snapshot.calls.length > 0 ? { calls: snapshot.calls } : {}),
   spawned: snapshot.spawned,
   timers: snapshot.timers.map((t) => ({ ...t, due: due(t.id) })),
+  ...(snapshot.scheduled.length > 0 ? { scheduled: snapshot.scheduled.map((s) => ({ ...s, due: due(s.id) })) } : {}),
   nextInvoke: snapshot.nextInvoke,
   nextTimer: snapshot.nextTimer,
   nextMessage: snapshot.nextMessage,
@@ -249,8 +251,8 @@ const shapeIssue = (json: unknown): string | undefined => {
     return `it is version ${JSON.stringify(version)} and has spawned, which version 3 added`
   }
   const expected = version === 1 ? MEMBERS : version === 2 ? [...MEMBERS, "history"] : [...MEMBERS, "history", "spawned"]
-  // `calls` is written only when the run has pending calls, in any version.
-  const members = membersIssue(json, expected, "it", ["calls"])
+  // `calls` and `scheduled` are written only when not empty, in any version.
+  const members = membersIssue(json, expected, "it", ["calls", "scheduled"])
   if (members !== undefined) return members
   if (version !== 1 && version !== 2 && version !== 3 && version !== SNAPSHOT_VERSION) {
     return `snapshotVersion is ${JSON.stringify(version)}, and this runtime reads 1 to ${SNAPSHOT_VERSION}`
@@ -322,6 +324,21 @@ const shapeIssue = (json: unknown): string | undefined => {
       !isId(tm["id"]) || !matches(STATE_ID, tm["state"]) || !isNatural(tm["index"]) || !isNatural(tm["delay"]) ||
       !isNatural(tm["due"])
     ) return "a timer is malformed"
+  }
+  if (Object.hasOwn(json, "scheduled")) {
+    // Written only when not empty.
+    const scheduled = json["scheduled"]
+    if (!Array.isArray(scheduled) || scheduled.length === 0) return "scheduled is not a list of at least one delayed raise"
+    for (const sc of scheduled) {
+      if (!isObject(sc)) return "a delayed raise is not an object"
+      const issue = membersIssue(sc, ["id", "name", "delay", "value", "due"], "a delayed raise")
+      if (issue !== undefined) return issue
+      const value = sc["value"]
+      if (
+        !isId(sc["id"]) || !(sc["name"] === null || matches(LOWER, sc["name"])) || !isNatural(sc["delay"]) ||
+        !isNatural(sc["due"]) || !isObject(value) || !matches(UPPER, value["_tag"])
+      ) return "a delayed raise is malformed"
+    }
   }
   for (const name of ["nextInvoke", "nextTimer", "nextMessage"]) {
     if (!isId(json[name])) return `${name} is not a positive integer`
@@ -493,6 +510,24 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
     timerIds.add(tm.id)
     if (tm.id >= saved.nextTimer) return `timer id ${tm.id} is not below nextTimer`
   }
+  // Delayed raises: their ids are timer ids.
+  const names = raiseNames(m)
+  const taken = new Set<string>()
+  for (const sc of saved.scheduled ?? []) {
+    const decl = ownEvent(m, sc.value._tag)
+    const issue = decl === undefined
+      ? `the value of delayed raise ${sc.id} is not one of ${saved.machine}'s events`
+      : taggedIssue(ir, sc.value._tag, decl.fields, sc.value, `the value of delayed raise ${sc.id}`)
+    if (issue !== undefined) return issue
+    if (sc.name !== null) {
+      if (!names.includes(sc.name)) return `delayed raise ${sc.id} is named ${sc.name}, which no raise of ${saved.machine} uses`
+      if (taken.has(sc.name)) return `two delayed raises are named ${sc.name}`
+      taken.add(sc.name)
+    }
+    if (timerIds.has(sc.id)) return `timer id ${sc.id} is repeated`
+    timerIds.add(sc.id)
+    if (sc.id >= saved.nextTimer) return `timer id ${sc.id} is not below nextTimer`
+  }
 
   // The values.
   const params = new Set(m.params.map((p) => p.name))
@@ -639,9 +674,7 @@ export const valueIssue = (ir: Ir, type: TypeRef | string, value: Json, what: st
         ? Object.hasOwn(task.emits, t.event) ? task.emits[t.event] : undefined
         : m === undefined
         ? undefined
-        : Object.hasOwn(m.events, t.event)
-        ? m.events[t.event]
-        : m.emits[t.event]
+        : ownEvent(m, t.event) ?? m.emits[t.event]
       if (decl === undefined) return `${what} has unknown type ${t.machine}.${t.event}`
       return taggedIssue(ir, t.event, decl.fields, value, what)
     }

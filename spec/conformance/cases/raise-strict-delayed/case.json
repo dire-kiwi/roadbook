@@ -1,0 +1,23 @@
+{
+  "description": "A strict machine's delayed raise expires in a state that takes no `Ping`: its expiry, the `after` input, is `unhandled`.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Picky",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Later"
+      }
+    },
+    {
+      "advance": 1000
+    }
+  ],
+  "status": "defect"
+}

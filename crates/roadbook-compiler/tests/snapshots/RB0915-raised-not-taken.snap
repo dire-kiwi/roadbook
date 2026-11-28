@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0915]: no `on Ping` of `M` takes the event this raises
+ --> RB0915-raised-not-taken.road:6:17
+  |
+6 |     on Go raise Ping  raise Ping after 1s
+  |                 ^^^^
+  |
+  = help: add `on Ping` to a state, or remove the `raise`: it is always dropped

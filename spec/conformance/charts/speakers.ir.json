@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/speakers.road",
@@ -56,6 +56,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {
         "Ping": {
           "fields": [
@@ -314,6 +315,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {
@@ -641,6 +643,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {

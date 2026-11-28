@@ -1,0 +1,18 @@
+{
+  "description": "The same when the run is cancelled from outside: the exit effects raise `Bye` at once and after a delay; the first is thrown away and the second cancelled, before the `cancelled` record.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Ending",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "cancel": true
+    }
+  ],
+  "status": "cancelled"
+}

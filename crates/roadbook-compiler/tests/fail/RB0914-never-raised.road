@@ -1,0 +1,11 @@
+machine M() {
+  event Go
+  internal event Ping
+  initial A
+  state A {
+    on Go -> A
+    on Ping -> A
+  }
+}
+
+// expect: RB0914 at 3:18

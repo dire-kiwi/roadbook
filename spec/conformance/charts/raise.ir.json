@@ -1,0 +1,2545 @@
+{
+  "irVersion": "0.11",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/raise.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Order": {
+      "doc": "A raise in a transition, one in an entry and one in a final state's entry, with an\nalways and a completion in play: all are taken in the step, in the order queued.",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 35,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 17
+          }
+        }
+      ],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 11
+          }
+        },
+        "Next": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {
+        "Ping": {
+          "fields": [
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 33
+          }
+        },
+        "Pong": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 22
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Order",
+        "name": "Order",
+        "kind": "compound",
+        "doc": "A raise in a transition, one in an entry and one in a final state's entry, with an\nalways and a completion in play: all are taken in the step, in the order queued.",
+        "span": {
+          "file": 0,
+          "line": 9,
+          "col": 1,
+          "endLine": 35,
+          "endCol": 2
+        },
+        "initial": "Order.Idle",
+        "states": [
+          {
+            "id": "Order.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 18,
+              "col": 3,
+              "endLine": 18,
+              "endCol": 66
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Order.Work"
+                ],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "raise",
+                    "event": "Ping",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "n",
+                          "value": {
+                            "kind": "lit",
+                            "value": 1,
+                            "type": "int",
+                            "text": "1"
+                          }
+                        }
+                      ],
+                      "type": "Ping",
+                      "text": "Ping { n: 1 }"
+                    },
+                    "delay": null,
+                    "name": null
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "go",
+                        "type": "string",
+                        "text": "\"go\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 16,
+                  "endLine": 18,
+                  "endCol": 64
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.Work",
+            "name": "Work",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 20,
+              "col": 3,
+              "endLine": 32,
+              "endCol": 4
+            },
+            "initial": "Order.Work.Inner",
+            "states": [
+              {
+                "id": "Order.Work.Inner",
+                "name": "Inner",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 29,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "raise",
+                    "event": "Pong",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Pong",
+                      "text": "Pong"
+                    },
+                    "delay": null,
+                    "name": null
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "targets": [
+                      "Order.Work.Finished"
+                    ],
+                    "internal": false,
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 28,
+                      "col": 7,
+                      "endLine": 28,
+                      "endCol": 25
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Order.Work.Finished",
+                "name": "Finished",
+                "kind": "final",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 31,
+                  "col": 5,
+                  "endLine": 31,
+                  "endCol": 55
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "raise",
+                    "event": "Ping",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "n",
+                          "value": {
+                            "kind": "lit",
+                            "value": 2,
+                            "type": "int",
+                            "text": "2"
+                          }
+                        }
+                      ],
+                      "type": "Ping",
+                      "text": "Ping { n: 2 }"
+                    },
+                    "delay": null,
+                    "name": null
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Ping"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "event.n"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "n + event.n"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "ping",
+                        "type": "string",
+                        "text": "\"ping\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 58
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Pong"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "pong",
+                        "type": "string",
+                        "text": "\"pong\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 5,
+                  "endLine": 23,
+                  "endCol": 37
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "done"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [
+                  "Order.After"
+                ],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "done",
+                        "type": "string",
+                        "text": "\"done\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 24,
+                  "col": 5,
+                  "endLine": 24,
+                  "endCol": 37
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.After",
+            "name": "After",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 34,
+              "col": 3,
+              "endLine": 34,
+              "endCol": 41
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Next"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "next",
+                        "type": "string",
+                        "text": "\"next\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 34,
+                  "col": 17,
+                  "endLine": 34,
+                  "endCol": 39
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:06e38d35e9eb189b91b3989aa833c6c2e3161f799a4f9612c6050ec7dcb72056"
+    },
+    "Starter": {
+      "doc": "A raise in an initial entry is taken while the run starts.",
+      "span": {
+        "file": 0,
+        "line": 38,
+        "col": 1,
+        "endLine": 50,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Back": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 39,
+            "col": 3,
+            "endLine": 39,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {
+        "Ping": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 40,
+            "col": 3,
+            "endLine": 40,
+            "endCol": 22
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Starter",
+        "name": "Starter",
+        "kind": "compound",
+        "doc": "A raise in an initial entry is taken while the run starts.",
+        "span": {
+          "file": 0,
+          "line": 38,
+          "col": 1,
+          "endLine": 50,
+          "endCol": 2
+        },
+        "initial": "Starter.A",
+        "states": [
+          {
+            "id": "Starter.A",
+            "name": "A",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 44,
+              "col": 3,
+              "endLine": 47,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "raise",
+                "event": "Ping",
+                "value": {
+                  "kind": "record",
+                  "fields": [],
+                  "type": "Ping",
+                  "text": "Ping"
+                },
+                "delay": null,
+                "name": null
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Ping"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Starter.B"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 46,
+                  "col": 5,
+                  "endLine": 46,
+                  "endCol": 17
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Starter.B",
+            "name": "B",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 49,
+              "col": 3,
+              "endLine": 49,
+              "endCol": 27
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Back"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Starter.A"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 49,
+                  "col": 13,
+                  "endLine": 49,
+                  "endCol": 25
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:a81485a0514fc8e38261fbb4ca0fc746ef1c9ab5e6eb3026a76df1b26e10d2d4"
+    },
+    "Lenient": {
+      "doc": "A raised event that no transition of the current states takes is dropped.",
+      "span": {
+        "file": 0,
+        "line": 53,
+        "col": 1,
+        "endLine": 68,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 54,
+            "col": 3,
+            "endLine": 54,
+            "endCol": 11
+          }
+        },
+        "Later": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 55,
+            "col": 3,
+            "endLine": 55,
+            "endCol": 14
+          }
+        },
+        "Move": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 56,
+            "col": 3,
+            "endLine": 56,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {
+        "Ping": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 57,
+            "col": 3,
+            "endLine": 57,
+            "endCol": 22
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Lenient",
+        "name": "Lenient",
+        "kind": "compound",
+        "doc": "A raised event that no transition of the current states takes is dropped.",
+        "span": {
+          "file": 0,
+          "line": 53,
+          "col": 1,
+          "endLine": 68,
+          "endCol": 2
+        },
+        "initial": "Lenient.A",
+        "states": [
+          {
+            "id": "Lenient.A",
+            "name": "A",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 61,
+              "col": 3,
+              "endLine": 65,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "raise",
+                    "event": "Ping",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Ping",
+                      "text": "Ping"
+                    },
+                    "delay": null,
+                    "name": null
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 62,
+                  "col": 5,
+                  "endLine": 62,
+                  "endCol": 30
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Later"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "raise",
+                    "event": "Ping",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Ping",
+                      "text": "Ping"
+                    },
+                    "delay": {
+                      "kind": "lit",
+                      "value": 1000,
+                      "type": "duration",
+                      "text": "1s"
+                    },
+                    "name": null
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 63,
+                  "col": 5,
+                  "endLine": 63,
+                  "endCol": 39
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Move"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [
+                  "Lenient.B"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 64,
+                  "col": 5,
+                  "endLine": 64,
+                  "endCol": 18
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Lenient.B",
+            "name": "B",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 67,
+              "col": 3,
+              "endLine": 67,
+              "endCol": 27
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Ping"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Lenient.A"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 67,
+                  "col": 13,
+                  "endLine": 67,
+                  "endCol": 25
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:3ad81702ae02867a7c6b0bebac0ebf9ce90349f285b850018b55937d1d0bd8d3"
+    },
+    "Picky": {
+      "doc": "The same in a strict machine: a raised event, or a delayed raise's expiry, that no\ntransition takes is `unhandled`.",
+      "span": {
+        "file": 0,
+        "line": 72,
+        "col": 1,
+        "endLine": 87,
+        "endCol": 2
+      },
+      "strict": true,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 73,
+            "col": 3,
+            "endLine": 73,
+            "endCol": 11
+          }
+        },
+        "Later": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 74,
+            "col": 3,
+            "endLine": 74,
+            "endCol": 14
+          }
+        },
+        "Move": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 75,
+            "col": 3,
+            "endLine": 75,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {
+        "Ping": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 76,
+            "col": 3,
+            "endLine": 76,
+            "endCol": 22
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Picky",
+        "name": "Picky",
+        "kind": "compound",
+        "doc": "The same in a strict machine: a raised event, or a delayed raise's expiry, that no\ntransition takes is `unhandled`.",
+        "span": {
+          "file": 0,
+          "line": 72,
+          "col": 1,
+          "endLine": 87,
+          "endCol": 2
+        },
+        "initial": "Picky.A",
+        "states": [
+          {
+            "id": "Picky.A",
+            "name": "A",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 80,
+              "col": 3,
+              "endLine": 84,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "raise",
+                    "event": "Ping",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Ping",
+                      "text": "Ping"
+                    },
+                    "delay": null,
+                    "name": null
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 81,
+                  "col": 5,
+                  "endLine": 81,
+                  "endCol": 30
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Later"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "raise",
+                    "event": "Ping",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Ping",
+                      "text": "Ping"
+                    },
+                    "delay": {
+                      "kind": "lit",
+                      "value": 1000,
+                      "type": "duration",
+                      "text": "1s"
+                    },
+                    "name": null
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 82,
+                  "col": 5,
+                  "endLine": 82,
+                  "endCol": 39
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Move"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [
+                  "Picky.B"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 83,
+                  "col": 5,
+                  "endLine": 83,
+                  "endCol": 18
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Picky.B",
+            "name": "B",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 86,
+              "col": 3,
+              "endLine": 86,
+              "endCol": 27
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Ping"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Picky.A"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 86,
+                  "col": 13,
+                  "endLine": 86,
+                  "endCol": 25
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:f87a8aff1bfad48df50b3ff6555379cb775a1a4f945bac6e5755c0b0d9869420"
+    },
+    "Loop": {
+      "doc": "A raise that raises itself again hits the limit.",
+      "span": {
+        "file": 0,
+        "line": 90,
+        "col": 1,
+        "endLine": 100,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 91,
+            "col": 3,
+            "endLine": 91,
+            "endCol": 11
+          }
+        }
+      },
+      "internalEvents": {
+        "Ping": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 92,
+            "col": 3,
+            "endLine": 92,
+            "endCol": 22
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Loop",
+        "name": "Loop",
+        "kind": "compound",
+        "doc": "A raise that raises itself again hits the limit.",
+        "span": {
+          "file": 0,
+          "line": 90,
+          "col": 1,
+          "endLine": 100,
+          "endCol": 2
+        },
+        "initial": "Loop.A",
+        "states": [
+          {
+            "id": "Loop.A",
+            "name": "A",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 96,
+              "col": 3,
+              "endLine": 99,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "raise",
+                    "event": "Ping",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Ping",
+                      "text": "Ping"
+                    },
+                    "delay": null,
+                    "name": null
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 97,
+                  "col": 5,
+                  "endLine": 97,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Ping"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "raise",
+                    "event": "Ping",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Ping",
+                      "text": "Ping"
+                    },
+                    "delay": null,
+                    "name": null
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 98,
+                  "col": 5,
+                  "endLine": 98,
+                  "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:d5d85409efcaf8f8e0be4ebed154a7c27815f961166bb3594af6a742e520f454"
+    },
+    "Reminder": {
+      "doc": "A reminder that belongs to the run: it survives leaving the state that started it, is\nreplaced by a raise of the same name, cancelled by `cancel`, and saved with its deadline.",
+      "span": {
+        "file": 0,
+        "line": 104,
+        "col": 1,
+        "endLine": 131,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "attempts",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 111,
+            "col": 3,
+            "endLine": 111,
+            "endCol": 24
+          }
+        }
+      ],
+      "events": {
+        "Start": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 105,
+            "col": 3,
+            "endLine": 105,
+            "endCol": 14
+          }
+        },
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 106,
+            "col": 3,
+            "endLine": 106,
+            "endCol": 13
+          }
+        },
+        "Again": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 107,
+            "col": 3,
+            "endLine": 107,
+            "endCol": 14
+          }
+        },
+        "Confirm": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 108,
+            "col": 3,
+            "endLine": 108,
+            "endCol": 16
+          }
+        },
+        "Boom": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 109,
+            "col": 3,
+            "endLine": 109,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {
+        "Remind": {
+          "fields": [
+            {
+              "name": "attempt",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 110,
+            "col": 3,
+            "endLine": 110,
+            "endCol": 41
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Reminder",
+        "name": "Reminder",
+        "kind": "compound",
+        "doc": "A reminder that belongs to the run: it survives leaving the state that started it, is\nreplaced by a raise of the same name, cancelled by `cancel`, and saved with its deadline.",
+        "span": {
+          "file": 0,
+          "line": 104,
+          "col": 1,
+          "endLine": 131,
+          "endCol": 2
+        },
+        "initial": "Reminder.Idle",
+        "states": [
+          {
+            "id": "Reminder.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 115,
+              "col": 3,
+              "endLine": 118,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Start"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Reminder.Waiting"
+                ],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "raise",
+                    "event": "Remind",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "attempt",
+                          "value": {
+                            "kind": "lit",
+                            "value": 1,
+                            "type": "int",
+                            "text": "1"
+                          }
+                        }
+                      ],
+                      "type": "Remind",
+                      "text": "Remind { attempt: 1 }"
+                    },
+                    "delay": {
+                      "kind": "lit",
+                      "value": 1000,
+                      "type": "duration",
+                      "text": "1s"
+                    },
+                    "name": "reminder"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 116,
+                  "col": 5,
+                  "endLine": 116,
+                  "endCol": 74
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "cancel",
+                    "name": "reminder"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 117,
+                  "col": 5,
+                  "endLine": 117,
+                  "endCol": 41
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Reminder.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 120,
+              "col": 3,
+              "endLine": 127,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Remind"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Reminder.Waiting"
+                ],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "attempts",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "attempt"
+                      ],
+                      "type": "int",
+                      "text": "event.attempt"
+                    }
+                  },
+                  {
+                    "kind": "raise",
+                    "event": "Remind",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "attempt",
+                          "value": {
+                            "kind": "op",
+                            "op": "+",
+                            "args": [
+                              {
+                                "kind": "ref",
+                                "path": [
+                                  "event",
+                                  "attempt"
+                                ],
+                                "type": "int",
+                                "text": "event.attempt"
+                              },
+                              {
+                                "kind": "lit",
+                                "value": 1,
+                                "type": "int",
+                                "text": "1"
+                              }
+                            ],
+                            "type": "int",
+                            "text": "event.attempt + 1"
+                          }
+                        }
+                      ],
+                      "type": "Remind",
+                      "text": "Remind { attempt: event.attempt + 1 }"
+                    },
+                    "delay": {
+                      "kind": "lit",
+                      "value": 1000,
+                      "type": "duration",
+                      "text": "1s"
+                    },
+                    "name": "reminder"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 121,
+                  "col": 5,
+                  "endLine": 121,
+                  "endCol": 124
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Again"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "raise",
+                    "event": "Remind",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "attempt",
+                          "value": {
+                            "kind": "lit",
+                            "value": 10,
+                            "type": "int",
+                            "text": "10"
+                          }
+                        }
+                      ],
+                      "type": "Remind",
+                      "text": "Remind { attempt: 10 }"
+                    },
+                    "delay": {
+                      "kind": "lit",
+                      "value": 500,
+                      "type": "duration",
+                      "text": "500ms"
+                    },
+                    "name": "reminder"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 122,
+                  "col": 5,
+                  "endLine": 122,
+                  "endCol": 82
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [
+                  "Reminder.Idle"
+                ],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "cancel",
+                    "name": "reminder"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 123,
+                  "col": 5,
+                  "endLine": 123,
+                  "endCol": 45
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Confirm"
+                },
+                "group": 3,
+                "guard": null,
+                "targets": [
+                  "Reminder.Confirmed"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 124,
+                  "col": 5,
+                  "endLine": 124,
+                  "endCol": 28
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Boom"
+                },
+                "group": 4,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "boom",
+                        "type": "string",
+                        "text": "\"boom\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 125,
+                  "col": 5,
+                  "endLine": 125,
+                  "endCol": 44
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 3000,
+                    "type": "duration",
+                    "text": "3s"
+                  }
+                },
+                "group": 5,
+                "guard": null,
+                "targets": [
+                  "Reminder.GaveUp"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 126,
+                  "col": 5,
+                  "endLine": 126,
+                  "endCol": 25
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Reminder.Confirmed",
+            "name": "Confirmed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 129,
+              "col": 3,
+              "endLine": 129,
+              "endCol": 27
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Reminder.GaveUp",
+            "name": "GaveUp",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 130,
+              "col": 3,
+              "endLine": 130,
+              "endCol": 27
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:9b1607d82690c0e6dcfe2fba07abb124f92055d4bf86880e0255d6bfc8764e69"
+    },
+    "Ending": {
+      "doc": "What the exit effects of a run's last step raise is thrown away, and its delayed raises\nare cancelled after its exits.",
+      "span": {
+        "file": 0,
+        "line": 135,
+        "col": 1,
+        "endLine": 148,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Finish": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 136,
+            "col": 3,
+            "endLine": 136,
+            "endCol": 15
+          }
+        }
+      },
+      "internalEvents": {
+        "Bye": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 137,
+            "col": 3,
+            "endLine": 137,
+            "endCol": 21
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Ending",
+        "name": "Ending",
+        "kind": "compound",
+        "doc": "What the exit effects of a run's last step raise is thrown away, and its delayed raises\nare cancelled after its exits.",
+        "span": {
+          "file": 0,
+          "line": 135,
+          "col": 1,
+          "endLine": 148,
+          "endCol": 2
+        },
+        "initial": "Ending.A",
+        "states": [
+          {
+            "id": "Ending.A",
+            "name": "A",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 142,
+              "col": 3,
+              "endLine": 145,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Finish"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Ending.Over"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 143,
+                  "col": 5,
+                  "endLine": 143,
+                  "endCol": 22
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Bye"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "bye",
+                        "type": "string",
+                        "text": "\"bye\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 144,
+                  "col": 5,
+                  "endLine": 144,
+                  "endCol": 37
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Ending.Over",
+            "name": "Over",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 147,
+              "col": 3,
+              "endLine": 147,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [
+          {
+            "kind": "raise",
+            "event": "Bye",
+            "value": {
+              "kind": "record",
+              "fields": [],
+              "type": "Bye",
+              "text": "Bye"
+            },
+            "delay": null,
+            "name": null
+          },
+          {
+            "kind": "raise",
+            "event": "Bye",
+            "value": {
+              "kind": "record",
+              "fields": [],
+              "type": "Bye",
+              "text": "Bye"
+            },
+            "delay": {
+              "kind": "lit",
+              "value": 1000,
+              "type": "duration",
+              "text": "1s"
+            },
+            "name": "bye"
+          }
+        ],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:7c6657671cae0ab8b007fba7ad3788ce0d43a39b38613961500edb4858c4f60f"
+    },
+    "Ticker": {
+      "doc": "A child run with a pending raise, which its parent cancels by leaving the invoking state.",
+      "span": {
+        "file": 0,
+        "line": 151,
+        "col": 1,
+        "endLine": 158,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {},
+      "internalEvents": {
+        "Tick": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 152,
+            "col": 3,
+            "endLine": 152,
+            "endCol": 22
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Ticker",
+        "name": "Ticker",
+        "kind": "compound",
+        "doc": "A child run with a pending raise, which its parent cancels by leaving the invoking state.",
+        "span": {
+          "file": 0,
+          "line": 151,
+          "col": 1,
+          "endLine": 158,
+          "endCol": 2
+        },
+        "initial": "Ticker.Running",
+        "states": [
+          {
+            "id": "Ticker.Running",
+            "name": "Running",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 157,
+              "col": 3,
+              "endLine": 157,
+              "endCol": 68
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Tick"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Ticker.Running"
+                ],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "raise",
+                    "event": "Tick",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Tick",
+                      "text": "Tick"
+                    },
+                    "delay": {
+                      "kind": "lit",
+                      "value": 1000,
+                      "type": "duration",
+                      "text": "1s"
+                    },
+                    "name": "tick"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 157,
+                  "col": 19,
+                  "endLine": 157,
+                  "endCol": 66
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [
+          {
+            "kind": "raise",
+            "event": "Tick",
+            "value": {
+              "kind": "record",
+              "fields": [],
+              "type": "Tick",
+              "text": "Tick"
+            },
+            "delay": {
+              "kind": "lit",
+              "value": 1000,
+              "type": "duration",
+              "text": "1s"
+            },
+            "name": "tick"
+          }
+        ],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:4a73b0727829801ba1d9c4ecbb8ed442f45afb4563e0b222144ce79060ab1f1c"
+    },
+    "Parent": {
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 160,
+        "col": 1,
+        "endLine": 173,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Leave": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 161,
+            "col": 3,
+            "endLine": 161,
+            "endCol": 14
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Parent",
+        "name": "Parent",
+        "kind": "compound",
+        "doc": "",
+        "span": {
+          "file": 0,
+          "line": 160,
+          "col": 1,
+          "endLine": 173,
+          "endCol": 2
+        },
+        "initial": "Parent.Using",
+        "states": [
+          {
+            "id": "Parent.Using",
+            "name": "Using",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 165,
+              "col": 3,
+              "endLine": 170,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "machine",
+              "src": "Ticker",
+              "to": null,
+              "as": null,
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 166,
+                "col": 5,
+                "endLine": 168,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Parent.Left"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 167,
+                  "col": 7,
+                  "endLine": 167,
+                  "endCol": 19
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Leave"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Parent.Left"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 169,
+                  "col": 5,
+                  "endLine": 169,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Parent.Left",
+            "name": "Left",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 172,
+              "col": 3,
+              "endLine": 172,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:94d4157bfba14995c29710b8fbda11ee3b1f955a99e3febd57b0a9ea620dcdde"
+    },
+    "Vault": {
+      "doc": "A sensitive field of a raised event is redacted in every record that shows it.",
+      "span": {
+        "file": 0,
+        "line": 176,
+        "col": 1,
+        "endLine": 185,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Lock": {
+          "fields": [
+            {
+              "name": "code",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 177,
+            "col": 3,
+            "endLine": 177,
+            "endCol": 41
+          }
+        }
+      },
+      "internalEvents": {
+        "Locked": {
+          "fields": [
+            {
+              "name": "code",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 178,
+            "col": 3,
+            "endLine": 178,
+            "endCol": 51
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Vault",
+        "name": "Vault",
+        "kind": "compound",
+        "doc": "A sensitive field of a raised event is redacted in every record that shows it.",
+        "span": {
+          "file": 0,
+          "line": 176,
+          "col": 1,
+          "endLine": 185,
+          "endCol": 2
+        },
+        "initial": "Vault.Open",
+        "states": [
+          {
+            "id": "Vault.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 182,
+              "col": 3,
+              "endLine": 182,
+              "endCol": 124
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Lock"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Vault.Closed"
+                ],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "raise",
+                    "event": "Locked",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "code",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "code"
+                            ],
+                            "type": "string",
+                            "text": "event.code"
+                          }
+                        }
+                      ],
+                      "type": "Locked",
+                      "text": "Locked { code: event.code }"
+                    },
+                    "delay": null,
+                    "name": null
+                  },
+                  {
+                    "kind": "raise",
+                    "event": "Locked",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "code",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "code"
+                            ],
+                            "type": "string",
+                            "text": "event.code"
+                          }
+                        }
+                      ],
+                      "type": "Locked",
+                      "text": "Locked { code: event.code }"
+                    },
+                    "delay": {
+                      "kind": "lit",
+                      "value": 1000,
+                      "type": "duration",
+                      "text": "1s"
+                    },
+                    "name": "relock"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 182,
+                  "col": 16,
+                  "endLine": 182,
+                  "endCol": 122
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Vault.Closed",
+            "name": "Closed",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 184,
+              "col": 3,
+              "endLine": 184,
+              "endCol": 46
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Locked"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "locked",
+                        "type": "string",
+                        "text": "\"locked\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 184,
+                  "col": 18,
+                  "endLine": 184,
+                  "endCol": 44
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:de5df408f12780177363a8e0c20f7022525bb2c3b7916ec3218834538b5845b2"
+    }
+  }
+}

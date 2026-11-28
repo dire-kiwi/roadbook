@@ -1,0 +1,29 @@
+{
+  "description": "The internal queue. `Go` takes `Idle -> Work`, whose effects raise `Ping` 1; entering `Work.Inner` raises `Pong`; its `always` enters the final `Work.Finished`, whose entry raises `Ping` 2 before `Work`'s completion is queued. The step works through the queue in the order queued, after every `always`: `Ping` 1, `Pong`, `Ping` 2, each taken by `Work` with an `event` record whose input is `raised`, and only then `Work`'s `done`. `Next`, queued together with `Go`, is taken after the whole step.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Order",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "together": [
+        {
+          "event": {
+            "_tag": "Go"
+          }
+        },
+        {
+          "event": {
+            "_tag": "Next"
+          }
+        }
+      ]
+    }
+  ],
+  "status": "running"
+}

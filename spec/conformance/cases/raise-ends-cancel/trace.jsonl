@@ -1,0 +1,9 @@
+{"input":{},"ir":"sha256:7c6657671cae0ab8b007fba7ad3788ce0d43a39b38613961500edb4858c4f60f","kind":"started","machine":"Ending","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Ending","t":0}
+{"kind":"entered","run":"r1","state":"Ending.A","t":0}
+{"kind":"exited","run":"r1","state":"Ending.A","t":0}
+{"kind":"raised","run":"r1","t":0,"value":{"_tag":"Bye"}}
+{"delay":1000,"kind":"raise.scheduled","name":"bye","run":"r1","t":0,"timer":1,"value":{"_tag":"Bye"}}
+{"kind":"exited","run":"r1","state":"Ending","t":0}
+{"kind":"raise.cancelled","name":"bye","run":"r1","t":0,"timer":1}
+{"kind":"cancelled","run":"r1","t":0}

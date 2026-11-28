@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0126]: no delayed raise of `M` is named `pong`
+ --> RB0126-unknown-raise-name.road:7:20
+  |
+7 |     on Ping cancel pong
+  |                    ^^^^
+  |
+  = help: did you mean `ping`?

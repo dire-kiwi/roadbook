@@ -232,11 +232,31 @@ machine Crew(id: string) -> int {
   initial Working
 
   state Working {
-    on Hire             spawn jobs[event.key] = progress(event.n)
-    on jobs.Reached     do note(event.percent)
-    on jobs.done        set total = total + result
-    on Finish -> Done
+    on Hire                  spawn jobs[event.key] = progress(event.n)
+    on jobs.Reached          do note(event.percent)
+    on jobs.done             set total = total + result
+    on Finish       -> Done
   }
 
   final state Done { output total }
+}
+
+/// A reminder that belongs to the run: a delayed raise, which leaving `Asleep` does not cancel,
+/// counted when it fires.
+machine Nagger(id: string) -> int {
+  var nags: int = 0
+
+  event Wake
+  internal event Nag
+
+  initial Asleep
+
+  state Asleep {
+    entry raise Nag after patience() as nag
+    on Wake -> Awake
+  }
+
+  state Awake { on Nag -> Done  set nags = nags + 1  do log("nag") }
+
+  final state Done { output nags }
 }

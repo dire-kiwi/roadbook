@@ -1,0 +1,24 @@
+fn delay(attempt: int) -> duration
+action log(text: string)
+
+/// A reminder a machine sends itself, and a ping it raises at once.
+strict machine Reminder(every: duration) {
+  event Confirm
+  event Snooze { minutes: int }
+  /// Only the machine raises it.
+  internal event Remind { attempt: int }
+  internal event Ping
+  var attempt: int = 0
+
+  initial Waiting
+  entry raise Remind { attempt: 1 } after every as reminder
+  on Remind -> Waiting  set attempt = event.attempt  raise Ping  raise Remind { attempt: event.attempt + 1 } after delay(event.attempt) as reminder
+  on Ping do log("ping")
+  on Snooze raise Remind { attempt: attempt } after 1m as reminder
+  state Waiting {
+    on Confirm -> Confirmed  cancel reminder
+  }
+  final state Confirmed {
+    entry raise Confirm
+  }
+}

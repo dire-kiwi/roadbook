@@ -40,6 +40,10 @@ machine SupportTicket(ticket: Ticket) -> Closure {
   event MarkOutOfScope
   event MergeInto         { ticketId: string }
   event GiveUp
+  /// The agent asks to be reminded of the ticket after a while, whatever happens to it meanwhile.
+  event FollowUpIn { delay: duration }
+  /// The reminder the agent asked for. Only the ticket raises it.
+  internal event FollowUp
 
   initial Intake
 
@@ -110,6 +114,11 @@ machine SupportTicket(ticket: Ticket) -> Closure {
     on InternalNote                             do addNote(ticket, event.text)
     on CustomerWithdrew           -> Withdrawn
     on MergeInto                  -> Merged
+
+    // A follow-up belongs to the ticket, not to a state: it fires in whichever state of
+    // `Active` the ticket is in by then, and asking again starts it over.
+    on FollowUpIn raise FollowUp after event.delay as followUp
+    on FollowUp   do notifyAgent(agentId, ticket, "follow_up")
 
     state Working {
       initial WithAgent
@@ -245,6 +254,7 @@ machine SupportTicket(ticket: Ticket) -> Closure {
   /// Ask the customer how we did, then close.
   state Closing {
     initial Surveying
+    entry cancel followUp
 
     done -> Resolved
 

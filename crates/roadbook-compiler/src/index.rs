@@ -71,6 +71,10 @@ pub enum SymbolKind {
     TypeParameter,
     /// A `children` collection of a machine, of machines or tasks; its parent is the machine.
     Children,
+    /// The name of a delayed raise (`raise E after d as name`), declared at the machine's
+    /// first raise of it; its other raises and each `cancel name` are its uses. Its parent is
+    /// the machine.
+    RaiseName,
 }
 
 impl SymbolKind {
@@ -133,6 +137,7 @@ impl SymbolKind {
             SymbolKind::Call => "call",
             SymbolKind::TypeParameter => "type parameter",
             SymbolKind::Children => "children collection",
+            SymbolKind::RaiseName => "delayed raise",
         }
     }
 }

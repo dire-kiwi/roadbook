@@ -55,8 +55,8 @@ pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, 
                 _ => "",
             };
             let decl = s.program.ir().types.get(name).map(|t| &t.def);
-            // An event (the value of a `send` or `emit`): `Machine.Name`, or one of this
-            // machine's own `emits` or `events` by its bare name.
+            // An event (the value of a `send`, `emit` or `raise`): `Machine.Name`, or one of
+            // this machine's own `emits`, `events` or `internalEvents` by its bare name.
             let event = match decl {
                 Some(_) => None,
                 None => match name.split_once('.') {
@@ -71,7 +71,7 @@ pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, 
                         .machine
                         .emits
                         .get(name)
-                        .or_else(|| s.machine.events.get(name))
+                        .or_else(|| s.machine.own_event(name))
                         .map(|d| (name, d)),
                 },
             };

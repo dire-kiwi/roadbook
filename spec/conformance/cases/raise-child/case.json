@@ -1,0 +1,23 @@
+{
+  "description": "A child run's delayed raise belongs to the child run. Its parent leaves the invoking state and cancels it: the child's exit effects run, then its pending `tick` is cancelled, and its trace ends with `cancelled`.",
+  "requires": [
+    "raise"
+  ],
+  "chart": "charts/raise.road",
+  "machine": "Parent",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "advance": 1000
+    },
+    {
+      "event": {
+        "_tag": "Leave"
+      }
+    }
+  ],
+  "status": "done"
+}

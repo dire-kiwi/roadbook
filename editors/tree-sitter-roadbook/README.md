@@ -9,6 +9,7 @@ grammar is for editors.
 ```
 grammar.js            the grammar
 src/                  the generated parser (committed; do not edit)
+src/scanner.c         hand-written: the `after` of a delayed raise, on the same line
 queries/              highlights.scm, locals.scm, folds.scm, indents.scm
 test/corpus/          corpus tests, including inputs that must not parse
 check.sh              every check below
@@ -30,7 +31,8 @@ tree-sitter highlight path/to/chart.road
 ./check.sh                    # everything below
 ```
 
-`check.sh` fails if `src/` is not what `tree-sitter generate` produces from `grammar.js`.
+`check.sh` fails if `src/` (all but `scanner.c`) is not what `tree-sitter generate`
+produces from `grammar.js`.
 It runs the corpus, parses every `.road` file in the repository and fails on any `ERROR`
 or `MISSING` node, then loads every query and highlights the shop example. The script
 skips the fixtures that fail parsing on purpose: those whose `// expect:` lines name a
@@ -59,7 +61,7 @@ You do not need nvim-treesitter:
 cd editors/tree-sitter-roadbook
 site=~/.local/share/nvim/site
 mkdir -p "$site/parser" "$site/queries/roadbook"
-cc -shared -fPIC -O2 -I src src/parser.c -o "$site/parser/roadbook.so"
+cc -shared -fPIC -O2 -I src src/parser.c src/scanner.c -o "$site/parser/roadbook.so"
 cp queries/*.scm "$site/queries/roadbook/"
 ```
 

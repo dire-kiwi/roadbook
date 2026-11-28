@@ -32,7 +32,7 @@ export interface DeskDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable-calls.road",
@@ -178,6 +178,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {
         "hold": {
@@ -587,6 +588,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -816,6 +818,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

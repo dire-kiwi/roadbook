@@ -9,7 +9,7 @@ error[RB0108]: event `Go` is declared twice
 3 |   emits Go
   |         ^^
   |
-  = help: the events a machine accepts and those it emits share one set of names
+  = help: the events a machine accepts, raises and emits share one set of names
 
 error[RB0108]: event `Done` is declared twice
  --> RB0108-messaging-names.road:5:9
@@ -19,7 +19,7 @@ error[RB0108]: event `Done` is declared twice
 5 |   emits Done
   |         ^^^^
   |
-  = help: the events a machine accepts and those it emits share one set of names
+  = help: the events a machine accepts, raises and emits share one set of names
 
 error[RB0108]: `child` is already a parameter of `M`
   --> RB0108-messaging-names.road:16:23

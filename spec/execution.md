@@ -2,7 +2,7 @@
 
 This page is the algorithm both runtimes implement: what the pure core does with a snapshot and an input, what it asks the driver to do, and how the driver carries that out. It is precise enough that two independent implementations produce the same [trace](trace.md) byte for byte, and the [conformance cases](conformance/) hold them to it. The design rationale is in [semantics](../docs/design/semantics.md); this page only says what happens.
 
-It covers atomic, compound, parallel and final states, events, guards, `invoke` of tasks and machines, `after`, `always` and `done`, [messages between runs](#messages-between-runs) (`send`, `emit`, `on name.Event` and `ref`, milestone 5), [calls between runs](#calls-between-runs) (`call`, `invoke name.call` and `reply`), [saving and restoring](#saving-and-restoring) a run (milestone 6) together with its [child runs](#saved-child-runs), [history states](#history-states), [spawned children](#spawned-children) (keyed `spawn`), and [tasks that emit](#tasks-that-emit) (`emits` on a task, stream tasks and spawned tasks). Parallel states, history states, spawned children and tasks that emit change nothing for a machine that has none: every rule below reduces to the one it replaced, and the traces of such machines are unchanged.
+It covers atomic, compound, parallel and final states, events, guards, `invoke` of tasks and machines, `after`, `always` and `done`, [messages between runs](#messages-between-runs) (`send`, `emit`, `on name.Event` and `ref`, milestone 5), [calls between runs](#calls-between-runs) (`call`, `invoke name.call` and `reply`), [saving and restoring](#saving-and-restoring) a run (milestone 6) together with its [child runs](#saved-child-runs), [history states](#history-states), [spawned children](#spawned-children) (keyed `spawn`), [tasks that emit](#tasks-that-emit) (`emits` on a task, stream tasks and spawned tasks), and [events a machine raises](#raised-events) (`raise`, delayed `raise … after`, `cancel` and `internal event`). Parallel states, history states, spawned children, tasks that emit and raised events change nothing for a machine that has none: every rule below reduces to the one it replaced, and the traces of such machines are unchanged.
 
 ## Terms
 
@@ -12,7 +12,9 @@ It covers atomic, compound, parallel and final states, events, guards, `invoke` 
 - A **region** is a child of a parallel state. A region may be a state of any kind: compound, parallel, atomic or final.
 - An **active leaf** is an active state with no active child: an atomic or final state. Without parallel states there is exactly one.
 - **Document order** is the order of a pre-order walk of the IR's state tree: a state comes before its children, and children are in `states` order. **Innermost first** means reverse document order; for a chain it is leaf to root.
-- An **input** is what the driver gives the core: an external event, a message, an emitted event or a call from another run, an event a task emitted, a peer's end, an invoke's or a spawned child's outcome, a timer's expiry, or a request to cancel or to fail with a defect.
+- An **internal event** is one of the machine's `internalEvents` (`internal event E`): an event the machine raises itself, which host code and other runs cannot send. The machine's **own events** are its `events` and its `internalEvents`.
+- A **raised event** is one of the machine's own events that a `raise` effect puts on the run's **internal queue**, to be taken before the step ends ([raised events](#raised-events)). A **delayed raise** (`raise E after d as n`) is a timer that belongs to the run, not to a state: when it expires its event is taken as an input. Its optional `name` lets a `cancel` effect stop it.
+- An **input** is what the driver gives the core: an external event, a message, an emitted event or a call from another run, an event a task emitted, a peer's end, an invoke's or a spawned child's outcome, a timer's expiry (an `after` timer's or a delayed raise's), or a request to cancel or to fail with a defect.
 - A **top-level run** is one that host code started (`run`, `spawn`), as opposed to a **child run**, which an `invoke` or a `spawn` effect of its parent started ([child runs](#child-runs)). A **peer** of a run is a top-level run it holds a `ref` to.
 - A **spawned child** is a child run that a `spawn` effect started into one of the machine's `children` collections, under a key ([spawned children](#spawned-children)), or, for a collection of tasks, a **spawned task**: a task started the same way, which is not a run. Unlike an invoked child it belongs to the run, not to a state: it runs until it ends by itself, until a `stop` effect stops it, until a `spawn` with the same key replaces it, or until its parent ends.
 - A **message** is an event one run sends to another with `send`. An **emitted event** is one a run emits with `emit`, for its invoker and the runs that hold a `ref` to it. Both are queued for the receiver like any input ([messages between runs](#messages-between-runs)). A **task's emit** is one of the events a task declares in its `emits`, which the task's host implementation gives the driver while it runs, for the run that invoked it with `as` or spawned it ([tasks that emit](#tasks-that-emit)).
@@ -54,6 +56,7 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
   "calls": [],                                   // calls taken and not answered
   "spawned": [],                                 // running spawned children
   "timers": [{ "id": 1, "state": "Checkout.Backoff", "index": 0, "delay": 200 }],
+  "scheduled": [],                              // pending delayed raises
   "nextInvoke": 2,
   "nextTimer": 2,
   "nextMessage": 1,
@@ -74,14 +77,15 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
 | `calls` | `[{"from", "invoke", "call"}]`: the calls the run has taken and not answered yet, its **pending calls**, in the order it took them. `from` is the caller's run id, `invoke` the id of the caller's invoke, and `call` the call's name ([calls between runs](#calls-between-runs)). |
 | `spawned` | `[{"id", "children", "key", "args"}]`: the spawned children that are running, spawned tasks among them, in the order they were started. `children` is the name of the collection, `key` the child's key and `args` its arguments, keyed by parameter name, as they were evaluated when it was spawned ([spawned children](#spawned-children)). |
 | `timers` | `[{"id", "state", "index", "delay"}]`: the `after` timers that are running, in the order they were started. `index` is the position in the state's `transitions` of the first transition of the timer's `after` block, and `delay` the evaluated delay in milliseconds. |
-| `nextInvoke`, `nextTimer` | The id the next invoke or timer will get. Both start at 1. Ids are never reused within a run, which is what lets the core recognise a stale outcome. Invokes and spawned children take their ids from the one sequence `nextInvoke`, so an id names one or the other, and the child run of either, when it runs a machine, is `<run>.<id>`. |
+| `scheduled` | `[{"id", "name", "delay", "value"}]`: the run's pending **delayed raises**, in the order they were started ([raised events](#raised-events)). `id` is a timer id, from the sequence `after` timers take theirs from, `name` the raise's `as` name or `null`, `delay` the evaluated delay in milliseconds, and `value` the event, a tagged record of one of the machine's own events. |
+| `nextInvoke`, `nextTimer` | The id the next invoke or timer will get. Both start at 1. Ids are never reused within a run, which is what lets the core recognise a stale outcome. `after` timers and delayed raises take their ids from the one sequence `nextTimer`, so a timer id names one or the other. Invokes and spawned children take their ids from the one sequence `nextInvoke`, so an id names one or the other, and the child run of either, when it runs a machine, is `<run>.<id>`. |
 | `nextMessage` | The id the next `send` or `emit` effect will get, from 1. A message is named in traces by its sender's run id and this id. |
 | `history` | What each history state has recorded ([history states](#history-states)), keyed by the history state's id: a list of state ids, in document order. A history state whose parent no microstep has exited yet has no member. Starts as `{}`. |
 | `result` | `null` while running and when cancelled. `{"output": value}` when done (`value` is `null` for a machine that returns nothing), `{"error": value}` when failed, `{"defect": defect}` when the run ended with a [defect](#defects). |
 
-A **saved snapshot**, the form host code stores, is this snapshot with a format version and each timer's due time added ([saving and restoring](#saving-and-restoring)).
+A **saved snapshot**, the form host code stores, is this snapshot with a format version and the due time of each timer and delayed raise added ([saving and restoring](#saving-and-restoring)).
 
-Within a macrostep the core also keeps three transient values that are not part of the snapshot: the set of states **entered during this macrostep**, the **completion queue** of compound states that reached a final child and have not been exited since, and the **pending spawns**, the children spawned during this macrostep that have not started yet (`[{"children", "key", "args"}]`, in the order spawned).
+Within a macrostep the core also keeps three transient values that are not part of the snapshot: the set of states **entered during this macrostep**, the **internal queue**, which holds, in the order they were queued, the **completions** of compound and parallel states that reached a final state and have not been exited since and the **raised events** of `raise` effects ([raised events](#raised-events)), and the **pending spawns**, the children spawned during this macrostep that have not started yet (`[{"children", "key", "args"}]`, in the order spawned).
 
 ### Inputs
 
@@ -99,11 +103,13 @@ Within a macrostep the core also keeps three transient values that are not part 
 | `{"kind": "spawn.done", "spawn": 4, "value": v}` | Spawned child 4 ended `done` with output `v` (`null` for a machine or task that returns nothing). |
 | `{"kind": "spawn.fail", "spawn": 4, "error": e}` | Spawned child 4 ended `failed` with the declared error `e`. |
 | `{"kind": "spawn.defect", "spawn": 4, "defect": d}` | Spawned child 4 ended with a defect: a child run that ended with one, or a host defect in a spawned task. |
-| `{"kind": "after", "timer": 1}` | Timer 1 expired. |
+| `{"kind": "after", "timer": 1}` | Timer 1 expired: an `after` timer, or a delayed raise. |
 | `{"kind": "cancel"}` | Cancel the run from outside. |
 | `{"kind": "defect", "defect": d}` | The driver met a defect while carrying out this run's commands: a host defect in an action, or a defect in the cancel step of a child run it was cancelling ([child runs](#child-runs)). Unlike every other input, it is taken even when the run has already ended, unless it ended with a defect. |
 
-The driver only ever passes events the machine declares, with values of the declared types. The core may assume its inputs are well formed.
+The driver only ever passes events the machine declares, with values of the declared types: an external event or a message is one of the machine's `events`, never one of its `internalEvents`. The core may assume its inputs are well formed.
+
+One more form appears in records and defects, never as an input from the driver: `{"kind": "raised", "value": {"_tag": "Ping", …}}`, a raised event as the core takes it from the internal queue ([raised events](#raised-events)).
 
 ### Commands
 
@@ -114,7 +120,7 @@ The driver only ever passes events the machine declares, with values of the decl
 | `{"kind": "invoke.start", "invoke": 1, "state": "…", "src": "chargeCard", "srcKind": "task", "to": null, "as": null, "args": {…}, "saved": null}` | starts the task (`srcKind` `task`) or machine (`srcKind` `machine`) and, when it ends, queues its outcome as an `invoke.*` input with the same id. It does not wait for it. `as` is the invoke's `as` name or `null`: a child run invoked with one delivers what it emits to this run ([delivery](#delivering-messages)), and a task invoked with one is given a live emitter ([the emitter](#the-emitter)). With `srcKind` `call`, it makes the call `src` of the peer whose run id is `to` (`null` for the other kinds), whose answer is the outcome ([carrying out a call](#carrying-out-calls)). `saved` is `null`, except in the commands of `restore`, where it is the saved snapshot of the invoke's child run when the saved snapshot holds one: the child run that claims the invoke restores it instead of starting ([restoring a child run](#restoring-a-child-run)). |
 | `{"kind": "reply", "to": "r2", "invoke": 1, "call": "reserve", "outcome": "done", "value": v}` | answers the call that run `to` made with its invoke 1: `outcome` `done` with the result `v` (`null` for a call that returns nothing), or `fail` with the error `v`. It does not wait for the caller ([carrying out a call](#carrying-out-calls)). |
 | `{"kind": "invoke.cancel", "invoke": 1}` | cancels invoke 1 and waits until it has stopped: at once for a task, after its cancel step for a [child run](#child-runs). Its outcome is not queued after this; one already queued stays queued. |
-| `{"kind": "timer.start", "timer": 1, "delay": 200}` | starts a timer that queues `{"kind": "after", "timer": 1}` after `delay` milliseconds. |
+| `{"kind": "timer.start", "timer": 1, "delay": 200}` | starts a timer (an `after` timer or a delayed raise: the driver does not tell them apart) that queues `{"kind": "after", "timer": 1}` after `delay` milliseconds. |
 | `{"kind": "timer.cancel", "timer": 1}` | cancels timer 1. Its expiry is not queued after this; one already queued stays queued. |
 | `{"kind": "timer.fire", "timer": 1}` | queues `{"kind": "after", "timer": 1}` on this run's queue at once, without starting a timer. Only `restore` emits it, for a restored timer that was already due ([restoring](#restoring-a-snapshot)). |
 | `{"kind": "send", "to": "r2", "invoke": null, "message": 1, "value": v}` | queues the message for run `to` and does not wait for it: for the child run of this run's invoke or spawned child `invoke`, or, when `invoke` is `null`, for the peer `to` ([delivery](#delivering-messages)). |
@@ -134,7 +140,7 @@ Every `trace` command carries its record **redacted** ([trace.md](trace.md#redac
 start(ir, name, run, input, fns):
   m    = ir.machines[name]
   snap = { machine: name, run, ir: m.hash, status: "running", active: [], input, vars: {},
-           invokes: [], calls: [], spawned: [], timers: [], nextInvoke: 1, nextTimer: 1, nextMessage: 1,
+           invokes: [], calls: [], spawned: [], timers: [], scheduled: [], nextInvoke: 1, nextTimer: 1, nextMessage: 1,
            history: {}, result: null }
   emit trace { kind: "started", machine: name, ir: m.hash, input }
   for v in m.vars, in order:
@@ -168,6 +174,7 @@ step(ir, snap, input, fns):
     if snap.status != "defect": failWithDefect(input.defect)
     return (snap, commands)
   if snap.status != "running": return (snap, [])
+  sc = null                                       # the delayed raise an "after" input consumes
   switch input.kind:
     "cancel":  cancelRun(); return
     "invoke.done", "invoke.fail", "invoke.defect":
@@ -193,9 +200,14 @@ step(ir, snap, input, fns):
       T = selectSpawnOutcome(ch, input)
     "after":
       tm = the entry of snap.timers with id input.timer
-      if none: emit trace { kind: "stale", event: input }; return
-      remove tm from snap.timers
-      T = selectAfter(tm)
+      if tm != null:
+        remove tm from snap.timers
+        T = selectAfter(tm)
+      else:
+        sc = the entry of snap.scheduled with id input.timer      # a delayed raise
+        if none: emit trace { kind: "stale", event: input }; return
+        remove sc from snap.scheduled
+        T = selectEvent(sc.value)
     "event", "message":
       T = selectEvent(input.value)
     "call":
@@ -211,7 +223,7 @@ step(ir, snap, input, fns):
     "ended":
       T = selectEnded(input)
   if T is empty:
-    if m.strict and input.kind in ("event", "message", "call"):
+    if m.strict and (input.kind in ("event", "message", "call") or sc != null):
       runtime error { kind: "unhandled", event: input }
     emit trace { kind: "dropped", event: input }
     if input.kind == "call": answer(input.from, input.invoke, input.call, "fail", { _tag: "Unanswered" })
@@ -224,13 +236,14 @@ step(ir, snap, input, fns):
   if snap.status == "running": startWork()
 ```
 
-- An invoke's outcome or a timer's expiry **consumes** it: it is removed from the snapshot before a transition is chosen, whether or not one is. Leaving the state afterwards therefore does not cancel it again.
-- An outcome or expiry whose id is not in the snapshot is **stale**: its state was left (and the invoke or timer cancelled) after the driver had already queued it. It is traced as `stale` and changes nothing.
+- An invoke's outcome or a timer's expiry **consumes** it (a delayed raise's expiry consumes the raise): it is removed from the snapshot before a transition is chosen, whether or not one is. Leaving the state afterwards therefore does not cancel it again.
+- An outcome or expiry whose id is not in the snapshot is **stale**: its state was left (and the invoke or timer cancelled) after the driver had already queued it, or, for a delayed raise, a `cancel`, a raise with the same name or the end of the run cancelled it. It is traced as `stale` and changes nothing.
 - An emitted event from a child run whose invoke or spawned child is no longer in the snapshot is **stale** too: it was cancelled or stopped after the child had emitted it, as a child cancelled by its parent does when its exit effects `emit`. Taking an emitted event does not consume the invoke or the spawned child. An emitted event from a peer (`invoke` `null`), a message and a peer's end (`ended`) are never stale.
 - **A task's emit** (`task.emitted`) is stale in the same way, when its invoke or spawned task is no longer in the snapshot: the state was left (and the invoke cancelled), or the spawned task was stopped or replaced, after the emit had been queued. Unlike a child run's emitted event, a task's emit is never stale because its outcome was taken: a driver queues a task's emits before its outcome and none after it ([the emitter](#the-emitter)), so the run takes every one of them first. Taking one does not consume anything either ([tasks that emit](#tasks-that-emit)).
 - A spawned child's outcome consumes it like an invoke's: the child is removed from `spawned` before a transition is chosen, whether or not one is. An outcome of a child that was stopped or replaced after the driver had queued it is stale.
 - An input that enables no transition is **dropped**: traced as `dropped`, and nothing else happens. Settling is skipped, since nothing changed. A consumed invoke or timer stays consumed. A dropped call is the exception: it is answered at once with `Unanswered`, so its caller does not wait for it ([calls between runs](#calls-between-runs)).
-- **In a strict machine** (`strict` in the IR), an external event, a message or a call that enables no transition is instead a runtime error, `unhandled`, whose `event` is the input ([defects](#defects)). A call that fails a strict callee this way is answered `Unanswered` by the callee's driver as the run ends, like any call pending when its callee ends ([calls between runs](#calls-between-runs)). Every other input that enables no transition is dropped as in any machine: an emitted event, from a peer or from a child run (invoked or spawned), a task's emit (`task.emitted`), a peer's end (`ended`: a strict machine is not required to have an `on name.ended`), an invoke's outcome whose guarded branches all fail, a spawned child's outcome that no transition takes (`spawn.done` or `spawn.fail`), and a timer's expiry whose guarded branches all fail. They arrive when another run or the clock decides, so failing on them would make an ordinary race fatal. A transition with no target and no effects (`ignore`) is an enabled transition like any other, so an input it takes is traced as `event`, with a `transition` record whose `to` is `[]`, and is never `unhandled`. A `send` from a strict machine that reaches no run is `undelivered`, as from any machine ([delivery](#delivering-messages)): strictness is about what a machine receives.
+- **A delayed raise's expiry** selects the raise's event exactly as the same external event would be selected (`on *` included), with `event` bound to its value: the run raised it, so it is one of its own events, internal or not.
+- **In a strict machine** (`strict` in the IR), an external event, a message, a call, or the expiry of a delayed raise, that enables no transition is instead a runtime error, `unhandled`, whose `event` is the input ([defects](#defects)); so is a raised event taken from the internal queue ([raised events](#raised-events)). The machine raised those itself, and could have cancelled a delayed one, so one that no transition takes is a mistake in the chart, not a race. A call that fails a strict callee this way is answered `Unanswered` by the callee's driver as the run ends, like any call pending when its callee ends ([calls between runs](#calls-between-runs)). Every other input that enables no transition is dropped as in any machine: an emitted event, from a peer or from a child run (invoked or spawned), a task's emit (`task.emitted`), a peer's end (`ended`: a strict machine is not required to have an `on name.ended`), an invoke's outcome whose guarded branches all fail, a spawned child's outcome that no transition takes (`spawn.done` or `spawn.fail`), and an `after` timer's expiry whose guarded branches all fail. They arrive when another run or the clock decides, so failing on them would make an ordinary race fatal. A transition with no target and no effects (`ignore`) is an enabled transition like any other, so an input it takes is traced as `event`, with a `transition` record whose `to` is `[]`, and is never `unhandled`. A `send` from a strict machine that reaches no run is `undelivered`, as from any machine ([delivery](#delivering-messages)): strictness is about what a machine receives.
 - A **call** that enables a transition becomes **pending**: it is appended to `snap.calls` after the `event` record and before the microstep, so a `reply` among the transition's effects finds it.
 - A `dropped` or `stale` record replaces the `event` record; an input is traced by exactly one of the three.
 - **A defect in the step that ended the run.** The core finishes the run (or cancels it) inside the step, so the snapshot a step returns can already be `done`, `failed` or `cancelled` while the driver is still carrying out that step's commands, every action of the step among them: say the effects of the transition into a top-level final state, the exit effects `finish` runs (the root's among them), or the exit effects of `cancelRun`. If any of those actions has a host defect, the driver stops at it as for any action ([defects](#defects)), so the `done`, `failed` or `cancelled` record after it is never written, and gives the core the `defect` input. That is why a `defect` input is taken in any status but `defect`: the run's status becomes `defect`, its result the defect, and the `defect` record is its last. `failWithDefect` finds no invokes or timers left to cancel, and `active` stays `[]`. A second `defect` input, for a run that already ended with one, changes nothing and writes nothing.
@@ -278,7 +291,7 @@ This is SCXML's `removeConflictingTransitions`. Of two conflicting transitions t
 
 ### Candidates
 
-**An external event or a message** `{"_tag": N, …}`: the candidates of `s` are its transitions with trigger `{"kind": "event", "event": N}`. If `s` has none, they are its `any` (`on *`) transitions instead. So an `on *` is not tried in a state that has an `on N` whose guards all failed. `on *` never matches an invoke outcome, a timer or an emitted event. A message is one of the machine's own events, so it is selected exactly as the same event from host code would be; only its record shows who sent it. `T = selectByWalks(those candidates)`.
+**An external event, a message or a raised event** `{"_tag": N, …}`: the candidates of `s` are its transitions with trigger `{"kind": "event", "event": N}`. If `s` has none, they are its `any` (`on *`) transitions instead. So an `on *` is not tried in a state that has an `on N` whose guards all failed. `on *` never matches an invoke outcome, an `after` timer or an emitted event. A message is one of the machine's `events`, so it is selected exactly as the same event from host code would be; only its record shows who sent it. A raised event, taken from the internal queue or as a delayed raise's expiry, is one of the machine's own events, `events` or `internalEvents`, and is selected the same way, `on *` included. `T = selectByWalks(those candidates)`, also written `selectEvent(value)`.
 
 **An emitted event** `{"_tag": N, …}` from run `input.from`: the candidates of `s` are its transitions with trigger kind `emitted`, `event` `N`, and an address `from` that names the sender:
 
@@ -412,7 +425,7 @@ exitState(s):
     emit timer.cancel { timer: tm.id }
   runEffects(s.exit)
   remove s from active
-  remove every entry s, and every entry of an ancestor of s, from the completion queue
+  remove every completion of s, and of an ancestor of s, from the internal queue
   emit trace { kind: "exited", state: s.id }
 
 enterStates(list):
@@ -428,17 +441,17 @@ enterStates(list):
 complete(f):                          # a final state f was just entered; parent(f) is not the root
   s = f
   if parent(f).kind == "compound":
-    append parent(f) to the completion queue
+    append the completion of parent(f) to the internal queue
     s = parent(f)
   while parent(s).kind == "parallel" and parent(s) is in a final state:
     s = parent(s)
-    append s to the completion queue
+    append the completion of s to the internal queue
 
 runEffects(effects):
   for e in effects with kind "set", in order:
     v = eval(e.value); snap.vars[e.var] = v
     emit trace { kind: "set", var: e.var, value: v }
-  for e in effects with kind "do", "send", "emit", "reply", "spawn" or "stop", in order:
+  for e in effects with kind "do", "send", "emit", "reply", "spawn", "stop", "raise" or "cancel", in order:
     switch e.kind:
       "do":
         args = the action's parameter names zipped with eval of e.args, left to right
@@ -492,6 +505,27 @@ runEffects(effects):
         append { children: e.children, key: k, args } to the pending spawns
       "stop":
         stopChild(e.children, eval(e.key))
+      "raise":
+        if e.delay == null:                       # raise E: on the internal queue
+          v = eval(e.value)
+          emit trace { kind: "raised", value: v }
+          append the raised event v to the internal queue
+        else:                                     # raise E after d [as n]: a delayed raise
+          d = eval(e.delay); v = eval(e.value)
+          if e.name != null: cancelRaise(e.name)
+          id = snap.nextTimer; snap.nextTimer += 1
+          append { id, name: e.name, delay: d, value: v } to snap.scheduled
+          emit trace { kind: "raise.scheduled", timer: id, name: e.name, delay: d, value: v }
+          emit timer.start { timer: id, delay: d }
+      "cancel":
+        cancelRaise(e.name)
+
+cancelRaise(n):
+  sc = the entry of snap.scheduled with name n
+  if sc != null:
+    remove sc from snap.scheduled
+    emit trace { kind: "raise.cancelled", timer: sc.id, name: n }
+    emit timer.cancel { timer: sc.id }
 
 answer(to, invoke, call, outcome, value):
   emit trace { kind: "replied", to, invoke, call, outcome, value }
@@ -506,7 +540,7 @@ stopChild(children, k):
     emit spawn.stop { spawn: ch.id }
 ```
 
-So a state's work stops before its own exit effects run, and the `exited` record comes last. All `set` effects of a list run before its other effects, whatever order the IR lists them in, and each `set` sees the assignments before it. Then the `do`, `send`, `emit`, `reply`, `spawn` and `stop` effects run in the order the IR lists them. None of them can change variables, so every one of them in a list sees the same values, and a message or a reply carries what its transition assigned.
+So a state's work stops before its own exit effects run, and the `exited` record comes last. All `set` effects of a list run before its other effects, whatever order the IR lists them in, and each `set` sees the assignments before it. Then the `do`, `send`, `emit`, `reply`, `spawn`, `stop`, `raise` and `cancel` effects run in the order the IR lists them. None of them can change variables, so every one of them in a list sees the same values, and a message or a reply carries what its transition assigned.
 
 - **A reply** reads its pending-call value before it evaluates its result or error. A value whose call is not pending (it was answered already, by this effect list or an earlier step, or the run was restored) is the runtime error `answered`, whose `call` is the call's name.
 - **Message ids.** Every `send` and `emit` effect that runs takes the next message id, also one that is undelivered. With the run id it names the message in every record about it: the sender's `sent`, `emitted` or `undelivered`, and the receiver's `event`, `dropped` or `stale`.
@@ -514,7 +548,7 @@ So a state's work stops before its own exit effects run, and the `exited` record
 - **A send to a peer** reads the `ref` parameter or variable the address names, exactly as an expression `ref` would, so a variable with no value is an `unassigned` defect. The address is read before the value is evaluated.
 - **Delivery is the driver's.** The core does not know whether the receiver is still running. If it is not, the driver writes `undelivered` after the `sent` record ([delivery](#delivering-messages)), with the `sent` record's value, which the core redacted: never the `send` command's value.
 - **A send to a spawned child** by key evaluates the key, then the value, and goes to the running child of the collection with that key. If there is none, the message is **undelivered**, traced with `to` `null`: no child has that key, it was stopped, or it was spawned in this macrostep and has not started yet ([spawned children](#spawned-children)). **`send sessions.*.E`** evaluates the value once and sends it to every running child of the collection, in the order they were started, each as a message of its own with its own id and `sent` record. With no running child it writes nothing; it takes no message id then.
-- **`spawn` and `stop`** are described under [spawned children](#spawned-children).
+- **`spawn` and `stop`** are described under [spawned children](#spawned-children), and **`raise` and `cancel`** under [raised events](#raised-events).
 
 In a microstep, then, the order is: the `transition` records, one per transition; for each state exited, innermost first, its invoke cancelled, its timers cancelled, its exit effects, `exited`; the transitions' effects, transition by transition; for each state entered, in document order, `entered` and its entry effects. No work is started during a microstep.
 
@@ -544,7 +578,7 @@ restores(h):                          # for a history state h with parent p
 
 ## Settling
 
-After the input's microstep (and after the initial entry in `start`), the core takes eventless transitions until none is enabled:
+After the input's microstep (and after the initial entry in `start`), the core takes eventless transitions and works through the internal queue until neither gives a transition:
 
 ```
 settle():
@@ -552,19 +586,28 @@ settle():
   loop:
     if snap.status != "running": return
     T = the enabled always transitions (selectByWalks, conflicts removed)
-    while T is empty and the completion queue is not empty:
-      p = take the first state from the completion queue
-      T = [the first enabled done transition of p], or [] if there is none
+    while T is empty and the internal queue is not empty:
+      x = take the front of the internal queue
+      if x is the completion of a state p:
+        T = [the first enabled done transition of p], or [] if there is none
+      else:                                       # x is a raised event v
+        input = { kind: "raised", value: v }
+        T = selectEvent(v)
+        if T is empty:
+          if m.strict: runtime error { kind: "unhandled", event: input }
+          emit trace { kind: "dropped", event: input }
+        else:
+          emit trace { kind: "event", event: input }
     if T is empty: return
     count = count + 1
     if count > 1000: runtime error { kind: "limit" }
     microstep(T)
 ```
 
-- `always` transitions take priority over `done` transitions. A `done` is considered only when no `always` is enabled, and completions are considered in the order they were queued. The `always` transitions enabled in several regions are taken together, in one microstep, as an input's are.
+- `always` transitions take priority over the internal queue. Its front is considered only when no `always` is enabled, and completions and raised events are taken in the order they were queued, as SCXML takes its internal queue (where `done.state.*` events go too). A raised event that is taken writes an `event` record before its transitions; one that enables none is `dropped`, or `unhandled` in a strict machine, and takes no microstep. The `always` transitions enabled in several regions are taken together, in one microstep, as an input's are.
 - A compound state is complete when one of its final children is entered. A parallel state is complete when it is in a final state: when, after a final state below it is entered, every region is in a final state (`complete`). The entry that completes the last region queues the parallel state, right after that region's own completion, so a region's `done` is tried before its parallel state's. A region that is itself a final state is in a final state from the moment it is entered; a region that is an atomic state never is, so a parallel state with one never completes. A parallel state inside a region of another completes it in turn when the outer one's other regions are in a final state too. A region in a final state can leave it again without its parallel state being exited, by an internal transition written in the region or in the parallel state (or one of their ancestors' in a deeper chart): that exits the final state, and the region is no longer in one.
 - A state's completion is queued once per entry, and removed from the queue when the state is exited, or when a state below it is (`exitState`), so a state in the queue is always active and still in a final state: a state whose final child an internal transition exits is no longer complete, and if the transition enters a final state again, `complete` queues it again, at the back. A completion is therefore never taken for a state that was exited after it completed, even if it was entered again in the same macrostep: an `always` that leaves and re-enters it discards the completion. When a completion is taken from the queue, the state's `done` transitions are tried once: if none of their guards holds, it is discarded without a trace record and is not retried later.
-- A run that takes more than 1000 microsteps while settling one input has a runtime error `limit`, so a guarded `always` loop cannot hang the host. (The compiler rejects unguarded ones.)
+- A run that takes more than 1000 microsteps while settling one input has a runtime error `limit`, so a guarded `always` loop, or a raise that raises itself again, cannot hang the host. (The compiler rejects unguarded `always` loops.) The microsteps of raised events count towards it like any other.
 
 ## Starting work
 
@@ -621,23 +664,26 @@ finish(f):
   else:                status = "done";   value = null
   for s in active, innermost first: exitState(s)        # f, then the root
   stopChildren()
+  cancelRaises()
   snap.result = status == "done" ? { output: value } : { error: value }
   snap.status = status
-  clear the completion queue
+  clear the internal queue
   emit trace status == "done" ? { kind: "done", state: f.id, output: value }
                               : { kind: "failed", state: f.id, error: value }
 ```
 
-The output or error is evaluated right after `f`'s entry effects, before any exit effect runs. Then every active state is exited, innermost first, with its exit effects, as on any exit (but no history is recorded: the run is over): this is when the root's `exit` effects run, and when timers on the root are cancelled. Then the spawned children still running are stopped, after every exit effect ([spawned children](#spawned-children)). A message an exit effect sends a child is queued before the stop, but the stop is a cancel request, which a run takes before anything queued, so whether the child takes the message first is up to the scheduler, as for any message to a run cancelled in the same step ([conformance](conformance/README.md#how-a-runner-works)); a chart cannot rely on it. Settling stops and no work is started. The run's result is the output (an Effect success, a Rust `Ok`) or the error (the Effect error channel, a Rust `Err` of the machine's error enum).
+The output or error is evaluated right after `f`'s entry effects, before any exit effect runs. Then every active state is exited, innermost first, with its exit effects, as on any exit (but no history is recorded: the run is over): this is when the root's `exit` effects run, and when timers on the root are cancelled. Then the spawned children still running are stopped, after every exit effect ([spawned children](#spawned-children)), and then the pending delayed raises are cancelled (`cancelRaises`, [raised events](#raised-events)), a delayed raise an exit effect started among them. A message an exit effect sends a child is queued before the stop, but the stop is a cancel request, which a run takes before anything queued, so whether the child takes the message first is up to the scheduler, as for any message to a run cancelled in the same step ([conformance](conformance/README.md#how-a-runner-works)); a chart cannot rely on it. Settling stops and no work is started. The run's result is the output (an Effect success, a Rust `Ok`) or the error (the Effect error channel, a Rust `Err` of the machine's error enum).
 
 ## Cancelling from outside
 
-The input `{"kind": "cancel"}` exits every active state, innermost first (in reverse document order, so the later regions of a parallel state first), exactly as `exitState` does: each state's invoke and timers are cancelled and its exit effects run. No history is recorded, and `history` keeps what it had. Then the spawned children still running are stopped, as when the run finishes, the status becomes `cancelled` and a `cancelled` record is written. There is no `event` record for a cancel.
+The input `{"kind": "cancel"}` exits every active state, innermost first (in reverse document order, so the later regions of a parallel state first), exactly as `exitState` does: each state's invoke and timers are cancelled and its exit effects run. No history is recorded, and `history` keeps what it had. Then the spawned children still running are stopped and the pending delayed raises cancelled, as when the run finishes, the status becomes `cancelled` and a `cancelled` record is written. What exit effects raised is thrown away with the internal queue. There is no `event` record for a cancel.
 
 ```
 cancelRun():
   for s in active, innermost first: exitState(s)
   stopChildren()
+  cancelRaises()
+  clear the internal queue
   snap.status = "cancelled"
   emit trace { kind: "cancelled" }
 ```
@@ -700,6 +746,31 @@ A task may declare events it emits while it runs (`task upload(file: File) -> Ur
 - **Cancelled work queues nothing.** Once the driver has carried out `invoke.cancel` or `spawn.stop` for the task, or the core has taken its outcome, the emitter is closed and queues nothing more; what it queued before is stale when taken.
 - **Saving.** Nothing about a task's emits is saved. A task, emitting or not, invoked or spawned, is work in flight, so a run with a stream task running is never idle and suspend waits until it ends or its state is left ([suspending](#suspending-and-resume)). Restoring starts it again from the beginning ([restoring](#restoring-a-snapshot)), and it emits again as it runs.
 
+## Raised events
+
+A machine can send itself one of its own events with `raise` ([language](../docs/design/language.md#events-a-machine-raises)): at once, on the internal queue, as SCXML's `<raise>`; or after a delay, as a timer that belongs to the run, as SCXML's `<send delay>` to itself. An event declared `internal event E` is in the machine's `internalEvents`, not its `events`: only `raise` can produce it, so host code and other runs cannot send it, and it is in no interface. `raise` can raise any of the machine's own events, internal or not. The rules:
+
+- **`raise E`** evaluates its value, writes a `raised` record and appends the event to the internal queue ([effects](#exiting-and-entering-a-state)). It is taken in the same step, while the step settles ([settling](#settling)), after every `always` that is enabled and after what was queued before it (a completion, another raised event), and before the step ends: so before any input the driver gives, an external event already queued among them. It is selected as the same external event would be ([candidates](#candidates)), in several regions at once if it enables transitions there, and its `event` record has the input `{"kind": "raised", "value": v}`. One that enables no transition is `dropped`, and in a strict machine the runtime error `unhandled`.
+- **Not tied to a state.** A raised event stays queued when the state whose effect raised it is exited, unlike a completion: it belongs to the run. A raise in a final state's `entry` is queued before that state's completion, since entry effects run before `complete`.
+- **During `start`**, a raise in an initial entry is taken while `start` settles.
+- **When the step ends the run**, the internal queue is cleared: what `finish` and `cancelRun` raise in exit effects is written as `raised` and never taken. The queue is always empty between steps, so it is never saved.
+- **`raise E after d`** (with or without `as n`) is a **delayed raise**. It evaluates the delay, then the value; if it has a name, cancels the pending raise of that name, as `cancel n` would; takes a timer id from `nextTimer`; adds `{id, name, delay, value}` to `snap.scheduled`; writes `raise.scheduled`; and gives the driver `timer.start` at once, not in [starting work](#starting-work), since no state owns it. Its timer is a timer like any other for the driver ([time](#time)).
+- **Its expiry** is the input `{"kind": "after", "timer": id}`, queued by the driver like any timer's. Taking it consumes the raise (it is removed from `scheduled`) and selects its event as an external event is selected, `event` bound to its value ([taking an input](#taking-an-input)). It is an ordinary input, so external inputs queued before it are taken first. One that enables no transition is `dropped`, and in a strict machine `unhandled`. Leaving the state that started it changes nothing: it fires whatever states are active then.
+- **Replacing.** A delayed raise whose name is pending replaces the pending one: a `raise.cancelled` record and `timer.cancel` for the old one, then the new one starts with a new id. So `raise Check after 500ms as debounce` in an `on Key` restarts the delay on every key. An unnamed delayed raise never replaces one, and cannot be cancelled.
+- **`cancel n`** cancels the pending delayed raise named `n`: it is removed from `scheduled`, with a `raise.cancelled` record and `timer.cancel`. With none pending it does nothing and writes nothing, as `stop` of a key with no child. A cancelled raise whose expiry the driver had already queued is pending no longer, so that expiry is `stale` when taken.
+- **When the run ends.** A run that finishes or is cancelled cancels every pending delayed raise, after its exit effects and after stopping its spawned children, in the order they were started, each with `raise.cancelled` and `timer.cancel` ([finishing](#finishing), [cancelling](#cancelling-from-outside)); a child run cancelled by its parent so too. A run that ends with a defect cancels them with no record, as its timers (`failWithDefect`).
+- **Idle and saving.** A delayed raise is a timer, so a run waiting on one is idle ([suspending](#suspending-and-resume)), and suspend cancels its timer with no record, as it does an `after` timer's. It is saved in `scheduled`, with its due time, and restored with the time that remains ([restoring](#restoring-a-snapshot)).
+
+```
+cancelRaises():                       # the run finishes or is cancelled
+  for sc in snap.scheduled, in order:
+    emit trace { kind: "raise.cancelled", timer: sc.id, name: sc.name }
+    emit timer.cancel { timer: sc.id }
+  snap.scheduled = []
+```
+
+A machine with no `raise` has an internal queue of completions only, in the order they were queued before raised events existed, and an empty `scheduled`, so nothing above changes it.
+
 ## Defects
 
 A defect ends the run at once. It is never routed to a `fail` branch, and no exit effect runs, since the machine can no longer be trusted to run its own code. A defect is an object:
@@ -711,7 +782,7 @@ A defect ends the run at once. It is never routed to a `fail` branch, and no exi
 | `{"kind": "overflow", "expr": "attempts + 1"}` | Integer arithmetic left the `int` range, or float arithmetic produced a value that is not finite. `expr` is the `text` of the operator's IR node. |
 | `{"kind": "undeclared", "error": "Oops"}` | A task or child machine failed with an error it does not declare. |
 | `{"kind": "limit"}` | Settling took more than 1000 microsteps. |
-| `{"kind": "unhandled", "event": {"kind": "event", "value": {"_tag": "Knock", …}}}` | A strict machine was given an external event, a message or a call that enabled no transition ([taking an input](#taking-an-input)). `event` is the input, an `event`, a `message` or a `call`, exactly as an `event` record would have it, so a message keeps its sender and message id. |
+| `{"kind": "unhandled", "event": {"kind": "event", "value": {"_tag": "Knock", …}}}` | A strict machine was given an external event, a message, a call or the expiry of a delayed raise that enabled no transition, or raised an event that enabled none ([taking an input](#taking-an-input), [settling](#settling)). `event` is the input, an `event`, a `message`, a `call`, an `after` or a `raised`, exactly as an `event` record would have it, so a message keeps its sender and message id. |
 | `{"kind": "answered", "call": "reserve"}` | A `reply` was given a pending-call value whose call is not pending: it was answered already, or the run was restored ([calls between runs](#calls-between-runs)). |
 
 **Inside the core.** Runtime errors (`unassigned`, `overflow`, `undeclared`, `limit`, `unhandled`, `answered`) and a `host` defect returned by `fns` while evaluating an expression happen inside `start` or `step`. The call is then **atomic**: every command it had produced is discarded, and it returns `failWithDefect(d)` applied to the snapshot it was given, so even an invoke the failed step had consumed is cancelled again (a driver ignores that). There is no `event` record for the input.
@@ -725,7 +796,8 @@ failWithDefect(d):
   for inv in snap.invokes: emit invoke.cancel { invoke: inv.id }    # no trace records
   for ch in snap.spawned:  emit spawn.stop { spawn: ch.id }
   for tm in snap.timers:   emit timer.cancel { timer: tm.id }
-  snap.invokes = []; snap.spawned = []; snap.timers = []
+  for sc in snap.scheduled: emit timer.cancel { timer: sc.id }
+  snap.invokes = []; snap.spawned = []; snap.timers = []; snap.scheduled = []
   clear the pending spawns
   snap.status = "defect"; snap.result = { defect: d }
   emit trace { kind: "defect", defect: d }
@@ -751,7 +823,7 @@ Expressions are evaluated by their IR node, recursively. Every node's `type` is 
 | `ref` | `path[0]` is a parameter (from `input`), a variable (from `vars`; reading one with no value is `unassigned`), or the implicit name `event`, `result`, `error`, `call` or `key`. Each further name reads that field of the value. A parameter or variable of a `ref` type reads as the run id it holds. |
 | `field` | Evaluate `of`, then read field `name`. |
 | `call` | Evaluate `args` left to right, then `fns(fn, args)`. |
-| `record` | An object with the fields in order. Its `type` may be an instance of a generic record (`Page<Order>`); the fields are the same. If `type` is an error, it also has `"_tag": type`. If `type` is an event (the value of a `send` or `emit`: `Machine.Name`, or the name of one of the current machine's `emits`), it also has `"_tag"` with the event's name, the part after the dot: `send upload.Pause` sends `{"_tag": "Pause"}`. |
+| `record` | An object with the fields in order. Its `type` may be an instance of a generic record (`Page<Order>`); the fields are the same. If `type` is an error, it also has `"_tag": type`. If `type` is an event (the value of a `send`, `emit` or `raise`: `Machine.Name`, or the name of one of the current machine's `emits`, `events` or `internalEvents`), it also has `"_tag"` with the event's name, the part after the dot: `send upload.Pause` sends `{"_tag": "Pause"}`. |
 | `enum` | The string `variant`. |
 | `op` | See below. |
 
@@ -943,7 +1015,7 @@ When a run ends, for whatever reason, the driver answers its pending and queued 
 
 - **Records.** `t` in a trace record is the driver's clock when it writes the record, in integer milliseconds: since the Unix epoch in production, and virtual milliseconds from 0 in conformance runs.
 - **Timers.** A timer's expiry is due `delay` milliseconds after the driver carries out `timer.start`. The driver reads the time and waits only through the clock and timer it was given (in TypeScript a `Timer` service whose default sleeps on Effect's `Clock`, in Rust the `Timer` trait), telling the timer the run id, the timer id and the delay when it starts one and the ids when it cancels one. It never completes a timer itself, not even one with delay 0 (a `timer.fire` command queues an expiry without any timer). A test can therefore give it a virtual clock and fire timers itself, as a conformance runner does.
-- **Due times.** The driver remembers, for each running timer, when it is **due**: the clock when it carried out the `timer.start`, plus the command's `delay`, capped at 2^53 − 1, the largest due time a saved snapshot holds (a delay near the longest `duration` would pass it). A timer restored by `timer.fire` keeps the due time it was saved with. A [saved snapshot](#the-saved-snapshot) records these.
+- **Due times.** The driver remembers, for each running timer (an `after` timer's or a delayed raise's), when it is **due**: the clock when it carried out the `timer.start`, plus the command's `delay`, capped at 2^53 − 1, the largest due time a saved snapshot holds (a delay near the longest `duration` would pass it). A timer restored by `timer.fire` keeps the due time it was saved with. A [saved snapshot](#the-saved-snapshot) records these.
 
 How a conformance runner drives virtual time, scripted outcomes and quiescence, and what it may rely on the driver for, is specified in [conformance/README.md](conformance/README.md#how-a-runner-works).
 
@@ -960,7 +1032,7 @@ Host code saves only top-level runs, since it holds no handle to a child run; a 
 
 ### The saved snapshot
 
-A saved snapshot is the core's [snapshot](#snapshot), as the run's last step left it, with three additions: `snapshotVersion`, which is `4`; a `due` member on each timer, from the driver ([time](#time)); and a `child` member on each entry of `invokes` and `spawned` whose child run is saved with it ([saved child runs](#saved-child-runs)). Its `calls` member is written only when the run has pending calls, in any version, and a saved snapshot without one has none, so a snapshot saved before calls existed needs no new version. Its schema is [`snapshot.schema.json`](snapshot.schema.json). It holds the **real values**, those of `sensitive` parameters and variables and fields too: a restored run goes on with them, so nothing in a saved snapshot is [redacted](#redaction). Only the copy of it in a `restored` record is.
+A saved snapshot is the core's [snapshot](#snapshot), as the run's last step left it, with three additions: `snapshotVersion`, which is `4`; a `due` member on each timer and each delayed raise, from the driver ([time](#time)); and a `child` member on each entry of `invokes` and `spawned` whose child run is saved with it ([saved child runs](#saved-child-runs)). Its `calls` member is written only when the run has pending calls, and its `scheduled` member only when it has pending delayed raises, in any version, and a saved snapshot without one has none, so a snapshot saved before calls or delayed raises existed needs no new version. Its schema is [`snapshot.schema.json`](snapshot.schema.json). It holds the **real values**, those of `sensitive` parameters and variables and fields too: a restored run goes on with them, so nothing in a saved snapshot is [redacted](#redaction). Only the copy of it in a `restored` record is.
 
 ```jsonc
 {
@@ -983,11 +1055,11 @@ A saved snapshot is the core's [snapshot](#snapshot), as the run's last step lef
 }
 ```
 
-- **Versions 1 to 3.** Version 3 is the same without any `child` member, as written before child runs were saved; version 2 is also without `spawned`, as written before keyed spawn; and version 1 is also without `history`, as written before history states. A runtime restores one as if it had `"spawned": []` (and `"history": {}`), every child run it started begins again, as when it was written, and the `restored` record holds it as it was given. Save and suspend always write version 4. `calls` may be in any version: it is written only when not empty. A machine with no history state and no `children` keeps its hash from before both, so its older snapshots still restore.
+- **Versions 1 to 3.** Version 3 is the same without any `child` member, as written before child runs were saved; version 2 is also without `spawned`, as written before keyed spawn; and version 1 is also without `history`, as written before history states. A runtime restores one as if it had `"spawned": []` (and `"history": {}`), every child run it started begins again, as when it was written, and the `restored` record holds it as it was given. Save and suspend always write version 4. `calls` and `scheduled` may be in any version: each is written only when not empty. A machine with no history state and no `children` keeps its hash from before both, so its older snapshots still restore.
 - **`due`** is an absolute time on the driver's clock, in integer milliseconds: since the Unix epoch in production, virtual time in conformance. A deadline is kept rather than the time remaining because the run is in its state the whole time it is saved: an order that waits three days for payment expires three days after it began waiting, however long it spent in a store. A host can also find when to wake a saved run from its earliest `due`.
 - **What is not in it.** Inputs queued but not yet taken, by any run of the tree, a task's emits among them (a request handler never has any, since it saves an idle tree); the state of work that is not a running child run (a task, a spawned task, a call, a stub, a machine whose implementation has not claimed its invoke yet, a child run that has ended), which starts again ([restoring](#restoring-a-snapshot)); messages kept for a child that has not claimed its invoke; subscriptions; and listeners.
-- **The same in both runtimes.** Values are in their JSON form ([values](#values)), `active` is in document order, and `invokes`, `spawned` and `timers` are in the order they were started, so the two runtimes save the same run as the same document, and either restores what the other saved. Conformance compares saved snapshots as [canonical JSON](ir.md#canonical-json).
-- **Numbers.** A JSON number's form does not matter. Wherever a saved snapshot has an integer (`snapshotVersion`, the ids, a timer's `index`, `delay` and `due`, an `int` or `duration` value), one written as a float with no fraction (`1.0`, `10000.0`, `-0.0`) is that integer, as JSON Schema's `integer` and JavaScript read it; a runtime always writes its integers in integer form (`2`, and `-0` as `0`).
+- **The same in both runtimes.** Values are in their JSON form ([values](#values)), `active` is in document order, and `invokes`, `spawned`, `timers` and `scheduled` are in the order they were started, so the two runtimes save the same run as the same document, and either restores what the other saved. Conformance compares saved snapshots as [canonical JSON](ir.md#canonical-json).
+- **Numbers.** A JSON number's form does not matter. Wherever a saved snapshot has an integer (`snapshotVersion`, the ids, a timer's `index`, `delay` and `due`, a delayed raise's `delay` and `due`, an `int` or `duration` value), one written as a float with no fraction (`1.0`, `10000.0`, `-0.0`) is that integer, as JSON Schema's `integer` and JavaScript read it; a runtime always writes its integers in integer form (`2`, and `-0` as `0`).
 - **A copy.** What save and suspend give host code, and what restore takes from it, is the runtime's no longer: changing a saved snapshot afterwards changes no run.
 
 ### Saved child runs
@@ -1007,7 +1079,7 @@ A child run is saved inside its parent's saved snapshot, as the `child` member o
 
 - **Which entries have one.** An entry has `child` when its work is a child run that has claimed its invoke ([child runs](#child-runs)) and is still open, or, in the snapshot suspend gives, one that suspend stopped with its tree. It has none when its work is a task (invoked or spawned), a call or a stub, a machine whose implementation has not called `run` yet, or a child run that has closed (one that has ended and whose outcome its parent has not taken yet). On restore those start again, as tasks do ([restoring](#restoring-a-snapshot)).
 - **As each run's last step left it.** save gives the top-level run's snapshot as its last step left it, and in each of its entries with a child run that child's snapshot as the child's last step left it, at the time save is called, assembled the same way below it. The runs of a tree take their steps independently, so what is in flight between them when save is called (a message the parent has sent that the child has not taken, an emitted event on its way up) is in no snapshot, as nothing queued for a top-level run is. suspend loses nothing, since it stops a tree only when nothing is queued anywhere in it ([suspending](#suspending-and-resume)).
-- **Ids and timers.** Every id in a child's snapshot is its own run's: its invokes, timers and messages are numbered by its own `nextInvoke`, `nextTimer` and `nextMessage`. Its timers' due times are on the clock the tree shares.
+- **Ids and timers.** Every id in a child's snapshot is its own run's: its invokes, timers, delayed raises and messages are numbered by its own `nextInvoke`, `nextTimer` and `nextMessage`. Its timers' and delayed raises' due times are on the clock the tree shares.
 - **The same in both runtimes.** A nested snapshot follows every rule of a saved snapshot, so the two runtimes save the same tree as the same document.
 
 ### Restoring a snapshot
@@ -1023,7 +1095,7 @@ Restoring checks the saved snapshot against the IR the runtime was given, refuse
 | `ended` | Its `status` is not `running` (a nested snapshot that is not running is `invalid` instead). A run that ended with a defect is `ended` whatever its defect's `kind`: the schema requires only that it has one, so a kind this version does not name is not `invalid`. |
 | `ref` | The machine, or the machine an entry with a nested snapshot starts (as for `ir`), has a parameter of type `ref M`, `ref M?` or `ref M[]`, or an alias of one ([not yet specified](#not-yet-specified)). |
 | `calls` | Its `calls` is not empty (a nested snapshot with `calls` is `invalid` instead: a child run has no handle, so it takes no calls). The callers that wait for those calls belong to the process that saved it, and are gone. A run with pending calls is not idle, so suspend never gives such a snapshot; save can. |
-| `invalid` | It does not fit the machine: its `status` is `running` but its `result` is not `null` (a run has a result only once it has ended); `active` is not a configuration in document order (the root first, each other state's parent active, one active child for each active compound state, every child for each active parallel state, and no history state); an `invokes` entry's state is not active, has no invoke of `src`, or has two entries; a `timers` entry's state is not active, or its `index` is not the first transition of an `after` block of that state, or two entries have the same state and index; a `spawned` entry's `children` is not a collection of the machine, its `key` does not decode as the collection's key type, its `args` do not have exactly the parameters of the collection's machine or task or do not decode as their types, or two entries of one collection have the same key; an id is repeated (among `invokes` and `spawned` together, or among `timers`) or not below `nextInvoke` or `nextTimer`; `input` does not have exactly the machine's parameters, or `vars` has a name that is not one of its variables, or lacks an optional variable; a `history` key is not the id of one of its history states, or its value is not one that history state could have recorded (for a `history` state, one child of a compound parent or every child of a parallel parent; for a `deepHistory` state, the leaves of a configuration below its parent: atomic or final states which, with their ancestors up to and including the parent, have one child for each compound state and every child for each parallel state among them; in document order either way); or a value does not decode as its declared type, as a machine's arguments must. A record, an error or an event decodes only with exactly the members its type declares (and an error's or event's `_tag`): one with a member its type does not declare is `invalid`. And for each snapshot nested in it: its entry is an `invokes` entry whose `src` is not a machine (a task or a call), or a `spawned` entry of a collection of tasks; its `machine` is not the machine its entry starts; its `run` is not this snapshot's `run`, a dot and the entry's `id`; its `status` is not `running`; it has `calls`; or it does not fit its own machine by every rule of this row, the snapshots nested in it included. |
+| `invalid` | It does not fit the machine: its `status` is `running` but its `result` is not `null` (a run has a result only once it has ended); `active` is not a configuration in document order (the root first, each other state's parent active, one active child for each active compound state, every child for each active parallel state, and no history state); an `invokes` entry's state is not active, has no invoke of `src`, or has two entries; a `timers` entry's state is not active, or its `index` is not the first transition of an `after` block of that state, or two entries have the same state and index; a `spawned` entry's `children` is not a collection of the machine, its `key` does not decode as the collection's key type, its `args` do not have exactly the parameters of the collection's machine or task or do not decode as their types, or two entries of one collection have the same key; a `scheduled` entry's `value` does not decode as one of the machine's own events (`events` or `internalEvents`), its `name` is neither `null` nor the `name` of a delayed `raise` effect of the machine, or two entries have the same name that is not `null`; an id is repeated (among `invokes` and `spawned` together, or among `timers` and `scheduled` together) or not below `nextInvoke` or `nextTimer`; `input` does not have exactly the machine's parameters, or `vars` has a name that is not one of its variables, or lacks an optional variable; a `history` key is not the id of one of its history states, or its value is not one that history state could have recorded (for a `history` state, one child of a compound parent or every child of a parallel parent; for a `deepHistory` state, the leaves of a configuration below its parent: atomic or final states which, with their ancestors up to and including the parent, have one child for each compound state and every child for each parallel state among them; in document order either way); or a value does not decode as its declared type, as a machine's arguments must. A record, an error or an event decodes only with exactly the members its type declares (and an error's or event's `_tag`): one with a member its type does not declare is `invalid`. And for each snapshot nested in it: its entry is an `invokes` entry whose `src` is not a machine (a task or a call), or a `spawned` entry of a collection of tasks; its `machine` is not the machine its entry starts; its `run` is not this snapshot's `run`, a dot and the entry's `id`; its `status` is not `running`; it has `calls`; or it does not fit its own machine by every rule of this row, the snapshots nested in it included. |
 
 **Migration.** When the hashes differ, the host may give a **migration**: a function from the old saved snapshot to a new one, both plain JSON (TypeScript `(saved: Json) => Json`, Rust `Fn(serde_json::Value) -> Result<serde_json::Value, String>`). It is called once for the whole tree, and only when a hash in it differs. In a tree a runtime saved, the top-level snapshot's hash differs whenever a nested one's does, since a machine's hash covers every machine it invokes or spawns ([the machine hash](ir.md#the-machine-hash)); `migrated` is the top-level snapshot's hash before the migration either way. It is given the whole tree and gives the whole tree, rewriting the nested snapshots too. Its result is checked from the top as if it had been given instead, except that a second migration is never applied. It is how a deployment that changed a chart (renamed a variable, added a state) keeps its saved runs: the migration rewrites `ir`, the names, and whatever else must change. It needs no IR of the old chart; it sees only the data.
 
@@ -1033,8 +1105,9 @@ Restoring checks the saved snapshot against the IR the runtime was given, refuse
 restore(ir, saved, run, now, migrated, fns):
   m    = ir.machines[saved.machine]           # every check above has passed
   shown = saved without the child members of its invokes and spawned entries
-  snap = shown without snapshotVersion, with run = run, no due on the timers, calls = [],
-         history = {} if it has none (version 1), and spawned = [] if it has none (versions 1 and 2)
+  snap = shown without snapshotVersion, with run = run, no due on the timers or the scheduled
+         raises, calls = [], scheduled = [] if it has none, history = {} if it has none
+         (version 1), and spawned = [] if it has none (versions 1 and 2)
   emit trace { kind: "restored", machine: saved.machine, ir: m.hash, migrated, snapshot: shown }
   for ch in saved.spawned, in order:
     c = the collection ch.children; src = c.src
@@ -1049,19 +1122,23 @@ restore(ir, saved, run, now, migrated, fns):
     for each entry tm of saved.timers with state s.id, by ascending id, if tm.due > now:
       emit trace { kind: "timer.started", timer: tm.id, state: s.id, index: tm.index, delay: tm.due - now }
       emit timer.start { timer: tm.id, delay: tm.due - now }
-  for each entry tm of saved.timers with tm.due <= now, by ascending due, then ascending id:
+  for each entry sc of saved.scheduled, in order, if sc.due > now:
+    emit trace { kind: "raise.scheduled", timer: sc.id, name: sc.name, delay: sc.due - now, value: sc.value }
+    emit timer.start { timer: sc.id, delay: sc.due - now }
+  for each entry tm of saved.timers and saved.scheduled together with tm.due <= now,
+      by ascending due, then ascending id:
     emit timer.fire { timer: tm.id }
   return (snap, commands)
 ```
 
-`now` is the driver's clock, `run` the new run's id, and `migrated` the hash the snapshot had before a migration, or `null` when there was none. Each timer of the core snapshot keeps the `delay` it was saved with, the delay its `after` evaluated to, though a restarted timer's `timer.started` record and command give the time that remains. `snapshot` in the `restored` record is the saved snapshot as restored, after any migration, without the snapshots nested in it: each child run restored from one writes its own `restored` record.
+`now` is the driver's clock, `run` the new run's id, and `migrated` the hash the snapshot had before a migration, or `null` when there was none. Each timer and delayed raise of the core snapshot keeps the `delay` it was saved with, the delay its `after` evaluated to, though a restarted timer's `timer.started` or `raise.scheduled` record and command give the time that remains. `snapshot` in the `restored` record is the saved snapshot as restored, after any migration, without the snapshots nested in it: each child run restored from one writes its own `restored` record.
 
 - **The spawned children go on.** Each child in `spawned` is started again, with its id and key and the arguments it was spawned with (they were evaluated from the event that spawned it, which is gone, so they are kept), as a new child run `<new run id>.<id>`, before the states' work, as in [starting work](#starting-work). One with a `child` snapshot is restored from it and goes on where it was ([restoring a child run](#restoring-a-child-run)); one without starts from the beginning, a spawned task always, with its saved arguments and a new emitter. A child that had ended when the run was saved, but whose outcome had not been taken yet, is still in `spawned`, has no `child`, and runs again, as an invoke in that position does.
 - **The work that was running restarts.** Each invoke in `invokes` is started again, with the same id and with its arguments evaluated now, from the snapshot's variables (a function in them is called again). A task runs again from the start, so a machine meant to be saved should wait in states with no `invoke`, or use tasks that are safe to repeat ([semantics](../docs/design/semantics.md#saving-and-restoring)). A task that emits gets a new emitter and emits again as it runs: what it emitted before the save, taken or not, is not given again. A child machine is a new child run `<new run id>.<invoke id>`: one with a `child` snapshot is restored from it and goes on where it was ([restoring a child run](#restoring-a-child-run)), with what its parent had sent it and it had taken; one without runs again from its `start`, its own progress and the messages its parent had sent it not saved. An invoke whose outcome had already been taken is not in `invokes` and is not restarted, though its state is active.
-- **Timers keep their deadlines.** A timer not yet due is started again, with the same id, for the time that remains, so it expires at its saved `due`. A timer already due is not started: `timer.fire` queues its expiry at once, before anything else can reach the run's queue, the earliest due first. Its deadline passed while the run was saved, so it is taken before any event given after restoring: an order restored after its payment deadline expires before it sees the payment. Since ids are kept, `nextInvoke` and `nextTimer` do not change; they cannot collide with anything, since the run id is new. A restored child run's timers are restored the same way, by its own `restore`.
+- **Timers keep their deadlines.** A timer not yet due is started again, with the same id, for the time that remains, so it expires at its saved `due`. So is a delayed raise, after every state's work, with a `raise.scheduled` record; one already due joins the timers already due, in one order. A timer already due is not started: `timer.fire` queues its expiry at once, before anything else can reach the run's queue, the earliest due first. Its deadline passed while the run was saved, so it is taken before any event given after restoring: an order restored after its payment deadline expires before it sees the payment. Since ids are kept, `nextInvoke` and `nextTimer` do not change; they cannot collide with anything, since the run id is new. A restored child run's timers are restored the same way, by its own `restore`.
 - **Nothing else happens.** No state is entered or exited, no effect runs and the run does not settle: the snapshot was saved between steps, already settled. The run then takes inputs like any run.
 - **Defects.** A runtime error or a host defect while evaluating an invoke's arguments makes `restore` atomic, like `start`: it returns `failWithDefect(d)` applied to `snap`, with two commands, the `restored` record and the `defect` record. The `invoke.cancel`, `spawn.stop` and `timer.cancel` commands of `failWithDefect` are for work never started (the `spawn.start` commands before the defect are discarded with the rest), which the driver ignores. The run then ends with the defect like any run.
-- **The driver** carries out the commands and drives the run as `run` does ([the driver](#the-driver)). The due times it keeps are `now + delay` for the timers it starts, which is their saved `due`, and the saved `due` for those whose expiry `timer.fire` queued.
+- **The driver** carries out the commands and drives the run as `run` does ([the driver](#the-driver)). The due times it keeps are `now + delay` for the timers it starts, which is their saved `due`, and the saved `due` for those whose expiry `timer.fire` queued, delayed raises' as `after` timers'.
 
 ### Restoring a child run
 
@@ -1073,11 +1150,11 @@ When the driver carries out an `invoke.start` or `spawn.start` whose `saved` is 
 
 ### Suspending and resume
 
-A run is **idle** when it is between steps, its queue is empty, no cancel request is waiting, it has no pending call (`snap.calls` is empty), and the work of every entry of `snap.invokes` and `snap.spawned` is a child run that has claimed its invoke, is open, and is idle itself: it waits only for events, messages and timers, nothing it started is in flight but child runs that wait the same way, and no caller waits for it. A task, a call, a stub or a machine whose implementation has not claimed its invoke is work in flight, so a run that waits for one is not idle, and neither is one whose child run has closed, since that child's outcome is on its way. A task that emits is work in flight like any task, invoked or spawned: a run with a stream task running is never idle, so suspend waits until the task ends or the run leaves its state (or stops the spawned task). A run with no invoke and no spawned child is idle exactly as before. The **tree** of a top-level run is the run and its child runs, to any depth, and a top-level run is idle exactly when every run of its tree is.
+A run is **idle** when it is between steps, its queue is empty, no cancel request is waiting, it has no pending call (`snap.calls` is empty), and the work of every entry of `snap.invokes` and `snap.spawned` is a child run that has claimed its invoke, is open, and is idle itself: it waits only for events, messages and timers (delayed raises among them), nothing it started is in flight but child runs that wait the same way, and no caller waits for it. A task, a call, a stub or a machine whose implementation has not claimed its invoke is work in flight, so a run that waits for one is not idle, and neither is one whose child run has closed, since that child's outcome is on its way. A task that emits is work in flight like any task, invoked or spawned: a run with a stream task running is never idle, so suspend waits until the task ends or the run leaves its state (or stops the spawned task). A run with no invoke and no spawned child is idle exactly as before. The **tree** of a top-level run is the run and its child runs, to any depth, and a top-level run is idle exactly when every run of its tree is.
 
 **suspend** waits until the run is idle or has ended, taking inputs meanwhile as always (a cancel request among them: one that arrives while a step runs is taken after that step, so a run asked to cancel and then to suspend is cancelled, exit effects and all, and suspend gives its `cancelled` snapshot): the outcomes of its invokes and the expiries of its timers, which keep running, so a chart's own `after` bounds how long it waits for a task. The driver checks when suspend is called, and after the commands of each step (or `start`'s, or `restore`'s) of any run of the tree have been carried out. Then:
 
-- If the run is idle, the driver **stops** its tree: it closes every run of the tree ([delivery](#delivering-messages)), deciding that the tree is idle and closing its runs as one operation with respect to what is pushed onto their queues, so that an input that arrived while one was open is taken (the tree is then not idle), never discarded. Each child run then stops as its token tells it ([child runs](#child-runs)), and the top-level run last: it cancels its timers through its timer (with no record: they are in the snapshot), discards its queue (empty), writes `{"kind": "suspended"}`, tells its holders that hear its end, with `{"kind": "ended", "from": <its id>, "status": "Suspended"}` ([ending a run](#ending-a-run)), and gives the saved snapshot, with its child runs' last snapshots nested in it. Every status is still `running`: the runs are not over, they go on from the snapshot when it is restored. No exit effect runs, in any run of the tree. A child run tells no one, since only top-level runs have holders.
+- If the run is idle, the driver **stops** its tree: it closes every run of the tree ([delivery](#delivering-messages)), deciding that the tree is idle and closing its runs as one operation with respect to what is pushed onto their queues, so that an input that arrived while one was open is taken (the tree is then not idle), never discarded. Each child run then stops as its token tells it ([child runs](#child-runs)), and the top-level run last: it cancels its timers and its delayed raises' timers through its timer (with no record: they are in the snapshot), discards its queue (empty), writes `{"kind": "suspended"}`, tells its holders that hear its end, with `{"kind": "ended", "from": <its id>, "status": "Suspended"}` ([ending a run](#ending-a-run)), and gives the saved snapshot, with its child runs' last snapshots nested in it. Every status is still `running`: the runs are not over, they go on from the snapshot when it is restored. No exit effect runs, in any run of the tree. A child run tells no one, since only top-level runs have holders.
 - If the run has ended with `done`, `failed` or `cancelled`, the driver gives its saved snapshot, whose `status` and `result` say so, and writes nothing. A run that ended with a defect raises it, as `run` does, and gives no snapshot.
 
 A timer that falls due while suspend waits is taken like any input; one still running when the run stops is in the snapshot. An event given to the run while suspend waits is taken if it arrives before the run stops.

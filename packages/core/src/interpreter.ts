@@ -12,6 +12,7 @@ import {
   type Ir,
   isHistory,
   type Machine,
+  ownEvent,
   peerOf,
   type State,
   type Transition,
@@ -31,6 +32,7 @@ import type {
   InvokeEntry,
   RunResult,
   Saved,
+  ScheduledEntry,
   Snapshot,
   SpawnedEntry,
   Status,
@@ -67,6 +69,7 @@ export const start = (
     calls: [],
     spawned: [],
     timers: [],
+    scheduled: [],
     nextInvoke: 1,
     nextTimer: 1,
     nextMessage: 1,
@@ -150,6 +153,7 @@ export const restore = (
     calls: [],
     spawned: (saved.spawned ?? []).map(({ args, children, id, key }) => ({ id, children, key, args })),
     timers: saved.timers.map(({ delay, id, index, state }) => ({ id, state, index, delay })),
+    scheduled: (saved.scheduled ?? []).map(({ delay, id, name, value }) => ({ id, name, delay, value })),
     nextInvoke: saved.nextInvoke,
     nextTimer: saved.nextTimer,
     nextMessage: saved.nextMessage,
@@ -333,6 +337,7 @@ class Macrostep {
   calls: Array<CallEntry>
   spawned: Array<SpawnedEntry>
   timers: Array<TimerEntry>
+  scheduled: Array<ScheduledEntry>
   nextInvoke: number
   nextTimer: number
   nextMessage: number
@@ -341,8 +346,11 @@ class Macrostep {
   readonly commands: Array<Command> = []
   /** The states entered during this macrostep. */
   private readonly entered = new Set<string>()
-  /** Compound states that reached a final child and have not been exited since. */
-  private completions: Array<string> = []
+  /**
+   * The internal queue, in the order queued: the completions of states that reached a final
+   * state and have not been exited since, and the events `raise` effects raised.
+   */
+  private queue: Array<{ readonly completion: string } | { readonly raised: Tagged }> = []
   /** The children spawned during this macrostep, in order, not started yet. */
   private pending: Array<PendingSpawn> = []
 
@@ -363,6 +371,7 @@ class Macrostep {
     this.calls = [...snapshot.calls]
     this.spawned = [...snapshot.spawned]
     this.timers = [...snapshot.timers]
+    this.scheduled = [...snapshot.scheduled]
     this.nextInvoke = snapshot.nextInvoke
     this.nextTimer = snapshot.nextTimer
     this.nextMessage = snapshot.nextMessage
@@ -385,6 +394,7 @@ class Macrostep {
         calls: this.calls,
         spawned: this.spawned,
         timers: this.timers,
+        scheduled: this.scheduled,
         nextInvoke: this.nextInvoke,
         nextTimer: this.nextTimer,
         nextMessage: this.nextMessage,
@@ -415,6 +425,8 @@ class Macrostep {
     const shown = r.active ? r.input(this.index.machine, this.invokes, input, this.spawned) : input
     let selected: ReadonlyArray<Selected> = []
     let bindings: Bindings = NO_BINDINGS
+    // Whether the input is a delayed raise's expiry, which a strict machine must take.
+    let raised = false
     switch (input.kind) {
       case "invoke.done":
       case "invoke.fail":
@@ -476,16 +488,26 @@ class Macrostep {
       }
       case "after": {
         const tm = this.timers.find((t) => t.id === input.timer)
-        if (tm === undefined) {
+        if (tm !== undefined) {
+          this.timers = this.timers.filter((t) => t !== tm)
+          selected = this.selectAfter(tm)
+          break
+        }
+        // A delayed raise's expiry consumes the raise and selects its event.
+        const sc = this.scheduled.find((s) => s.id === input.timer)
+        if (sc === undefined) {
           this.trace({ kind: "stale", event: shown })
           return
         }
-        this.timers = this.timers.filter((t) => t !== tm)
-        selected = this.selectAfter(tm)
+        this.scheduled = this.scheduled.filter((s) => s !== sc)
+        raised = true
+        bindings = { event: sc.value }
+        selected = this.selectEvent(sc.value, bindings)
         break
       }
       case "event":
       case "message":
+      case "raised":
         bindings = { event: input.value }
         selected = this.selectEvent(input.value, bindings)
         break
@@ -522,9 +544,13 @@ class Macrostep {
         break
     }
     if (selected.length === 0) {
-      // A strict machine fails on one of its own events, a message or a call that it does not
-      // handle. Its driver answers the call `Unanswered` as the run ends.
-      if (this.index.machine.strict && (input.kind === "event" || input.kind === "message" || input.kind === "call")) {
+      // A strict machine fails on one of its own events, a message, a call or a delayed raise
+      // that it does not handle. Its driver answers the call `Unanswered` as the run ends.
+      const strict = this.index.machine.strict
+      if (
+        strict && (input.kind === "event" || input.kind === "message" || input.kind === "raised" ||
+          input.kind === "call" || (input.kind === "after" && raised))
+      ) {
         throw new Abort({ kind: "unhandled", event: input })
       }
       this.trace({ kind: "dropped", event: shown })
@@ -889,9 +915,11 @@ class Macrostep {
     this.runEffects(state.exit, NO_BINDINGS)
     this.active = this.active.filter((id) => id !== state.id)
     // A state's completion goes with it, and so does every completion of a state around it: an
-    // internal transition that exits a final state takes back its parent's.
-    this.completions = this.completions.filter((id) => {
-      const c = this.index.state(id)
+    // internal transition that exits a final state takes back its parent's. A raised event
+    // stays: it belongs to the run.
+    this.queue = this.queue.filter((q) => {
+      if (!("completion" in q)) return true
+      const c = this.index.state(q.completion)
       return c !== state && !this.index.isProperAncestor(c, state)
     })
     this.trace({ kind: "exited", state: state.id })
@@ -921,12 +949,12 @@ class Macrostep {
     let s = final
     const parent = this.index.parent(final)!
     if (parent.kind === "compound") {
-      this.completions.push(parent.id)
+      this.queue.push({ completion: parent.id })
       s = parent
     }
     for (let p = this.index.parent(s); p !== undefined && p.kind === "parallel" && this.inFinalState(p); p = this.index.parent(s)) {
       s = p
-      this.completions.push(s.id)
+      this.queue.push({ completion: s.id })
     }
   }
 
@@ -1053,6 +1081,27 @@ class Macrostep {
         case "stop":
           this.stopChild(effect.children, this.eval(effect.key, bindings))
           break
+        case "raise": {
+          if (effect.delay === null) {
+            const value = this.eval(effect.value, bindings) as Tagged
+            this.trace({ kind: "raised", value })
+            this.queue.push({ raised: value })
+            break
+          }
+          // The delay, then the value; then the pending raise of its name goes.
+          const delay = this.eval(effect.delay, bindings) as number
+          const value = this.eval(effect.value, bindings) as Tagged
+          if (effect.name !== null) this.cancelRaise(effect.name)
+          const timer = this.nextTimer
+          this.nextTimer += 1
+          this.scheduled.push({ id: timer, name: effect.name, delay, value })
+          this.trace({ kind: "raise.scheduled", timer, name: effect.name, delay, value })
+          this.commands.push({ kind: "timer.start", timer, delay })
+          break
+        }
+        case "cancel":
+          this.cancelRaise(effect.name)
+          break
       }
     }
   }
@@ -1071,6 +1120,24 @@ class Macrostep {
     this.spawned = this.spawned.filter((c) => c !== ch)
     this.trace({ kind: "spawn.stopped", spawn: ch.id, children, key })
     this.commands.push({ kind: "spawn.stop", spawn: ch.id })
+  }
+
+  /** Cancel the pending delayed raise named `name`, if there is one. */
+  private cancelRaise(name: string) {
+    const sc = this.scheduled.find((s) => s.name === name)
+    if (sc === undefined) return
+    this.scheduled = this.scheduled.filter((s) => s !== sc)
+    this.trace({ kind: "raise.cancelled", timer: sc.id, name: sc.name })
+    this.commands.push({ kind: "timer.cancel", timer: sc.id })
+  }
+
+  /** When the run finishes or is cancelled, after its children are stopped: cancel every pending delayed raise. */
+  private cancelRaises() {
+    for (const sc of this.scheduled) {
+      this.trace({ kind: "raise.cancelled", timer: sc.id, name: sc.name })
+      this.commands.push({ kind: "timer.cancel", timer: sc.id })
+    }
+    this.scheduled = []
   }
 
   /** When the run finishes or is cancelled, after every exit: stop every child still running. */
@@ -1102,19 +1169,32 @@ class Macrostep {
 
   // ---- settling, work, finishing ----
 
+  /** `always` first, then the internal queue front to back: completions and raised events. */
   settle() {
     let count = 0
     const isAlways = (t: Transition) => t.trigger.kind === "always"
     while (this.status === "running") {
       let selected = this.selectByWalks(() => isAlways, NO_BINDINGS)
-      while (selected.length === 0 && this.completions.length > 0) {
-        const completed = this.index.state(this.completions.shift()!)
-        selected = listOf(this.firstEnabled(completed, (t) => t.trigger.kind === "done", NO_BINDINGS))
+      let bindings: Bindings = NO_BINDINGS
+      while (selected.length === 0 && this.queue.length > 0) {
+        const q = this.queue.shift()!
+        if ("completion" in q) {
+          const completed = this.index.state(q.completion)
+          selected = listOf(this.firstEnabled(completed, (t) => t.trigger.kind === "done", NO_BINDINGS))
+          continue
+        }
+        const input = { kind: "raised", value: q.raised } as const
+        bindings = { event: q.raised }
+        selected = this.selectEvent(q.raised, bindings)
+        if (selected.length === 0 && this.index.machine.strict) throw new Abort({ kind: "unhandled", event: input })
+        const r = redactor(this.ir)
+        const shown = r.active ? r.input(this.index.machine, this.invokes, input, this.spawned) : input
+        this.trace({ kind: selected.length === 0 ? "dropped" : "event", event: shown })
       }
       if (selected.length === 0) return
       count += 1
       if (count > SETTLE_LIMIT) throw new Abort({ kind: "limit" })
-      this.microstep(selected, NO_BINDINGS)
+      this.microstep(selected, bindings)
     }
   }
 
@@ -1198,7 +1278,16 @@ class Macrostep {
         this.commands.push({ kind: "timer.start", timer: tm.id, delay })
       }
     }
-    const due = saved.timers.filter((t) => t.due <= now).sort((a, b) => a.due - b.due || a.id - b.id)
+    // Delayed raises belong to no state: after every state's work.
+    for (const sc of saved.scheduled ?? []) {
+      if (sc.due <= now) continue
+      const delay = sc.due - now
+      this.trace({ kind: "raise.scheduled", timer: sc.id, name: sc.name, delay, value: sc.value })
+      this.commands.push({ kind: "timer.start", timer: sc.id, delay })
+    }
+    const due = [...saved.timers, ...(saved.scheduled ?? [])]
+      .filter((t) => t.due <= now)
+      .sort((a, b) => a.due - b.due || a.id - b.id)
     for (const tm of due) this.commands.push({ kind: "timer.fire", timer: tm.id })
   }
 
@@ -1212,9 +1301,10 @@ class Macrostep {
     }
     for (const state of this.innermostFirst()) this.exitState(state)
     this.stopChildren()
+    this.cancelRaises()
     this.result = status === "done" ? { output: value } : { error: value }
     this.status = status
-    this.completions = []
+    this.queue = []
     if (status === "done") this.trace({ kind: "done", state: final.id, output: value })
     else this.trace({ kind: "failed", state: final.id, error: value })
   }
@@ -1222,6 +1312,8 @@ class Macrostep {
   private cancelRun() {
     for (const state of this.innermostFirst()) this.exitState(state)
     this.stopChildren()
+    this.cancelRaises()
+    this.queue = []
     this.status = "cancelled"
     this.trace({ kind: "cancelled" })
   }
@@ -1230,10 +1322,12 @@ class Macrostep {
     for (const inv of this.invokes) this.commands.push({ kind: "invoke.cancel", invoke: inv.id })
     for (const ch of this.spawned) this.commands.push({ kind: "spawn.stop", spawn: ch.id })
     for (const tm of this.timers) this.commands.push({ kind: "timer.cancel", timer: tm.id })
+    for (const sc of this.scheduled) this.commands.push({ kind: "timer.cancel", timer: sc.id })
     this.invokes = []
     this.spawned = []
     this.pending = []
     this.timers = []
+    this.scheduled = []
     this.status = "defect"
     this.result = { defect }
     this.trace({ kind: "defect", defect })
@@ -1297,7 +1391,7 @@ class Macrostep {
     if (t.kind !== "named") return undefined
     if (Object.hasOwn(this.ir.types, t.name)) return this.ir.types[t.name]!.kind === "error" ? t.name : undefined
     const m = this.index.machine
-    return Object.hasOwn(m.emits, t.name) || Object.hasOwn(m.events, t.name) ? t.name : undefined
+    return Object.hasOwn(m.emits, t.name) || ownEvent(m, t.name) !== undefined ? t.name : undefined
   }
 
   private evalOp(expr: Extract<Expr, { kind: "op" }>, bindings: Bindings): Json {

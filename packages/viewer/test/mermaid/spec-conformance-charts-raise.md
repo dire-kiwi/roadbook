@@ -1,0 +1,193 @@
+## Order
+
+`spec/conformance/charts/raise.road:9`
+
+```text
+A raise in a transition, one in an entry and one in a final state's entry, with an
+always and a completion in play: all are taken in the step, in the order queued.
+```
+
+```mermaid
+stateDiagram-v2
+  state Work {
+    state "Inner" as Work_Inner
+    Work_Inner: entry raise Pong
+    state "Finished" as Work_Finished
+    Work_Finished: entry raise Ping { n#58; 2 }
+    [*] --> Work_Inner
+    Work_Inner --> Work_Finished: always
+    Work_Finished --> [*]
+  }
+  note right of Work
+    on Ping / set n = n + event.n, do log("ping")
+    on Pong / do log("pong")
+  end note
+  After: on Next / do log("next")
+  [*] --> Idle
+  Idle --> Work: Go / raise Ping { n#58; 1 }, do log("go")
+  Work --> After: done / do log("done")
+```
+
+## Starter
+
+`spec/conformance/charts/raise.road:38`
+
+```text
+A raise in an initial entry is taken while the run starts.
+```
+
+```mermaid
+stateDiagram-v2
+  A: entry raise Ping
+  [*] --> A
+  A --> B: Ping
+  B --> A: Back
+```
+
+## Lenient
+
+`spec/conformance/charts/raise.road:53`
+
+```text
+A raised event that no transition of the current states takes is dropped.
+```
+
+```mermaid
+stateDiagram-v2
+  A: on Go / raise Ping
+  A: on Later / raise Ping after 1s
+  [*] --> A
+  A --> B: Move
+  B --> A: Ping
+```
+
+## Picky
+
+`spec/conformance/charts/raise.road:72`
+
+```text
+The same in a strict machine: a raised event, or a delayed raise's expiry, that no
+transition takes is `unhandled`.
+```
+
+```mermaid
+stateDiagram-v2
+  A: on Go / raise Ping
+  A: on Later / raise Ping after 1s
+  [*] --> A
+  A --> B: Move
+  B --> A: Ping
+```
+
+## Loop
+
+`spec/conformance/charts/raise.road:90`
+
+```text
+A raise that raises itself again hits the limit.
+```
+
+```mermaid
+stateDiagram-v2
+  A: on Go / raise Ping
+  A: on Ping / raise Ping
+  [*] --> A
+```
+
+## Reminder
+
+`spec/conformance/charts/raise.road:104`
+
+```text
+A reminder that belongs to the run: it survives leaving the state that started it, is
+replaced by a raise of the same name, cancelled by `cancel`, and saved with its deadline.
+```
+
+```mermaid
+stateDiagram-v2
+  Idle: on Stop / cancel reminder
+  Waiting: on Again / raise Remind { attempt#58; 10 } after 500ms as reminder
+  Waiting: on Boom / do log("boom")
+  [*] --> Idle
+  Idle --> Waiting: Start / raise Remind { attempt#58; 1 } after 1s as reminder
+  Waiting --> Waiting: Remind / set attempts = event.attempt, raise Remind { attempt#58; event.attempt + 1 } after 1s as reminder
+  Waiting --> Idle: Stop / cancel reminder
+  Waiting --> Confirmed: Confirm
+  Waiting --> GaveUp: after 3s
+  Confirmed --> [*]
+  GaveUp --> [*]
+```
+
+## Ending
+
+`spec/conformance/charts/raise.road:135`
+
+```text
+What the exit effects of a run's last step raise is thrown away, and its delayed raises
+are cancelled after its exits.
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> Ending_machine
+  state "Ending" as Ending_machine
+  state Ending_machine {
+    A: on Bye / do log("bye")
+    [*] --> A
+    A --> Over: Finish
+    Over --> [*]
+  }
+  note right of Ending_machine
+    exit raise Bye
+    exit raise Bye after 1s as bye
+  end note
+```
+
+## Ticker
+
+`spec/conformance/charts/raise.road:151`
+
+```text
+A child run with a pending raise, which its parent cancels by leaving the invoking state.
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> Ticker_machine
+  state "Ticker" as Ticker_machine
+  state Ticker_machine {
+    [*] --> Running
+    Running --> Running: Tick / raise Tick after 1s as tick
+  }
+  note right of Ticker_machine
+    entry raise Tick after 1s as tick
+  end note
+```
+
+## Parent
+
+`spec/conformance/charts/raise.road:160`
+
+```mermaid
+stateDiagram-v2
+  Using: invoke machine Ticker()
+  [*] --> Using
+  Using --> Left: done
+  Using --> Left: Leave
+  Left --> [*]
+```
+
+## Vault
+
+`spec/conformance/charts/raise.road:176`
+
+```text
+A sensitive field of a raised event is redacted in every record that shows it.
+```
+
+```mermaid
+stateDiagram-v2
+  Closed: on Locked / do log("locked")
+  [*] --> Open
+  Open --> Closed: Lock / raise Locked { code#58; event.code }, raise Locked { code#58; event.code } after 1s as relock
+```

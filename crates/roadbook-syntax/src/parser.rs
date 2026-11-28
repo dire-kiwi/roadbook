@@ -1052,6 +1052,20 @@ impl Parser<'_> {
         if self.at_check() {
             return self.check_item(kind);
         }
+        if self.at_internal_event() {
+            let decl = self.internal_event()?;
+            if kind == BodyKind::State {
+                let d = Diagnostic::error(
+                    codes::NOT_IN_STATE,
+                    t.span,
+                    "`internal event` is only allowed directly in a machine body",
+                )
+                .with_help("move the event to the top of the machine, with its other events");
+                self.error(d);
+                return Ok(None);
+            }
+            return Ok(Some(Item::InternalEvent(decl)));
+        }
         if self.at_children() {
             let decl = self.children()?;
             if kind == BodyKind::State {
@@ -1069,7 +1083,7 @@ impl Parser<'_> {
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
-                    "a machine item (`var`, `event`, `emits`, `call`, `children`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
+                    "a machine item (`var`, `event`, `internal event`, `emits`, `call`, `children`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
                 }
                 BodyKind::State => {
                     "a state item (`initial`, `state`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
@@ -1094,7 +1108,7 @@ impl Parser<'_> {
                 let effects = self.effects()?;
                 if effects.is_empty() {
                     let expected = format!(
-                        "`set`, `do`, `send`, `emit`, `reply`, `spawn` or `stop` after `{}`",
+                        "`set`, `do`, `send`, `emit`, `reply`, `spawn`, `stop`, `raise` or `cancel` after `{}`",
                         self.text(t)
                     );
                     return Err(self.unexpected(&expected));
@@ -1430,9 +1444,28 @@ impl Parser<'_> {
         })
     }
 
+    /// `internal` is not reserved: it starts an item only as `internal event`.
+    fn at_internal_event(&self) -> bool {
+        self.at(T::Lower)
+            && self.text(self.tok()) == "internal"
+            && self.nth(1) == T::Keyword(K::Event)
+    }
+
+    /// `internal event Name [{ fields }]`
+    fn internal_event(&mut self) -> PResult<EventDecl> {
+        let doc = self.take_doc();
+        let start = self.bump().span;
+        self.bump();
+        self.event_rest(doc, start)
+    }
+
     fn event(&mut self) -> PResult<EventDecl> {
         let doc = self.take_doc();
         let start = self.bump().span;
+        self.event_rest(doc, start)
+    }
+
+    fn event_rest(&mut self, doc: Option<Doc>, start: Span) -> PResult<EventDecl> {
         let name = self.upper("an event name")?;
         self.not_unanswered(&name);
         let fields = if self.at_p(P::LBrace) {
@@ -1668,13 +1701,13 @@ impl Parser<'_> {
         if targets.is_empty() && effects.is_empty() {
             let (expected, help) = if ignore {
                 (
-                    "`-> Target`, `set`, `do`, `send`, `emit`, `reply`, `spawn`, `stop` or `ignore`",
-                    "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`) or a reply (`reply call done`), or write `ignore` to take the event and do nothing",
+                    "`-> Target`, `set`, `do`, `send`, `emit`, `reply`, `spawn`, `stop`, `raise`, `cancel` or `ignore`",
+                    "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`, `raise Event`) or a reply (`reply call done`), or write `ignore` to take the event and do nothing",
                 )
             } else {
                 (
-                    "`-> Target`, `set`, `do`, `send`, `emit`, `reply`, `spawn` or `stop`",
-                    "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`) or a reply (`reply call done`)",
+                    "`-> Target`, `set`, `do`, `send`, `emit`, `reply`, `spawn`, `stop`, `raise` or `cancel`",
+                    "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`, `raise Event`) or a reply (`reply call done`)",
                 )
             };
             let msg = format!(
@@ -1716,8 +1749,8 @@ impl Parser<'_> {
         })
     }
 
-    /// Zero or more `set …`, `do …`, `send …`, `emit …`, `reply …`, `spawn …` and `stop …`
-    /// clauses.
+    /// Zero or more `set …`, `do …`, `send …`, `emit …`, `reply …`, `spawn …`, `stop …`,
+    /// `raise …` and `cancel …` clauses.
     fn effects(&mut self) -> PResult<Vec<Effect>> {
         let mut out = Vec::new();
         loop {
@@ -1789,6 +1822,55 @@ impl Parser<'_> {
                     children,
                     key,
                     span: self.since(kw.span),
+                }));
+                continue;
+            }
+            if self.at(T::Lower) && self.text(self.tok()) == "raise" && self.nth(1) == T::Upper {
+                let kw = self.bump();
+                let event = self.upper("the event to raise")?;
+                let message = self.message(kw.span, None, event)?;
+                // `after` goes on with the raise only on the line its event ends on: on a
+                // later line it starts an `after` transition.
+                let line = self.prev().end.line;
+                let delay = if self.at_kw(K::After) && self.tok().span.start.line == line {
+                    self.bump();
+                    Some(self.expr(false)?)
+                } else {
+                    None
+                };
+                let name = if self.at(T::Lower)
+                    && self.text(self.tok()) == "as"
+                    && self.nth(1) == T::Lower
+                {
+                    let as_kw = self.bump();
+                    let name = self.binding("the name of a delayed raise")?;
+                    if delay.is_none() {
+                        let d = Diagnostic::error(
+                            codes::RAISE_NAME_WITHOUT_DELAY,
+                            as_kw.span.to(name.span),
+                            format!("only a delayed raise has a name: `raise {} as {}` has no `after`", message.event.name, name.name),
+                        )
+                        .with_help("add a delay (`raise E after 5s as name`), or remove `as name`: an immediate raise is taken before the step ends, so there is nothing to cancel");
+                        self.error(d);
+                    }
+                    Some(name)
+                } else {
+                    None
+                };
+                out.push(Effect::Raise(Raise {
+                    message,
+                    delay,
+                    name,
+                    span: self.since(kw.span),
+                }));
+                continue;
+            }
+            if self.at_contextual("cancel") {
+                let kw = self.bump();
+                let name = self.lower("the name of the delayed raise to cancel")?;
+                out.push(Effect::Cancel(Cancel {
+                    span: self.since(kw.span),
+                    name,
                 }));
                 continue;
             }
@@ -1884,8 +1966,9 @@ impl Parser<'_> {
         })
     }
 
-    /// `spawn` and `stop` are not reserved: they start an effect only where an effect can
-    /// start, followed by a name (`spawn name[`, `stop name[`). No expression or other item
+    /// `spawn`, `stop` and `cancel` are not reserved: they start an effect only where an
+    /// effect can start, followed by a name (`spawn name[`, `stop name[`, `cancel name`), as
+    /// `raise` does followed by an event (`raise Name`). No expression or other item
     /// can go on with a lower-case name there, so a missing `[` is reported as such.
     fn at_contextual(&self, word: &str) -> bool {
         self.at(T::Lower) && self.text(self.tok()) == word && self.nth(1) == T::Lower

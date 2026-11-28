@@ -1,0 +1,58 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A reminder that belongs to the run: it survives leaving the state that started it, is
+  replaced by a raise of the same name, cancelled by `cancel`, and saved with its deadline.
+-->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Reminder" datamodel="roadbook" initial="Reminder_Idle">
+  <datamodel>
+    <data id="attempts" expr="0" rb:type="int"/>
+  </datamodel>
+  <state id="Reminder_Idle">
+    <transition event="Start" target="Reminder_Waiting">
+      <cancel sendid="reminder"/>
+      <send event="Remind" delay="1000ms" id="reminder">
+        <param name="attempt" expr="1"/>
+      </send>
+    </transition>
+    <transition event="Stop" type="internal">
+      <cancel sendid="reminder"/>
+    </transition>
+  </state>
+  <state id="Reminder_Waiting">
+    <onentry>
+      <send id="Reminder_Waiting_after_5" event="roadbook.after.Reminder_Waiting.5" delay="3000ms"/>
+    </onentry>
+    <onexit>
+      <cancel sendid="Reminder_Waiting_after_5"/>
+    </onexit>
+    <transition event="Remind" target="Reminder_Waiting">
+      <assign location="attempts" expr="event.attempt"/>
+      <cancel sendid="reminder"/>
+      <send event="Remind" delay="1000ms" id="reminder">
+        <param name="attempt" expr="event.attempt + 1"/>
+      </send>
+    </transition>
+    <transition event="Again" type="internal">
+      <cancel sendid="reminder"/>
+      <send event="Remind" delay="500ms" id="reminder">
+        <param name="attempt" expr="10"/>
+      </send>
+    </transition>
+    <transition event="Stop" target="Reminder_Idle">
+      <cancel sendid="reminder"/>
+    </transition>
+    <transition event="Confirm" target="Reminder_Confirmed"/>
+    <transition event="Boom" type="internal">
+      <rb:do action="log">
+        <param name="what" expr="&quot;boom&quot;"/>
+      </rb:do>
+    </transition>
+    <transition event="roadbook.after.Reminder_Waiting.5" target="Reminder_GaveUp"/>
+  </state>
+  <final id="Reminder_Confirmed"/>
+  <final id="Reminder_GaveUp"/>
+</scxml>
