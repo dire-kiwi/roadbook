@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/many.road",
@@ -46,6 +46,7 @@
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -230,6 +231,7 @@
       "errors": [],
       "vars": [],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

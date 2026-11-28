@@ -231,4 +231,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.10'
+export const IR_VERSION = '0.11'

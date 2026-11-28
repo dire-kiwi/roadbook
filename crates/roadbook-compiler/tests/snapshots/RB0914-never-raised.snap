@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0914]: no `raise` of `M` raises the internal event `Ping`
+ --> RB0914-never-raised.road:3:18
+  |
+3 |   internal event Ping
+  |                  ^^^^
+  |
+  = help: only the machine raises an internal event: `raise Ping` somewhere, or remove it

@@ -949,6 +949,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0025` | Nesting more than 64 levels deep. | 65 nested states, or `((((…))))` |
 | `RB0026` | `ignore` outside an event's `on` transition (a call's too), or with a target or effects. | `after 5s ignore`, `on Go ignore -> A` |
 | `RB0027` | `on name.word` with a lower-case `word` other than `done`, `fail` and `ended`. | `on inventory.end`, `on peer.reserved` |
+| `RB0028` | `as name` on a `raise` without `after`: only a delayed raise has a name. | `raise Ping as ping` |
 
 The compiler's codes:
 
@@ -978,6 +979,8 @@ The compiler's codes:
 | `RB0122` | `key` as the name of a machine parameter, variable, `as` name or collection. | `var key: string` |
 | `RB0123` | A state path in a `check` that names no state of the machine, or names a history state. | `check reachable Applyng`, `check never Work.Last` for `history Last` |
 | `RB0124` | `on name.ended` through an `invoke … as name` child or task, or a `children` collection, whose end is its outcome. | `on upload.ended`, `on up.ended`, `on sessions.ended` |
+| `RB0125` | A `raise` of an event that is not one of the machine's own events or internal events: an event it emits, another machine's, or an unknown one. | `raise Progress` for `emits Progress`, `raise Unknown` |
+| `RB0126` | A `cancel` of a name that no `raise … after … as name` of the machine uses. | `cancel reminder` with no `raise … as reminder` |
 | `RB0201` | A transition target that does not resolve, or a path through a history state. | `-> Dne`, `-> Working.Previous.Editing` |
 | `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }`, `machine M() { initial A }` |
 | `RB0203` | An `initial` that is not a child state, is written twice, or is in a state without children. | `initial Strat`, `initial Previous` for `history Previous` |
@@ -1047,6 +1050,8 @@ The compiler's codes:
 | `RB0911` | A `children` collection that no `spawn` fills (warning). | `children sessions: Session by string` with no `spawn sessions[…]` |
 | `RB0912` | A machine whose checks were not evaluated, as too large to explore: more than 100000 configurations, a peer's event expected through more than 8 `ref` names, or regions whose guard outcomes combine in too many ways (warning). | many parallel regions, each with deep history |
 | `RB0913` | A transition that leaves a parallel state and enters it again, starting regions over that it does not target (warning). | `on Cross -> P.B.Y` in region `A` of `P` |
+| `RB0914` | An `internal event` that no `raise` of the machine raises, so it can never happen (warning). | `internal event Ping` with no `raise Ping` |
+| `RB0915` | A `raise E` where no `on E` and no `on *` of the machine takes `E`, so it is always dropped, or `unhandled` in a strict machine (warning). | `raise Ping` with no `on Ping` |
 
 ## Grammar
 

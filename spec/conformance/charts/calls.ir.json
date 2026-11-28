@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/calls.road",
@@ -248,6 +248,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {
         "reserve": {
@@ -936,6 +937,7 @@
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1265,6 +1267,7 @@
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

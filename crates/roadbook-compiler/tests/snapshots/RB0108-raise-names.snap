@@ -1,0 +1,44 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0108]: event `Go` is declared twice
+ --> RB0108-raise-names.road:3:18
+  |
+2 |   event Go
+  |         -- first declared here
+3 |   internal event Go
+  |                  ^^
+  |
+  = help: the events a machine accepts, raises and emits share one set of names
+
+error[RB0108]: `ping` is already a parameter of `M`
+ --> RB0108-raise-names.road:7:32
+  |
+1 | machine M(ping: int) {
+  |           ---- first declared here
+...
+7 |     on Go raise Go after 1s as ping  raise Go after 2s as pong  raise Go after 3s as ok
+  |                                ^^^^
+  |
+  = help: a delayed raise's name shares the machine's names with its parameters, variables and collections
+
+error[RB0108]: `pong` is already a variable of `M`
+ --> RB0108-raise-names.road:7:59
+  |
+4 |   var pong: int = 0
+  |       ---- first declared here
+...
+7 |     on Go raise Go after 1s as ping  raise Go after 2s as pong  raise Go after 3s as ok
+  |                                                           ^^^^
+  |
+  = help: a delayed raise's name shares the machine's names with its parameters, variables and collections
+
+error[RB0205]: trigger `on Go` is written twice in `M.A`
+ --> RB0108-raise-names.road:8:5
+  |
+7 |     on Go raise Go after 1s as ping  raise Go after 2s as pong  raise Go after 3s as ok
+  |     ----- first written here
+8 |     on Go -> A  raise Go after 4s as ok
+  |     ^^^^^
+  |
+  = help: put every branch in one block, where their order is explicit: `on Go { if … -> A  else -> B }`

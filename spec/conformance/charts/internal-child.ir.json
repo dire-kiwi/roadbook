@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/internal-child.road",
@@ -49,6 +49,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {
         "Pong": {
           "fields": [],
@@ -207,6 +208,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

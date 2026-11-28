@@ -1,0 +1,134 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+assertion_line: 19
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          strict: false
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - event:
+                name: Go
+                fields: []
+            - internalEvent:
+                doc: Sent by the machine to itself.
+                name: Remind
+                fields:
+                  - name: attempt
+                    ty:
+                      builtin: int
+            - internalEvent:
+                name: Ping
+                fields: []
+            - var:
+                name: raise
+                ty:
+                  builtin: int
+                init:
+                  int: 0
+            - transition:
+                trigger:
+                  "on":
+                    name: Go
+                branches:
+                  single:
+                    guard: ~
+                    targets: []
+                    effects:
+                      - raise:
+                          message:
+                            event: Ping
+                            fields: []
+                      - raise:
+                          message:
+                            event: Remind
+                            fields:
+                              - name: attempt
+                                value:
+                                  int: 1
+                          delay:
+                            duration:
+                              value: 24
+                              unit: h
+                          name: reminder
+                    ignore: false
+            - transition:
+                trigger:
+                  "on":
+                    name: Ping
+                branches:
+                  single:
+                    guard: ~
+                    targets: []
+                    effects:
+                      - cancel:
+                          name: reminder
+                      - set:
+                          var: raise
+                          value:
+                            binary:
+                              - +
+                              - var: raise
+                              - int: 1
+                    ignore: false
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - entry:
+                      - raise:
+                          message:
+                            event: Remind
+                            fields:
+                              - name: attempt
+                                value:
+                                  int: 2
+                          delay:
+                            call:
+                              name: delay
+                              args:
+                                - var: raise
+                  - exit:
+                      - cancel:
+                          name: reminder
+                      - do:
+                          name: log
+                          args: []
+                  - transition:
+                      trigger:
+                        "on":
+                          name: Remind
+                      branches:
+                        single:
+                          guard: ~
+                          targets: []
+                          effects:
+                            - raise:
+                                message:
+                                  event: Ping
+                                  fields: []
+                          ignore: false
+                  - transition:
+                      trigger:
+                        after:
+                          duration:
+                            value: 5
+                            unit: s
+                      branches:
+                        single:
+                          guard: ~
+                          targets:
+                            - dot: false
+                              path:
+                                - A
+                          effects: []
+                          ignore: false
+comments:
+  - kind: doc
+    text: /// Sent by the machine to itself.

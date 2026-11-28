@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -1166,6 +1166,7 @@
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -4464,6 +4465,7 @@
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},

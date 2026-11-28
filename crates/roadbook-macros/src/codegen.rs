@@ -2007,6 +2007,11 @@ impl Uses {
                 self.expr(call);
                 value.iter().for_each(|v| self.expr(v));
             }
+            Effect::Raise { value, delay, .. } => {
+                self.expr(value);
+                delay.iter().for_each(|d| self.expr(d));
+            }
+            Effect::Cancel { .. } => {}
         }
     }
 

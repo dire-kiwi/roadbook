@@ -1,0 +1,12 @@
+machine M() {
+  event Go
+  emits Progress
+  initial A
+  state A {
+    on Go raise Progress
+    entry raise Gone
+  }
+}
+
+// expect: RB0125 at 6:17
+// expect: RB0125 at 7:17

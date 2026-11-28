@@ -41,7 +41,7 @@ export interface PipelineDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable.road",
@@ -238,6 +238,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -748,6 +749,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1114,6 +1116,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {
         "Total": {
           "fields": [
@@ -1321,6 +1324,7 @@ const ir: unknown = {
       "errors": [],
       "vars": [],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1581,6 +1585,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -1857,6 +1862,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -2326,6 +2332,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {
@@ -2748,6 +2755,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -2929,6 +2937,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {},
@@ -3189,6 +3198,7 @@ const ir: unknown = {
           }
         }
       },
+      "internalEvents": {},
       "emits": {},
       "calls": {},
       "children": {

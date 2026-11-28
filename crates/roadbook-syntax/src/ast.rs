@@ -292,6 +292,42 @@ impl Body {
             .iter()
             .filter_map(|i| if let Item::Call(c) = i { Some(c) } else { None })
     }
+    /// Every effect written in the body and in the bodies of its states, at any depth: in
+    /// `entry` and `exit`, in transitions and in invoke outcomes, in the order written.
+    pub fn all_effects(&self) -> Vec<&Effect> {
+        fn branches<'a>(b: &'a Branches, out: &mut Vec<&'a Effect>) {
+            match b {
+                Branches::Single(b) => out.extend(&b.effects),
+                Branches::Block { branches, .. } => {
+                    branches.iter().for_each(|b| out.extend(&b.effects))
+                }
+            }
+        }
+        fn walk<'a>(body: &'a Body, out: &mut Vec<&'a Effect>) {
+            for item in &body.items {
+                match item {
+                    Item::Entry(h) | Item::Exit(h) => out.extend(&h.effects),
+                    Item::Transition(t) => branches(&t.branches, out),
+                    Item::Invoke(i) => i.outcomes.iter().for_each(|t| branches(&t.branches, out)),
+                    Item::State(s) => walk(&s.body, out),
+                    _ => {}
+                }
+            }
+        }
+        let mut out = Vec::new();
+        walk(self, &mut out);
+        out
+    }
+    /// `internal event Name { … }`: the events only the machine raises.
+    pub fn internal_events(&self) -> impl Iterator<Item = &EventDecl> {
+        self.items.iter().filter_map(|i| {
+            if let Item::InternalEvent(e) = i {
+                Some(e)
+            } else {
+                None
+            }
+        })
+    }
     pub fn emits(&self) -> impl Iterator<Item = &EventDecl> {
         self.items.iter().filter_map(|i| {
             if let Item::Emits(e) = i {
@@ -381,7 +417,7 @@ impl Body {
     }
 }
 
-/// An item of a machine or state body. `Var`, `Event`, `Emits`, `Call`, `Children` and `Check`
+/// An item of a machine or state body. `Var`, `Event`, `InternalEvent`, `Emits`, `Call`, `Children` and `Check`
 /// occur only in a machine body; `Invoke`, `Output`, `Fail` and `done` transitions only in a
 /// state.
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -389,6 +425,8 @@ impl Body {
 pub enum Item {
     Var(Var),
     Event(EventDecl),
+    /// `internal event Name [{ fields }]`: an event only the machine itself raises.
+    InternalEvent(EventDecl),
     /// `emits Name [{ fields }]`
     Emits(EventDecl),
     /// `call name(params) [-> T] [! E | F]`
@@ -416,7 +454,7 @@ impl Item {
     pub fn span(&self) -> Span {
         match self {
             Item::Var(v) => v.span,
-            Item::Event(e) | Item::Emits(e) => e.span,
+            Item::Event(e) | Item::InternalEvent(e) | Item::Emits(e) => e.span,
             Item::Call(c) => c.span,
             Item::Children(c) => c.span,
             Item::Initial(n) => n.span,
@@ -708,6 +746,10 @@ pub enum Effect {
     Spawn(Spawn),
     /// `stop name[key]`
     Stop(Stop),
+    /// `raise Event [{ fields }] [after delay [as name]]`
+    Raise(Raise),
+    /// `cancel name`
+    Cancel(Cancel),
 }
 
 impl Effect {
@@ -719,6 +761,8 @@ impl Effect {
             Effect::Reply(r) => r.span,
             Effect::Spawn(s) => s.span,
             Effect::Stop(s) => s.span,
+            Effect::Raise(r) => r.span,
+            Effect::Cancel(c) => c.span,
         }
     }
 }
@@ -806,6 +850,32 @@ pub struct Stop {
     pub children: Ident,
     pub key: Expr,
     /// From `stop` to the closing `]`.
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `raise Event [{ fields }]`, on the internal queue, or `raise Event [{ fields }] after delay
+/// [as name]`, a delayed raise.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Raise {
+    /// The event and its fields; `to` and `key` are always `None`.
+    pub message: Message,
+    /// `after delay`, or `None` for an immediate raise.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delay: Option<Expr>,
+    /// `as name`, only with a delay.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<Ident>,
+    /// From `raise` to the end.
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `cancel name`: cancel the pending delayed raise `name`.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Cancel {
+    pub name: Ident,
+    /// From `cancel` to the name.
     #[serde(skip)]
     pub span: Span,
 }

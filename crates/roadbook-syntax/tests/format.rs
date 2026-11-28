@@ -18,6 +18,12 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  children ups : upload  by string\n  state A {\n    invoke ticks( 1s )  as  clock\n    on Go spawn ups[\"a\"]=upload(\"x\")\n  }\n}\n",
         "machine M() {\n  children ups: upload by string\n  state A {\n    invoke ticks(1s) as clock\n    on Go spawn ups[\"a\"] = upload(\"x\")\n  }\n}\n",
     ),
+    // `internal event` lines up with the other events; a delayed raise keeps `after` and `as`
+    // on its line, and `cancel` is a clause of its own.
+    (
+        "machine M() {\n  event Go\n  internal  event Remind{attempt:int}\n  on Go raise Remind{attempt:1}after 24h  as  reminder  cancel  other raise Go\n}\n",
+        "machine M() {\n  event Go\n  internal event Remind { attempt: int }\n  on Go raise Remind { attempt: 1 } after 24h as reminder  cancel other  raise Go\n}\n",
+    ),
     // `sensitive` comes first, on fields, parameters and variables.
     (
         "type T {sensitive   a:int,b:int}\nmachine M( sensitive  k :string) {\n  sensitive   var t:int=1\n  var u: int\n}\n",

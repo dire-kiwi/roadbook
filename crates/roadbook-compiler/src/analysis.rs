@@ -776,7 +776,47 @@ fn warnings(
             );
         }
     }
+    let internal: HashSet<&str> = info
+        .internal_events
+        .iter()
+        .map(|(e, _)| e.as_str())
+        .collect();
+    let raised: HashSet<&str> = info.raised.iter().map(|(e, _)| e.as_str()).collect();
+    if root_file {
+        for (e, span) in &info.internal_events {
+            if !raised.contains(e.as_str()) {
+                diags.push(
+                    Diagnostic::warning(
+                        codes::NEVER_RAISED,
+                        *span,
+                        format!("no `raise` of `{}` raises the internal event `{e}`", info.name),
+                    )
+                    .with_help(format!(
+                        "only the machine raises an internal event: `raise {e}` somewhere, or remove it"
+                    )),
+                );
+            }
+        }
+        let mut warned = HashSet::new();
+        for (e, span) in &info.raised {
+            if !info.any_handler && !info.used_events.contains(e) && warned.insert(e.as_str()) {
+                diags.push(
+                    Diagnostic::warning(
+                        codes::RAISED_NOT_TAKEN,
+                        *span,
+                        format!("no `on {e}` of `{}` takes the event this raises", info.name),
+                    )
+                    .with_help(format!(
+                        "add `on {e}` to a state, or remove the `raise`: it is always dropped"
+                    )),
+                );
+            }
+        }
+    }
     for (e, span) in &info.events {
+        if internal.contains(e.as_str()) || raised.contains(e.as_str()) {
+            continue;
+        }
         if root_file && !info.used_events.contains(e) {
             diags.push(
                 Diagnostic::warning(

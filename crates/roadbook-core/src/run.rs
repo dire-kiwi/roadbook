@@ -1219,6 +1219,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         for e in effects {
             match e {
                 Effect::Set { .. } => {}
+                Effect::Raise { .. } | Effect::Cancel { .. } => todo!("SM-28: raise in the core"),
                 Effect::Do { action, args } => {
                     let decl = &self.program.ir().actions[action.as_str()];
                     let mut obj = Map::new();

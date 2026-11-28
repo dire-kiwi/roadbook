@@ -727,6 +727,42 @@ impl Writer<'_> {
                     let attrs = [("children", children.clone()), ("key", key.text.clone())];
                     self.open(depth, "rb:stop", &attrs, true);
                 }
+                // An immediate raise is SCXML's `<raise>`, or a `<send>` to the internal queue
+                // when the event has fields. A delayed one is a `<send>` with no target, which
+                // SCXML puts on the session's own external queue once its delay has passed;
+                // a named one cancels the pending one of its name first, as Roadbook does.
+                Effect::Raise {
+                    event,
+                    value,
+                    delay: None,
+                    ..
+                } => {
+                    let fields =
+                        matches!(&value.kind, ExprKind::Record { fields } if !fields.is_empty());
+                    if fields {
+                        let attrs = vec![("event", event.clone()), ("target", "#_internal".into())];
+                        self.send(depth, attrs, value);
+                    } else {
+                        self.open(depth, "raise", &[("event", event.clone())], true);
+                    }
+                }
+                Effect::Raise {
+                    event,
+                    value,
+                    delay: Some(delay),
+                    name,
+                } => {
+                    let mut attrs =
+                        vec![("event", event.clone()), ("delayexpr", delay.text.clone())];
+                    if let Some(n) = name {
+                        self.open(depth, "cancel", &[("sendid", n.clone())], true);
+                        attrs.push(("id", n.clone()));
+                    }
+                    self.send(depth, attrs, value);
+                }
+                Effect::Cancel { name } => {
+                    self.open(depth, "cancel", &[("sendid", name.clone())], true);
+                }
             }
         }
     }

@@ -54,6 +54,8 @@ impl Sig {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Interface {
     pub events: IndexMap<String, Vec<(String, Ty)>>,
+    /// The machine's internal events: only it raises them, so no other machine sees them.
+    pub internal: IndexMap<String, Vec<(String, Ty)>>,
     pub emits: IndexMap<String, Vec<(String, Ty)>>,
     pub calls: IndexMap<String, Sig>,
 }
@@ -300,6 +302,7 @@ impl<'p> Checker<'p> {
                     for item in &m.body.items {
                         let (kind, word, e) = match item {
                             ast::Item::Event(e) => (SymbolKind::Event, "event", e),
+                            ast::Item::InternalEvent(e) => (SymbolKind::Event, "internal event", e),
                             ast::Item::Emits(e) => (SymbolKind::EmittedEvent, "emits", e),
                             _ => continue,
                         };
@@ -484,13 +487,16 @@ impl<'p> Checker<'p> {
                 continue;
             };
             let mut iface = Interface::default();
-            for (emits, e) in m
+            for (kind, e) in m
                 .body
                 .events()
-                .map(|e| (false, e))
-                .chain(m.body.emits().map(|e| (true, e)))
+                .map(|e| (0, e))
+                .chain(m.body.internal_events().map(|e| (1, e)))
+                .chain(m.body.emits().map(|e| (2, e)))
             {
-                if iface.events.contains_key(&e.name.name) || iface.emits.contains_key(&e.name.name)
+                if iface.events.contains_key(&e.name.name)
+                    || iface.internal.contains_key(&e.name.name)
+                    || iface.emits.contains_key(&e.name.name)
                 {
                     continue;
                 }
@@ -502,10 +508,10 @@ impl<'p> Checker<'p> {
                     self.no_ref(file, &f.ty, &t, &what);
                     fields.push((f.name.name.clone(), t));
                 }
-                let map = if emits {
-                    &mut iface.emits
-                } else {
-                    &mut iface.events
+                let map = match kind {
+                    0 => &mut iface.events,
+                    1 => &mut iface.internal,
+                    _ => &mut iface.emits,
                 };
                 map.insert(e.name.name.clone(), fields);
             }
