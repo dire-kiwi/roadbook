@@ -1,0 +1,58 @@
+// Conformance chart: structural `==`, directed by the type. Records, lists,
+// maps, optionals, generic instances, errors and events compare part by part,
+// numbers by their type whatever their JSON form, and maps whatever the order
+// of their keys.
+
+type Point  { x: int, y: float }
+type Item   { name: string, at: Point, note: string? }
+type Box<T> { value: T? }
+type Counts = map<string, int>
+enum Colour { Red, Green }
+
+error Refused { code: int, at: Point? }
+
+action saw(what: string, same: bool)
+
+task fetch(id: string) -> Item ! Refused
+
+/// Compares its inputs, then the items of events, then a task's result and
+/// errors against the ones it expects.
+machine Equality(
+  a: Item[],
+  b: Item[],
+  c: Item[],
+  m1: Counts,
+  m2: Counts,
+  m3: Counts,
+  p: Box<Point>,
+  q: Box<Point>,
+  r: Box<Box<Point>>,
+  s: Box<Box<Point>>,
+  colour: Colour,
+  item: Item,
+  expected: Refused
+) {
+  event Compare { left: Item, right: Item, tags: string[]? }
+  event Fetch
+
+  initial Comparing
+
+  state Comparing {
+    entry do saw("lists", a == b), saw("lists differ", a != c), saw("maps", m1 == m2), saw("maps differ", m1 == m3), saw("boxes", p == q), saw("inner boxes", r.value == s.value), saw("nested boxes", r == s), saw("enum", colour == Colour.Green)
+
+    on Compare              do saw("items", event.left == event.right), saw("tags", event.tags == event.tags), saw("events", event == event)
+    on Fetch   -> Fetching
+  }
+
+  state Fetching {
+    invoke fetch("i1") {
+      done                   -> Fetching  do saw("item", result == item)
+      fail Refused {
+        if error == expected -> Done      do saw("expected error", true)
+        else                 -> Fetching  do saw("expected error", false)
+      }
+    }
+  }
+
+  final state Done {}
+}

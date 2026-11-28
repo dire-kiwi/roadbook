@@ -253,7 +253,7 @@ Expressions are deliberately small. There are no loops, lambdas or string operat
 Every expression has a type, and the compiler checks it wherever a value goes: arguments of functions, actions, tasks and machines (as many as the declaration has parameters, in order), `set` (only to the machine's `var`s, never its parameters), guards (`bool`), `after` delays (`duration`), `var` initial values, the fields of record and error values (every field, and no others), `output` (the machine's return type) and `fail` (one of the machine's declared errors).
 
 - There are no implicit conversions. `int` and `float` are distinct and do not mix: `ratio * 2` is an error when `ratio` is a `float`; write `ratio * 2.0`.
-- `+`, `-`, `*` and unary `-` take two `int`s or two `float`s and give the same type. `<`, `<=`, `>` and `>=` compare two `int`s, two `float`s or two `duration`s. `==` and `!=` compare two values of the same scalar type (`string`, `int`, `float`, `bool`, `duration`) or the same enum; records, lists, maps, optionals and `json` cannot be compared ([equality](#equality)). `and`, `or` and `not` take `bool`s.
+- `+`, `-`, `*` and unary `-` take two `int`s or two `float`s and give the same type. `<`, `<=`, `>` and `>=` compare two `int`s, two `float`s or two `duration`s. `==` and `!=` compare two values of the same type: a scalar, an enum, or a record, error, event, list, map or optional whose parts can all be compared; `json`, `extern` types, `ref`s and pending calls cannot be ([equality](#equality)). `and`, `or` and `not` take `bool`s.
 - A `T` can be used where a `T?` is expected, but not the reverse, and a field cannot be read from a `T?`: an optional value goes to a `fn` that handles the absent case. A `T[]` can be used where a `U[]` is expected if a `T` can be used as a `U`, and so can a `map<string, T>` where a `map<string, U>` is, and a `Page<T>` where a `Page<U>` is.
 - Any value can be used where `json` is expected.
 - An alias is the type it names: `type UserId = string` makes `UserId` and `string` interchangeable. An alias cannot refer to itself, even through `[]`, `?`, `map` or a type argument (`type Tree = map<string, Tree>` is an error; declare a record). A type is optional at most once, aliases expanded and type arguments substituted: `string??` is an error, and so is `S?` after `type S = string?`, and `Box<int?>` after `type Box<T> { value: T? }`.
@@ -303,11 +303,20 @@ machine Report(regions: Dict<Order[]>) -> Page<Order> {
 
 ### Equality
 
-`==` and `!=` stay limited to scalars and enums. No chart in the repository compares records or lists, or works around not being able to: correlating by an id field (`event.orderId == id`) is the idiom. It was decided on 27 November 2026 to leave it so until a chart needs more, and what a later version adds is written down here so that both runtimes add the same thing.
+`==` and `!=` compare two values of the same type. They are defined on every type whose parts can all be compared: the scalars (`string`, `int`, `float`, `bool`, `duration`), enums, and records, errors, events, lists, maps and optionals of them, at any depth. `json`, an `extern type`, a `ref` and a pending call cannot be compared, and neither can a type that holds one anywhere: `RB0303` names the part, as in `` `Order.extra` is `json` ``.
 
-- **Equality is structural and directed by the type.** Records, errors, events, lists and optionals compare part by part, recursively, as long as every part can be compared. `json`, `extern type` and `ref` stay excluded. A `float` is always finite, so `NaN` raises no question.
-- **The runtimes compare by the type, not by their host form.** Relaxing only the check would make them disagree: the TypeScript core compares with `===`, which compares objects by identity, and the Rust core compares JSON values. Each needs a comparison that walks the type, so that, for example, an `int` field compares as a number whatever its JSON spelling.
-- **What it changes:** `RB0303` and the check behind it, both cores, the rule in [`spec/execution.md`](../../spec/execution.md), and a conformance case. Not the IR, the hashes, the viewer or any chart.
+```
+state Editing {
+  on Save if draft == saved -> Idle
+  on Save                   -> Saving  set saved = draft
+}
+```
+
+- **Equality is structural and directed by the type.** A record, an error or an event equals another when each of its fields does. A list equals another of the same length whose elements are equal in order, and a map one with the same keys and equal values at each, whatever the order of the keys. An optional with no value equals only another with none. An instance of a generic record compares through its arguments: `Page<Order>` can be compared because `Order` can, and `Page<json>` cannot.
+- **Both sides have the same type.** `T` and `T?` are different types, so comparing a value with an optional one is `RB0303`, as comparing an `int` with a `float` is.
+- **The runtimes compare by the type, not by their host form.** Both cores walk the operands' declared type ([`spec/execution.md`](../../spec/execution.md#equality)): an `int` field compares as a number whatever its JSON spelling (`1` or `1.0`), floats compare as IEEE 754 doubles (`0.0 == -0.0`), and the TypeScript core does not compare objects by identity. A `float` is always finite, so `NaN` raises no question. The conformance case `equality-structural` holds the two cores to the same answers.
+
+Decided on 27 November 2026 (SM-8) and built on 29 November 2026 (SM-30) with no change to the IR: the hashes, the viewer and every chart that compiled before are as they were.
 
 ## Messages between machines
 
@@ -1201,7 +1210,7 @@ The compiler's codes:
 | `RB0225` | Arguments for a state that takes none, for one the transition does not enter, or for one state twice. | `-> Idle(1)`, `-> Editing(doc).Changing` written inside `Editing` |
 | `RB0301` | A value of the wrong type. | `var ratio: float = 1` |
 | `RB0302` | The wrong number of arguments. | `retryDelay(1, 2)` |
-| `RB0303` | An operator on operands it is not defined on. | `attempts + 1.5`, `order == other` |
+| `RB0303` | An operator on operands it is not defined on, or `==` on a type with a part that cannot be compared. | `attempts + 1.5`, `payload == other` for a `json` |
 | `RB0304` | A field the record, error or event does not have. | `order.idd` |
 | `RB0305` | A record or error value without one of its fields. | `CardDeclined {}` |
 | `RB0306` | A field read from a value that has none, or that is optional. | `attempts.size`, `draft.coupon.code`, `event.x` in `on Cancel` where `event Cancel` has no fields |

@@ -1,0 +1,27 @@
+extern type Money
+
+type Order  { id: string, extra: json }
+type Line   { order: Order?, qty: int }
+type Box<T> { value: T }
+type Ledger = map<string, Money[]>
+
+machine M(a: json, b: json, lines: Line[], boxed: Box<json>, ledger: Ledger) {
+  event Go { payload: json }
+  initial A
+  state A {
+    always {
+      if a == b             -> Done
+      if lines != lines     -> Done
+      if boxed == boxed     -> Done
+      if ledger == ledger   -> Done
+    }
+    on Go if event == event -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0303 at 13:10
+// expect: RB0303 at 14:10
+// expect: RB0303 at 15:10
+// expect: RB0303 at 16:10
+// expect: RB0303 at 18:14

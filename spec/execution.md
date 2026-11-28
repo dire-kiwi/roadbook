@@ -896,7 +896,7 @@ Expressions are evaluated by their IR node, recursively. Every node's `type` is 
 Operators, by `op`. An operand's type is its IR `type` with aliases expanded, transitively, the arguments of a generic alias substituted: `<` on a `Money` after `type Money = int` compares integers, and so does `+` on a `First<int>` after `type First<T> = T`. The IR keeps the alias's name, so a runtime that dispatches on the type string must expand it first.
 
 - `and`, `or`: evaluate the left side; if it decides the result (`false` for `and`, `true` for `or`), that is the result and the right side is **not evaluated**. Otherwise the result is the right side. `not` negates.
-- `==`, `!=`: on `string`, `int`, `float`, `bool`, `duration` and enums. Strings are equal when their Unicode scalar values are. Floats compare as IEEE 754 doubles, so `0.0 == -0.0`.
+- `==`, `!=`: on two values of the left operand's type, compared by walking that type, as [equality](#equality) says. `!=` is the negation of `==`.
 - `<`, `<=`, `>`, `>=`: on `int`, `float` and `duration` numerically, and on `string` by Unicode scalar values, lexicographically (which is Rust's `str` order; in TypeScript compare code points, not UTF-16 code units).
 - `+`, `-`, `*`, and `neg` (unary minus), on `int` and `float` only (the language has no arithmetic on durations): when the node's `type` is `int`, exact integer arithmetic, and a result outside the runtime's `int` range is `overflow` (see [values](#values) for the range). When `type` is `float`, IEEE 754 double arithmetic; a result that is infinite or NaN is `overflow`.
 
@@ -930,6 +930,20 @@ Every Roadbook value has one JSON form. It is used for the machine's input, task
 Arguments, inputs and the `args` of actions and invokes are objects keyed by parameter name. Values are decoded against their declared type by the binding layer before they reach the core, so the core can tell an `int` from a `float` without looking at the JSON.
 
 **Integers.** The language's `int` is 64-bit. The Rust runtime holds it as `i64`, and its overflow bound is `i64`'s. The TypeScript runtime holds it as a `number`, and its overflow bound is ±(2^53 − 1), the range in which a double is exact: an arithmetic result outside it is `overflow`, and an input integer outside it is rejected by the decoder as a host defect. Between those bounds the two runtimes differ, and traces of values there are not comparable (canonical JSON rounds them to the nearest double). Conformance cases keep every integer within ±(2^53 − 1) and do not test overflow.
+
+### Equality
+
+`==` compares two values of one type, its left operand's IR `type`, by walking the type, aliases expanded at each level and the arguments of a generic instance substituted. It never compares the host form of a value (object identity in TypeScript, the JSON spelling of a number):
+
+- **`int`, `float`, `duration`** are equal when they are the same number, whatever the JSON spelling: `1` and `1.0` are the same `int`, and floats compare as IEEE 754 doubles, so `0.0 == -0.0`. A `float` is always finite, so NaN does not arise.
+- **`string`, `bool` and enums** are equal when they are the same JSON value. Strings are equal when their Unicode scalar values are.
+- **A record or an error** (an instance of a generic record included) is equal to another when each field the type declares is equal by the field's type. A field a value lacks is `null`. Two values of one error type have the same `_tag`, so it is not compared.
+- **An event** (`Machine.Name`, `task.Name`, or by its bare name one of the current machine's `events`, `internalEvents` or `emits`) compares as a record of its declared fields.
+- **`T[]`** values are equal when they have the same length and are equal element by element, in order, by `T`.
+- **`map<K, V>`** values are equal when they have the same keys and the values at each key are equal by `V`. The order of their members does not matter.
+- **`T?`**: `null` is equal only to `null`; two values that are not `null` compare by `T`.
+
+The compiler allows `==` only where every part of the type is one of these (`RB0303`): never on `json`, an `extern` type, a `ref` or a pending call. A value that is not of its type (which a hand-written IR could give), and a value of a type the walk does not cover, compares as JSON: numbers numerically, arrays element by element, objects by their keys and the values at each whatever the order, and anything else as the same JSON value.
 
 ## The driver
 

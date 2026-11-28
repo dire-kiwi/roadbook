@@ -443,11 +443,25 @@ impl Cx<'_, '_> {
                         if !unknown {
                             if xa != xb {
                                 self.bad_operands(e, format!("`{sym}` compares two values of the same type, found `{at}` and `{bt}`"));
-                            } else if !self.ck.env.is_equatable(&xa) {
-                                self.bad_operands(
-                                    e,
-                                    format!(
-                                        "`{sym}` is defined on scalars and enums, not on `{at}`"
+                            } else if let Some(part) =
+                                self.ck.env.incomparable(&xa, &|n| self.event_fields(n))
+                            {
+                                let msg = match part.field {
+                                    Some(f) => format!(
+                                        "`{sym}` is not defined on `{at}`: `{f}` is `{}`, which cannot be compared",
+                                        part.ty
+                                    ),
+                                    None if part.ty == xa => {
+                                        format!("`{sym}` is not defined on `{at}`")
+                                    }
+                                    None => format!(
+                                        "`{sym}` is not defined on `{at}`: it holds `{}`, which cannot be compared",
+                                        part.ty
+                                    ),
+                                };
+                                self.ck.diags.push(
+                                    Diagnostic::error(codes::BAD_OPERANDS, e.span, msg).with_help(
+                                        "`==` compares scalars and enums, and records, errors, events, lists, maps and optionals of them; not `json`, an `extern type`, a `ref` or a pending call",
                                     ),
                                 );
                             }
@@ -785,26 +799,30 @@ impl Cx<'_, '_> {
         self.ck.diags.push(d);
     }
 
+    /// The fields of the event type `name`: `Machine.Name` (or `task.Name`), or one of this
+    /// machine's own events or emitted events by its bare name.
+    fn event_fields(&self, name: &str) -> Option<Vec<(String, Ty)>> {
+        match name.split_once('.') {
+            Some((machine, event)) => self
+                .ck
+                .interfaces
+                .get(machine)
+                .and_then(|i| i.events.get(event).or_else(|| i.emits.get(event)))
+                .cloned(),
+            None => self
+                .events
+                .get(name)
+                .or_else(|| self.emits.get(name))
+                .cloned(),
+        }
+    }
+
     /// The type of field `f` of a value of type `t`.
     fn field(&mut self, t: &Ty, f: &roadbook_syntax::ast::Ident) -> Ty {
         let expanded = self.ck.env.expand(t);
         let fields: Vec<(String, Ty)> = match &expanded {
             Ty::Unknown => return Ty::Unknown,
-            Ty::Event(name) => match name.split_once('.') {
-                Some((machine, event)) => self
-                    .ck
-                    .interfaces
-                    .get(machine)
-                    .and_then(|i| i.events.get(event).or_else(|| i.emits.get(event)))
-                    .cloned()
-                    .unwrap_or_default(),
-                None => self
-                    .events
-                    .get(name)
-                    .or_else(|| self.emits.get(name))
-                    .cloned()
-                    .unwrap_or_default(),
-            },
+            Ty::Event(name) => self.event_fields(name).unwrap_or_default(),
             Ty::Named(_) | Ty::Generic(..) if self.ck.env.fields(&expanded).is_some() => {
                 self.ck.env.fields(&expanded).unwrap_or_default()
             }

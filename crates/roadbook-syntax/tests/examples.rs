@@ -108,6 +108,7 @@ fn doc_snippets_are_fixed_points() {
             "language.md",
             "language.md",
             "language.md",
+            "language.md",
             "alternatives.md"
         ]
     );

@@ -173,6 +173,18 @@ pub(crate) enum TypeDef {
     Extern,
 }
 
+/// The fields of an event type, by its name, or `None` for one that is not an event.
+pub(crate) type EventFields<'a> = dyn Fn(&str) -> Option<Vec<(String, Ty)>> + 'a;
+
+/// The part of a type that `==` cannot compare ([`TypeEnv::incomparable`]).
+#[derive(Debug)]
+pub(crate) struct Incomparable {
+    /// The innermost record field that holds it, `Order.extra`.
+    pub field: Option<String>,
+    /// The field's type as declared, or the part itself when no field holds it.
+    pub ty: Ty,
+}
+
 /// Every declared type of the project, by name.
 #[derive(Default)]
 pub(crate) struct TypeEnv {
@@ -259,14 +271,55 @@ impl TypeEnv {
         has_ref(&self.expand(t))
     }
 
-    /// Whether `==` and `!=` are defined on the type: scalars and enums.
-    pub fn is_equatable(&self, t: &Ty) -> bool {
-        match self.expand(t) {
-            Ty::Builtin(b) => b != Builtin::Json,
-            Ty::Named(n) => matches!(self.defs.get(&n), Some(TypeDef::Enum(_))),
-            Ty::Unknown => true,
-            _ => false,
-        }
+    /// Why `==` and `!=` are not defined on the type, or `None` if they are. They are defined
+    /// on scalars and enums, and on records, errors, events, lists, maps and optionals whose
+    /// parts all are, recursively; not on `json`, an `extern type`, a `ref` or a pending call.
+    /// `events` gives the fields of an event type by its name. What is returned is the part
+    /// that cannot be compared: the innermost record field holding it (`Order.extra`) with
+    /// the field's type, or, when no field holds it, the part itself.
+    pub fn incomparable(&self, t: &Ty, events: &EventFields<'_>) -> Option<Incomparable> {
+        self.incomparable_in(t, events, &mut Vec::new())
+    }
+
+    /// `seen`: the records already being compared, which a recursive type reaches again.
+    fn incomparable_in(
+        &self,
+        t: &Ty,
+        events: &EventFields<'_>,
+        seen: &mut Vec<Ty>,
+    ) -> Option<Incomparable> {
+        let x = self.expand(t);
+        let fields = match &x {
+            Ty::Unknown => return None,
+            Ty::Builtin(Builtin::Json) | Ty::Ref(_) | Ty::Call(_) | Ty::Param(_) => {
+                return Some(Incomparable { field: None, ty: x });
+            }
+            Ty::Builtin(_) => return None,
+            Ty::List(e) | Ty::Optional(e) | Ty::Map(_, e) => {
+                return self.incomparable_in(e, events, seen);
+            }
+            Ty::Named(n) if matches!(self.defs.get(n), Some(TypeDef::Enum(_))) => return None,
+            _ if seen.contains(&x) => return None,
+            Ty::Event(n) => events(n),
+            Ty::Named(_) | Ty::Generic(..) => self.fields(&x),
+        };
+        let Some(fields) = fields else {
+            return Some(Incomparable { field: None, ty: x });
+        };
+        seen.push(x.clone());
+        fields.into_iter().find_map(|(name, ft)| {
+            let part = self.incomparable_in(&ft, events, seen)?;
+            Some(match part.field {
+                Some(_) => part,
+                None => Incomparable {
+                    field: Some(format!(
+                        "{}.{name}",
+                        x.to_string().trim_start_matches("event ")
+                    )),
+                    ty: ft,
+                },
+            })
+        })
     }
 
     pub fn same(&self, a: &Ty, b: &Ty) -> bool {
@@ -336,12 +389,13 @@ mod tests {
         assert!(!env.assignable(&inv, &Ty::Ref("Other".into())));
         assert!(!env.assignable(&inv, &json));
         assert!(!env.assignable(&list(&inv), &list(&json)));
-        assert!(!env.is_equatable(&inv));
+        let incomparable = |env: &TypeEnv, t: &Ty| env.incomparable(t, &|_| None).is_some();
+        assert!(incomparable(&env, &inv));
         let pending = Ty::Call("reserve".into());
         assert!(env.assignable(&pending, &pending));
         assert!(!env.assignable(&pending, &Ty::Call("count".into())));
         assert!(!env.assignable(&pending, &json));
-        assert!(!env.is_equatable(&pending));
+        assert!(incomparable(&env, &pending));
         let map = |t: &Ty| Ty::Map(Box::new(string.clone()), Box::new(t.clone()));
         assert!(env.assignable(&map(&int), &map(&opt(&int))));
         assert!(env.assignable(&map(&int), &json));
@@ -365,6 +419,68 @@ mod tests {
         assert_eq!(
             env.fields(&page(&string)),
             Some(vec![("items".into(), list(&string))])
+        );
+    }
+
+    #[test]
+    fn equatability() {
+        let mut env = TypeEnv::default();
+        let json = b(Builtin::Json);
+        let int = b(Builtin::Int);
+        let list = |t: &Ty| Ty::List(Box::new(t.clone()));
+        let opt = |t: &Ty| Ty::Optional(Box::new(t.clone()));
+        let named = |n: &str| Ty::Named(n.into());
+        env.defs.insert(
+            "Order".into(),
+            TypeDef::Record(vec![
+                ("id".into(), int.clone()),
+                ("extra".into(), list(&json)),
+            ]),
+        );
+        env.defs.insert(
+            "Line".into(),
+            TypeDef::Record(vec![("order".into(), opt(&named("Order")))]),
+        );
+        env.defs.insert(
+            "Tree".into(),
+            TypeDef::Record(vec![
+                ("value".into(), int.clone()),
+                ("kids".into(), list(&named("Tree"))),
+            ]),
+        );
+        env.defs.insert(
+            "Box".into(),
+            TypeDef::Record(vec![("value".into(), Ty::Param("T".into()))]),
+        );
+        env.params.insert("Box".into(), vec!["T".into()]);
+        env.defs.insert("Handle".into(), TypeDef::Extern);
+        env.defs
+            .insert("Colour".into(), TypeDef::Enum(vec!["Red".into()]));
+        let no_events = |_: &str| None;
+        let part = |t: &Ty| {
+            env.incomparable(t, &no_events)
+                .map(|p| (p.field, p.ty.to_string()))
+        };
+        assert_eq!(part(&list(&opt(&int))), None);
+        assert_eq!(part(&named("Colour")), None);
+        assert_eq!(part(&named("Tree")), None);
+        assert_eq!(part(&json), Some((None, "json".into())));
+        assert_eq!(part(&named("Handle")), Some((None, "Handle".into())));
+        assert_eq!(
+            part(&list(&named("Line"))),
+            Some((Some("Order.extra".into()), "json[]".into()))
+        );
+        let boxed = |t: &Ty| Ty::Generic("Box".into(), vec![t.clone()]);
+        assert_eq!(part(&boxed(&named("Tree"))), None);
+        assert_eq!(
+            part(&boxed(&json)),
+            Some((Some("Box<json>.value".into()), "json".into()))
+        );
+        let events = |n: &str| (n == "Go").then(|| vec![("payload".into(), b(Builtin::Json))]);
+        assert_eq!(
+            env.incomparable(&Ty::Event("Go".into()), &events)
+                .map(|p| p.field),
+            Some(Some("Go.payload".into()))
         );
     }
 }

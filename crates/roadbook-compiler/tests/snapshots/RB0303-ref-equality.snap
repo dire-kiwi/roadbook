@@ -1,8 +1,10 @@
 ---
 source: crates/roadbook-compiler/tests/fail.rs
 ---
-error[RB0303]: `==` is defined on scalars and enums, not on `ref Peer`
+error[RB0303]: `==` is not defined on `ref Peer`
   --> RB0303-ref-equality.road:10:14
    |
 10 |     on Go if a == b -> A
    |              ^^^^^^
+   |
+   = help: `==` compares scalars and enums, and records, errors, events, lists, maps and optionals of them; not `json`, an `extern type`, a `ref` or a pending call
