@@ -310,9 +310,7 @@ pub fn diff(before: Option<&Ir>, after: Option<&Ir>, before_label: &str) -> Char
         "action {n}({})",
         fields_text(&f.params)
     ));
-    decls!(tasks, |n: &str, t: &roadbook_ir::TaskDecl| {
-        signature_text("task", n, &t.params, t.returns.as_ref(), &t.errors)
-    });
+    decls!(tasks, task_text);
 
     let mut machines = Vec::new();
     let names: Vec<String> = a_ir.machines.keys().cloned().collect();
@@ -832,11 +830,11 @@ pub fn effect_text(e: &Effect) -> String {
         }
         Effect::Spawn {
             children,
-            src: machine,
+            src,
             key,
             args,
         } => format!(
-            "spawn {children}[{}] = {machine}({})",
+            "spawn {children}[{}] = {src}({})",
             key.text,
             args.iter()
                 .map(|a| a.text.as_str())
@@ -1084,6 +1082,22 @@ fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
         a.children.iter().map(|(n, c)| children(n, c)),
     );
     out
+}
+
+/// `task upload(size: int) -> int ! Failed emits Progress { percent: int }`, as the formatter
+/// writes it: one `emits` clause on the signature's line, several each on a line of its own.
+fn task_text(name: &str, t: &roadbook_ir::TaskDecl) -> String {
+    let mut s = signature_text("task", name, &t.params, t.returns.as_ref(), &t.errors);
+    let sep = if t.emits.len() > 1 { "\n  " } else { " " };
+    for (n, e) in &t.emits {
+        let f = fields_text(&e.fields);
+        if f.is_empty() {
+            s.push_str(&format!("{sep}emits {n}"));
+        } else {
+            s.push_str(&format!("{sep}emits {n} {{ {f} }}"));
+        }
+    }
+    s
 }
 
 /// `call reserve(orderId: string, items: Item[]) -> Reservation ! OutOfStock`
@@ -1719,6 +1733,35 @@ machine Holder(peer: ref Peer, other: ref Peer, third: ref Peer) {
                 .map(|(n, e)| (n.as_str(), e.status))
                 .collect::<Vec<_>>(),
             [("note", Status::Removed)]
+        );
+    }
+
+    #[test]
+    fn a_task_s_emits_are_part_of_its_declaration() {
+        let base = BASE.replace(
+            "task charge(n: int) -> int ! Declined",
+            "task charge(n: int) -> int ! Declined emits Progress { percent: int }",
+        );
+        let after = base.replace("Progress { percent: int }", "Progress { percent: float }");
+        let d = diff(Some(&ir(&base)), Some(&ir(&after)), "main");
+        let (_, charge) = d.decls.iter().find(|(n, _)| n == "charge").unwrap();
+        assert_eq!(charge.status, Status::Changed);
+        let c = &charge.changes[0];
+        assert_eq!(
+            c.after.as_deref(),
+            Some("task charge(n: int) -> int ! Declined emits Progress { percent: float }")
+        );
+        let two = base.replace(
+            "emits Progress { percent: int }",
+            "emits Progress { percent: int } emits Stage",
+        );
+        let d = diff(Some(&ir(&base)), Some(&ir(&two)), "main");
+        let (_, charge) = d.decls.iter().find(|(n, _)| n == "charge").unwrap();
+        assert_eq!(
+            charge.changes[0].after.as_deref(),
+            Some(
+                "task charge(n: int) -> int ! Declined\n  emits Progress { percent: int }\n  emits Stage"
+            )
         );
     }
 

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "packages/viewer/test/charts/spawn.road",
@@ -694,7 +694,8 @@
       "calls": {},
       "children": {
         "sessions": {
-          "machine": "Session",
+          "kind": "machine",
+          "src": "Session",
           "key": "SessionId",
           "doc": "The open sessions.",
           "span": {
@@ -706,7 +707,8 @@
           }
         },
         "jobs": {
-          "machine": "Job",
+          "kind": "machine",
+          "src": "Job",
           "key": "Lane",
           "doc": "",
           "span": {
@@ -765,7 +767,7 @@
                   {
                     "kind": "spawn",
                     "children": "jobs",
-                    "machine": "Job",
+                    "src": "Job",
                     "key": {
                       "kind": "enum",
                       "variant": "Fast",
@@ -812,7 +814,7 @@
               {
                 "kind": "spawn",
                 "children": "jobs",
-                "machine": "Job",
+                "src": "Job",
                 "key": {
                   "kind": "enum",
                   "variant": "Slow",
@@ -871,7 +873,7 @@
                   {
                     "kind": "spawn",
                     "children": "sessions",
-                    "machine": "Session",
+                    "src": "Session",
                     "key": {
                       "kind": "ref",
                       "path": [

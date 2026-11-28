@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "examples/import-job/import.road",
@@ -226,6 +226,7 @@
       "errors": [
         "InvalidFile"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -260,6 +261,7 @@
       "errors": [
         "TransientBatchError"
       ],
+      "emits": {},
       "doc": "Import one batch. Returns how many rows remain after it.",
       "span": {
         "file": 1,

@@ -1,0 +1,29 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Counts ticks while it waits. Can stop the clock and start it again. -->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Clock" datamodel="roadbook" initial="Clock_Waiting" rb:returns="int">
+  <datamodel>
+    <data id="seconds" expr="0" rb:type="int"/>
+  </datamodel>
+  <state id="Clock_Waiting">
+    <invoke id="Clock_Waiting_invoke" type="urn:roadbook:task" src="ticks" rb:as="clock">
+      <param name="every" expr="1s"/>
+    </invoke>
+    <transition event="clock.Tick" type="internal">
+      <assign location="seconds" expr="seconds + 1"/>
+    </transition>
+    <transition event="Stop" target="Clock_Idle"/>
+  </state>
+  <state id="Clock_Idle">
+    <transition event="Start" target="Clock_Waiting"/>
+    <transition event="Finish" target="Clock_Over"/>
+  </state>
+  <final id="Clock_Over">
+    <donedata>
+      <content expr="seconds"/>
+    </donedata>
+  </final>
+</scxml>

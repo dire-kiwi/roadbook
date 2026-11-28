@@ -422,7 +422,7 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
   return (
     `<ul class="rb-legend-list">` +
     item(line('event'), { text: 'Cancel' }, 'event') +
-    item(line('message'), { text: 'upload.Progress', cls: 'rb-t-msg' }, opts.interactive ? 'event emitted by upload, another machine; click the name to open it' : 'event emitted by upload, another machine') +
+    item(line('message'), { text: 'upload.Progress', cls: 'rb-t-msg' }, opts.interactive ? 'event emitted by upload, another machine or a task; click the name to open it' : 'event emitted by upload, another machine or a task') +
     item(line('message'), { text: 'reserve', cls: 'rb-t-msg' }, 'a call of this machine another run made; reply answers it') +
     item(line('message'), { text: 'inventory.ended', cls: 'rb-t-msg' }, 'the run the ref inventory holds ended, however it ended; event.status says how') +
     item(line('done'), { text: 'done', cls: 'rb-t-done' }, 'invoke, spawned child or nested states finished') +
@@ -499,12 +499,16 @@ export function signatureHtml(ir: Ir, kind: string, name: string, decl: { params
   return s
 }
 
-/** `children sessions: Session by SessionId` as HTML, the machine a button that opens it. */
-export function childrenHtml(ir: Ir, name: string, c: { machine: string; key: string }): string {
-  const machine = own(ir.machines, c.machine)
-    ? `<button class="rb-link rb-mono rb-ref" type="button" data-open-machine="${esc(c.machine)}" data-via="spawn" title="Open machine ${esc(c.machine)}">${esc(c.machine)}</button>`
-    : esc(c.machine)
-  return `children ${esc(name)}: ${machine} by ${esc(c.key)}`
+/**
+ * `children sessions: Session by SessionId` as HTML, the machine a button that opens it;
+ * `children uploads: upload by string` for a collection of tasks, which has no page to open.
+ */
+export function childrenHtml(ir: Ir, name: string, c: { kind: 'machine' | 'task'; src: string; key: string }): string {
+  const src =
+    c.kind === 'machine' && own(ir.machines, c.src)
+      ? `<button class="rb-link rb-mono rb-ref" type="button" data-open-machine="${esc(c.src)}" data-via="spawn" title="Open machine ${esc(c.src)}">${esc(c.src)}</button>`
+      : esc(c.src)
+  return `children ${esc(name)}: ${src} by ${esc(c.key)}`
 }
 
 /** The signature, the collections of spawned children and the doc comment of a machine. HTML. */

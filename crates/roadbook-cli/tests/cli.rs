@@ -754,6 +754,38 @@ fn viz_self_contained_pages_need_nothing_else() {
     }
 }
 
+/// A collection of tasks is listed in the index under `spawnsTasks`, by task, since a task has
+/// no box of its own; a stream task invoked with `as` is no relation of the machine's.
+#[test]
+fn viz_index_lists_the_tasks_a_machine_spawns() {
+    let out = out_dir("tasks");
+    let o = out.to_str().unwrap();
+    let res = roadbook(
+        &repo(),
+        &[
+            "viz",
+            "spec/conformance/charts/spawn-tasks.road",
+            "spec/conformance/charts/streams.road",
+            "-o",
+            o,
+        ],
+    );
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    let index = page_data(&std::fs::read_to_string(out.join("index.html")).unwrap());
+    let machines = index["index"]["machines"].as_array().unwrap();
+    let at = |name: &str| machines.iter().position(|m| m["name"] == name).unwrap();
+    let batch = &machines[at("Batch")];
+    assert_eq!(
+        batch["spawnsTasks"],
+        serde_json::json!([{ "task": "upload", "names": ["uploads"] }])
+    );
+    assert_eq!(batch["spawns"], serde_json::json!([]));
+    assert_eq!(batch["receives"], serde_json::json!([]));
+    let clock = &machines[at("Clock")];
+    assert_eq!(clock["spawnsTasks"], serde_json::json!([]));
+    assert_eq!(clock["receives"], serde_json::json!([]));
+}
+
 #[test]
 fn viz_names_pages_after_their_entries_and_reports_errors() {
     let out = out_dir("examples");
@@ -1020,6 +1052,28 @@ fn export_mermaid_snapshots_several_targets() {
     );
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     insta::assert_snapshot!("targets_mermaid", text(&out.stdout));
+}
+
+/// What a task emits: `up.Progress` on an edge with its guard, and `on up.Progress` in a state's
+/// description when it has no target; a stream task's invoke, with no outcomes; a collection of
+/// tasks and its `spawn`, `uploads.Progress`, `uploads.done` and `uploads.fail *`.
+#[test]
+fn export_mermaid_snapshots_tasks_that_emit() {
+    for (chart, snapshot) in [
+        (
+            "spec/conformance/charts/task-emits.road",
+            "task_emits_mermaid",
+        ),
+        ("spec/conformance/charts/streams.road", "streams_mermaid"),
+        (
+            "spec/conformance/charts/spawn-tasks.road",
+            "spawn_tasks_mermaid",
+        ),
+    ] {
+        let out = roadbook(&repo(), &["export", "mermaid", chart]);
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        insta::assert_snapshot!(snapshot, text(&out.stdout));
+    }
 }
 
 /// A peer's end: `x.ended` on an edge with its guard (from the machine, for one in its body),

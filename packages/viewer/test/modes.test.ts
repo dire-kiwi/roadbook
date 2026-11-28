@@ -79,12 +79,17 @@ function simulate(c: Case): { sim: Simulation; asked: string[] } | null {
     else if ('cancel' in s) ok(sim.cancel())
     else if ('task' in s) {
       const choices = sim.choices()
-      const inv = choices.invokes.find((i) => i.src === s.task) ?? choices.spawned.find((i) => i.src === s.task)
+      // A spawned child or task is named by its key too.
+      const inv =
+        'key' in s
+          ? choices.spawned.find((i) => i.src === s.task && canonicalJson(i.key) === canonicalJson(s.key!))
+          : (choices.invokes.find((i) => i.src === s.task) ?? choices.spawned.find((i) => i.src === s.task))
       // A task of a child run: the page runs only the root.
       if (!inv) return null
       if (('srcKind' in inv ? inv.srcKind === 'machine' : true) && !c.stub.includes(inv.src)) return null
       if ('done' in s) ok(sim.complete(inv.id, { done: s.done as Json }))
       else if ('fail' in s) ok(sim.complete(inv.id, { fail: s.fail as Tagged }))
+      else if ('emit' in s) ok(sim.emitFromChild(inv.id, s.emit as Tagged))
       else ok(sim.complete(inv.id, { defect: s.defect as string }))
     } else throw new Error(`unknown step ${JSON.stringify(s)}`)
   }
@@ -121,6 +126,8 @@ describe('simulate', () => {
     for (const name of ['parallel-entry-exit', 'parallel-two-regions', 'parallel-work']) expect(played).toContain(name)
     // History states: a deep one restoring a final state, one in a region, one while settling.
     for (const name of ['history-final', 'history-region', 'history-settle']) expect(played).toContain(name)
+    // Tasks that emit: taken, dropped, unheard (no record), heard in child states, spawned by key; a stream task.
+    for (const name of ['task-emit-progress', 'task-emit-dropped', 'task-emit-unheard', 'task-emit-nested', 'spawn-task', 'stream-task', 'redact-task-emit']) expect(played).toContain(name)
     expect(played.length).toBeGreaterThanOrEqual(8)
   })
 

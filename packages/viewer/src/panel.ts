@@ -22,10 +22,12 @@ import {
   invokeCall,
   invokeText,
   isHistory,
+  isTaskEvent,
   kindText,
   messageSites,
   paramsText,
   parentState,
+  peer,
   signatureText,
   sourceText,
   spawnSites,
@@ -44,7 +46,10 @@ import { childrenHtml, esc, paramsHtml, typeHtml } from './render.ts'
 export type Selection =
   | { type: 'state'; id: string }
   | { type: 'transition'; state: string; index: number }
-  /** An event the machine accepts or emits, or (a lower-case name) one of its calls. */
+  /**
+   * An event the machine accepts or emits, or (a lower-case name) one of its calls, or (a
+   * dotted name, `upload.Progress`) an event a task emits, shown on the current machine's page.
+   */
   | { type: 'event'; name: string }
   | null
 
@@ -92,18 +97,20 @@ function gotoLink(machine: string, sel: Exclude<Selection, null>, label: string)
 }
 
 /**
- * `the child upload, invoked in Uploading`, `the ref inventory`, for a collection of spawned
- * children `the child of sessions with key event.id` (a send's `key`), `every running child of
- * sessions` (a send without one), `a child of sessions` (a sender).
+ * `the child upload, invoked in Uploading`, `the task up, invoked in Uploading`, `the ref
+ * inventory`, for a collection of spawned children `the child of sessions with key event.id` (a
+ * send's `key`), `every running child of sessions` (a send without one), `a child of sessions`
+ * or `a task of uploads` (a sender).
  */
 function addressText(ctx: PanelContext, a: Address, key?: { text: string } | null): string {
   switch (a.kind) {
     case 'child':
-      return `the child ${a.name}${a.state ? `, invoked in ${shortId(ctx, a.state)}` : ''}`
+    case 'task':
+      return `the ${a.kind} ${a.name}${a.state ? `, invoked in ${shortId(ctx, a.state)}` : ''}`
     case 'ref':
       return `the ref ${a.name}`
     case 'children':
-      if (key === undefined) return `a child of ${a.name}`
+      if (key === undefined) return `a ${a.task !== undefined ? 'task' : 'child'} of ${a.name}`
       return key ? `the child of ${a.name} with key ${key.text}` : `every running child of ${a.name}`
   }
 }
@@ -114,9 +121,12 @@ function addressText(ctx: PanelContext, a: Address, key?: { text: string } | nul
  */
 function effectHtml(ctx: PanelContext, e: Effect): string {
   if (e.kind === 'spawn') {
+    const task = own(own(ctx.ir.machines, ctx.machine)?.children ?? {}, e.children)?.kind === 'task'
+    const text = esc(effectText(e).slice('spawn '.length))
     return (
-      `<span class="rb-spawn-kw">spawn</span> <button class="rb-link rb-mono" type="button" data-open-machine="${esc(e.machine)}" data-via="spawn" title="Open machine ${esc(e.machine)}">${esc(effectText(e).slice('spawn '.length))}</button>` +
-      `<span class="rb-sub rb-note">starts a child of ${esc(e.children)} under the key once the step has settled, stopping the one already under it</span>`
+      `<span class="rb-spawn-kw">spawn</span> ` +
+      (task ? text : `<button class="rb-link rb-mono" type="button" data-open-machine="${esc(e.src)}" data-via="spawn" title="Open machine ${esc(e.src)}">${text}</button>`) +
+      `<span class="rb-sub rb-note">starts a ${task ? 'task' : 'child'} of ${esc(e.children)} under the key once the step has settled, stopping the one already under it</span>`
     )
   }
   if (e.kind === 'stop') return `<span class="rb-spawn-kw">stop</span> ${esc(effectText(e).slice('stop '.length))}<span class="rb-sub rb-note">stops the child of ${esc(e.children)} under the key, if there is one</span>`
@@ -126,7 +136,7 @@ function effectHtml(ctx: PanelContext, e: Effect): string {
   const text = effectText(e).slice(kw.length + 1)
   const where =
     e.kind === 'send'
-      ? `to ${esc(e.to.machine)}, ${esc(addressText(ctx, e.to, e.key))}`
+      ? `to ${esc(peer(e.to))}, ${esc(addressText(ctx, e.to, e.key))}`
       : e.kind === 'emit'
         ? `to whoever invoked or spawned ${esc(ctx.machine)} and every machine holding a ref to it`
         : e.call.text === 'call'
@@ -188,7 +198,7 @@ function transitionSummary(ctx: PanelContext, state: State, index: number, withS
 /** What an invoke runs: the task, the machine, or the call of the callee's machine. */
 function invokeDecl(ir: Ir, inv: Invoke): Machine | TaskDecl | CallDecl | undefined {
   if (inv.kind === 'machine') return own(ir.machines, inv.src)
-  if (inv.kind === 'call') return inv.to ? own(own(ir.machines, inv.to.machine)?.calls ?? {}, inv.src) : undefined
+  if (inv.kind === 'call') return inv.to ? own(own(ir.machines, peer(inv.to))?.calls ?? {}, inv.src) : undefined
   return own(ir.tasks, inv.src)
 }
 
@@ -215,8 +225,20 @@ function invokeSection(ctx: PanelContext, state: State): string {
   }
   s += `<p class="rb-path">${inv.kind} declared at ${esc(sourceText(ir, decl.span))}</p>`
   s += code(signatureText(inv.kind, inv.src, decl)) + docHtml(decl.doc) + signatureKv(ir, decl)
+  const task = inv.kind === 'task' ? own(ir.tasks, inv.src) : undefined
+  if (task && Object.keys(task.emits).length) {
+    s +=
+      `<p class="rb-cnote">It emits, while it runs:</p>` +
+      eventItems(inv.src, task.emits) +
+      (inv.as
+        ? `<p class="rb-empty">While ${esc(state.name)} is active, <code>${esc(inv.as)}</code> names the task: <code>on ${esc(inv.as)}.Event</code> handles one it emits. A task takes no events, so nothing is sent to it.</p>`
+        : `<p class="rb-empty">Invoked without <code>as</code>, so what it emits reaches no one.</p>`)
+  }
   if (inv.kind === 'machine' && inv.as) {
     s += `<p class="rb-empty">While ${esc(state.name)} is active, <code>${esc(inv.as)}</code> names the child: <code>send ${esc(inv.as)}.Event</code> queues one of its events, <code>on ${esc(inv.as)}.Event</code> handles one it emits.</p>`
+  }
+  if (!state.transitions.some((t) => t.trigger.kind === 'invoke.done' || t.trigger.kind === 'invoke.fail')) {
+    s += `<p class="rb-empty">No outcomes are written: it runs until ${esc(state.name)} is left, which cancels it. If it ends by itself first, its outcome is dropped.</p>`
   }
   if (inv.kind === 'machine') s += `<p><button class="rb-btn" type="button" data-open-machine="${esc(inv.src)}" data-via="invoke">Open machine ${esc(inv.src)} →</button></p>`
   return section(`Invokes ${inv.kind}`, s) + section('Types involved', typesOf(ir, decl))
@@ -226,7 +248,7 @@ function invokeSection(ctx: PanelContext, state: State): string {
 export function spawnersOf(ir: Ir, name: string): [string, string][] {
   const out: [string, string][] = []
   for (const [other, m] of Object.entries(ir.machines)) {
-    for (const [children, c] of Object.entries(m.children)) if (c.machine === name) out.push([other, children])
+    for (const [children, c] of Object.entries(m.children)) if (c.kind === 'machine' && c.src === name) out.push([other, children])
   }
   return out
 }
@@ -255,10 +277,12 @@ function talksToSection(ctx: PanelContext): string {
   const items: string[] = []
   for (const i of t.invokes) items.push(`${rel('invokes')} ${machineLink(i.machine)}${i.as ? ` ${rel('as')} ${esc(i.as)}` : ''} ${rel('in')} ${stateLink(ctx, i.state)}`)
   for (const x of t.spawns) items.push(`${rel('spawns')} ${machineLink(x.machine)} ${rel('into')} ${esc(x.names.join(', '))}`)
+  for (const x of t.spawnsTasks) items.push(`${rel('spawns task')} <code>${esc(x.task)}</code> ${rel('into')} ${esc(x.names.join(', '))}`)
   for (const r of t.refs) items.push(`${rel('holds a ref to')} ${machineLink(r.machine)} ${rel('in')} ${esc(r.names.join(', '))}`)
   for (const x of t.sends) items.push(`${rel('sends', true)} ${eventLinks(x.machine, x.events)} ${rel('to')} ${machineLink(x.machine)}`)
   for (const x of t.calls) items.push(`${rel('calls', true)} ${eventLinks(x.machine, x.calls)} ${rel('on')} ${machineLink(x.machine)}`)
   for (const x of t.receives) items.push(`${rel('handles', true)} ${eventLinks(x.machine, x.events)} ${rel('emitted by')} ${machineLink(x.machine)}`)
+  for (const x of t.receivesTasks) items.push(`${rel('handles', true)} ${eventLinks(x.task, x.events)} ${rel('emitted by task')} <code>${esc(x.task)}</code>`)
   for (const x of t.ends) items.push(`${rel('hears when', true)} ${machineLink(x.machine)} ${rel('ends, through')} ${esc(x.names.join(', '))}`)
   return items.length ? `<ul class="rb-talks">${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : ''
 }
@@ -447,11 +471,14 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
     }
     case 'emitted': {
       const from = t.trigger.from
-      const ref = { machine: from.machine, event: t.trigger.event }
-      what = `${from.machine} emitted ${t.trigger.event}: ${addressText(ctx, from)}.${from.kind === 'children' ? " The child's key is available as key." : ''}`
+      const ref = { machine: peer(from), event: t.trigger.event }
+      const task = isTaskEvent(ref)
+      what = task
+        ? `The task ${ref.machine} emitted ${t.trigger.event} while it ran: ${addressText(ctx, from)}.${from.kind === 'children' ? " The task's key is available as key." : ''} Taking it does not end the task.`
+        : `${ref.machine} emitted ${t.trigger.event}: ${addressText(ctx, from)}.${from.kind === 'children' ? " The child's key is available as key." : ''}`
       const found = eventDecl(ir, ref)
       extra = section(
-        `Event of ${from.machine}`,
+        `Event of ${task ? 'task ' : ''}${ref.machine}`,
         (found ? code(eventDeclText(t.trigger.event, found.decl, true)) + docHtml(found.decl.doc) + `<p class="rb-path">${esc(sourceText(ir, found.decl.span))}</p>` : '') +
           `<p><button class="rb-btn" type="button" data-open-event="${esc(eventKey(ref))}">Open ${esc(eventKey(ref))} →</button></p>`,
       )
@@ -498,22 +525,23 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
       break
     }
     case 'spawn.done':
-      what = `A child of ${t.trigger.children} finished; its value is available as result, its key as key.`
+      what = `A ${own(m.children, t.trigger.children)?.kind === 'task' ? 'task' : 'child'} of ${t.trigger.children} finished; its value is available as result, its key as key.`
       break
     case 'ended': {
       const from = t.trigger.from
-      what = `The run of ${from.machine} that ${addressText(ctx, from)} holds closed, however it closed: it finished, failed, was cancelled, ended with a defect or was suspended. event.status says which. Taken at most once per run, after the last message it sent.`
+      const machine = peer(from)
+      what = `The run of ${machine} that ${addressText(ctx, from)} holds closed, however it closed: it finished, failed, was cancelled, ended with a defect or was suspended. event.status says which. Taken at most once per run, after the last message it sent.`
       const td = own(ir.types, 'Ended')
       extra = section(
-        `Peer ${from.machine}`,
+        `Peer ${machine}`,
         (td ? code(typeDeclText('Ended', td)) + docHtml(td.doc) : '') +
-          (own(ir.machines, from.machine) ? `<p><button class="rb-btn" type="button" data-open-machine="${esc(from.machine)}">Open machine ${esc(from.machine)} →</button></p>` : ''),
+          (own(ir.machines, machine) ? `<p><button class="rb-btn" type="button" data-open-machine="${esc(machine)}">Open machine ${esc(machine)} →</button></p>` : ''),
       )
       break
     }
     case 'spawn.fail': {
       const err = t.trigger.error
-      what = `A child of ${t.trigger.children} failed with ${err === '*' ? `a declared error no other on ${t.trigger.children}.fail names` : err}; the error is available as error, the child's key as key.`
+      what = `A ${own(m.children, t.trigger.children)?.kind === 'task' ? 'task' : 'child'} of ${t.trigger.children} failed with ${err === '*' ? `a declared error no other on ${t.trigger.children}.fail names` : err}; the error is available as error, the child's key as key.`
       const td = own(ir.types, err)
       if (td) extra = section('Error', code(typeDeclText(err, td)) + docHtml(td.doc))
       break
@@ -521,15 +549,18 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
   }
   if (t.trigger.kind === 'spawn.done' || t.trigger.kind === 'spawn.fail') {
     const c = own(m.children, t.trigger.children)
-    const child = c && own(ir.machines, c.machine)
+    const child = c && c.kind === 'machine' ? own(ir.machines, c.src) : undefined
+    const task = c && c.kind === 'task' ? own(ir.tasks, c.src) : undefined
     if (c && child) {
       extra += section(
         'Spawned machine',
-        code(signatureText('machine', c.machine, child)) +
+        code(signatureText('machine', c.src, child)) +
           `<p class="rb-path">${esc(sourceText(ir, child.span))}</p>` +
           docHtml(child.doc) +
-          `<p><button class="rb-btn" type="button" data-open-machine="${esc(c.machine)}" data-via="spawn">Open machine ${esc(c.machine)} →</button></p>`,
+          `<p><button class="rb-btn" type="button" data-open-machine="${esc(c.src)}" data-via="spawn">Open machine ${esc(c.src)} →</button></p>`,
       )
+    } else if (c && task) {
+      extra += section('Spawned task', code(signatureText('task', c.src, task)) + `<p class="rb-path">${esc(sourceText(ir, task.span))}</p>` + docHtml(task.doc))
     }
   }
   if (decl && inv && t.trigger.kind.startsWith('invoke.')) {
@@ -624,10 +655,50 @@ export function callPanel(ctx: PanelContext, name: string): string {
   )
 }
 
+/**
+ * An event a task emits (`upload.Progress`): its declaration, the invokes and collections of
+ * the task, and everywhere it is handled. A task has no page of its own, so it is shown on the
+ * page of the machine it was opened from.
+ */
+export function taskEventPanel(ctx: PanelContext, task: string, name: string): string {
+  const { ir } = ctx
+  const t = own(ir.tasks, task)
+  const decl = t && own(t.emits, name)
+  if (!t || !decl) return machinePanel(ctx)
+  const sites = sitesOf(ir, { machine: task, event: name })
+  const runs: string[] = []
+  for (const [other, om] of Object.entries(ir.machines)) {
+    walkStates(om.root, (s) => {
+      if (s.invoke?.kind === 'task' && s.invoke.src === task) {
+        const note = s.invoke.as ? `as ${s.invoke.as}` : 'without as: what it emits reaches no one'
+        runs.push(`${gotoLink(other, { type: 'state', id: s.id }, `${other} · ${s.id.slice(other.length + 1)}`)} <span class="rb-cnote">invokes it ${esc(note)}</span>`)
+      }
+    })
+    for (const [children, c] of Object.entries(om.children)) {
+      if (c.kind === 'task' && c.src === task) runs.push(`${machineLink(other)} <span class="rb-cnote">spawns it into ${esc(children)}</span>`)
+    }
+  }
+  return (
+    head(esc(name), 'task event', true) +
+    `<p class="rb-path">${esc(task)}.${esc(name)} · ${esc(sourceText(ir, decl.span))}</p>` +
+    docHtml(decl.doc) +
+    section(
+      'Declaration',
+      code(`${signatureText('task', task, t)}\n  ${eventDeclText(name, decl, true)}`) +
+        `<p class="rb-empty">The task ${esc(task)} emits it while it runs, when its host code says so, to the run that invoked it with <code>as</code> or spawned it, and to no one else.</p>`,
+    ) +
+    section('Fields', list(decl.fields.map((f) => `${f.sensitive ? 'sensitive ' : ''}${esc(f.name)}: ${esc(f.type)}${f.doc ? `<span class="rb-sub rb-note">${esc(f.doc)}</span>` : ''}`))) +
+    section('Run by', list(runs) || '<p class="rb-empty">No machine of this chart invokes or spawns it.</p>') +
+    section('Handled by', siteLinks(ir, sites, 'receive') || '<p class="rb-empty">No machine of this chart handles it: it is never delivered.</p>')
+  )
+}
+
 /** An event the machine accepts or emits: its declaration and everywhere it is sent, emitted and handled. */
 export function eventPanel(ctx: PanelContext, name: string): string {
   const { ir } = ctx
   const m = own(ir.machines, ctx.machine)!
+  const dot = name.indexOf('.')
+  if (dot > 0) return taskEventPanel(ctx, name.slice(0, dot), name.slice(dot + 1))
   if (own(m.calls, name)) return callPanel(ctx, name)
   const found = eventDecl(ir, { machine: ctx.machine, event: name })
   if (!found) return machinePanel(ctx)

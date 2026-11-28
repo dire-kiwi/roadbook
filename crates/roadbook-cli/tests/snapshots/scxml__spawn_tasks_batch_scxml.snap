@@ -1,0 +1,47 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Uploads files side by side, one task per file name, and counts those stored. -->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Batch" datamodel="roadbook" initial="Batch_Open" rb:returns="int">
+  <datamodel>
+    <data id="stored" expr="0" rb:type="int"/>
+    <data id="uploads" rb:children="upload" rb:key="string" rb:kind="task"/>
+  </datamodel>
+  <state id="Batch_Open">
+    <transition event="Add" type="internal">
+      <rb:spawn children="uploads" key="event.name" type="urn:roadbook:task" src="upload">
+        <param name="size" expr="event.size"/>
+      </rb:spawn>
+    </transition>
+    <transition event="Cancel" type="internal">
+      <rb:stop children="uploads" key="event.name"/>
+    </transition>
+    <transition event="uploads.Progress" type="internal">
+      <rb:do action="showProgress">
+        <param name="name" expr="key"/>
+        <param name="percent" expr="event.percent"/>
+      </rb:do>
+    </transition>
+    <transition event="done.spawn.uploads" type="internal">
+      <assign location="stored" expr="stored + 1"/>
+      <rb:do action="showStored">
+        <param name="name" expr="key"/>
+        <param name="size" expr="result"/>
+      </rb:do>
+    </transition>
+    <transition event="error.UploadFailed.spawn.uploads" type="internal">
+      <rb:do action="reportFailure">
+        <param name="name" expr="key"/>
+        <param name="reason" expr="error.reason"/>
+      </rb:do>
+    </transition>
+    <transition event="Close" target="Batch_Closed"/>
+  </state>
+  <final id="Batch_Closed">
+    <donedata>
+      <content expr="stored"/>
+    </donedata>
+  </final>
+</scxml>

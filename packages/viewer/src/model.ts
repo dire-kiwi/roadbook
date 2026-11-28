@@ -95,7 +95,7 @@ export function effectText(e: Effect): string {
     case 'reply':
       return `reply ${e.call.text} ${e.outcome}${e.value ? ` ${e.value.text}` : ''}`
     case 'spawn':
-      return `spawn ${e.children}[${e.key.text}] = ${e.machine}(${e.args.map((a) => a.text).join(', ')})`
+      return `spawn ${e.children}[${e.key.text}] = ${e.src}(${e.args.map((a) => a.text).join(', ')})`
     case 'stop':
       return `stop ${e.children}[${e.key.text}]`
   }
@@ -109,19 +109,33 @@ function sendKey(to: Address, key: { text: string } | null): string {
 
 /**
  * An event of a machine, as the viewer links to it: `Upload.Progress`; or one of its calls,
- * `Inventory.reserve` (call names are lower case, event names upper case, so they never clash).
+ * `Inventory.reserve` (call names are lower case, event names upper case, so they never clash);
+ * or an event a task emits, `upload.Progress`, whose `machine` is the task (task names are
+ * lower case, machine names upper case).
  */
 export interface EventRef {
+  /** The machine that declares it, or the task that emits it. */
   machine: string
   event: string
 }
 
 export const eventKey = (r: EventRef): string => `${r.machine}.${r.event}`
 
-/** `Upload.Progress` or `Inventory.reserve` back to its parts; null for anything else. */
+/** `Upload.Progress`, `Inventory.reserve` or `upload.Progress` back to its parts; null for anything else. */
 export function parseEventKey(key: string): EventRef | null {
-  const m = /^([A-Z][A-Za-z0-9]*)\.([A-Za-z][A-Za-z0-9]*)$/.exec(key)
+  const m = /^([A-Za-z][A-Za-z0-9]*)\.([A-Za-z][A-Za-z0-9]*)$/.exec(key)
   return m ? { machine: m[1]!, event: m[2]! } : null
+}
+
+/** Whether a name is a task's: tasks are lower case, machines upper case. */
+export const isTaskName = (name: string): boolean => /^[a-z]/.test(name)
+
+/** Whether an event reference names an event a task emits (`upload.Progress`). */
+export const isTaskEvent = (r: EventRef): boolean => isTaskName(r.machine)
+
+/** The other end of an address: its machine, or its task (kind `task`, or a collection of tasks). */
+export function peer(a: Address): string {
+  return a.machine ?? a.task ?? ''
 }
 
 /** The machine a state id belongs to: its first segment. */
@@ -140,7 +154,7 @@ export function callOfType(type: string): string | null {
  * it answers. Null for `set` and `do`.
  */
 export function effectEvent(machine: string, e: Effect): EventRef | null {
-  if (e.kind === 'send') return { machine: e.to.machine, event: e.event }
+  if (e.kind === 'send') return { machine: peer(e.to), event: e.event }
   if (e.kind === 'emit') return { machine, event: e.event }
   if (e.kind === 'reply') {
     const call = callOfType(e.call.type)
@@ -154,14 +168,14 @@ export function effectEvent(machine: string, e: Effect): EventRef | null {
  * takes, in `machine` (the machine the trigger is written in). Null for other triggers.
  */
 export function triggerEvent(t: Trigger, machine: string): EventRef | null {
-  if (t.kind === 'emitted') return { machine: t.from.machine, event: t.event }
+  if (t.kind === 'emitted') return { machine: peer(t.from), event: t.event }
   if (t.kind === 'call') return { machine, event: t.call }
   return null
 }
 
 /** The call a call invoke makes, in the callee's machine: `Inventory.reserve`. Null for a task or machine. */
 export function invokeCall(inv: Invoke): EventRef | null {
-  return inv.kind === 'call' && inv.to ? { machine: inv.to.machine, event: inv.src } : null
+  return inv.kind === 'call' && inv.to ? { machine: peer(inv.to), event: inv.src } : null
 }
 
 /** `Upload(draft.file)`, `Upload(draft.file) as upload`, `inventory.reserve(id, draft.items)` */
@@ -301,11 +315,11 @@ export function transitionLines(state: State, index: number): LabelLine[] {
   return lines
 }
 
-/** What the lines of an effect link to: the event of a `send` or `emit`, the machine of a `spawn`. */
+/** What the lines of an effect link to: the event of a `send` or `emit`, the machine of a `spawn` (a task's has none). */
 function effectLink(machine: string, e: Effect): { event?: EventRef; spawn?: string } {
   const event = effectEvent(machine, e)
   if (event) return { event }
-  return e.kind === 'spawn' ? { spawn: e.machine } : {}
+  return e.kind === 'spawn' && !isTaskName(e.src) ? { spawn: e.src } : {}
 }
 
 /** A row inside a state box. `kw` is drawn muted, `text` in the code colour. */
@@ -621,7 +635,7 @@ export function messageSites(machineName: string, machine: Machine): MessageSite
   const out: MessageSite[] = []
   const effects = (state: string, at: MessageSite['at'], list: Effect[]) => {
     for (const e of list) {
-      if (e.kind === 'send') out.push({ dir: 'send', state, at, address: e.to, event: { machine: e.to.machine, event: e.event } })
+      if (e.kind === 'send') out.push({ dir: 'send', state, at, address: e.to, event: { machine: peer(e.to), event: e.event } })
       else if (e.kind === 'emit') out.push({ dir: 'emit', state, at, address: null, event: { machine: machineName, event: e.event } })
       else if (e.kind === 'reply') {
         const event = effectEvent(machineName, e)
@@ -635,7 +649,7 @@ export function messageSites(machineName: string, machine: Machine): MessageSite
     effects(s.id, 'entry', s.entry)
     effects(s.id, 'exit', s.exit)
     s.transitions.forEach((t, i) => {
-      if (t.trigger.kind === 'emitted') out.push({ dir: 'receive', state: s.id, at: i, address: t.trigger.from, event: { machine: t.trigger.from.machine, event: t.trigger.event } })
+      if (t.trigger.kind === 'emitted') out.push({ dir: 'receive', state: s.id, at: i, address: t.trigger.from, event: { machine: peer(t.trigger.from), event: t.trigger.event } })
       if (t.trigger.kind === 'call') out.push({ dir: 'take', state: s.id, at: i, address: null, event: { machine: machineName, event: t.trigger.call } })
       effects(s.id, i, t.effects)
     })
@@ -674,12 +688,16 @@ export interface Talks {
   invokes: { machine: string; as: string | null; state: string }[]
   /** Machines it spawns, with the collections (`children name: Machine by Key`) that hold them. */
   spawns: { machine: string; names: string[] }[]
+  /** Tasks it spawns, with the collections (`children name: task by Key`) that hold them. */
+  spawnsTasks: { task: string; names: string[] }[]
   /** Machines it holds a `ref` to, with the parameters and variables that hold it. */
   refs: { machine: string; names: string[] }[]
   /** Events it sends, by receiving machine. */
   sends: { machine: string; events: string[] }[]
   /** Events of other machines' `emits` it handles, by sending machine. */
   receives: { machine: string; events: string[] }[]
+  /** Events of tasks' `emits` it handles (through an `as` name or a collection of tasks), by task. */
+  receivesTasks: { task: string; events: string[] }[]
   /** Calls it makes (`invoke inventory.reserve(…)`), by called machine. */
   calls: { machine: string; calls: string[] }[]
   /** Peers whose end it hears (`on inventory.ended`), by peer machine, with the names it watches them through. */
@@ -697,6 +715,8 @@ export function talks(ir: Ir, machineName: string): Talks {
   const m = own(ir.machines, machineName)
   const invokes: Talks['invokes'] = []
   const spawns: { machine: string; values: string[] }[] = []
+  const spawnsTasks: { machine: string; values: string[] }[] = []
+  const receivesTasks: { machine: string; values: string[] }[] = []
   const refs: { machine: string; values: string[] }[] = []
   const sends: { machine: string; values: string[] }[] = []
   const receives: { machine: string; values: string[] }[] = []
@@ -706,33 +726,39 @@ export function talks(ir: Ir, machineName: string): Talks {
     walkStates(m.root, (s) => {
       if (s.invoke && s.invoke.kind === 'machine') invokes.push({ machine: s.invoke.src, as: s.invoke.as, state: s.id })
     })
-    for (const [name, c] of Object.entries(m.children)) group(spawns, c.machine, name)
+    for (const [name, c] of Object.entries(m.children)) group(c.kind === 'task' ? spawnsTasks : spawns, c.src, name)
     for (const v of [...m.params, ...m.vars]) {
       const to = refMachine(ir, v.type)
       if (to) group(refs, to, v.name)
     }
     for (const site of messageSites(machineName, m)) {
       if (site.dir === 'send') group(sends, site.event.machine, site.event.event)
-      else if (site.dir === 'receive') group(receives, site.event.machine, site.event.event)
+      else if (site.dir === 'receive') group(isTaskEvent(site.event) ? receivesTasks : receives, site.event.machine, site.event.event)
       else if (site.dir === 'call') group(calls, site.event.machine, site.event.event)
     }
     walkStates(m.root, (s) => {
-      for (const t of s.transitions) if (t.trigger.kind === 'ended') group(ends, t.trigger.from.machine, t.trigger.from.name)
+      for (const t of s.transitions) if (t.trigger.kind === 'ended') group(ends, peer(t.trigger.from), t.trigger.from.name)
     })
   }
   return {
     invokes,
     spawns: spawns.map((r) => ({ machine: r.machine, names: r.values })),
+    spawnsTasks: spawnsTasks.map((r) => ({ task: r.machine, names: r.values })),
     refs: refs.map((r) => ({ machine: r.machine, names: r.values })),
     sends: sends.map((r) => ({ machine: r.machine, events: r.values })),
     receives: receives.map((r) => ({ machine: r.machine, events: r.values })),
+    receivesTasks: receivesTasks.map((r) => ({ task: r.machine, events: r.values })),
     calls: calls.map((r) => ({ machine: r.machine, calls: r.values })),
     ends: ends.map((r) => ({ machine: r.machine, names: r.values })),
   }
 }
 
-/** A machine's event, accepted (`event`) or emitted (`emits`), with which it is. */
+/** A machine's event, accepted (`event`) or emitted (`emits`), with which it is; or one a task emits. */
 export function eventDecl(ir: Ir, ref: EventRef): { decl: EventDecl; emitted: boolean } | null {
+  if (isTaskEvent(ref)) {
+    const emitted = own(own(ir.tasks, ref.machine)?.emits ?? {}, ref.event)
+    return emitted ? { decl: emitted, emitted: true } : null
+  }
   const m = own(ir.machines, ref.machine)
   if (!m) return null
   const accepted = own(m.events, ref.event)

@@ -397,6 +397,58 @@ fn calls_are_steps_of_the_caller_and_of_the_callee() {
 
 /// A peer's end, `on x.ended`, is a step labelled `x.ended` with its guards, as an emitted event
 /// would be; through a variable it names the variable.
+/// An event a task emits is a step like a child's: `up.Progress` with its guard. One with no
+/// target (a stream task's tick, a spawned task's progress) is no step, and an invoke with no
+/// outcomes adds none.
+#[test]
+fn an_event_a_task_emits_is_a_step() {
+    let out = roadbook(
+        &repo(),
+        &["paths", "Eager", "spec/conformance/charts/task-emits.road"],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(
+        text(&out.stdout),
+        "Eager: 4 paths
+1. Uploading
+     --done--> Stored
+     --Again--> Uploading
+     --up.Progress [event.percent >= 100]--> Stored
+     --Finish--> Published (final: output stored)
+2. Uploading --done--> Stored --Finish--> Published (final: output stored)
+3. Uploading
+     --up.Progress [event.percent >= 100]--> Stored
+     --Again--> Uploading
+     --done--> Stored
+     --Finish--> Published (final: output stored)
+4. Uploading
+     --up.Progress [event.percent >= 100]--> Stored
+     --Finish--> Published (final: output stored)
+"
+    );
+    let out = roadbook(
+        &repo(),
+        &["paths", "Clock", "spec/conformance/charts/streams.road"],
+    );
+    assert_eq!(
+        text(&out.stdout),
+        "Clock: 2 paths
+1. Waiting --Stop--> Idle --Start--> Waiting (loops)
+2. Waiting --Stop--> Idle --Finish--> Over (final: output seconds)
+"
+    );
+    let v = json_of(&roadbook(
+        &repo(),
+        &[
+            "paths",
+            "Batch",
+            "spec/conformance/charts/spawn-tasks.road",
+            "--json",
+        ],
+    ));
+    assert_eq!(steps(&v), ["Open#5"]);
+}
+
 #[test]
 fn a_peer_s_end_is_a_step() {
     let chart = "spec/conformance/charts/ended.road";

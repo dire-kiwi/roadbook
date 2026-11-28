@@ -2,7 +2,7 @@
 
 import type { Effect, Ir } from './ir.ts'
 import { own } from './ir.ts'
-import { callOfType, effectText, invokeText, isHistory, kindText, triggerText, walkStates } from './model.ts'
+import { callOfType, effectText, invokeText, isHistory, isTaskName, kindText, peer, triggerText, walkStates } from './model.ts'
 
 export type SearchKind = 'state' | 'event' | 'call' | 'task' | 'machine' | 'error' | 'action'
 
@@ -25,6 +25,20 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
     for (const name of Object.keys(m.events)) out.push({ kind: 'event', name, label: `event ${name} of ${machine}`, machine, target: { type: 'event', name } })
     for (const name of Object.keys(m.emits)) out.push({ kind: 'event', name, label: `emits ${name} of ${machine}`, machine, target: { type: 'event', name } })
     for (const name of Object.keys(m.calls)) out.push({ kind: 'call', name, label: `call ${name} of ${machine}`, machine, target: { type: 'event', name } })
+    for (const [name, c] of Object.entries(m.children)) {
+      if (c.kind === 'task') out.push({ kind: 'task', name: c.src, label: `children ${name}: ${c.src} by ${c.key} in ${machine}`, machine, target: null })
+    }
+    // The events of the tasks it runs, invoked or spawned, opened on its page: a task has none of its own.
+    const tasks = new Set<string>()
+    walkStates(m.root, (s) => {
+      if (s.invoke?.kind === 'task') tasks.add(s.invoke.src)
+    })
+    for (const c of Object.values(m.children)) if (c.kind === 'task') tasks.add(c.src)
+    for (const task of tasks) {
+      for (const name of Object.keys(own(ir.tasks, task)?.emits ?? {})) {
+        out.push({ kind: 'event', name, label: `emits ${name} of task ${task}, run by ${machine}`, machine, target: { type: 'event', name: `${task}.${name}` } })
+      }
+    }
     const short = (id: string) => id.slice(machine.length + 1) || id
     const effects = (list: Effect[], where: string, target: SearchEntry['target']) => {
       for (const e of list) {
@@ -32,7 +46,7 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
         if (e.kind === 'send' || e.kind === 'emit') out.push({ kind: 'event', name: e.event, label: `${effectText(e)}: ${where}`, machine, target })
         const call = e.kind === 'reply' ? callOfType(e.call.type) : null
         if (call) out.push({ kind: 'call', name: call, label: `${effectText(e)}: ${where}`, machine, target })
-        if (e.kind === 'spawn') out.push({ kind: 'machine', name: e.machine, label: `${effectText(e)}: ${where}`, machine, target })
+        if (e.kind === 'spawn') out.push({ kind: isTaskName(e.src) ? 'task' : 'machine', name: e.src, label: `${effectText(e)}: ${where}`, machine, target })
       }
     }
     walkStates(m.root, (s, _parent, depth) => {
@@ -59,7 +73,7 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
         if (t.trigger.kind === 'call') out.push({ kind: 'call', name: t.trigger.call, label: `on ${t.trigger.call}: ${where}`, machine, target })
         if (t.trigger.kind === 'invoke.fail' || t.trigger.kind === 'spawn.fail') out.push({ kind: 'error', name: t.trigger.error, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
         // A peer's end is found through the peer's machine: `Inventory` finds `inventory.ended`.
-        if (t.trigger.kind === 'ended') out.push({ kind: 'machine', name: t.trigger.from.machine, label: `on ${triggerText(t.trigger)}: ${where}`, machine, target })
+        if (t.trigger.kind === 'ended') out.push({ kind: 'machine', name: peer(t.trigger.from), label: `on ${triggerText(t.trigger)}: ${where}`, machine, target })
         effects(t.effects, where, target)
       })
     })

@@ -368,13 +368,13 @@ fn effect(e: &Effect) -> String {
         }
         Effect::Spawn {
             children,
-            src: machine,
+            src,
             key,
             args,
         } => {
             let args: Vec<&str> = args.iter().map(|a| a.text.as_str()).collect();
             format!(
-                "spawn {children}[{}] = {machine}({})",
+                "spawn {children}[{}] = {src}({})",
                 key.text,
                 args.join(", ")
             )

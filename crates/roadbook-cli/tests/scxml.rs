@@ -88,6 +88,34 @@ fn export_scxml_snapshots_a_peer_s_end() {
     }
 }
 
+/// What a task emits, through an `as` name or a collection of tasks, is the event `x.E`; an
+/// invoke with no outcomes has no `done.invoke` transition; a collection of tasks is a `<data>`
+/// with `rb:kind="task"`, and its `<rb:spawn>` has the type of a task invoke.
+#[test]
+fn export_scxml_snapshots_tasks_that_emit() {
+    for (chart, machine, snapshot) in [
+        (
+            "spec/conformance/charts/task-emits.road",
+            "Nested",
+            "task_emits_nested_scxml",
+        ),
+        (
+            "spec/conformance/charts/streams.road",
+            "Clock",
+            "streams_clock_scxml",
+        ),
+        (
+            "spec/conformance/charts/spawn-tasks.road",
+            "Batch",
+            "spawn_tasks_batch_scxml",
+        ),
+    ] {
+        let out = roadbook(&repo(), &["export", "scxml", chart, "--machine", machine]);
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        insta::assert_snapshot!(snapshot, text(&out.stdout));
+    }
+}
+
 /// An internal transition (`-> .X`) is `type="internal"`, with a comment where the source is a
 /// parallel state, and several targets are one `target` attribute.
 #[test]

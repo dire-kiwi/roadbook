@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.9",
+  "irVersion": "0.10",
   "sources": [
     {
       "path": "examples/webhook/webhook.road",
@@ -288,6 +288,7 @@
       "errors": [
         "MalformedPayload"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -308,6 +309,7 @@
       ],
       "returns": "bool",
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -336,6 +338,7 @@
       "errors": [
         "DatabaseBusy"
       ],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -362,6 +365,7 @@
       ],
       "returns": null,
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,
@@ -382,6 +386,7 @@
       ],
       "returns": null,
       "errors": [],
+      "emits": {},
       "doc": "",
       "span": {
         "file": 1,

@@ -1,0 +1,38 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hears `Progress` in whichever child state it is in. `-> .Second` keeps the upload running. -->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Nested" datamodel="roadbook" initial="Nested_Working" rb:returns="int">
+  <datamodel>
+    <data id="size" rb:type="int" rb:param="true"/>
+    <data id="percent" expr="0" rb:type="int"/>
+  </datamodel>
+  <state id="Nested_Working" initial="Nested_Working_First">
+    <invoke id="Nested_Working_invoke" type="urn:roadbook:task" src="upload" rb:as="up">
+      <param name="size" expr="size"/>
+    </invoke>
+    <transition event="done.invoke.Nested_Working_invoke" target="Nested_Finished">
+      <assign location="percent" expr="result"/>
+    </transition>
+    <transition event="Next" target="Nested_Working_Second" type="internal"/>
+    <state id="Nested_Working_First">
+      <transition event="up.Progress" type="internal">
+        <assign location="percent" expr="event.percent"/>
+      </transition>
+    </state>
+    <state id="Nested_Working_Second">
+      <transition event="up.Progress" type="internal">
+        <rb:do action="showProgress">
+          <param name="percent" expr="event.percent"/>
+        </rb:do>
+      </transition>
+    </state>
+  </state>
+  <final id="Nested_Finished">
+    <donedata>
+      <content expr="percent"/>
+    </donedata>
+  </final>
+</scxml>
