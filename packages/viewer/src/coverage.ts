@@ -102,7 +102,9 @@ export function coverage(ir: Ir, traces: { name: string; text: string }[]): Cove
       else if (r.kind === 'transition' && typeof r.from === 'string' && typeof r.index === 'number') {
         const key = transitionId(r.from, r.index)
         mc.transitions[key] = (mc.transitions[key] ?? 0) + 1
-        if (typeof r.to === 'string' && historiesOf(run.machine).has(r.to)) mc.states[r.to] = (mc.states[r.to] ?? 0) + 1
+        for (const to of Array.isArray(r.to) ? r.to : []) {
+          if (typeof to === 'string' && historiesOf(run.machine).has(to)) mc.states[to] = (mc.states[to] ?? 0) + 1
+        }
       }
     }
   }

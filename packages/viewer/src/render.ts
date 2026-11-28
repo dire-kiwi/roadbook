@@ -6,7 +6,7 @@ import type { Ir, State } from './ir.ts'
 import { own } from './ir.ts'
 import type { Layout, Point, Box } from './layout.ts'
 import { machineView, stateBox } from './layout.ts'
-import { METRICS, eventKey, estimateWidth, historyMark, historyText, isHistory, refMachine, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
+import { METRICS, eventKey, estimateWidth, historyMark, historyText, isHistory, refMachine, targetEdgeId, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
 import type { EdgeKind, EventRef, Measure, Row } from './model.ts'
 import { DARK, DIAGRAM_CSS, FONTS, LIGHT } from './style.ts'
 
@@ -362,16 +362,21 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
       }
     }
     state.transitions.forEach((t, index) => {
-      if (t.target === null) return
+      if (!t.targets.length) return
       const id = transitionId(state.id, index)
       const kind = triggerKind(t.trigger)
       const inner = view.visible(state.id) !== state.id
       const isContainer = state.states.length > 0 && !(here?.collapsed ?? false)
       const mark = opts.annotate?.transition?.(state.id, index)
-      // An arrow to a history state drawn as itself ends on its circle.
-      const to = drawn.get(t.target)
-      const circle = to && isHistory(to.state) && view.visible(t.target) === t.target ? layout.nodes[t.target] : undefined
-      edgePaths += edge(id, kind, ` data-state="${esc(state.id)}" data-transition="${index}"`, isContainer, inner, mark, circle)
+      // One arrow per target, all with the transition's attributes, so that they highlight and
+      // select together; an internal transition's are marked as such.
+      const attrs = ` data-state="${esc(state.id)}" data-transition="${index}"${t.internal ? ' data-internal="true"' : ''}`
+      t.targets.forEach((target, k) => {
+        // An arrow to a history state drawn as itself ends on its circle.
+        const to = drawn.get(target)
+        const circle = to && isHistory(to.state) && view.visible(target) === target ? layout.nodes[target] : undefined
+        edgePaths += edge(targetEdgeId(state.id, index, k), kind, attrs, isContainer, inner, mark, circle)
+      })
       const e = layout.edges[id]
       if (e && e.label) labels += renderLabel(state, index, kind, e.label, mark)
     })

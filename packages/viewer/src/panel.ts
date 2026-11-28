@@ -30,6 +30,7 @@ import {
   sourceText,
   spawnSites,
   talks,
+  targetsText,
   triggerKind,
   triggerSource,
   triggerText,
@@ -172,7 +173,9 @@ function transitionSummary(ctx: PanelContext, state: State, index: number, withS
   const g = guardText(state, index)
   const kind = triggerKind(t.trigger)
   const cls = kind === 'done' ? 'rb-t-done' : kind === 'fail' ? 'rb-t-fail' : ''
-  const target = t.target ? targetText(ctx, t.target) : t.effects.length ? 'stays (internal)' : 'ignores it (internal)'
+  const target = t.targets.length
+    ? t.targets.map((x) => targetText(ctx, x)).join(', ') + (t.internal ? ` (inside ${shortId(ctx, state.id)})` : '')
+    : t.effects.length ? 'stays (no target)' : 'ignores it (no target)'
   return (
     `<button class="rb-tlink" type="button" data-select-transition="${esc(JSON.stringify([state.id, index]))}">` +
     (withSource ? `<span class="rb-arrow-text">${esc(shortId(ctx, state.id))}: </span>` : '') +
@@ -364,7 +367,7 @@ export function historyPanel(ctx: PanelContext, state: State): string {
   let incoming = ''
   walkStates(m.root, (s) => {
     s.transitions.forEach((t, i) => {
-      if (t.target === state.id) incoming += transitionSummary(ctx, s, i, true)
+      if (t.targets.includes(state.id)) incoming += transitionSummary(ctx, s, i, true)
     })
   })
   return (
@@ -386,7 +389,7 @@ export function statePanel(ctx: PanelContext, state: State): string {
   walkStates(m.root, (s) => {
     if (state.id !== s.id && state.id.startsWith(s.id + '.')) parents.push(s)
     s.transitions.forEach((t, i) => {
-      if (t.target === state.id) incoming += transitionSummary(ctx, s, i, true)
+      if (t.targets.includes(state.id)) incoming += transitionSummary(ctx, s, i, true)
     })
   })
   const parent = parents[parents.length - 1]
@@ -535,9 +538,20 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
   const guard = t.guard ? code(t.guard.text) : group.length > 1 ? code('else') : ''
   const branchNote =
     group.length > 1 ? `<p class="rb-empty">Branch ${pos} of ${group.length} for <code>${esc(triggerSource(t.trigger))}</code>; branches are tried in order.</p>` : ''
-  const title = `${esc(short)} <span class="rb-arrow-text">→</span> ${t.target ? esc(shortId(ctx, t.target)) : '(stays)'}`
-  const target = t.target ? findState(m, t.target) : null
-  const targetParent = target && isHistory(target) ? parentState(m, target.id) : null
+  const title = `${esc(short)} <span class="rb-arrow-text">→</span> ${esc(targetsText(t, (x) => shortId(ctx, x), '(stays)'))}`
+  const toText = (id: string) => {
+    const target = findState(m, id)
+    const targetParent = target && isHistory(target) ? parentState(m, target.id) : null
+    return (
+      stateLink(ctx, id) +
+      (id === state.id ? '<p class="rb-empty">The state is left and entered again: its exit and entry effects run.</p>' : '') +
+      (target && targetParent ? `<p class="rb-empty">A ${esc(kindText(target))} state. ${esc(historyText(target, targetParent))}</p>` : '')
+    )
+  }
+  const internalNote = t.internal
+    ? `<p class="rb-empty">Internal (written with a leading dot): <code>${esc(shortId(ctx, state.id))}</code> is not left, so its own exit and entry effects do not run and its work keeps going; only the states below it${state.kind === 'parallel' ? ', in the regions the targets are in,' : ''} are exited and entered.</p>`
+    : ''
+  const severalNote = t.targets.length > 1 ? '<p class="rb-empty">Several targets: each region of the parallel state they are in is entered at its target, every other region by its initial state.</p>' : ''
   return (
     head(title, 'transition', true) +
     `<p class="rb-path">${esc(sourceText(ir, t.span))}</p>` +
@@ -547,11 +561,9 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
     section('From', stateLink(ctx, state.id)) +
     section(
       'To',
-      t.target
-        ? stateLink(ctx, t.target) +
-            (t.target === state.id ? '<p class="rb-empty">The state is left and entered again: its exit and entry effects run.</p>' : '') +
-            (target && targetParent ? `<p class="rb-empty">A ${esc(kindText(target))} state. ${esc(historyText(target, targetParent))}</p>` : '')
-        : '<p class="rb-empty">Internal: the state is not left, so no exit or entry effects run.</p>',
+      t.targets.length
+        ? t.targets.map(toText).join('') + severalNote + internalNote
+        : '<p class="rb-empty">No target: the state is not left, so no exit or entry effects run.</p>',
     ) +
     extra
   )
@@ -563,7 +575,7 @@ function siteLink(ir: Ir, machine: string, site: { state: string; at: MessageSit
   const short = (id: string) => id.slice(machine.length + 1) || id
   if (typeof site.at !== 'number') return gotoLink(machine, { type: 'state', id: site.state }, `${machine} · ${short(site.state)} (${site.at})`)
   const t = m && findState(m, site.state)?.transitions[site.at]
-  const label = t ? `${short(site.state)}: ${triggerSource(t.trigger)} → ${t.target ? short(t.target) : '(stays)'}` : short(site.state)
+  const label = t ? `${short(site.state)}: ${triggerSource(t.trigger)} → ${targetsText(t, short, '(stays)')}` : short(site.state)
   return gotoLink(machine, { type: 'transition', state: site.state, index: site.at }, `${machine} · ${label}`)
 }
 

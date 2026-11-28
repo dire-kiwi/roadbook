@@ -144,7 +144,10 @@ export interface Transition {
   trigger: Trigger
   group: number
   guard: Expr | null
-  target: string | null
+  /** Target state ids, in the order written: `[]` for a transition with no target. */
+  targets: string[]
+  /** An internal transition (`-> .X`): its own state is not left. */
+  internal: boolean
   effects: Effect[]
   span: Span
 }

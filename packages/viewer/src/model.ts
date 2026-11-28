@@ -408,7 +408,7 @@ export function stateRows(state: State, collapsed = false): Row[] {
   for (const e of state.entry) add('entry', effectText(e), effectExtra(e))
   for (const e of state.exit) add('exit', effectText(e), effectExtra(e))
   state.transitions.forEach((t, index) => {
-    if (t.target !== null) return
+    if (t.targets.length > 0) return
     // The trigger, then the guard and each effect: one effect per line, so a `send`, `emit` or
     // `reply` is a line of its own that can be clicked.
     const kw = triggerSource(t.trigger)
@@ -550,7 +550,20 @@ export function transitionId(stateId: string, index: number): string {
 
 /** Whether the transition `t` of `state` is drawn as an arrow (it has a target). */
 export function isExternal(t: Transition): boolean {
-  return t.target !== null
+  return t.targets.length > 0
+}
+
+/**
+ * The id the layout gives the arrow to a transition's `k`th target: the transition's own id
+ * for the first, which carries the label, and one of its own for each other.
+ */
+export function targetEdgeId(stateId: string, index: number, k: number): string {
+  return k === 0 ? transitionId(stateId, index) : `${transitionId(stateId, index)}/to${k}`
+}
+
+/** A transition's targets, each named by `name`, `A, B`; `none` for one with no target. */
+export function targetsText(t: Transition, name: (id: string) => string, none: string): string {
+  return t.targets.length ? t.targets.map(name).join(', ') : none
 }
 
 /**

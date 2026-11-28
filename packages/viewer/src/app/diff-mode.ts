@@ -28,7 +28,7 @@ export function diffMode(host: Host, el: HTMLElement, diff: ChartDiff): Controll
     const st = machine ? findState(machine, e.state) : null
     const t = st?.transitions[e.index]
     if (!t) return `${short(e.state)} #${e.index}`
-    return `${short(e.state)}: ${triggerText(t.trigger)}${t.guard ? ` [${t.guard.text}]` : ''} → ${t.target ? short(t.target) : '(internal)'}`
+    return `${short(e.state)}: ${triggerText(t.trigger)}${t.guard ? ` [${t.guard.text}]` : ''} → ${t.targets.length ? t.targets.map(short).join(', ') : '(no target)'}`
   }
 
   function render() {

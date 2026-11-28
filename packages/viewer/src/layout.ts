@@ -5,7 +5,7 @@
 import type { ElkExtendedEdge, ElkNode, LayoutOptions as ElkOptions } from 'elkjs/lib/elk-api.js'
 import type { Machine, State, Ir } from './ir.ts'
 import { own } from './ir.ts'
-import { METRICS, ancestorIds, descendantCount, estimateWidth, isHistory, rootIsVisible, stateRows, transitionId, transitionLines, walkStates } from './model.ts'
+import { METRICS, ancestorIds, descendantCount, estimateWidth, isHistory, rootIsVisible, stateRows, targetEdgeId, transitionId, transitionLines, walkStates } from './model.ts'
 import type { Measure, Row, LabelLine } from './model.ts'
 
 /** What `layoutMachine` needs of elkjs. */
@@ -253,16 +253,20 @@ export function buildElkGraph(ir: Ir, machineName: string, opts: LayoutOptions =
     }
   }
 
-  // Every transition with a target, from the box that stands for its source to the one for its target.
+  // Every transition with a target, from the box that stands for its source to the one for each
+  // of its targets: the first arrow carries the label, the others none.
   walkStates(machine.root, (state) => {
-    state.transitions.forEach((t, index) => {
-      if (t.target === null) return
+    state.transitions.forEach((t, index) => t.targets.forEach((target, k) => {
       const src = view.visible(state.id)
-      const tgt = view.visible(t.target)
+      const tgt = view.visible(target)
       if (!drawn.has(src) || !drawn.has(tgt)) return
       // Inside a collapsed state, between two of its hidden states: not drawn.
       if (src !== state.id && src === tgt) return
-      const id = transitionId(state.id, index)
+      const id = targetEdgeId(state.id, index, k)
+      if (k > 0) {
+        if (src !== tgt) edges.push({ id, sources: [src], targets: [tgt] })
+        return
+      }
       const lb = labelBox(state, index, measure)
       if (src === tgt) {
         // ELK puts the label of a self-loop beside the loop, where it is hard to attribute.
@@ -282,7 +286,7 @@ export function buildElkGraph(ir: Ir, machineName: string, opts: LayoutOptions =
         targets: [tgt],
         labels: [{ id: `${id}/label`, text: lb.lines[0]?.text || '-', width: lb.width, height: lb.height, layoutOptions: LABEL_OPTIONS }],
       })
-    })
+    }))
   })
 
   const node = (d: DrawnState): ElkNode => {

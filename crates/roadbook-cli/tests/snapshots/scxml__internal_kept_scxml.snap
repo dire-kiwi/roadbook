@@ -1,0 +1,59 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  `Session` keeps its timer and its invoke when an internal transition changes the states
+  below it; an external one restarts both.
+-->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Kept" datamodel="roadbook" initial="Kept_Session">
+  <state id="Kept_Session" initial="Kept_Session_Browsing">
+    <onentry>
+      <rb:do action="log">
+        <param name="what" expr="&quot;enter Session&quot;"/>
+      </rb:do>
+      <send id="Kept_Session_after_1" event="roadbook.after.Kept_Session.1" delay="1800000ms"/>
+    </onentry>
+    <onexit>
+      <cancel sendid="Kept_Session_after_1"/>
+      <rb:do action="log">
+        <param name="what" expr="&quot;exit Session&quot;"/>
+      </rb:do>
+    </onexit>
+    <invoke id="Kept_Session_invoke" type="urn:roadbook:task" src="keepAlive"/>
+    <transition event="done.invoke.Kept_Session_invoke" target="Kept_TimedOut"/>
+    <transition event="roadbook.after.Kept_Session.1" target="Kept_TimedOut"/>
+    <transition event="Home" target="Kept_Session_Browsing" type="internal"/>
+    <transition event="Review" target="Kept_Session_Cart_Reviewing" type="internal"/>
+    <transition event="Restart" target="Kept_Session"/>
+    <state id="Kept_Session_Browsing">
+      <onentry>
+        <rb:do action="log">
+          <param name="what" expr="&quot;enter Browsing&quot;"/>
+        </rb:do>
+      </onentry>
+      <onexit>
+        <rb:do action="log">
+          <param name="what" expr="&quot;exit Browsing&quot;"/>
+        </rb:do>
+      </onexit>
+      <transition event="Open" target="Kept_Session_Cart"/>
+    </state>
+    <state id="Kept_Session_Cart" initial="Kept_Session_Cart_Editing">
+      <onentry>
+        <rb:do action="log">
+          <param name="what" expr="&quot;enter Cart&quot;"/>
+        </rb:do>
+      </onentry>
+      <onexit>
+        <rb:do action="log">
+          <param name="what" expr="&quot;exit Cart&quot;"/>
+        </rb:do>
+      </onexit>
+      <state id="Kept_Session_Cart_Editing"/>
+      <state id="Kept_Session_Cart_Reviewing"/>
+    </state>
+  </state>
+  <final id="Kept_TimedOut"/>
+</scxml>

@@ -175,7 +175,7 @@ describe('replay and coverage of history states', () => {
   it('replays a transition to a history state, naming its circle, then the states it restores', () => {
     const replay = new Replay(regions, trace('history-parallel'))
     expect(replay.problems).toEqual([])
-    const at = replay.records.findIndex((r) => r.kind === 'transition' && r.to === 'Panels.Both.Deep')
+    const at = replay.records.findIndex((r) => r.kind === 'transition' && JSON.stringify(r.to) === '["Panels.Both.Deep"]')
     expect(replay.named(at)).toEqual({ states: ['Panels.Both.Deep'], transition: { state: 'Panels.Out', index: 0 } })
     // The restored states are entered after it; the history state never is.
     const view = replay.viewAt(replay.records.length - 1, 'r1')

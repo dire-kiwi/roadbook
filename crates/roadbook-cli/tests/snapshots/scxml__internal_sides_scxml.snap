@@ -1,0 +1,59 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Internal transitions in a parallel state: one written in a region stays in it, so another
+  region takes the same event too; one written in the parallel state exits and enters only
+  the regions it targets.
+-->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Sides" datamodel="roadbook" initial="Sides_P">
+  <parallel id="Sides_P">
+    <onentry>
+      <rb:do action="log">
+        <param name="what" expr="&quot;enter P&quot;"/>
+      </rb:do>
+    </onentry>
+    <onexit>
+      <rb:do action="log">
+        <param name="what" expr="&quot;exit P&quot;"/>
+      </rb:do>
+    </onexit>
+    <!-- SCXML takes an internal transition of a parallel state as external, leaving every region; Roadbook leaves only the regions its targets are in -->
+    <transition event="Redo" target="Sides_P_A_A2" type="internal"/>
+    <!-- SCXML takes an internal transition of a parallel state as external, leaving every region; Roadbook leaves only the regions its targets are in -->
+    <transition event="Reset" target="Sides_P_B" type="internal"/>
+    <state id="Sides_P_A" initial="Sides_P_A_A1">
+      <onentry>
+        <rb:do action="log">
+          <param name="what" expr="&quot;enter A&quot;"/>
+        </rb:do>
+      </onentry>
+      <onexit>
+        <rb:do action="log">
+          <param name="what" expr="&quot;exit A&quot;"/>
+        </rb:do>
+      </onexit>
+      <transition event="T" target="Sides_P_A_A1" type="internal"/>
+      <state id="Sides_P_A_A1"/>
+      <state id="Sides_P_A_A2"/>
+    </state>
+    <state id="Sides_P_B" initial="Sides_P_B_B1">
+      <onentry>
+        <rb:do action="log">
+          <param name="what" expr="&quot;enter B&quot;"/>
+        </rb:do>
+      </onentry>
+      <onexit>
+        <rb:do action="log">
+          <param name="what" expr="&quot;exit B&quot;"/>
+        </rb:do>
+      </onexit>
+      <state id="Sides_P_B_B1">
+        <transition event="T" target="Sides_P_B_B2"/>
+      </state>
+      <state id="Sides_P_B_B2"/>
+    </state>
+  </parallel>
+</scxml>

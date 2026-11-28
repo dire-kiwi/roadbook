@@ -1011,6 +1011,17 @@ fn export_mermaid_snapshots_calls() {
     insta::assert_snapshot!("calls_mermaid", text(&out.stdout));
 }
 
+/// A transition with several targets is an arrow to each, with the same label.
+#[test]
+fn export_mermaid_snapshots_several_targets() {
+    let out = roadbook(
+        &repo(),
+        &["export", "mermaid", "spec/conformance/charts/targets.road"],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    insta::assert_snapshot!("targets_mermaid", text(&out.stdout));
+}
+
 /// A peer's end: `x.ended` on an edge with its guard (from the machine, for one in its body),
 /// and `on x.ended` in a state's description when it has no target, `ignore` included.
 #[test]

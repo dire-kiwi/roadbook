@@ -336,7 +336,7 @@ describe('strict machines', () => {
     expect(stateRows(lock.root).map((r) => `${r.kw}|${r.text}`)).toContain('on Knock|[event.loud] ignore')
     expect(stateRows(findState(lock, 'Lock.Closed')!).map((r) => `${r.kw}|${r.text}`)).toContain('on Close|ignore')
     const panel = panelHtml({ ir, machine: 'Lock', collapsed: new Set<string>() }, { type: 'state', id: 'Lock.Closed' })
-    expect(panel).toContain('ignores it (internal)')
+    expect(panel).toContain('ignores it (no target)')
   })
 
   it('writes the unhandled defect in words', () => {
