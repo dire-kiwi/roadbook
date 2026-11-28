@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/generic.road",
@@ -353,7 +353,7 @@
               }
             ],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -492,34 +492,37 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "fetch",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "best",
-                    "value"
-                  ],
-                  "type": "string",
-                  "text": "best.value"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "fetch",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "best",
+                      "value"
+                    ],
+                    "type": "string",
+                    "text": "best.value"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 41,
+                  "col": 5,
+                  "endLine": 43,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 41,
-                "col": 5,
-                "endLine": 43,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -591,7 +594,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "record",
@@ -629,7 +632,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

@@ -193,6 +193,10 @@ pub struct InvokeEntry {
     /// The task's or machine's name, or for a call the address and the call's name,
     /// `inventory.reserve`.
     pub src: String,
+    /// The `as` of the invoke it runs, when its state has several invokes; `None` names the
+    /// state's one invoke.
+    #[serde(rename = "as", default, skip_serializing_if = "Option::is_none")]
+    pub alias: Option<String>,
 }
 
 /// A call the run has taken and not answered yet: a pending call.
@@ -709,6 +713,9 @@ pub enum Record {
         state: String,
         /// The task's or machine's name, or for a call `inventory.reserve`.
         src: String,
+        /// The invoke's `as`, when its state has several invokes.
+        #[serde(rename = "as", default, skip_serializing_if = "Option::is_none")]
+        alias: Option<String>,
         /// Its arguments.
         args: Object,
     },
@@ -848,6 +855,9 @@ pub struct SavedInvoke {
     pub state: String,
     /// The task's or machine's name, or for a call the address and the call's name.
     pub src: String,
+    /// The `as` of the invoke it runs, when its state has several invokes.
+    #[serde(rename = "as", default, skip_serializing_if = "Option::is_none")]
+    pub alias: Option<String>,
     /// The saved snapshot of its child run (version 4), if it is one that is saved with it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub child: Option<Box<Saved>>,
@@ -949,6 +959,7 @@ impl Saved {
                     id: i.id,
                     state: i.state.clone(),
                     src: i.src.clone(),
+                    alias: i.alias.clone(),
                     child: None,
                 })
                 .collect(),
@@ -1006,6 +1017,7 @@ impl Saved {
                     id: i.id,
                     state: i.state.clone(),
                     src: i.src.clone(),
+                    alias: i.alias.clone(),
                 })
                 .collect(),
             calls: self.calls.clone(),

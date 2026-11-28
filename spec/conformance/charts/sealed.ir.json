@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/sealed.road",
@@ -253,33 +253,36 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "fetch",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "users"
-                  ],
-                  "type": "Logins",
-                  "text": "users"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "fetch",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "users"
+                    ],
+                    "type": "Logins",
+                    "text": "users"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 5,
+                  "endLine": 25,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 23,
-                "col": 5,
-                "endLine": 25,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -343,7 +346,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -358,7 +361,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

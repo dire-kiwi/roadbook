@@ -999,7 +999,7 @@ impl<'a> Uses<'a> {
         for e in s.entry.iter().chain(&s.exit) {
             self.effect(e);
         }
-        if let Some(inv) = &s.invoke {
+        for inv in &s.invokes {
             match inv.kind {
                 InvokeKind::Task => {
                     self.tasks.insert(&inv.src);

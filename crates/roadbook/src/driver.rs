@@ -862,7 +862,7 @@ impl<'a> Driver<'a> {
                 ..
             } => {
                 let delivers = alias.is_some();
-                self.start_invoke(invoke, src, src_kind, delivers, args, false, saved);
+                self.start_invoke(invoke, src, src_kind, (delivers, alias), args, false, saved);
                 Ok(())
             }
             // A spawned child is a machine or task invoke whose emitted events reach this run,
@@ -874,7 +874,7 @@ impl<'a> Driver<'a> {
                 args,
                 saved,
             } => {
-                self.start_invoke(spawn, src, src_kind, true, args, true, saved);
+                self.start_invoke(spawn, src, src_kind, (true, None), args, true, saved);
                 Ok(())
             }
             Command::InvokeCancel { invoke } | Command::SpawnStop { spawn: invoke } => {
@@ -1008,14 +1008,14 @@ impl<'a> Driver<'a> {
     /// events it emits that this run's machine has an `on` for, and a task that `delivers`
     /// gets a live emitter for those events (an inert one otherwise). A machine's child run
     /// restores `saved` if that is given. A task, invoked or spawned, runs with no invoke
-    /// context.
+    /// context. `alias` is the invoke's `as`.
     #[allow(clippy::too_many_arguments)]
     fn start_invoke(
         &mut self,
         invoke: u64,
         src: String,
         src_kind: SrcKind,
-        delivers: bool,
+        (delivers, alias): (bool, Option<String>),
         args: Object,
         spawn: bool,
         saved: Option<Box<Saved>>,
@@ -1063,6 +1063,7 @@ impl<'a> Driver<'a> {
             refs,
             run: self.id.clone(),
             invoke,
+            alias,
             emitter: emitter.clone(),
         };
         let host = self.host;

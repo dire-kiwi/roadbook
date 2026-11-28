@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/gate.road",
@@ -194,7 +194,7 @@
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -459,7 +459,7 @@
             ],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -605,7 +605,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -613,7 +613,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

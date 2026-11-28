@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/internal.road",
@@ -178,7 +178,7 @@
                     ]
                   }
                 ],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -234,7 +234,7 @@
                     "states": [],
                     "entry": [],
                     "exit": [],
-                    "invoke": null,
+                    "invokes": [],
                     "transitions": [],
                     "output": null,
                     "fail": null
@@ -255,7 +255,7 @@
                     "states": [],
                     "entry": [],
                     "exit": [],
-                    "invoke": null,
+                    "invokes": [],
                     "transitions": [],
                     "output": null,
                     "fail": null
@@ -289,7 +289,7 @@
                     ]
                   }
                 ],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [],
                 "output": null,
                 "fail": null
@@ -323,24 +323,27 @@
                 ]
               }
             ],
-            "invoke": {
-              "kind": "task",
-              "src": "keepAlive",
-              "to": null,
-              "as": null,
-              "args": [],
-              "span": {
-                "file": 0,
-                "line": 20,
-                "col": 5,
-                "endLine": 22,
-                "endCol": 6
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "keepAlive",
+                "to": null,
+                "as": null,
+                "args": [],
+                "span": {
+                  "file": 0,
+                  "line": 20,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 6
+                }
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -462,7 +465,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -470,7 +473,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -571,7 +574,7 @@
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -653,7 +656,7 @@
                   }
                 ],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [],
                 "output": null,
                 "fail": null
@@ -661,7 +664,7 @@
             ],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -753,7 +756,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -761,7 +764,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

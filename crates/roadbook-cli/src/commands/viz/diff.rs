@@ -26,6 +26,7 @@
 use std::collections::{HashMap, HashSet};
 
 use roadbook_compiler::Ir;
+use roadbook_compiler::statespace::plain_trigger_text;
 use roadbook_ir::{
     Effect, Invoke, InvokeKind, Machine, Source, State, StateKind, Transition, Trigger, TypeDef,
 };
@@ -591,7 +592,7 @@ fn mark_all(s: &State, status: Status, d: &mut MachineDiff) {
 
 fn shift_state(s: &mut State, offset: u32) {
     s.span.file += offset;
-    if let Some(inv) = &mut s.invoke {
+    for inv in &mut s.invokes {
         inv.span.file += offset;
     }
     for t in &mut s.transitions {
@@ -769,29 +770,22 @@ fn blocks(ts: &[Transition]) -> Vec<Block> {
     out
 }
 
-/// What identifies a trigger for matching: `after` without its delay.
+/// What identifies a trigger for matching: `after` without its delay, and an invoke's outcome
+/// with the `as` of its invoke, so that the outcomes of a state's several invokes stay apart.
 fn trigger_key(t: &Trigger) -> String {
     match t {
         Trigger::After { .. } => "after".into(),
-        other => trigger_text(other),
+        Trigger::InvokeDone { alias: Some(a) } | Trigger::InvokeFail { alias: Some(a), .. } => {
+            format!("{a}: {}", plain_trigger_text(t))
+        }
+        other => plain_trigger_text(other),
     }
 }
 
-/// The trigger as the viewer labels it (`triggerText` in `packages/viewer/src/model.ts`).
-pub fn trigger_text(t: &Trigger) -> String {
-    match t {
-        Trigger::Event { event } => event.clone(),
-        Trigger::Emitted { from, event } => format!("{}.{event}", from.name),
-        Trigger::Call { call } => call.clone(),
-        Trigger::Any => "on *".into(),
-        Trigger::After { delay } => format!("after {}", delay.text),
-        Trigger::Always => "always".into(),
-        Trigger::InvokeFail { error } => format!("fail {error}"),
-        Trigger::SpawnDone { children } => format!("{children}.done"),
-        Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
-        Trigger::Ended { from } => format!("{}.ended", from.name),
-        Trigger::Done | Trigger::InvokeDone => "done".into(),
-    }
+/// The trigger of state `s` as the viewer labels it (`triggerText` in
+/// `packages/viewer/src/model.ts`).
+pub fn trigger_text(s: &State, t: &Trigger) -> String {
+    roadbook_compiler::statespace::trigger_text(s, t)
 }
 
 /// `effectText` in `packages/viewer/src/model.ts`.
@@ -849,6 +843,11 @@ fn effects_text(list: &[Effect]) -> Option<String> {
     (!list.is_empty()).then(|| list.iter().map(effect_text).collect::<Vec<_>>().join("\n"))
 }
 
+/// A state's invokes, one a line.
+fn invokes_text(list: &[Invoke]) -> Option<String> {
+    (!list.is_empty()).then(|| list.iter().map(invoke_text).collect::<Vec<_>>().join("\n"))
+}
+
 fn invoke_text(inv: &Invoke) -> String {
     let args: Vec<&str> = inv.args.iter().map(|a| a.text.as_str()).collect();
     format!(
@@ -903,11 +902,7 @@ fn state_changes(a: &State, b: &State) -> Vec<Change> {
         b.initial.as_deref().map(short),
         a.initial.as_deref().map(short),
     );
-    cmp(
-        "invoke",
-        b.invoke.as_ref().map(invoke_text),
-        a.invoke.as_ref().map(invoke_text),
-    );
+    cmp("invoke", invokes_text(&b.invokes), invokes_text(&a.invokes));
     cmp("entry", effects_text(&b.entry), effects_text(&a.entry));
     cmp("exit", effects_text(&b.exit), effects_text(&a.exit));
     cmp(
@@ -946,8 +941,8 @@ fn transition_changes(a: &State, ai: usize, b: &State, bi: usize) -> Vec<Change>
     };
     cmp(
         "trigger",
-        Some(trigger_text(&tb.trigger)),
-        Some(trigger_text(&ta.trigger)),
+        Some(trigger_text(b, &tb.trigger)),
+        Some(trigger_text(a, &ta.trigger)),
     );
     cmp(
         "guard",
@@ -1697,14 +1692,14 @@ machine Holder(peer: ref Peer, other: ref Peer, third: ref Peer) {
             Some("[event.status == Ended.Defect]")
         );
         assert_eq!(
-            trigger_text(&d.ir.machines["Holder"].root.states[0].transitions[1].trigger),
+            plain_trigger_text(&d.ir.machines["Holder"].root.states[0].transitions[1].trigger),
             "third.ended"
         );
         assert_eq!(at(1).unwrap().status, Status::Added);
         // The removed one is put back after it, in the merged IR.
         assert_eq!(at(2).unwrap().status, Status::Removed);
         assert_eq!(
-            trigger_text(&d.ir.machines["Holder"].root.states[0].transitions[2].trigger),
+            plain_trigger_text(&d.ir.machines["Holder"].root.states[0].transitions[2].trigger),
             "other.ended"
         );
         assert!(d.decls.is_empty(), "{:?}", d.decls);

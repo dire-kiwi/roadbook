@@ -54,6 +54,9 @@ pub struct Invocation {
     pub run: String,
     /// The invoke's id in that run, or the spawned child's: the two share one sequence.
     pub invoke: u64,
+    /// The invoke's `as` name, `None` without one and for a spawned child: what tells two
+    /// invokes of the same task in one state apart.
+    pub alias: Option<String>,
     /// What a task emits its events through (`spec/execution.md#the-emitter`): live for an
     /// invoke with `as` and for a spawned task, inert for an invoke without `as` and for a
     /// machine.

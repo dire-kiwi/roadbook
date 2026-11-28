@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/shop/checkout.road",
@@ -615,41 +615,44 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "chargeCard",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "order"
-                  ],
-                  "type": "Order",
-                  "text": "order"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "user"
-                  ],
-                  "type": "User",
-                  "text": "user"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "chargeCard",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "order"
+                    ],
+                    "type": "Order",
+                    "text": "order"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "user"
+                    ],
+                    "type": "User",
+                    "text": "user"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 13,
+                  "col": 5,
+                  "endLine": 20,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 13,
-                "col": 5,
-                "endLine": 20,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -682,6 +685,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "CardDeclined"
                 },
                 "group": 1,
@@ -715,6 +719,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "GatewayUnavailable"
                 },
                 "group": 2,
@@ -756,6 +761,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "GatewayUnavailable"
                 },
                 "group": 2,
@@ -820,7 +826,7 @@
               }
             ],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -877,7 +883,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -905,7 +911,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -933,7 +939,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -946,7 +952,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

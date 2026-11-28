@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/teller.road",
@@ -305,7 +305,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -401,7 +401,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -409,7 +409,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -571,7 +571,7 @@
                   }
                 ],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -629,41 +629,44 @@
             ],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "machine",
-              "src": "Teller",
-              "to": null,
-              "as": "teller",
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "code"
-                  ],
-                  "type": "string",
-                  "text": "code"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "owner"
-                  ],
-                  "type": "Credentials",
-                  "text": "owner"
+            "invokes": [
+              {
+                "kind": "machine",
+                "src": "Teller",
+                "to": null,
+                "as": "teller",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "code"
+                    ],
+                    "type": "string",
+                    "text": "code"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "owner"
+                    ],
+                    "type": "Credentials",
+                    "text": "owner"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 32,
+                  "col": 5,
+                  "endLine": 34,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 32,
-                "col": 5,
-                "endLine": 34,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": "teller"
                 },
                 "group": 0,
                 "guard": null,
@@ -758,7 +761,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -766,7 +769,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -907,7 +910,7 @@
               }
             ],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1035,7 +1038,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -1043,7 +1046,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

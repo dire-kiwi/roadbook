@@ -229,10 +229,23 @@ fn top_level_runs_are_started_in_order() {
                 c.name
             );
             fn has_call(s: &roadbook_ir::State) -> bool {
-                s.invoke
-                    .as_ref()
-                    .is_some_and(|i| i.kind == roadbook_ir::InvokeKind::Call)
+                s.invokes
+                    .iter()
+                    .any(|i| i.kind == roadbook_ir::InvokeKind::Call)
                     || s.states.iter().any(has_call)
+            }
+            fn has_several_invokes(s: &roadbook_ir::State) -> bool {
+                s.has_several_invokes() || s.states.iter().any(has_several_invokes)
+            }
+            let invokes = ir.machines.values().any(|m| has_several_invokes(&m.root));
+            assert_eq!(
+                invokes,
+                requires("invokes"),
+                "{}: `requires` must list `invokes` exactly when its chart has a state with several invokes",
+                c.name
+            );
+            if invokes {
+                assert!(messaging, "{}: `invokes` needs `messaging` too", c.name);
             }
             let calls = ir
                 .machines

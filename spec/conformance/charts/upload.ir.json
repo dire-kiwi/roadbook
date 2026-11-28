@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/upload.road",
@@ -169,29 +169,31 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "sendChunk",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "offset"
-                  ],
-                  "type": "int",
-                  "text": "offset"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "sendChunk",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "offset"
+                    ],
+                    "type": "int",
+                    "text": "offset"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 24,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 22,
-                "col": 5,
-                "endLine": 24,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
@@ -237,7 +239,8 @@
               },
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 1,
                 "guard": null,
@@ -329,7 +332,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -371,7 +374,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -386,7 +389,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -505,33 +508,36 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "machine",
-              "src": "Upload",
-              "to": null,
-              "as": "upload",
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "size"
-                  ],
-                  "type": "int",
-                  "text": "size"
+            "invokes": [
+              {
+                "kind": "machine",
+                "src": "Upload",
+                "to": null,
+                "as": "upload",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "size"
+                    ],
+                    "type": "int",
+                    "text": "size"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 46,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 44,
-                "col": 5,
-                "endLine": 46,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": "upload"
                 },
                 "group": 0,
                 "guard": null,
@@ -706,7 +712,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -721,7 +727,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -798,33 +804,36 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "machine",
-              "src": "Upload",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "size"
-                  ],
-                  "type": "int",
-                  "text": "size"
+            "invokes": [
+              {
+                "kind": "machine",
+                "src": "Upload",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "size"
+                    ],
+                    "type": "int",
+                    "text": "size"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 62,
+                  "col": 5,
+                  "endLine": 64,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 62,
-                "col": 5,
-                "endLine": 64,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -874,7 +883,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -889,7 +898,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -1026,7 +1035,7 @@
                   }
                 ],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [],
                 "output": null,
                 "fail": null
@@ -1034,33 +1043,36 @@
             ],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "machine",
-              "src": "Upload",
-              "to": null,
-              "as": "upload",
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "size"
-                  ],
-                  "type": "int",
-                  "text": "size"
+            "invokes": [
+              {
+                "kind": "machine",
+                "src": "Upload",
+                "to": null,
+                "as": "upload",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "size"
+                    ],
+                    "type": "int",
+                    "text": "size"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 80,
+                  "col": 5,
+                  "endLine": 82,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 80,
-                "col": 5,
-                "endLine": 82,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": "upload"
                 },
                 "group": 0,
                 "guard": null,
@@ -1164,7 +1176,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -1179,7 +1191,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

@@ -173,7 +173,7 @@ pub fn diagram(name: &str, m: &Machine) -> String {
     let wrap = !root.transitions.is_empty()
         || !root.entry.is_empty()
         || !root.exit.is_empty()
-        || root.invoke.is_some();
+        || !root.invokes.is_empty();
     if wrap {
         // The machine has transitions of its own: draw it as a state around the others.
         w.line(1, &format!("[*] --> {}", w.id(&root.id)));
@@ -383,25 +383,15 @@ fn effect(e: &Effect) -> String {
     }
 }
 
-fn trigger(t: &Trigger) -> String {
-    match t {
-        Trigger::Event { event } => event.clone(),
-        Trigger::Emitted { from, event } => format!("{}.{event}", from.name),
-        Trigger::Call { call } => call.clone(),
-        Trigger::Any => "on *".into(),
-        Trigger::After { delay } => format!("after {}", delay.text),
-        Trigger::Always => "always".into(),
-        Trigger::Done | Trigger::InvokeDone => "done".into(),
-        Trigger::InvokeFail { error } => format!("fail {error}"),
-        Trigger::SpawnDone { children } => format!("{children}.done"),
-        Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
-        Trigger::Ended { from } => format!("{}.ended", from.name),
-    }
+/// A trigger in state `s` as the viewer labels it: `sync: done` for an outcome of one of several
+/// invokes.
+fn trigger(s: &State, t: &Trigger) -> String {
+    roadbook_compiler::statespace::trigger_text(s, t)
 }
 
 /// `trigger [guard] / effects`, with `[else]` for the last unguarded branch of a block.
 fn label(s: &State, t: &Transition) -> String {
-    let mut text = trigger(&t.trigger);
+    let mut text = trigger(s, &t.trigger);
     match &t.guard {
         Some(g) => text.push_str(&format!(" [{}]", g.text)),
         None => {
@@ -422,7 +412,7 @@ fn label(s: &State, t: &Transition) -> String {
 /// The lines Mermaid shows inside a state box.
 fn description(s: &State) -> Vec<String> {
     let mut out = Vec::new();
-    if let Some(inv) = &s.invoke {
+    for inv in &s.invokes {
         let args: Vec<&str> = inv.args.iter().map(|a| a.text.as_str()).collect();
         let kind = if inv.kind == InvokeKind::Machine {
             "machine "
@@ -449,12 +439,12 @@ fn description(s: &State) -> Vec<String> {
             | Trigger::SpawnDone { .. }
             | Trigger::SpawnFail { .. }
             | Trigger::Ended { .. } => {
-                format!("on {}", trigger(&t.trigger))
+                format!("on {}", trigger(s, &t.trigger))
             }
-            other => trigger(other),
+            other => trigger(s, other),
         };
         let rest = label(s, t);
-        let rest = rest.strip_prefix(&trigger(&t.trigger)).unwrap_or(&rest);
+        let rest = rest.strip_prefix(&trigger(s, &t.trigger)).unwrap_or(&rest);
         // No target and no effects: an `ignore`.
         let ignore = if t.effects.is_empty() { " ignore" } else { "" };
         out.push(format!("{head}{rest}{ignore}"));

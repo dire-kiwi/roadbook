@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "spec/conformance/charts/retry.road",
@@ -287,33 +287,36 @@
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "fetch",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "id"
-                      ],
-                      "type": "string",
-                      "text": "id"
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "fetch",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "id"
+                        ],
+                        "type": "string",
+                        "text": "id"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 25,
+                      "col": 5,
+                      "endLine": 29,
+                      "endCol": 6
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 25,
-                    "col": 5,
-                    "endLine": 29,
-                    "endCol": 6
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -346,6 +349,7 @@
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "Busy"
                     },
                     "group": 1,
@@ -414,6 +418,7 @@
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "Busy"
                     },
                     "group": 1,
@@ -434,6 +439,7 @@
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "Gone"
                     },
                     "group": 2,
@@ -485,7 +491,7 @@
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -565,7 +571,7 @@
                 ]
               }
             ],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -612,7 +618,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -668,33 +674,36 @@
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "save",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "body"
-                      ],
-                      "type": "string",
-                      "text": "body"
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "save",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "body"
+                        ],
+                        "type": "string",
+                        "text": "body"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 37,
+                      "col": 5,
+                      "endLine": 40,
+                      "endCol": 6
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 37,
-                    "col": 5,
-                    "endLine": 40,
-                    "endCol": 6
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -714,6 +723,7 @@
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "*"
                     },
                     "group": 1,
@@ -782,6 +792,7 @@
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "*"
                     },
                     "group": 1,
@@ -817,7 +828,7 @@
               }
             ],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -838,7 +849,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -866,7 +877,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -892,7 +903,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -930,7 +941,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -943,7 +954,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

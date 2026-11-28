@@ -3,7 +3,7 @@
 use std::collections::VecDeque;
 
 use roadbook_ir::{
-    Address, AddressKind, ChildrenKind, Effect, InvokeKind, Machine, ReplyOutcome, State,
+    Address, AddressKind, ChildrenKind, Effect, Invoke, InvokeKind, Machine, ReplyOutcome, State,
     StateKind, Transition, Trigger, TypeRef, UNANSWERED,
 };
 use serde_json::{Map, Value};
@@ -226,6 +226,25 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         self.idx.by_id[id]
     }
 
+    /// The invoke a snapshot entry runs: the invoke of its state with its `as`, or the
+    /// state's one invoke for an entry without one.
+    fn invoke_of(&self, e: &InvokeEntry) -> Option<&'p Invoke> {
+        let state = self.state(self.index_of(&e.state));
+        match &e.alias {
+            Some(a) => state.invoke_named(Some(a)),
+            None => state.invokes.first(),
+        }
+    }
+
+    /// Whether snapshot entry `e` runs the invoke that `address`, of kind `child` or `task`,
+    /// names: the invoke of the address's state with the address's name.
+    fn entry_named(&self, e: &InvokeEntry, address: &Address) -> bool {
+        Some(&e.state) == address.state.as_ref()
+            && self
+                .invoke_of(e)
+                .is_some_and(|i| i.alias.as_deref() == Some(address.name.as_str()))
+    }
+
     /// Emits a trace record, redacted (`spec/trace.md#redaction`). An `event`, `dropped` or
     /// `stale` record holds an input [`Ctx::take`] has already redacted.
     fn trace(&mut self, mut record: Record) {
@@ -328,14 +347,25 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         }
         for s in self.active.clone() {
             let state = self.state(s);
-            if let Some(inv) = self.snap.invokes.iter().find(|i| i.state == state.id) {
-                let id = inv.id;
+            let mut mine: Vec<InvokeEntry> = self
+                .snap
+                .invokes
+                .iter()
+                .filter(|i| i.state == state.id)
+                .cloned()
+                .collect();
+            mine.sort_by_key(|i| i.id);
+            for inv in mine {
                 let child = saved
                     .invokes
                     .iter()
-                    .find(|i| i.id == id)
+                    .find(|i| i.id == inv.id)
                     .and_then(|i| i.child.clone());
-                self.start_invoke(s, id, child)?;
+                let k = self
+                    .invoke_of(&inv)
+                    .and_then(|v| state.invokes.iter().position(|x| std::ptr::eq(x, v)))
+                    .unwrap_or(0);
+                self.start_invoke(s, k, inv.id, child)?;
             }
             let mut timers: Vec<_> = saved
                 .timers
@@ -391,6 +421,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 };
                 let inv = self.snap.invokes.remove(pos);
                 let owner = self.index_of(&inv.state);
+                // The outcomes of this invoke are the transitions whose trigger has its `as`.
+                let invoke = self.invoke_of(&inv);
+                let alias = invoke.and_then(|i| i.alias.clone());
                 match &input {
                     Input::InvokeDefect { defect, .. } => {
                         let defect = defect.clone();
@@ -403,13 +436,18 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     Input::InvokeDone { value, .. } => {
                         bound = vec![("result", value.clone())];
                         chosen = self
-                            .select_in(owner, &bound, |t| matches!(t, Trigger::InvokeDone), None)?
+                            .select_in(
+                                owner,
+                                &bound,
+                                |t| matches!(t, Trigger::InvokeDone { alias: a } if *a == alias),
+                                None,
+                            )?
                             .into_iter()
                             .collect();
                     }
                     Input::InvokeFail { error, .. } => {
                         let tag = error.get("_tag").and_then(Value::as_str).unwrap_or("");
-                        if !self.invoke_declares(owner, &inv.src, tag) {
+                        if !self.invoke_declares(invoke, &inv.src, tag) {
                             return Err(Defect::Undeclared {
                                 error: tag.to_owned(),
                             });
@@ -417,15 +455,17 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                         let tag = tag.to_owned();
                         bound = vec![("error", error.clone())];
                         let s = self.state(owner);
-                        let listed = s.transitions.iter().any(
-                            |t| matches!(&t.trigger, Trigger::InvokeFail { error } if *error == tag),
-                        );
+                        let listed = s.transitions.iter().any(|t| {
+                            matches!(&t.trigger, Trigger::InvokeFail { alias: a, error } if *a == alias && *error == tag)
+                        });
                         let want = if listed { tag } else { "*".to_owned() };
                         chosen = self
                             .select_in(
                                 owner,
                                 &bound,
-                                |t| matches!(t, Trigger::InvokeFail { error } if *error == want),
+                                |t| {
+                                    matches!(t, Trigger::InvokeFail { alias: a, error } if *a == alias && *error == want)
+                                },
                                 None,
                             )?
                             .into_iter()
@@ -636,11 +676,11 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             .unwrap_or_default()
     }
 
-    /// Whether the invoke of state `owner`, of `src`, declares the error `tag`. A call's are
-    /// its declared errors and `Unanswered`.
-    fn invoke_declares(&self, owner: usize, src: &str, tag: &str) -> bool {
+    /// Whether `invoke`, of `src`, declares the error `tag`. A call's are its declared errors
+    /// and `Unanswered`.
+    fn invoke_declares(&self, invoke: Option<&Invoke>, src: &str, tag: &str) -> bool {
         let ir = self.program.ir();
-        if let Some(inv) = &self.state(owner).invoke
+        if let Some(inv) = invoke
             && inv.kind == InvokeKind::Call
         {
             let call = inv
@@ -928,7 +968,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 self.snap
                     .invokes
                     .iter()
-                    .any(|e| e.id == i && Some(&e.state) == address.state.as_ref())
+                    .any(|e| e.id == i && self.entry_named(e, address))
             }),
             AddressKind::Children => invoke.is_some_and(|i| {
                 self.snap
@@ -959,7 +999,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 .snap
                 .invokes
                 .iter()
-                .any(|e| e.id == invoke && Some(&e.state) == address.state.as_ref()),
+                .any(|e| e.id == invoke && self.entry_named(e, address)),
             AddressKind::Children => {
                 self.task_collection(&address.name)
                     && self
@@ -1099,8 +1139,17 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
 
     fn exit_state(&mut self, s: usize) -> R {
         let id = self.state(s).id.clone();
-        if let Some(pos) = self.snap.invokes.iter().position(|i| i.state == id) {
-            let inv = self.snap.invokes.remove(pos);
+        let mut cancelled: Vec<InvokeEntry> = Vec::new();
+        self.snap.invokes.retain(|i| {
+            if i.state == id {
+                cancelled.push(i.clone());
+                false
+            } else {
+                true
+            }
+        });
+        cancelled.sort_by_key(|i| i.id);
+        for inv in cancelled {
             self.trace(Record::InvokeCancelled {
                 invoke: inv.id,
                 state: id.clone(),
@@ -1297,7 +1346,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                                 .snap
                                 .invokes
                                 .iter()
-                                .find(|i| Some(&i.state) == to.state.as_ref())
+                                .find(|i| self.entry_named(i, to))
                                 .map(|i| i.id);
                             let value = self.eval(value, implicit)?;
                             let Some(inv) = inv else {
@@ -1526,15 +1575,16 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 continue;
             }
             let state = self.state(s);
-            if let Some(inv) = &state.invoke {
+            for (k, inv) in state.invokes.iter().enumerate() {
                 let id = self.snap.next_invoke;
                 self.snap.next_invoke += 1;
                 self.snap.invokes.push(InvokeEntry {
                     id,
                     state: state.id.clone(),
                     src: inv.callee(),
+                    alias: inv.alias.clone().filter(|_| state.has_several_invokes()),
                 });
-                self.start_invoke(s, id, None)?;
+                self.start_invoke(s, k, id, None)?;
             }
             let mut seen = Vec::new();
             for (i, t) in state.transitions.iter().enumerate() {
@@ -1572,12 +1622,12 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         Ok(())
     }
 
-    /// Evaluates the arguments of state `s`'s invoke and starts it as invoke `id`: its
+    /// Evaluates the arguments of state `s`'s `k`th invoke and starts it as invoke `id`: its
     /// `invoke.started` record and `invoke.start` command, which carries `saved`, the saved
     /// snapshot of its child run when it is restored.
-    fn start_invoke(&mut self, s: usize, id: u64, saved: Option<Box<Saved>>) -> R {
+    fn start_invoke(&mut self, s: usize, k: usize, id: u64, saved: Option<Box<Saved>>) -> R {
         let state = self.state(s);
-        let Some(inv) = &state.invoke else {
+        let Some(inv) = state.invokes.get(k) else {
             return Ok(());
         };
         let ir = self.program.ir();
@@ -1603,6 +1653,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             invoke: id,
             state: state.id.clone(),
             src: inv.callee(),
+            alias: inv.alias.clone().filter(|_| state.has_several_invokes()),
             args: args.clone(),
         });
         self.cmds.push(Command::InvokeStart {
