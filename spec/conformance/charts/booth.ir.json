@@ -108,6 +108,7 @@
         "params": [],
         "vars": [],
         "initial": "Booth.Open",
+        "default": [],
         "states": [
           {
             "id": "Booth.Open",
@@ -124,6 +125,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -368,6 +370,7 @@
         "params": [],
         "vars": [],
         "initial": "Guest.Booking",
+        "default": [],
         "states": [
           {
             "id": "Guest.Booking",
@@ -384,6 +387,7 @@
             "params": [],
             "vars": [],
             "initial": "Guest.Booking.Attempt",
+            "default": [],
             "states": [
               {
                 "id": "Guest.Booking.Attempt",
@@ -400,6 +404,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -604,6 +609,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -674,6 +680,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -705,6 +712,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

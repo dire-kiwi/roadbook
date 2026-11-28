@@ -157,6 +157,7 @@
         "params": [],
         "vars": [],
         "initial": "Confirm.Requesting",
+        "default": [],
         "states": [
           {
             "id": "Confirm.Requesting",
@@ -173,6 +174,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -285,6 +287,7 @@
               }
             ],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -518,6 +521,7 @@
             ],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -556,6 +560,7 @@
             ],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

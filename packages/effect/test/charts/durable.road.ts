@@ -257,6 +257,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Pipeline.One",
+        "default": [],
         "states": [
           {
             "id": "Pipeline.One",
@@ -273,6 +274,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -385,6 +387,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -484,6 +487,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -589,6 +593,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -688,6 +693,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -807,6 +813,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Parent.Running",
+        "default": [],
         "states": [
           {
             "id": "Parent.Running",
@@ -823,6 +830,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -986,6 +994,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1053,6 +1062,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1084,6 +1094,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1218,6 +1229,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Counter.Counting",
+        "default": [],
         "states": [
           {
             "id": "Counter.Counting",
@@ -1234,6 +1246,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1354,6 +1367,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1419,6 +1433,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Adder.Working",
+        "default": [],
         "states": [
           {
             "id": "Adder.Working",
@@ -1435,6 +1450,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1533,6 +1549,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1610,6 +1627,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1697,6 +1715,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Watcher.Working",
+        "default": [],
         "states": [
           {
             "id": "Watcher.Working",
@@ -1713,6 +1732,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1780,6 +1800,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1988,6 +2009,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Session.Waiting",
+        "default": [],
         "states": [
           {
             "id": "Session.Waiting",
@@ -2004,6 +2026,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2165,6 +2188,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2267,6 +2291,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2298,6 +2323,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2500,6 +2526,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Hub.Serving",
+        "default": [],
         "states": [
           {
             "id": "Hub.Serving",
@@ -2516,6 +2543,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2840,6 +2868,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2933,6 +2962,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Relay.Running",
+        "default": [],
         "states": [
           {
             "id": "Relay.Running",
@@ -2949,6 +2979,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -3043,6 +3074,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -3130,6 +3162,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Tracker.Working",
+        "default": [],
         "states": [
           {
             "id": "Tracker.Working",
@@ -3146,6 +3179,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -3283,6 +3317,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -3420,6 +3455,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Crew.Working",
+        "default": [],
         "states": [
           {
             "id": "Crew.Working",
@@ -3436,6 +3472,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -3621,6 +3658,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -3732,6 +3770,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Nagger.Asleep",
+        "default": [],
         "states": [
           {
             "id": "Nagger.Asleep",
@@ -3748,6 +3787,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -3812,6 +3852,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -3898,6 +3939,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

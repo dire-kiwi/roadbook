@@ -579,6 +579,12 @@ pub struct State {
     pub vars: Vec<Var>,
     /// Id of the child entered first; set exactly when `kind` is `compound`.
     pub initial: Option<String>,
+    /// The states a history state enters when it has recorded nothing, in the order written:
+    /// `[]` for one written without a default (which enters its parent's default entry), and
+    /// for every state that is not a history state. Each is a proper descendant of the
+    /// history state's parent; more than one only for a parallel parent, each in a different
+    /// region.
+    pub default: Vec<String>,
     /// Child states, in source order.
     pub states: Vec<State>,
     /// Effects run on entry, in source order.

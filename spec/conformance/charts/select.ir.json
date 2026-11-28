@@ -201,6 +201,7 @@
         "params": [],
         "vars": [],
         "initial": "Select.Picking",
+        "default": [],
         "states": [
           {
             "id": "Select.Picking",
@@ -217,6 +218,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -348,6 +350,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -481,6 +484,7 @@
             "params": [],
             "vars": [],
             "initial": "Select.Form.Name",
+            "default": [],
             "states": [
               {
                 "id": "Select.Form.Name",
@@ -497,6 +501,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -542,6 +547,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -719,6 +725,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -838,6 +845,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

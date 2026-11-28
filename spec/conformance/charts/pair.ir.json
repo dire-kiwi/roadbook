@@ -87,6 +87,7 @@
         "params": [],
         "vars": [],
         "initial": "Receiver.WaitingFirst",
+        "default": [],
         "states": [
           {
             "id": "Receiver.WaitingFirst",
@@ -103,6 +104,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -148,6 +150,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -193,6 +196,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -287,6 +291,7 @@
         "params": [],
         "vars": [],
         "initial": "Sender.Idle",
+        "default": [],
         "states": [
           {
             "id": "Sender.Idle",
@@ -303,6 +308,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -398,6 +404,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

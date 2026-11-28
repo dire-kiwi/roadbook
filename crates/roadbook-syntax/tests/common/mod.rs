@@ -91,6 +91,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  event A\n  event B\n  event C { reason: string }\n  on A | B -> S\n  state S {\n    on B | C | A if n < 3 -> S  set r = event.reason\n    on A|C {\n      if ok -> S\n      else ignore\n    }\n  }\n}\n",
     ),
     (
+        "history",
+        "machine M() {\n  state A {\n    initial B\n    history H\n    history Back -> C\n    deep history D -> C.X\n    state B {}\n    state C {\n      initial X\n      state X {}\n    }\n  }\n  parallel state P {\n    deep history H -> R1.X, R2.Y\n    state R1 { initial X  state X {} }\n    state R2 { initial Y  state Y {} }\n  }\n}\n",
+    ),
+    (
         "ended",
         "machine M(peer: ref Peer) {\n  var ended: int = 0\n  on peer.ended if event.status == Ended.Defect -> A\n  state A {\n    on peer.ended {\n      if event.status == Ended.Done -> A  set ended = ended + 1\n      else -> A\n    }\n  }\n}\n",
     ),

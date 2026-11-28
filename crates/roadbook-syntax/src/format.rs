@@ -688,13 +688,12 @@ impl Formatter<'_> {
             Item::Transition(t) => self.transition(t, indent),
             Item::History(h) => {
                 let kw = if h.deep { "deep history" } else { "history" };
-                self.row(
-                    whole,
-                    indent,
-                    vec![format!("{kw} {}", h.name.name)],
-                    "",
-                    None,
-                );
+                let mut text = format!("{kw} {}", h.name.name);
+                if !h.default.is_empty() {
+                    let targets: Vec<_> = h.default.iter().map(path_text).collect();
+                    text = format!("{text} -> {}", targets.join(", "));
+                }
+                self.row(whole, indent, vec![text], "", None);
             }
             Item::Check(c) => {
                 let text = format!("check {}", property_text(&c.property));

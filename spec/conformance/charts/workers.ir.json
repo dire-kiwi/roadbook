@@ -94,6 +94,7 @@
         "params": [],
         "vars": [],
         "initial": "Logbook.Open",
+        "default": [],
         "states": [
           {
             "id": "Logbook.Open",
@@ -110,6 +111,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -191,6 +193,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -274,6 +277,7 @@
         "params": [],
         "vars": [],
         "initial": "Worker.Working",
+        "default": [],
         "states": [
           {
             "id": "Worker.Working",
@@ -290,6 +294,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -335,6 +340,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -455,6 +461,7 @@
         "params": [],
         "vars": [],
         "initial": "Boss.Watching",
+        "default": [],
         "states": [
           {
             "id": "Boss.Watching",
@@ -471,6 +478,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -621,6 +629,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

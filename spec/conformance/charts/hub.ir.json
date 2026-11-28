@@ -220,6 +220,7 @@
         "params": [],
         "vars": [],
         "initial": "Session.Open",
+        "default": [],
         "states": [
           {
             "id": "Session.Open",
@@ -236,6 +237,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -429,6 +431,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -460,6 +463,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -801,6 +805,7 @@
         "params": [],
         "vars": [],
         "initial": "Hub.Serving",
+        "default": [],
         "states": [
           {
             "id": "Hub.Serving",
@@ -817,6 +822,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1531,6 +1537,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1708,6 +1715,7 @@
         "params": [],
         "vars": [],
         "initial": "Pool.Running",
+        "default": [],
         "states": [
           {
             "id": "Pool.Running",
@@ -1724,6 +1732,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2034,6 +2043,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

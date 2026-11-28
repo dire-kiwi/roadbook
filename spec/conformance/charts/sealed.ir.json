@@ -239,6 +239,7 @@
         "params": [],
         "vars": [],
         "initial": "Keep.Fetching",
+        "default": [],
         "states": [
           {
             "id": "Keep.Fetching",
@@ -255,6 +256,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -355,6 +357,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

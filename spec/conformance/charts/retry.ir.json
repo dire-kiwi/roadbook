@@ -259,6 +259,7 @@
         "params": [],
         "vars": [],
         "initial": "Fetcher.Loading",
+        "default": [],
         "states": [
           {
             "id": "Fetcher.Loading",
@@ -275,6 +276,7 @@
             "params": [],
             "vars": [],
             "initial": "Fetcher.Loading.Attempt",
+            "default": [],
             "states": [
               {
                 "id": "Fetcher.Loading.Attempt",
@@ -291,6 +293,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -509,6 +512,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -642,6 +646,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -687,6 +692,7 @@
             "params": [],
             "vars": [],
             "initial": "Fetcher.Saving.Attempt",
+            "default": [],
             "states": [
               {
                 "id": "Fetcher.Saving.Attempt",
@@ -703,6 +709,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -888,6 +895,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -919,6 +927,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -947,6 +956,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -988,6 +998,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

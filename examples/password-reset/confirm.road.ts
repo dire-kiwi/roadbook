@@ -449,6 +449,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "ConfirmPasswordReset.Working",
+        "default": [],
         "states": [
           {
             "id": "ConfirmPasswordReset.Working",
@@ -465,6 +466,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": "ConfirmPasswordReset.Working.LookingUp",
+            "default": [],
             "states": [
               {
                 "id": "ConfirmPasswordReset.Working.LookingUp",
@@ -481,6 +483,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -648,6 +651,7 @@ const ir: unknown = {
                   }
                 ],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -765,6 +769,7 @@ const ir: unknown = {
                 ],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -872,6 +877,7 @@ const ir: unknown = {
                 ],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -997,6 +1003,7 @@ const ir: unknown = {
                 ],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -1107,6 +1114,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1136,6 +1144,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1178,6 +1187,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1227,6 +1237,7 @@ const ir: unknown = {
             ],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1266,6 +1277,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1308,6 +1320,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

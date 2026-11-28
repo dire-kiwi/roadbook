@@ -155,6 +155,7 @@
         "params": [],
         "vars": [],
         "initial": "Upload.Sending",
+        "default": [],
         "states": [
           {
             "id": "Upload.Sending",
@@ -171,6 +172,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -345,6 +347,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -390,6 +393,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -514,6 +518,7 @@
         "params": [],
         "vars": [],
         "initial": "Publish.Uploading",
+        "default": [],
         "states": [
           {
             "id": "Publish.Uploading",
@@ -530,6 +535,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -746,6 +752,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -828,6 +835,7 @@
         "params": [],
         "vars": [],
         "initial": "Quiet.Uploading",
+        "default": [],
         "states": [
           {
             "id": "Quiet.Uploading",
@@ -844,6 +852,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -929,6 +938,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1039,6 +1049,7 @@
         "params": [],
         "vars": [],
         "initial": "Eager.Uploading",
+        "default": [],
         "states": [
           {
             "id": "Eager.Uploading",
@@ -1055,6 +1066,7 @@
             "params": [],
             "vars": [],
             "initial": "Eager.Uploading.Starting",
+            "default": [],
             "states": [
               {
                 "id": "Eager.Uploading.Starting",
@@ -1071,6 +1083,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -1238,6 +1251,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

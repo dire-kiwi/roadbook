@@ -1,0 +1,85 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          strict: false
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - initial: B
+                  - history:
+                      deep: false
+                      name: H
+                  - history:
+                      deep: false
+                      name: Back
+                      default:
+                        - dot: false
+                          path:
+                            - C
+                  - history:
+                      deep: true
+                      name: D
+                      default:
+                        - dot: false
+                          path:
+                            - C
+                            - X
+                  - state:
+                      kind: normal
+                      name: B
+                      body: []
+                  - state:
+                      kind: normal
+                      name: C
+                      body:
+                        - initial: X
+                        - state:
+                            kind: normal
+                            name: X
+                            body: []
+            - state:
+                kind: parallel
+                name: P
+                body:
+                  - history:
+                      deep: true
+                      name: H
+                      default:
+                        - dot: false
+                          path:
+                            - R1
+                            - X
+                        - dot: false
+                          path:
+                            - R2
+                            - Y
+                  - state:
+                      kind: normal
+                      name: R1
+                      body:
+                        - initial: X
+                        - state:
+                            kind: normal
+                            name: X
+                            body: []
+                  - state:
+                      kind: normal
+                      name: R2
+                      body:
+                        - initial: Y
+                        - state:
+                            kind: normal
+                            name: Y
+                            body: []
+comments: []

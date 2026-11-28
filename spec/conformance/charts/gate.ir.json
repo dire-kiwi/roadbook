@@ -166,6 +166,7 @@
         "params": [],
         "vars": [],
         "initial": "Gate.Open",
+        "default": [],
         "states": [
           {
             "id": "Gate.Open",
@@ -182,6 +183,7 @@
             "params": [],
             "vars": [],
             "initial": "Gate.Open.Waiting",
+            "default": [],
             "states": [
               {
                 "id": "Gate.Open.Waiting",
@@ -198,6 +200,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -628,6 +631,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

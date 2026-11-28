@@ -98,6 +98,7 @@
         "params": [],
         "vars": [],
         "initial": "Door.Shut",
+        "default": [],
         "states": [
           {
             "id": "Door.Shut",
@@ -114,6 +115,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -198,6 +200,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -328,6 +331,7 @@
         "params": [],
         "vars": [],
         "initial": "Visitor.Idle",
+        "default": [],
         "states": [
           {
             "id": "Visitor.Idle",
@@ -344,6 +348,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -389,6 +394,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

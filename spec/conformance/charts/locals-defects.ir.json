@@ -57,6 +57,7 @@
         "params": [],
         "vars": [],
         "initial": "Unset.A",
+        "default": [],
         "states": [
           {
             "id": "Unset.A",
@@ -88,6 +89,7 @@
               }
             ],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -176,6 +178,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

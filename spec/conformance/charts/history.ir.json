@@ -168,6 +168,7 @@
         "params": [],
         "vars": [],
         "initial": "Editor.Work",
+        "default": [],
         "states": [
           {
             "id": "Editor.Work",
@@ -184,6 +185,7 @@
             "params": [],
             "vars": [],
             "initial": "Editor.Work.Draft",
+            "default": [],
             "states": [
               {
                 "id": "Editor.Work.Shallow",
@@ -200,6 +202,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -223,6 +226,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -246,6 +250,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -338,6 +343,7 @@
                 "params": [],
                 "vars": [],
                 "initial": "Editor.Work.Review.Read",
+                "default": [],
                 "states": [
                   {
                     "id": "Editor.Work.Review.Read",
@@ -354,6 +360,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -399,6 +406,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -618,6 +626,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -778,6 +787,7 @@
         "params": [],
         "vars": [],
         "initial": "Steps.Flow",
+        "default": [],
         "states": [
           {
             "id": "Steps.Flow",
@@ -794,6 +804,7 @@
             "params": [],
             "vars": [],
             "initial": "Steps.Flow.S1",
+            "default": [],
             "states": [
               {
                 "id": "Steps.Flow.H",
@@ -810,6 +821,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -833,6 +845,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -878,6 +891,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -959,6 +973,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1035,6 +1050,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1119,6 +1135,7 @@
         "params": [],
         "vars": [],
         "initial": "Bounce.P",
+        "default": [],
         "states": [
           {
             "id": "Bounce.P",
@@ -1135,6 +1152,7 @@
             "params": [],
             "vars": [],
             "initial": "Bounce.P.A",
+            "default": [],
             "states": [
               {
                 "id": "Bounce.P.H",
@@ -1151,6 +1169,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1174,6 +1193,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1219,6 +1239,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1305,6 +1326,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

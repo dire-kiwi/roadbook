@@ -153,6 +153,7 @@
         "params": [],
         "vars": [],
         "initial": "Catalog.Open",
+        "default": [],
         "states": [
           {
             "id": "Catalog.Open",
@@ -169,6 +170,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -325,6 +327,7 @@
         "params": [],
         "vars": [],
         "initial": "Shopper.Asking",
+        "default": [],
         "states": [
           {
             "id": "Shopper.Asking",
@@ -341,6 +344,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -462,6 +466,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

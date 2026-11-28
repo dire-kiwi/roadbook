@@ -1086,6 +1086,30 @@ fn export_mermaid_merges_or_events() {
     insta::assert_snapshot!("or_events_mermaid", md);
 }
 
+/// A history state's default targets are unlabelled arrows from its `H`, in the block where
+/// the history state and the target meet (above a parallel state, as for any arrow).
+#[test]
+fn export_mermaid_draws_history_defaults() {
+    let out = roadbook(
+        &repo(),
+        &[
+            "export",
+            "mermaid",
+            "spec/conformance/charts/history-default.road",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let md = text(&out.stdout);
+    assert!(md.contains("    Doc_Previous --> Doc_Editing\n"), "{md}");
+    assert!(
+        md.contains("    Notebook_Last --> Notebook_Pages_Second\n"),
+        "{md}"
+    );
+    assert!(md.contains("  View_Restore --> View_Main_Split\n"), "{md}");
+    assert!(md.contains("  View_Restore --> View_Side_Wide\n"), "{md}");
+    insta::assert_snapshot!("history_default_mermaid", md);
+}
+
 /// A transition with several targets is an arrow to each, with the same label.
 #[test]
 fn export_mermaid_snapshots_several_targets() {

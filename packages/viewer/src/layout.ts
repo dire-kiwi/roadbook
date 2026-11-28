@@ -5,7 +5,7 @@
 import type { ElkExtendedEdge, ElkNode, LayoutOptions as ElkOptions } from 'elkjs/lib/elk-api.js'
 import type { Machine, State, Ir } from './ir.ts'
 import { own } from './ir.ts'
-import { METRICS, ancestorIds, descendantCount, estimateWidth, isCopy, isHistory, rootIsVisible, stateRows, targetEdgeId, transitionId, transitionLines, walkStates } from './model.ts'
+import { METRICS, ancestorIds, descendantCount, estimateWidth, historyDefaultEdgeId, isCopy, isHistory, rootIsVisible, stateRows, targetEdgeId, transitionId, transitionLines, walkStates } from './model.ts'
 import type { Measure, Row, LabelLine } from './model.ts'
 
 /** What `layoutMachine` needs of elkjs. */
@@ -43,7 +43,7 @@ export interface Layout {
   height: number
   /** Drawn states and `<id>/initial` markers. */
   nodes: Record<string, Box>
-  /** Transitions (`<state id>#<index>`) and `<id>/initial/edge` arrows. */
+  /** Transitions (`<state id>#<index>`), `<id>/initial/edge` arrows and a history state's `<id>/default/<k>`. */
   edges: Record<string, EdgeRoute>
   /** Which entry of `ATTEMPTS` succeeded: 0 unless ELK refused the preferred options. */
   attempt: number
@@ -288,6 +288,15 @@ export function buildElkGraph(ir: Ir, machineName: string, opts: LayoutOptions =
         labels: [{ id: `${id}/label`, text: lb.lines[0]?.text || '-', width: lb.width, height: lb.height, layoutOptions: LABEL_OPTIONS }],
       })
     }))
+  })
+
+  // A history state's default targets: an unlabelled arrow from its circle to each.
+  walkStates(machine.root, (state) => {
+    if (!isHistory(state) || view.visible(state.id) !== state.id || !drawn.has(state.id)) return
+    state.default.forEach((target, k) => {
+      const tgt = view.visible(target)
+      if (drawn.has(tgt) && tgt !== state.id) edges.push({ id: historyDefaultEdgeId(state.id, k), sources: [state.id], targets: [tgt] })
+    })
   })
 
   const node = (d: DrawnState): ElkNode => {

@@ -432,6 +432,7 @@
         "params": [],
         "vars": [],
         "initial": "Inventory.Ready",
+        "default": [],
         "states": [
           {
             "id": "Inventory.Ready",
@@ -448,6 +449,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -545,6 +547,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -769,6 +772,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -973,6 +977,7 @@
         "params": [],
         "vars": [],
         "initial": "Order.Reserving",
+        "default": [],
         "states": [
           {
             "id": "Order.Reserving",
@@ -989,6 +994,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -1237,6 +1243,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1384,6 +1391,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1415,6 +1423,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1446,6 +1455,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1546,6 +1556,7 @@
         "params": [],
         "vars": [],
         "initial": "Supplier.Open",
+        "default": [],
         "states": [
           {
             "id": "Supplier.Open",
@@ -1562,6 +1573,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1671,6 +1683,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

@@ -648,6 +648,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Checkout.Charging",
+        "default": [],
         "states": [
           {
             "id": "Checkout.Charging",
@@ -664,6 +665,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -861,6 +863,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -951,6 +954,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -982,6 +986,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1013,6 +1018,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

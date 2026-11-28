@@ -120,12 +120,19 @@ impl<'a> Tree<'a> {
     /// parallel state among them that none of them is in, by default entry. A transition to the
     /// state itself or to an ancestor leaves and re-enters it.
     ///
-    /// A transition to a history state enters its parent's default entry: a history state
-    /// only restores states that were entered before.
+    /// A transition to a history state enters its `default`, or with none its parent's default
+    /// entry: a history state only restores states that were entered before.
     fn entry_set(&self, from: &'a str, t: &ir::Transition) -> Vec<&'a str> {
         let domain = self.domain(from, t);
         let mut out: Vec<&'a str> = Vec::new();
-        for to in &t.targets {
+        let targets = t
+            .targets
+            .iter()
+            .flat_map(|to| match self.states.get(to.as_str()) {
+                Some(h) if !h.default.is_empty() => h.default.iter().collect(),
+                _ => vec![to],
+            });
+        for to in targets {
             let Some((&to, _)) = self.states.get_key_value(to.as_str()) else {
                 continue;
             };
@@ -201,19 +208,53 @@ impl<'a> Tree<'a> {
 
     /// The states that can become active, starting from the initial configuration and
     /// following the transitions `follow` accepts.
+    ///
+    /// A deep history state restores leaves that were active, and the states above them, so
+    /// nothing new. A shallow one restores children of its parent that were active, each
+    /// with its default entry, which may enter states nothing else does: once a transition
+    /// to it is followed, every child of its parent that becomes active stands for its default
+    /// entry too.
     fn reachable(&self, follow: impl Fn(&ir::Transition) -> bool) -> HashSet<&'a str> {
         let mut start = Vec::new();
         self.enter_down(self.root, &mut start);
         let mut seen: HashSet<&'a str> = start.iter().copied().collect();
         let mut work = start;
+        // The parents of the shallow history states a followed transition targets.
+        let mut restored: HashSet<&'a str> = HashSet::new();
+        let add = |states: Vec<&'a str>, seen: &mut HashSet<&'a str>, work: &mut Vec<&'a str>| {
+            for s in states {
+                if seen.insert(s) {
+                    work.push(s);
+                }
+            }
+        };
         while let Some(x) = work.pop() {
+            if let Some(&p) = self.parent.get(x)
+                && restored.contains(p)
+                && !self.states[x].kind.is_history()
+            {
+                let mut below = Vec::new();
+                self.enter_down(x, &mut below);
+                add(below, &mut seen, &mut work);
+            }
             for t in &self.states[x].transitions {
-                if !t.targets.is_empty() && follow(t) {
-                    for s in self.entry_set(x, t) {
-                        if seen.insert(s) {
-                            work.push(s);
-                        }
+                if t.targets.is_empty() || !follow(t) {
+                    continue;
+                }
+                add(self.entry_set(x, t), &mut seen, &mut work);
+                for to in &t.targets {
+                    let Some((&h, s)) = self.states.get_key_value(to.as_str()) else {
+                        continue;
+                    };
+                    if s.kind != StateKind::History || !restored.insert(self.parent[h]) {
+                        continue;
                     }
+                    let p = self.states[self.parent[h]];
+                    let mut below = Vec::new();
+                    for c in p.states.iter().filter(|c| seen.contains(c.id.as_str())) {
+                        self.enter_down(&c.id, &mut below);
+                    }
+                    add(below, &mut seen, &mut work);
                 }
             }
         }

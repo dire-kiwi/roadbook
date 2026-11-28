@@ -349,6 +349,7 @@
         "params": [],
         "vars": [],
         "initial": "Equality.Comparing",
+        "default": [],
         "states": [
           {
             "id": "Equality.Comparing",
@@ -365,6 +366,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -852,6 +854,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1065,6 +1068,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

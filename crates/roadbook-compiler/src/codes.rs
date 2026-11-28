@@ -142,14 +142,17 @@ pub const SPAWN_MACHINE_MISMATCH: Code = Code(220);
 pub const MIXED_TARGETS: Code = Code(221);
 /// Several targets that are not each in a different region of a parallel state.
 pub const TARGETS_CLASH: Code = Code(222);
-/// A state with parameters as a compound state's `initial` or as a region of a parallel
-/// state, which are entered with no arguments.
+/// A state with parameters as a compound state's `initial`, as a region of a parallel state
+/// or on the way to a history state's default target, which are entered with no arguments.
 pub const PARAMETERS_ON_DEFAULT_ENTRY: Code = Code(223);
 /// A transition that enters a state with parameters without passing its arguments.
 pub const MISSING_STATE_ARGUMENTS: Code = Code(224);
 /// Arguments for a state that takes none, for one the transition does not enter, or for one
 /// state twice.
 pub const UNEXPECTED_STATE_ARGUMENTS: Code = Code(225);
+/// A history state's default target that is not a proper descendant of the history state's
+/// parent, or that is a history state.
+pub const BAD_HISTORY_DEFAULT: Code = Code(226);
 
 // ───────────── types ─────────────
 
@@ -355,6 +358,7 @@ pub const ALL: &[Code] = &[
     PARAMETERS_ON_DEFAULT_ENTRY,
     MISSING_STATE_ARGUMENTS,
     UNEXPECTED_STATE_ARGUMENTS,
+    BAD_HISTORY_DEFAULT,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
     BAD_OPERANDS,

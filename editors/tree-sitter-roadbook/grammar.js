@@ -296,8 +296,14 @@ module.exports = grammar({
       ),
 
     // `history` and `deep` are not reserved: they mean something only at the start of an item.
+    // `history Name -> A.B, C`: the default targets, entered when nothing is recorded.
     history_state: ($) =>
-      seq(optional(field('kind', 'deep')), 'history', field('name', $.type_identifier)),
+      seq(
+        optional(field('kind', 'deep')),
+        'history',
+        field('name', $.type_identifier),
+        optional(seq('->', field('default', $.state_path), repeat(seq(',', field('default', $.state_path))))),
+      ),
 
     _common_item: ($) =>
       choice(

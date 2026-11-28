@@ -152,6 +152,7 @@
         "params": [],
         "vars": [],
         "initial": "Helper.Idle",
+        "default": [],
         "states": [
           {
             "id": "Helper.Idle",
@@ -168,6 +169,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -243,6 +245,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -340,6 +343,7 @@
         "params": [],
         "vars": [],
         "initial": "Watch.Watching",
+        "default": [],
         "states": [
           {
             "id": "Watch.Watching",
@@ -356,6 +360,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -581,6 +586,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -612,6 +618,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

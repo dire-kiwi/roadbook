@@ -369,6 +369,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Inventory.Ready",
+        "default": [],
         "states": [
           {
             "id": "Inventory.Ready",
@@ -385,6 +386,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -496,6 +498,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -693,6 +696,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

@@ -167,6 +167,7 @@
         "params": [],
         "vars": [],
         "initial": "Locker.Shut",
+        "default": [],
         "states": [
           {
             "id": "Locker.Shut",
@@ -183,6 +184,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -275,6 +277,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -328,6 +331,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -508,6 +512,7 @@
         "params": [],
         "vars": [],
         "initial": "Lockers.Open",
+        "default": [],
         "states": [
           {
             "id": "Lockers.Open",
@@ -524,6 +529,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -823,6 +829,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

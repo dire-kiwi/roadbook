@@ -1000,15 +1000,18 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     }
 
     /// The states target `x` stands for: `x`, or for a history state `h` with parent `p`,
-    /// what it recorded, or else the states `p`'s default entry starts with.
+    /// what it recorded, or else its `default`, or else the states `p`'s default entry starts
+    /// with.
     fn stands_for(&self, x: usize) -> Vec<usize> {
         if !self.state(x).kind.is_history() {
             return vec![x];
         }
         let p = self.idx.parents[x].expect("a history state has a parent");
         let parent = self.state(p);
-        match self.snap.history.get(&self.state(x).id) {
+        let h = self.state(x);
+        match self.snap.history.get(&h.id) {
             Some(record) => record.iter().map(|id| self.index_of(id)).collect(),
+            None if !h.default.is_empty() => h.default.iter().map(|id| self.index_of(id)).collect(),
             None if parent.kind == StateKind::Compound => {
                 parent.initial.iter().map(|id| self.index_of(id)).collect()
             }

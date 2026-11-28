@@ -218,6 +218,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Desk.Open",
+        "default": [],
         "states": [
           {
             "id": "Desk.Open",
@@ -234,6 +235,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -342,6 +344,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -494,6 +497,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -539,6 +543,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -630,6 +635,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Asker.Asking",
+        "default": [],
         "states": [
           {
             "id": "Asker.Asking",
@@ -646,6 +652,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -778,6 +785,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -877,6 +885,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Host.Running",
+        "default": [],
         "states": [
           {
             "id": "Host.Running",
@@ -893,6 +902,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -996,6 +1006,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

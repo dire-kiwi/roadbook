@@ -90,6 +90,7 @@
         "params": [],
         "vars": [],
         "initial": "Hist.Paused",
+        "default": [],
         "states": [
           {
             "id": "Hist.Paused",
@@ -106,6 +107,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -172,6 +174,7 @@
             "params": [],
             "vars": [],
             "initial": "Hist.Work.A",
+            "default": [],
             "states": [
               {
                 "id": "Hist.Work.Back",
@@ -188,6 +191,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -211,6 +215,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -234,6 +239,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -335,6 +341,7 @@
                   }
                 ],
                 "initial": "Hist.Work.B.X",
+                "default": [],
                 "states": [
                   {
                     "id": "Hist.Work.B.X",
@@ -374,6 +381,7 @@
                       }
                     ],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -456,6 +464,7 @@
                       }
                     ],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],

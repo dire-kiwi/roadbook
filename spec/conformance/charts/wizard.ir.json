@@ -96,6 +96,7 @@
         "params": [],
         "vars": [],
         "initial": "Wizard.Form",
+        "default": [],
         "states": [
           {
             "id": "Wizard.Form",
@@ -112,6 +113,7 @@
             "params": [],
             "vars": [],
             "initial": "Wizard.Form.Name",
+            "default": [],
             "states": [
               {
                 "id": "Wizard.Form.Name",
@@ -128,6 +130,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -202,6 +205,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -276,6 +280,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -354,6 +359,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -427,6 +433,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

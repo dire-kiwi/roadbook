@@ -1339,7 +1339,7 @@ impl Parser<'_> {
         })
     }
 
-    /// `Name { . Name }`: a state named in a `check`.
+    /// `Name { . Name }`: a state named in a `check` or a history state's default.
     fn state_path(&mut self) -> PResult<Target> {
         // A lower-case name on the next line is the next item, not a misspelt state.
         if !self.at(T::Upper) && self.starts_line() {
@@ -1425,10 +1425,18 @@ impl Parser<'_> {
             self.bump();
         }
         let name = self.upper("the name of the history state")?;
+        let mut default = Vec::new();
+        if self.eat_p(P::Arrow).is_some() {
+            default.push(self.state_path()?);
+            while self.eat_p(P::Comma).is_some() {
+                default.push(self.state_path()?);
+            }
+        }
         Ok(History {
             doc,
             deep,
             name,
+            default,
             span: self.since(start),
         })
     }

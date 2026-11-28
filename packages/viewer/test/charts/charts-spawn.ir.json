@@ -233,6 +233,7 @@
         "params": [],
         "vars": [],
         "initial": "Session.Open",
+        "default": [],
         "states": [
           {
             "id": "Session.Open",
@@ -249,6 +250,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -394,6 +396,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -425,6 +428,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -499,6 +503,7 @@
         "params": [],
         "vars": [],
         "initial": "Job.Running",
+        "default": [],
         "states": [
           {
             "id": "Job.Running",
@@ -515,6 +520,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -565,6 +571,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -760,6 +767,7 @@
         "params": [],
         "vars": [],
         "initial": "Hub.Idle",
+        "default": [],
         "states": [
           {
             "id": "Hub.Idle",
@@ -776,6 +784,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -841,6 +850,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -1373,6 +1383,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

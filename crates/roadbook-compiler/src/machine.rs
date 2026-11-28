@@ -1027,6 +1027,7 @@ impl<'p> Cx<'_, 'p> {
                 .with_help("a history state returns to the child states its parent was in when it was last left; put it in a state that has child states"),
             );
         }
+        let default = self.history_default(idx, parent, h);
         self.info.states.insert(
             id.clone(),
             StateInfo {
@@ -1057,6 +1058,7 @@ impl<'p> Cx<'_, 'p> {
             params: Vec::new(),
             vars: Vec::new(),
             initial: None,
+            default,
             states: Vec::new(),
             entry: Vec::new(),
             exit: Vec::new(),
@@ -1065,6 +1067,94 @@ impl<'p> Cx<'_, 'p> {
             output: None,
             fail: None,
         }
+    }
+
+    /// Resolves and checks the default targets of history state `idx` of `parent`, `-> X, …`,
+    /// as a transition's targets written in the history state: among its siblings, then
+    /// outward. Each is a proper descendant of `parent` and not a history state (`RB0226`), no
+    /// state from just below `parent` down to it has parameters (`RB0223`), and several go
+    /// together as a transition's targets do (`RB0222`). The ids of those that pass.
+    fn history_default(&mut self, idx: usize, parent: usize, h: &ast::History) -> Vec<String> {
+        let word = if h.deep { "deep history" } else { "history" };
+        let parent_id = self.nodes[parent].id.clone();
+        let mut nodes = Vec::new();
+        let mut ok = true;
+        for t in &h.default {
+            let Some(n) = self.target(idx, t) else {
+                ok = false;
+                continue;
+            };
+            let path: Vec<&str> = t.path.iter().map(|p| p.name.as_str()).collect();
+            let written = format!("{word} {} -> {}", h.name.name, path.join("."));
+            let problem = if n == parent {
+                Some((
+                    format!(
+                        "`{written}`: `{parent_id}` is the history state's parent, not a state inside it"
+                    ),
+                    format!(
+                        "a history state's default is where `{parent_id}` starts when it has nothing to return to: one of its child states, or a state below one"
+                    ),
+                ))
+            } else if !self.inside(n, parent) {
+                Some((
+                    format!(
+                        "`{written}`: `{}` is not inside `{parent_id}`",
+                        self.nodes[n].id
+                    ),
+                    format!(
+                        "a history state's default is where `{parent_id}` starts when it has nothing to return to: one of its child states, or a state below one"
+                    ),
+                ))
+            } else if self.nodes[n].history.is_some() {
+                Some((
+                    format!("`{written}`: `{}` is a history state", self.nodes[n].id),
+                    "a default names the states to enter; a history state is only a transition's target".to_string(),
+                ))
+            } else {
+                // Step 5 (choice) adds: a choice state is not a default either.
+                None
+            };
+            if let Some((message, help)) = problem {
+                self.ck.diags.push(
+                    Diagnostic::error(codes::BAD_HISTORY_DEFAULT, t.span, message)
+                        .with_secondary(h.name.span, format!("the history state of `{parent_id}`"))
+                        .with_help(help),
+                );
+                ok = false;
+                continue;
+            }
+            // The states entered on the way, from just below the parent: none may take
+            // parameters, since nothing passes them arguments.
+            let mut x = n;
+            while x != parent {
+                let first = self.locals[x].iter().find(|l| l.param).map(|l| l.span);
+                if let Some(first) = first {
+                    let xid = self.nodes[x].id.clone();
+                    self.ck.diags.push(
+                        Diagnostic::error(
+                            codes::PARAMETERS_ON_DEFAULT_ENTRY,
+                            t.span,
+                            format!("`{written}`: `{xid}` takes parameters, so the default of a history state cannot enter it"),
+                        )
+                        .with_secondary(first, "a parameter")
+                        .with_help("a history state's default is entered with no transition to pass arguments; make the parameters variables of the state, or choose a default that does not enter it"),
+                    );
+                    ok = false;
+                    break;
+                }
+                x = self.nodes[x].parent.unwrap_or(parent);
+            }
+            nodes.push(n);
+        }
+        if ok && nodes.len() > 1 {
+            let before = self.ck.diags.len();
+            self.check_targets_go_together(&h.default, &nodes);
+            ok = self.ck.diags.len() == before;
+        }
+        if !ok {
+            return Vec::new();
+        }
+        nodes.iter().map(|&n| self.nodes[n].id.clone()).collect()
     }
 
     /// Reports `as` names that cannot be used: on a task, the name of a parameter or variable,
@@ -2391,6 +2481,7 @@ impl<'p> Cx<'_, 'p> {
             params,
             vars,
             initial,
+            default: Vec::new(),
             states,
             entry,
             exit,

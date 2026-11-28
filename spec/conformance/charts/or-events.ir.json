@@ -175,6 +175,7 @@
         "params": [],
         "vars": [],
         "initial": "Link.Idle",
+        "default": [],
         "states": [
           {
             "id": "Link.Idle",
@@ -191,6 +192,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -389,6 +391,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

@@ -64,6 +64,7 @@
         "params": [],
         "vars": [],
         "initial": "Line.Up",
+        "default": [],
         "states": [
           {
             "id": "Line.Up",
@@ -80,6 +81,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -125,6 +127,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -309,6 +312,7 @@
         "params": [],
         "vars": [],
         "initial": "Switchboard.Working",
+        "default": [],
         "states": [
           {
             "id": "Switchboard.Working",
@@ -325,6 +329,7 @@
             "params": [],
             "vars": [],
             "initial": "Switchboard.Working.Day",
+            "default": [],
             "states": [
               {
                 "id": "Switchboard.Working.Last",
@@ -341,6 +346,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -364,6 +370,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -409,6 +416,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -484,6 +492,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -537,6 +546,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -602,6 +612,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -751,6 +762,7 @@
         "params": [],
         "vars": [],
         "initial": "Caller.Asking",
+        "default": [],
         "states": [
           {
             "id": "Caller.Asking",
@@ -767,6 +779,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -876,6 +889,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

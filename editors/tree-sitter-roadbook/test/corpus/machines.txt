@@ -342,6 +342,46 @@ machine M() {
                   (type_identifier))))))))))
 
 ================================================================================
+History states with default targets
+================================================================================
+
+machine M() {
+  state Work {
+    initial A
+    history Last -> B
+    deep history All -> B.C, D
+    state A {}
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (initial
+            (type_identifier))
+          (history_state
+            (type_identifier)
+            (state_path
+              (type_identifier)))
+          (history_state
+            (type_identifier)
+            (state_path
+              (type_identifier)
+              (type_identifier))
+            (state_path
+              (type_identifier)))
+          (state_declaration
+            (type_identifier)
+            (state_body)))))))
+
+================================================================================
 History and deep as names
 ================================================================================
 

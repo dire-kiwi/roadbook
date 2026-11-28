@@ -122,6 +122,7 @@
         "params": [],
         "vars": [],
         "initial": "Issuer.Open",
+        "default": [],
         "states": [
           {
             "id": "Issuer.Open",
@@ -138,6 +139,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -249,6 +251,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -357,6 +360,7 @@
         "params": [],
         "vars": [],
         "initial": "Client.Asking",
+        "default": [],
         "states": [
           {
             "id": "Client.Asking",
@@ -373,6 +377,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -494,6 +499,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -525,6 +531,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

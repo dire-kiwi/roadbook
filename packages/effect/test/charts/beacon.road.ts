@@ -226,6 +226,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Beacon.Up",
+        "default": [],
         "states": [
           {
             "id": "Beacon.Up",
@@ -242,6 +243,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -494,6 +496,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

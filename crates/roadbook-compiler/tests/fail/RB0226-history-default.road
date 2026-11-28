@@ -1,0 +1,22 @@
+machine M() {
+  event Go
+
+  initial A
+  state A {
+    initial B
+    history Outside -> C
+    history Itself -> A
+    history Twice -> Outside
+    deep history Missing -> B.X
+    state B { on Go -> A.Outside }
+    state D { on Go -> A.Itself }
+    state E { on Go -> A.Twice }
+    state F { on Go -> A.Missing }
+  }
+  state C { on Go -> A }
+}
+
+// expect: RB0226 at 7:24
+// expect: RB0226 at 8:23
+// expect: RB0226 at 9:22
+// expect: RB0201 at 10:31

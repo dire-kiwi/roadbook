@@ -41,6 +41,11 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  on A|B  |C -> S\n  state S { on  B |A ignore }\n}\n",
         "machine M() {\n  on A | B | C -> S\n  state S { on B | A ignore }\n}\n",
     ),
+    // A history state's default targets follow ` -> `, joined by `, `.
+    (
+        "machine M() {\n  state A {\n    history H->B\n    deep history  D ->  B.X ,C\n    state B {}\n  }\n}\n",
+        "machine M() {\n  state A {\n    history H -> B\n    deep history D -> B.X, C\n    state B {}\n  }\n}\n",
+    ),
     // `sensitive` comes first, on fields, parameters and variables.
     (
         "type T {sensitive   a:int,b:int}\nmachine M( sensitive  k :string) {\n  sensitive   var t:int=1\n  var u: int\n}\n",

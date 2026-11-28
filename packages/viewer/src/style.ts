@@ -113,6 +113,7 @@ export const DIAGRAM_CSS = `
 .rb-k-after .rb-edge-line { stroke-dasharray: 7 4; }
 .rb-k-always .rb-edge-line { stroke-dasharray: 0.1 4.5; stroke-linecap: round; stroke-width: 2; }
 .rb-initial { fill: var(--rb-edge); }
+.rb-history-default .rb-edge-line { stroke-dasharray: 4 3; }
 .rb-port { fill: var(--rb-canvas); stroke: var(--rb-edge); stroke-width: 1.5; }
 .rb-k-done .rb-port { stroke: var(--rb-ok); }
 .rb-k-fail .rb-port { stroke: var(--rb-err); }

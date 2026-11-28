@@ -80,6 +80,7 @@
         "params": [],
         "vars": [],
         "initial": "Echo.Ready",
+        "default": [],
         "states": [
           {
             "id": "Echo.Ready",
@@ -96,6 +97,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -171,6 +173,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -235,6 +238,7 @@
         "params": [],
         "vars": [],
         "initial": "Caller.Talking",
+        "default": [],
         "states": [
           {
             "id": "Caller.Talking",
@@ -251,6 +255,7 @@
             "params": [],
             "vars": [],
             "initial": "Caller.Talking.Waiting",
+            "default": [],
             "states": [
               {
                 "id": "Caller.Talking.Waiting",
@@ -267,6 +272,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -290,6 +296,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -424,6 +431,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

@@ -335,6 +335,7 @@
         "params": [],
         "vars": [],
         "initial": "Aliases.Counting",
+        "default": [],
         "states": [
           {
             "id": "Aliases.Counting",
@@ -351,6 +352,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -1234,6 +1236,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

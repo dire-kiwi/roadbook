@@ -120,6 +120,7 @@
         "params": [],
         "vars": [],
         "initial": "Restore.C",
+        "default": [],
         "states": [
           {
             "id": "Restore.C",
@@ -136,6 +137,7 @@
             "params": [],
             "vars": [],
             "initial": "Restore.C.A",
+            "default": [],
             "states": [
               {
                 "id": "Restore.C.H",
@@ -152,6 +154,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -175,6 +178,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -220,6 +224,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -342,6 +347,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

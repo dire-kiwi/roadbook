@@ -6,7 +6,7 @@ import type { Ir, State } from './ir.ts'
 import { own } from './ir.ts'
 import type { Layout, Point, Box } from './layout.ts'
 import { machineView, stateBox } from './layout.ts'
-import { METRICS, eventKey, estimateWidth, historyMark, historyText, isCopy, isHistory, refMachine, targetEdgeId, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
+import { METRICS, eventKey, estimateWidth, historyDefaultEdgeId, historyMark, historyText, isCopy, isHistory, refMachine, targetEdgeId, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
 import type { EdgeKind, EventRef, Measure, Row } from './model.ts'
 import { DARK, DIAGRAM_CSS, FONTS, LIGHT } from './style.ts'
 
@@ -332,10 +332,12 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
     else leaves += svg
   }
 
-  const edge = (id: string, kind: EdgeKind, attrs: string, port: boolean, inner: boolean, mk?: Mark | null, toHistory?: Box) => {
+  const edge = (id: string, kind: EdgeKind, attrs: string, port: boolean, inner: boolean, mk?: Mark | null, toHistory?: Box, fromHistory?: Box) => {
     const e = layout.edges[id]
     if (!e || e.points.length < 2) return ''
-    const d = roundedPath(toHistory ? clipToCircle(e.points, toHistory) : e.points)
+    let points = toHistory ? clipToCircle(e.points, toHistory) : e.points
+    if (fromHistory) points = clipToCircle([...points].reverse(), fromHistory).reverse()
+    const d = roundedPath(points)
     // A transition written on a compound state leaves from a dot on the container's border;
     // one from a state hidden inside a collapsed one from a hollow square.
     const p0 = e.points[0]!
@@ -360,6 +362,15 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
         initials += `<circle class="rb-initial" cx="${n(m.x + m.width / 2)}" cy="${n(m.y + m.height / 2)}" r="${METRICS.initialR}"><title>initial state of ${esc(state.id)}</title></circle>`
         edgePaths += edge(`${state.id}/initial/edge`, 'initial', '', false, false)
       }
+    }
+    // A history state's defaults: dashed arrows from its circle, which select the history state.
+    const circle = isHistory(state) && view.visible(state.id) === state.id ? layout.nodes[state.id] : undefined
+    if (circle) {
+      const parent = state.id.slice(0, state.id.lastIndexOf('.'))
+      state.default.forEach((target, k) => {
+        const title = `default of ${state.id}: ${target}, entered when ${parent} has nothing to return to`
+        edgePaths += edge(historyDefaultEdgeId(state.id, k), 'initial', ` data-state="${esc(state.id)}"`, false, false, { cls: 'rb-history-default', title }, undefined, circle)
+      })
     }
     state.transitions.forEach((t, index) => {
       // The copies of an `on A | B` are one edge, the first's.
@@ -444,7 +455,7 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
     item(
       shape('<g class="rb-state rb-history"><rect class="rb-box" x="14" y="0.5" width="17" height="17" rx="8.5"/><text class="rb-history-mark" x="22.5" y="13" text-anchor="middle">H</text></g>'),
       { text: 'H' },
-      'history state: back to where its parent was when last left (H* deep: every state inside it)',
+      'history state: back to where its parent was when last left (H* deep: every state inside it); a dashed arrow from it goes to where it starts before then',
     ) +
     item(
       shape('<g class="rb-label"><rect class="rb-label-bg" x="2" y="2" width="42" height="14" rx="4"/><text class="rb-label-effect rb-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="rb-msg"><tspan class="rb-msg-kw">send</tspan></tspan></text></g>'),

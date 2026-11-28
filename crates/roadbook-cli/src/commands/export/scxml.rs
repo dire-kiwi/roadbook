@@ -504,8 +504,9 @@ impl Writer<'_> {
         self.close(depth, tag);
     }
 
-    /// `<history>`, with the default transition SCXML requires: the parent's default entry,
-    /// which is what Roadbook enters when the history state has recorded nothing.
+    /// `<history>`, with the default transition SCXML requires: the history state's `default`,
+    /// or with none the parent's default entry, which is what Roadbook enters when the history
+    /// state has recorded nothing.
     fn history(&mut self, parent: &State, h: &State, depth: usize) {
         self.comment(depth, &h.doc);
         let ty = if h.kind == StateKind::DeepHistory {
@@ -520,6 +521,7 @@ impl Writer<'_> {
             false,
         );
         let targets: Vec<String> = match &parent.initial {
+            _ if !h.default.is_empty() => h.default.iter().map(|d| xml_id(d)).collect(),
             Some(initial) => vec![xml_id(initial)],
             None => parent
                 .states

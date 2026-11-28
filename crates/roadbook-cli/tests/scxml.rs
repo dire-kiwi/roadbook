@@ -237,6 +237,29 @@ fn export_scxml_merges_or_events() {
     insta::assert_snapshot!("or_events_scxml", xml);
 }
 
+/// A history state's default targets are its `<history>`'s default transition.
+#[test]
+fn export_scxml_writes_history_defaults() {
+    let chart = "spec/conformance/charts/history-default.road";
+    let out = roadbook(&repo(), &["export", "scxml", chart]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let xml = text(&out.stdout);
+    roxmltree::Document::parse(&xml).unwrap();
+    assert!(
+        xml.contains("<transition target=\"Editor_Doc_Editing\"/>"),
+        "{xml}"
+    );
+    assert!(
+        xml.contains("<transition target=\"Editor_Notebook_Pages_Second\"/>"),
+        "{xml}"
+    );
+    assert!(
+        xml.contains("<transition target=\"Editor_View_Main_Split Editor_View_Side_Wide\"/>"),
+        "{xml}"
+    );
+    insta::assert_snapshot!("history_default_scxml", xml);
+}
+
 /// History states are `<history type="shallow|deep">` in their parent, with the default
 /// transition SCXML requires: the parent's default entry, its `initial` or every region.
 #[test]

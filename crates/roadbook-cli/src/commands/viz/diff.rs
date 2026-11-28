@@ -956,6 +956,13 @@ fn state_changes(a: &State, b: &State) -> Vec<Change> {
         b.initial.as_deref().map(short),
         a.initial.as_deref().map(short),
     );
+    let default = |s: &State| {
+        (!s.default.is_empty()).then(|| {
+            let ids: Vec<String> = s.default.iter().map(|d| short(d)).collect();
+            ids.join(", ")
+        })
+    };
+    cmp("default", default(b), default(a));
     cmp("invoke", invokes_text(&b.invokes), invokes_text(&a.invokes));
     cmp("entry", effects_text(&b.entry), effects_text(&a.entry));
     cmp("exit", effects_text(&b.exit), effects_text(&a.exit));

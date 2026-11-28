@@ -133,6 +133,7 @@
         "params": [],
         "vars": [],
         "initial": "Clock.Waiting",
+        "default": [],
         "states": [
           {
             "id": "Clock.Waiting",
@@ -149,6 +150,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -270,6 +272,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -336,6 +339,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

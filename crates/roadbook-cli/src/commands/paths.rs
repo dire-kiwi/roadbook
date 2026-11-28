@@ -422,7 +422,11 @@ impl<'a> Graph<'a> {
         }
         match history.get(target) {
             Some(at) => at,
-            None => self.position(self.parent[target]),
+            // With no record, the history state's first default, or its parent's default entry.
+            None => match self.states[target].default.first() {
+                Some(d) => self.position(d),
+                None => self.position(self.parent[target]),
+            },
         }
     }
 

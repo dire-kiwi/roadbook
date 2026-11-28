@@ -112,6 +112,7 @@
         "params": [],
         "vars": [],
         "initial": "Speaker.Talking",
+        "default": [],
         "states": [
           {
             "id": "Speaker.Talking",
@@ -128,6 +129,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -233,6 +235,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -356,6 +359,7 @@
         "params": [],
         "vars": [],
         "initial": "Listener.Listening",
+        "default": [],
         "states": [
           {
             "id": "Listener.Listening",
@@ -372,6 +376,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -698,6 +703,7 @@
         "params": [],
         "vars": [],
         "initial": "Foreman.Working",
+        "default": [],
         "states": [
           {
             "id": "Foreman.Working",
@@ -714,6 +720,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

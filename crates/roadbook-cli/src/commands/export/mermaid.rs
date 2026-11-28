@@ -276,6 +276,17 @@ impl Writer<'_> {
                 }
             }
         }
+        // A history state's defaults: an unlabelled arrow from its `H` to each.
+        for target in &s.default {
+            let mut meet = meeting(&s.id, target);
+            while self.parallel.iter().any(|p| p == meet) {
+                meet = meet.rfind('.').map_or("", |at| &meet[..at]);
+            }
+            if meet == block {
+                let line = format!("{} --> {}", self.id(&s.id), self.id(target));
+                self.line(depth, &line);
+            }
+        }
         for c in &s.states {
             self.transitions(c, block, depth);
         }

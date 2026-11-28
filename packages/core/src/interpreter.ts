@@ -876,8 +876,8 @@ class Macrostep {
   }
 
   /**
-   * The states target `x` stands for: `x`, or for a history state, what it recorded, or else the
-   * states its parent's default entry starts with.
+   * The states target `x` stands for: `x`, or for a history state, what it recorded, or else its
+   * `default`, or else the states its parent's default entry starts with.
    */
   private standsFor(x: State): Array<State> {
     if (!isHistory(x)) return [x]
@@ -885,6 +885,8 @@ class Macrostep {
     const recorded = this.history[x.id]
     return recorded !== undefined
       ? recorded.map((id) => this.index.state(id))
+      : x.default.length > 0
+      ? x.default.map((id) => this.index.state(id))
       : parent.kind === "compound"
       ? [this.index.state(parent.initial!)]
       : [...childrenOf(parent)]

@@ -291,6 +291,7 @@
         "params": [],
         "vars": [],
         "initial": "Teller.Listening",
+        "default": [],
         "states": [
           {
             "id": "Teller.Listening",
@@ -307,6 +308,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -409,6 +411,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -524,6 +527,7 @@
         "params": [],
         "vars": [],
         "initial": "Keeper.Asking",
+        "default": [],
         "states": [
           {
             "id": "Keeper.Asking",
@@ -540,6 +544,7 @@
             "params": [],
             "vars": [],
             "initial": "Keeper.Asking.Ready",
+            "default": [],
             "states": [
               {
                 "id": "Keeper.Asking.Ready",
@@ -556,6 +561,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -788,6 +794,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -896,6 +903,7 @@
         "params": [],
         "vars": [],
         "initial": "Caller.Asking",
+        "default": [],
         "states": [
           {
             "id": "Caller.Asking",
@@ -912,6 +920,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -1079,6 +1088,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

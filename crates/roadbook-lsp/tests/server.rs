@@ -2073,3 +2073,74 @@ fn several_events_in_one_on() {
     assert!(text.contains("on Resume -> Idle"), "{text}");
     c.shutdown();
 }
+
+const HISTORY_DEFAULT: &str = "machine Editor() {
+  event Open
+  event Notes
+  event Leave
+  initial Idle
+  state Idle {
+    on Open -> Doc.Previous
+    on Notes -> Doc.Last
+    on Leave -> Doc
+  }
+  state Doc {
+    initial Blank
+    history Previous -> Editing.Draft
+    deep history Last -> Editing
+    state Blank {}
+    state Editing {
+      initial Typing
+      state Typing {}
+      state Draft {}
+    }
+    on Leave -> Idle
+  }
+}
+";
+
+#[test]
+fn a_history_states_default_targets() {
+    let p = Project::new("history-default", &[("c.road", HISTORY_DEFAULT)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, HISTORY_DEFAULT);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // Each segment of a default target goes to its state.
+    let definitions = [
+        ("Previous -> ^Editing.Draft", "state ^Editing"),
+        ("Previous -> Editing.^Draft", "state ^Draft"),
+        ("Last -> ^Editing", "state ^Editing"),
+    ];
+    for (from, to) in definitions {
+        let loc = c
+            .request("textDocument/definition", at(&uri, HISTORY_DEFAULT, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(HISTORY_DEFAULT, to),
+            "{from} -> {to}"
+        );
+    }
+    // A state's references include the default targets that name it.
+    let mut params = at(&uri, HISTORY_DEFAULT, "state ^Editing");
+    params["context"] = json!({ "includeDeclaration": false });
+    let found = c.request("textDocument/references", params).unwrap();
+    let mut lines: Vec<u64> = found
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["range"]["start"]["line"].as_u64().unwrap() + 1)
+        .collect();
+    lines.sort();
+    assert_eq!(lines, [13, 14]);
+
+    // Renaming a state renames it in the defaults too.
+    let text = rename(&mut c, &uri, HISTORY_DEFAULT, "state ^Editing", "Writing");
+    assert!(text.contains("history Previous -> Writing.Draft"), "{text}");
+    assert!(text.contains("deep history Last -> Writing"), "{text}");
+    let text = rename(&mut c, &uri, HISTORY_DEFAULT, "state ^Draft", "Saved");
+    assert!(text.contains("history Previous -> Editing.Saved"), "{text}");
+    c.shutdown();
+}

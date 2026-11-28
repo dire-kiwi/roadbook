@@ -1215,6 +1215,7 @@
         "params": [],
         "vars": [],
         "initial": "SupportTicket.Intake",
+        "default": [],
         "states": [
           {
             "id": "SupportTicket.Intake",
@@ -1231,6 +1232,7 @@
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Intake.Classifying",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Intake.Classifying",
@@ -1247,6 +1249,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1428,6 +1431,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -1518,6 +1522,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1634,6 +1639,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1657,6 +1663,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -1731,6 +1738,7 @@
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Triage.Routing",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Triage.Routing",
@@ -1747,6 +1755,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1863,6 +1872,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1913,6 +1923,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -2132,6 +2143,7 @@
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Active.Working",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Active.Working",
@@ -2148,6 +2160,7 @@
                 "params": [],
                 "vars": [],
                 "initial": "SupportTicket.Active.Working.WithAgent",
+                "default": [],
                 "states": [
                   {
                     "id": "SupportTicket.Active.Working.WithAgent",
@@ -2164,6 +2177,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2355,6 +2369,7 @@
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
@@ -2371,6 +2386,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -2443,6 +2459,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -2515,6 +2532,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -2594,6 +2612,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2726,6 +2745,7 @@
                 "params": [],
                 "vars": [],
                 "initial": "SupportTicket.Active.Escalation.Tier2",
+                "default": [],
                 "states": [
                   {
                     "id": "SupportTicket.Active.Escalation.Tier2",
@@ -2742,6 +2762,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [
                       {
@@ -2814,6 +2835,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [
                       {
@@ -2886,6 +2908,7 @@
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Escalation.Engineering.FilingBug",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Escalation.Engineering.FilingBug",
@@ -2902,6 +2925,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3100,6 +3124,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [
                           {
@@ -3182,6 +3207,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3248,6 +3274,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3351,6 +3378,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [
                   {
                     "id": "SupportTicket.Active.Resolving.FixCheck",
@@ -3367,6 +3395,7 @@
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Resolving.FixCheck.Verifying",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Resolving.FixCheck.Verifying",
@@ -3383,6 +3412,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3513,6 +3543,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3544,6 +3575,7 @@
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
@@ -3560,6 +3592,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3645,6 +3678,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3730,6 +3764,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -3822,6 +3857,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -4181,6 +4217,7 @@
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Closing.Surveying",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Closing.Surveying",
@@ -4197,6 +4234,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -4282,6 +4320,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -4339,6 +4378,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4396,6 +4436,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4450,6 +4491,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4504,6 +4546,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4558,6 +4601,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4612,6 +4656,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4666,6 +4711,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4720,6 +4766,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4863,6 +4910,7 @@
         "params": [],
         "vars": [],
         "initial": "SatisfactionSurvey.Sending",
+        "default": [],
         "states": [
           {
             "id": "SatisfactionSurvey.Sending",
@@ -4879,6 +4927,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4986,6 +5035,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5036,6 +5086,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5216,6 +5267,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5266,6 +5318,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

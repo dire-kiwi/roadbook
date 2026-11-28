@@ -88,6 +88,7 @@
         "params": [],
         "vars": [],
         "initial": "Regions.P",
+        "default": [],
         "states": [
           {
             "id": "Regions.P",
@@ -104,6 +105,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Regions.P.Left",
@@ -120,6 +122,7 @@
                 "params": [],
                 "vars": [],
                 "initial": "Regions.P.Left.L1",
+                "default": [],
                 "states": [
                   {
                     "id": "Regions.P.Left.L1",
@@ -136,6 +139,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -194,6 +198,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -258,6 +263,7 @@
                 "params": [],
                 "vars": [],
                 "initial": "Regions.P.Right.R1",
+                "default": [],
                 "states": [
                   {
                     "id": "Regions.P.Right.R1",
@@ -274,6 +280,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -319,6 +326,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],

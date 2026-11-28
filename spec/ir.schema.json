@@ -344,8 +344,8 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "id", "name", "kind", "doc", "span", "params", "vars", "initial", "states", "entry",
-        "exit", "invokes", "transitions", "output", "fail"
+        "id", "name", "kind", "doc", "span", "params", "vars", "initial", "default", "states",
+        "entry", "exit", "invokes", "transitions", "output", "fail"
       ],
       "properties": {
         "id": { "$ref": "#/$defs/stateId" },
@@ -363,6 +363,11 @@
           "items": { "$ref": "#/$defs/var" }
         },
         "initial": { "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }] },
+        "default": {
+          "description": "For a history state, the states it enters when it has recorded nothing: [] for none, and for every other state.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/stateId" }
+        },
         "states": { "type": "array", "items": { "$ref": "#/$defs/state" } },
         "entry": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
         "exit": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
@@ -398,6 +403,11 @@
               "transitions": { "maxItems": 0 }
             }
           }
+        },
+        {
+          "description": "Only a history state has a default.",
+          "if": { "not": { "properties": { "kind": { "enum": ["history", "deepHistory"] } } } },
+          "then": { "properties": { "default": { "maxItems": 0 } } }
         },
         {
           "if": { "properties": { "kind": { "const": "parallel" } } },

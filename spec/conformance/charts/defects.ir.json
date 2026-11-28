@@ -156,6 +156,7 @@
         "params": [],
         "vars": [],
         "initial": "Main.Idle",
+        "default": [],
         "states": [
           {
             "id": "Main.Idle",
@@ -172,6 +173,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -254,6 +256,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -386,6 +389,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -468,6 +472,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -527,6 +532,7 @@
         "params": [],
         "vars": [],
         "initial": "Sub.Answer",
+        "default": [],
         "states": [
           {
             "id": "Sub.Answer",
@@ -543,6 +549,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

@@ -456,10 +456,12 @@ export function kindText(state: State): string {
  */
 export function historyText(state: State, parent: State): string {
   const children = childStates(parent)
-  const start =
-    parent.kind === 'parallel'
+  const below = (id: string) => id.slice(parent.id.length + 1)
+  const start = state.default.length
+    ? `its default, ${state.default.map(below).join(', ')}`
+    : parent.kind === 'parallel'
       ? 'every region from its start'
-      : `its initial state${parent.initial ? `, ${parent.initial.slice(parent.id.length + 1)}` : ''}`
+      : `its initial state${parent.initial ? `, ${below(parent.initial)}` : ''}`
   const what =
     state.kind === 'deepHistory'
       ? `Returns to where ${parent.name} was when it was last left, all the way down: every state that was active inside it then, in every region.`
@@ -663,6 +665,11 @@ export function isExternal(t: Transition): boolean {
  */
 export function targetEdgeId(stateId: string, index: number, k: number): string {
   return k === 0 ? transitionId(stateId, index) : `${transitionId(stateId, index)}/to${k}`
+}
+
+/** The id the layout gives the dashed arrow from history state `stateId` to its `k`th default. */
+export function historyDefaultEdgeId(stateId: string, k: number): string {
+  return `${stateId}/default/${k}`
 }
 
 /** A transition's targets, each named by `name`, `A, B`; `none` for one with no target. */

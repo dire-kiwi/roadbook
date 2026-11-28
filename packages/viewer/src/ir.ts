@@ -196,6 +196,8 @@ export interface State {
   /** The state's variables, in order: `[]` for a state that declares none. */
   vars: Var[]
   initial: string | null
+  /** For a history state, the states it enters when it has recorded nothing: `[]` for none. */
+  default: string[]
   states: State[]
   entry: Effect[]
   exit: Effect[]

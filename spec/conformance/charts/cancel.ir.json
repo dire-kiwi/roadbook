@@ -76,6 +76,7 @@
         "params": [],
         "vars": [],
         "initial": "Parent.Running",
+        "default": [],
         "states": [
           {
             "id": "Parent.Running",
@@ -92,6 +93,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [
@@ -199,6 +201,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -264,6 +267,7 @@
         "params": [],
         "vars": [],
         "initial": "Child.Outer",
+        "default": [],
         "states": [
           {
             "id": "Child.Outer",
@@ -280,6 +284,7 @@
             "params": [],
             "vars": [],
             "initial": "Child.Outer.Inner",
+            "default": [],
             "states": [
               {
                 "id": "Child.Outer.Inner",
@@ -296,6 +301,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [
@@ -380,6 +386,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

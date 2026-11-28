@@ -79,6 +79,7 @@
         "params": [],
         "vars": [],
         "initial": "Panels.Idle",
+        "default": [],
         "states": [
           {
             "id": "Panels.Idle",
@@ -95,6 +96,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -222,6 +224,7 @@
             ],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Panels.Panes.Left",
@@ -261,6 +264,7 @@
                   }
                 ],
                 "initial": "Panels.Panes.Left.A",
+                "default": [],
                 "states": [
                   {
                     "id": "Panels.Panes.Left.A",
@@ -277,6 +281,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -356,6 +361,7 @@
                     ],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -424,6 +430,7 @@
                   }
                 ],
                 "initial": "Panels.Panes.Right.C",
+                "default": [],
                 "states": [
                   {
                     "id": "Panels.Panes.Right.C",
@@ -440,6 +447,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -512,6 +520,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],

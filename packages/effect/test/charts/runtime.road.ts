@@ -305,6 +305,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Overflow.Over",
+        "default": [],
         "states": [
           {
             "id": "Overflow.Over",
@@ -321,6 +322,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -415,6 +417,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Settle.Spin",
+        "default": [],
         "states": [
           {
             "id": "Settle.Spin",
@@ -431,6 +434,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -606,6 +610,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Early.Over",
+        "default": [],
         "states": [
           {
             "id": "Early.Over",
@@ -622,6 +627,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -694,6 +700,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Leftover.Outer",
+        "default": [],
         "states": [
           {
             "id": "Leftover.Outer",
@@ -710,6 +717,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": "Leftover.Outer.Inner",
+            "default": [],
             "states": [
               {
                 "id": "Leftover.Outer.Inner",
@@ -726,6 +734,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [
@@ -828,6 +837,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -880,6 +890,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Payload.Over",
+        "default": [],
         "states": [
           {
             "id": "Payload.Over",
@@ -896,6 +907,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -987,6 +999,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Desk.Open",
+        "default": [],
         "states": [
           {
             "id": "Desk.Open",
@@ -1003,6 +1016,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1107,6 +1121,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1187,6 +1202,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Asker.Asking",
+        "default": [],
         "states": [
           {
             "id": "Asker.Asking",
@@ -1203,6 +1219,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1315,6 +1332,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1346,6 +1364,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1416,6 +1435,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Monitor.Watching",
+        "default": [],
         "states": [
           {
             "id": "Monitor.Watching",
@@ -1432,6 +1452,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1540,6 +1561,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1599,6 +1621,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Generic.Over",
+        "default": [],
         "states": [
           {
             "id": "Generic.Over",
@@ -1615,6 +1638,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

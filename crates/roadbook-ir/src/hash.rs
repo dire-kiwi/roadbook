@@ -56,8 +56,9 @@
 //!   machine with no state of several invokes keeps its 0.11 hash. A state's `params`
 //!   and `vars` and a transition's `args` are removed when they are `[]`, and the
 //!   `state` of a `ref` expression or a `set` effect when it is `null`, so a machine
-//!   with no state parameters or variables keeps its 0.12 hash. `calls` and `strict`
-//!   are always kept.
+//!   with no state parameters or variables keeps its 0.12 hash. A state's `default` is
+//!   removed when it is `[]`, so a machine with no history default keeps its 0.13 hash.
+//!   `calls` and `strict` are always kept.
 //!
 //! Comments, formatting, source positions, `sensitive` marks and unused
 //! declarations therefore do not change a hash (a mark changes only what
@@ -548,6 +549,7 @@ fn strip(v: &mut Value) {
             }
             if m.contains_key("invokes") && m.contains_key("transitions") {
                 state_as_before(m);
+                default_as_before(m);
             }
             for (key, value) in m.iter_mut() {
                 match value {
@@ -632,6 +634,16 @@ fn state_as_before(m: &mut Map<String, Value>) {
                 trigger.remove("as");
             }
         }
+    }
+}
+
+/// Writes a state as IR 0.13 did where 0.14's `default` says nothing new: a `default` that is
+/// `[]` is removed. A machine with no history state that has a default keeps its 0.13 hash.
+fn default_as_before(m: &mut Map<String, Value>) {
+    if m.get("default")
+        .is_some_and(|v| v.as_array().is_some_and(Vec::is_empty))
+    {
+        m.remove("default");
     }
 }
 

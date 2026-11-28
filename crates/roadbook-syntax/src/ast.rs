@@ -444,7 +444,7 @@ pub enum Item {
     Output(FinalValue),
     /// `fail expr`
     Fail(FinalValue),
-    /// `[deep] history Name`
+    /// `[deep] history Name [-> Target {, Target}]`
     History(History),
     /// `check property`
     Check(Check),
@@ -556,15 +556,21 @@ pub struct State {
     pub span: Span,
 }
 
-/// `history Name` or `deep history Name`: a history pseudo-state of the state it is written
-/// in.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+/// `history Name [-> Target {, Target}]` or `deep history Name [-> …]`: a history
+/// pseudo-state of the state it is written in, with the states it enters when it has recorded
+/// nothing.
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct History {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub doc: Option<Doc>,
     pub deep: bool,
     pub name: Ident,
-    /// From `history` or `deep` to the end of the name.
+    /// The targets after `->`, in the order written: none for a history state written
+    /// without a default. Each is a path of names with no dot and no arguments, resolved as a
+    /// transition's target written in the history state is.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub default: Vec<Target>,
+    /// From `history` or `deep` to the end of the name, or of the last default target.
     #[serde(skip)]
     pub span: Span,
 }

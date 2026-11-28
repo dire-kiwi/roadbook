@@ -2068,6 +2068,16 @@
     "type": "history_state",
     "named": true,
     "fields": {
+      "default": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "state_path",
+            "named": true
+          }
+        ]
+      },
       "kind": {
         "multiple": false,
         "required": false,

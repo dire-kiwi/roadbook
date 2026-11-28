@@ -318,6 +318,7 @@
         "params": [],
         "vars": [],
         "initial": "Gather.Waiting",
+        "default": [],
         "states": [
           {
             "id": "Gather.Waiting",
@@ -334,6 +335,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -508,6 +510,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -618,6 +621,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

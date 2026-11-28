@@ -79,6 +79,7 @@
         "params": [],
         "vars": [],
         "initial": "Crash.Busy",
+        "default": [],
         "states": [
           {
             "id": "Crash.Busy",
@@ -95,6 +96,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Crash.Busy.A",
@@ -111,6 +113,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -178,6 +181,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -245,6 +249,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -313,6 +318,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -384,6 +390,7 @@
         "params": [],
         "vars": [],
         "initial": "Child.Waiting",
+        "default": [],
         "states": [
           {
             "id": "Child.Waiting",
@@ -400,6 +407,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [
@@ -461,6 +469,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

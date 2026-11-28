@@ -124,6 +124,7 @@
         "params": [],
         "vars": [],
         "initial": "Histories.Work",
+        "default": [],
         "states": [
           {
             "id": "Histories.Work",
@@ -140,6 +141,7 @@
             "params": [],
             "vars": [],
             "initial": "Histories.Work.A",
+            "default": [],
             "states": [
               {
                 "id": "Histories.Work.Last",
@@ -156,6 +158,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -179,6 +182,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -202,6 +206,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -259,6 +264,7 @@
                 "params": [],
                 "vars": [],
                 "initial": "Histories.Work.B.B1",
+                "default": [],
                 "states": [
                   {
                     "id": "Histories.Work.B.B1",
@@ -275,6 +281,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -320,6 +327,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -419,6 +427,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -506,6 +515,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Histories.Both.Again",
@@ -522,6 +532,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -545,6 +556,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -568,6 +580,7 @@
                 "params": [],
                 "vars": [],
                 "initial": "Histories.Both.Left.L1",
+                "default": [],
                 "states": [
                   {
                     "id": "Histories.Both.Left.Inside",
@@ -584,6 +597,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -607,6 +621,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -652,6 +667,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -705,6 +721,7 @@
                 "params": [],
                 "vars": [],
                 "initial": "Histories.Both.Right.R1",
+                "default": [],
                 "states": [
                   {
                     "id": "Histories.Both.Right.R1",
@@ -721,6 +738,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -782,6 +800,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

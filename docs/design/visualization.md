@@ -32,7 +32,7 @@ A machine nobody invokes or spawns is marked top level. A legend under the graph
 | Compound state | A container with its children laid out inside |
 | Initial state | A filled dot with an arrow |
 | Final state | A double border, with its `output` or `fail` |
-| History state (`history Previous`, `deep history All`) | A small circle marked `H`, or `H*` for a deep one, inside its parent; the arrows of the transitions to it end on the circle. It is never a region or an initial state. Its details say what entering it does (`returns to where Working was when it was last left`, all the way down for a deep one) and which transitions target it. |
+| History state (`history Previous`, `deep history All`) | A small circle marked `H`, or `H*` for a deep one, inside its parent; the arrows of the transitions to it end on the circle. A dashed arrow, unlabelled, goes from the circle to each of its default targets (`history Previous -> Editing`), and clicking it selects the history state. It is never a region or an initial state. Its details say what entering it does (`returns to where Working was when it was last left`, all the way down for a deep one) and which transitions target it. |
 | `invoke` of a task | A row inside the state: `invoke chargeCard(order, user)` |
 | `invoke` of a machine | The same row with a badge. Clicking it opens that machine. |
 | `invoke … as upload` | The badge ends with `as upload`, the name in italics |

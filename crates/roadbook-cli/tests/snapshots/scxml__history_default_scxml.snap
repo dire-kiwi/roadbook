@@ -1,0 +1,60 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A shallow default, a deep one through the state above it, and several in
+  the regions of a parallel state.
+-->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Editor" datamodel="roadbook" initial="Editor_Idle">
+  <state id="Editor_Idle">
+    <transition event="Open" target="Editor_Doc_Previous"/>
+    <transition event="Notes" target="Editor_Notebook_Last"/>
+    <transition event="Panels" target="Editor_View_Restore"/>
+  </state>
+  <state id="Editor_Doc" initial="Editor_Doc_Blank">
+    <transition event="Leave" target="Editor_Idle"/>
+    <history id="Editor_Doc_Previous" type="shallow">
+      <transition target="Editor_Doc_Editing"/>
+    </history>
+    <state id="Editor_Doc_Blank"/>
+    <state id="Editor_Doc_Editing" initial="Editor_Doc_Editing_Typing">
+      <state id="Editor_Doc_Editing_Typing">
+        <transition event="Next" target="Editor_Doc_Editing_Review"/>
+      </state>
+      <state id="Editor_Doc_Editing_Review"/>
+    </state>
+  </state>
+  <state id="Editor_Notebook" initial="Editor_Notebook_Cover">
+    <transition event="Leave" target="Editor_Idle"/>
+    <history id="Editor_Notebook_Last" type="deep">
+      <transition target="Editor_Notebook_Pages_Second"/>
+    </history>
+    <state id="Editor_Notebook_Cover"/>
+    <state id="Editor_Notebook_Pages" initial="Editor_Notebook_Pages_First">
+      <state id="Editor_Notebook_Pages_First"/>
+      <state id="Editor_Notebook_Pages_Second">
+        <transition event="Next" target="Editor_Notebook_Pages_Third"/>
+      </state>
+      <state id="Editor_Notebook_Pages_Third"/>
+    </state>
+  </state>
+  <parallel id="Editor_View">
+    <transition event="Leave" target="Editor_Idle"/>
+    <history id="Editor_View_Restore" type="shallow">
+      <transition target="Editor_View_Main_Split Editor_View_Side_Wide"/>
+    </history>
+    <state id="Editor_View_Main" initial="Editor_View_Main_Plain">
+      <state id="Editor_View_Main_Plain"/>
+      <state id="Editor_View_Main_Split"/>
+    </state>
+    <state id="Editor_View_Side" initial="Editor_View_Side_Narrow">
+      <state id="Editor_View_Side_Narrow"/>
+      <state id="Editor_View_Side_Wide">
+        <transition event="Next" target="Editor_View_Side_Hidden"/>
+      </state>
+      <state id="Editor_View_Side_Hidden"/>
+    </state>
+  </parallel>
+</scxml>

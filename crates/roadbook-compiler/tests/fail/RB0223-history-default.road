@@ -1,0 +1,20 @@
+machine M() {
+  event Go
+
+  initial A
+  state A {
+    initial B
+    history H -> Takes
+    deep history D -> Outer.Inner
+    state B             { on Go -> A.H }
+    state C             { on Go -> A.D }
+    state Takes(n: int) {}
+    state Outer(label: string) {
+      initial Inner
+      state Inner {}
+    }
+  }
+}
+
+// expect: RB0223 at 7:18
+// expect: RB0223 at 8:23

@@ -935,3 +935,42 @@
 #  ^ punctuation.section.braces.roadbook
 >}
 #^ punctuation.section.braces.roadbook
+>
+>// History states with default targets.
+#^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.double-slash.roadbook
+>machine Defaults() {
+#^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
+#        ^^^^^^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
+#                ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#                 ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                   ^ punctuation.section.braces.roadbook
+>  state A {
+#  ^^^^^ storage.type.state.roadbook
+#        ^ entity.name.type.state.roadbook
+#          ^ punctuation.section.braces.roadbook
+>    initial B
+#    ^^^^^^^ keyword.control.initial.roadbook
+#            ^ entity.name.type.state.roadbook
+>    history Last -> B
+#    ^^^^^^^ storage.type.history.roadbook
+#            ^^^^ entity.name.type.state.roadbook
+#                 ^^ keyword.operator.arrow.roadbook
+#                    ^ entity.name.type.state.roadbook
+>    deep history All->B.C, D
+#    ^^^^ storage.modifier.deep.roadbook
+#         ^^^^^^^ storage.type.history.roadbook
+#                 ^^^ entity.name.type.state.roadbook
+#                    ^^ keyword.operator.arrow.roadbook
+#                      ^^^ entity.name.type.state.roadbook
+#                         ^ entity.name.type.state.roadbook punctuation.separator.comma.roadbook
+#                          ^^ entity.name.type.state.roadbook
+>    state B {}
+#    ^^^^^ storage.type.state.roadbook
+#          ^ entity.name.type.state.roadbook
+#            ^ punctuation.section.braces.roadbook
+#             ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>}
+#^ punctuation.section.braces.roadbook

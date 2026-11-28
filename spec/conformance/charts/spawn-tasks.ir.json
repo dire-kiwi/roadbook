@@ -269,6 +269,7 @@
         "params": [],
         "vars": [],
         "initial": "Batch.Open",
+        "default": [],
         "states": [
           {
             "id": "Batch.Open",
@@ -285,6 +286,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -580,6 +582,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

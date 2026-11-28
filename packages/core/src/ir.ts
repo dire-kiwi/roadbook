@@ -160,6 +160,11 @@ export interface State {
   /** The state's variables, in order: `[]` for a state that declares none. */
   readonly vars: ReadonlyArray<Variable>
   readonly initial: string | null
+  /**
+   * For a history state, the ids of the states it enters when it has recorded nothing: `[]` for
+   * one written without a default, and for every other state.
+   */
+  readonly default: ReadonlyArray<string>
   readonly states: ReadonlyArray<State>
   readonly entry: ReadonlyArray<Effect>
   readonly exit: ReadonlyArray<Effect>

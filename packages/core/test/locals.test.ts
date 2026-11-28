@@ -85,6 +85,7 @@ const state = (
   params: [],
   vars: [],
   initial: null,
+  default: [],
   states: [],
   entry: [],
   exit: [],

@@ -140,6 +140,7 @@
         "params": [],
         "vars": [],
         "initial": "Desk.Staffed",
+        "default": [],
         "states": [
           {
             "id": "Desk.Staffed",
@@ -156,6 +157,7 @@
             "params": [],
             "vars": [],
             "initial": "Desk.Staffed.Free",
+            "default": [],
             "states": [
               {
                 "id": "Desk.Staffed.Free",
@@ -172,6 +174,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -232,6 +235,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -400,6 +404,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -496,6 +501,7 @@
         "params": [],
         "vars": [],
         "initial": "Asker.Asking",
+        "default": [],
         "states": [
           {
             "id": "Asker.Asking",
@@ -512,6 +518,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -614,6 +621,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -645,6 +653,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -724,6 +733,7 @@
         "params": [],
         "vars": [],
         "initial": "Holder.Holding",
+        "default": [],
         "states": [
           {
             "id": "Holder.Holding",
@@ -740,6 +750,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -842,6 +853,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -873,6 +885,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

@@ -144,3 +144,13 @@ machine Several() {
     on Retry|Reconnect if attempts < 3 -> A  set reason = event.reason
   }
 }
+
+// History states with default targets.
+machine Defaults() {
+  state A {
+    initial B
+    history Last -> B
+    deep history All->B.C, D
+    state B {}
+  }
+}

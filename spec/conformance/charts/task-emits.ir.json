@@ -249,6 +249,7 @@
         "params": [],
         "vars": [],
         "initial": "Publish.Uploading",
+        "default": [],
         "states": [
           {
             "id": "Publish.Uploading",
@@ -265,6 +266,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -445,6 +447,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -490,6 +493,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -556,6 +560,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -685,6 +690,7 @@
         "params": [],
         "vars": [],
         "initial": "Eager.Uploading",
+        "default": [],
         "states": [
           {
             "id": "Eager.Uploading",
@@ -701,6 +707,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -910,6 +917,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -976,6 +984,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1063,6 +1072,7 @@
         "params": [],
         "vars": [],
         "initial": "Quiet.Heard",
+        "default": [],
         "states": [
           {
             "id": "Quiet.Heard",
@@ -1079,6 +1089,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1205,6 +1216,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1307,6 +1319,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1394,6 +1407,7 @@
         "params": [],
         "vars": [],
         "initial": "Gauge.Uploading",
+        "default": [],
         "states": [
           {
             "id": "Gauge.Uploading",
@@ -1410,6 +1424,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1562,6 +1577,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1661,6 +1677,7 @@
         "params": [],
         "vars": [],
         "initial": "Nested.Working",
+        "default": [],
         "states": [
           {
             "id": "Nested.Working",
@@ -1677,6 +1694,7 @@
             "params": [],
             "vars": [],
             "initial": "Nested.Working.First",
+            "default": [],
             "states": [
               {
                 "id": "Nested.Working.First",
@@ -1693,6 +1711,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1758,6 +1777,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1915,6 +1935,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2002,6 +2023,7 @@
         "params": [],
         "vars": [],
         "initial": "Login.Signing",
+        "default": [],
         "states": [
           {
             "id": "Login.Signing",
@@ -2018,6 +2040,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2144,6 +2167,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

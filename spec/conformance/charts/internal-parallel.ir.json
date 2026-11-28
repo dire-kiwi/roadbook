@@ -98,6 +98,7 @@
         "params": [],
         "vars": [],
         "initial": "Sides.P",
+        "default": [],
         "states": [
           {
             "id": "Sides.P",
@@ -114,6 +115,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Sides.P.A",
@@ -130,6 +132,7 @@
                 "params": [],
                 "vars": [],
                 "initial": "Sides.P.A.A1",
+                "default": [],
                 "states": [
                   {
                     "id": "Sides.P.A.A1",
@@ -146,6 +149,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -169,6 +173,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -248,6 +253,7 @@
                 "params": [],
                 "vars": [],
                 "initial": "Sides.P.B.B1",
+                "default": [],
                 "states": [
                   {
                     "id": "Sides.P.B.B1",
@@ -264,6 +270,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -309,6 +316,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],

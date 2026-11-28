@@ -121,6 +121,7 @@
         "params": [],
         "vars": [],
         "initial": "Lock.Closed",
+        "default": [],
         "states": [
           {
             "id": "Lock.Closed",
@@ -137,6 +138,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -307,6 +309,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

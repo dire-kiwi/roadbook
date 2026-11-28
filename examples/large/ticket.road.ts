@@ -1448,6 +1448,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "SupportTicket.Intake",
+        "default": [],
         "states": [
           {
             "id": "SupportTicket.Intake",
@@ -1464,6 +1465,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Intake.Classifying",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Intake.Classifying",
@@ -1480,6 +1482,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1661,6 +1664,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -1751,6 +1755,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1867,6 +1872,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1890,6 +1896,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -1964,6 +1971,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Triage.Routing",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Triage.Routing",
@@ -1980,6 +1988,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -2096,6 +2105,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -2146,6 +2156,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -2365,6 +2376,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Active.Working",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Active.Working",
@@ -2381,6 +2393,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": "SupportTicket.Active.Working.WithAgent",
+                "default": [],
                 "states": [
                   {
                     "id": "SupportTicket.Active.Working.WithAgent",
@@ -2397,6 +2410,7 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2588,6 +2602,7 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
@@ -2604,6 +2619,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -2676,6 +2692,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -2748,6 +2765,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -2827,6 +2845,7 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2959,6 +2978,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": "SupportTicket.Active.Escalation.Tier2",
+                "default": [],
                 "states": [
                   {
                     "id": "SupportTicket.Active.Escalation.Tier2",
@@ -2975,6 +2995,7 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [
                       {
@@ -3047,6 +3068,7 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [
                       {
@@ -3119,6 +3141,7 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Escalation.Engineering.FilingBug",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Escalation.Engineering.FilingBug",
@@ -3135,6 +3158,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3333,6 +3357,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [
                           {
@@ -3415,6 +3440,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3481,6 +3507,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3584,6 +3611,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [
                   {
                     "id": "SupportTicket.Active.Resolving.FixCheck",
@@ -3600,6 +3628,7 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Resolving.FixCheck.Verifying",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Resolving.FixCheck.Verifying",
@@ -3616,6 +3645,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3746,6 +3776,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3777,6 +3808,7 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
@@ -3793,6 +3825,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3878,6 +3911,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3963,6 +3997,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -4055,6 +4090,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -4414,6 +4450,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Closing.Surveying",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Closing.Surveying",
@@ -4430,6 +4467,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -4515,6 +4553,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -4572,6 +4611,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4629,6 +4669,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4683,6 +4724,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4737,6 +4779,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4791,6 +4834,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4845,6 +4889,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4899,6 +4944,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4953,6 +4999,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5096,6 +5143,7 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "SatisfactionSurvey.Sending",
+        "default": [],
         "states": [
           {
             "id": "SatisfactionSurvey.Sending",
@@ -5112,6 +5160,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5219,6 +5268,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5269,6 +5319,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5449,6 +5500,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5499,6 +5551,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

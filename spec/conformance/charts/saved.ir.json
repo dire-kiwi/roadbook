@@ -236,6 +236,7 @@
         "params": [],
         "vars": [],
         "initial": "Counter.Counting",
+        "default": [],
         "states": [
           {
             "id": "Counter.Counting",
@@ -252,6 +253,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -370,6 +372,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -457,6 +460,7 @@
         "params": [],
         "vars": [],
         "initial": "Shop.Paying",
+        "default": [],
         "states": [
           {
             "id": "Shop.Paying",
@@ -473,6 +477,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -558,6 +563,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -664,6 +670,7 @@
         "params": [],
         "vars": [],
         "initial": "Pay.Quoting",
+        "default": [],
         "states": [
           {
             "id": "Pay.Quoting",
@@ -680,6 +687,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -765,6 +773,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -850,6 +859,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -922,6 +932,7 @@
         "params": [],
         "vars": [],
         "initial": "Reminder.Waiting",
+        "default": [],
         "states": [
           {
             "id": "Reminder.Waiting",
@@ -938,6 +949,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -988,6 +1000,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -1151,6 +1164,7 @@
         "params": [],
         "vars": [],
         "initial": "Order.AwaitingPayment",
+        "default": [],
         "states": [
           {
             "id": "Order.AwaitingPayment",
@@ -1167,6 +1181,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1254,6 +1269,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1339,6 +1355,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1384,6 +1401,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1453,6 +1471,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

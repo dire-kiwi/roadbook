@@ -106,6 +106,7 @@
         "params": [],
         "vars": [],
         "initial": "Race.Slow",
+        "default": [],
         "states": [
           {
             "id": "Race.Slow",
@@ -122,6 +123,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -218,6 +220,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -293,6 +296,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

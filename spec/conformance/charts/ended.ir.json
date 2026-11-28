@@ -167,6 +167,7 @@
         "params": [],
         "vars": [],
         "initial": "Inventory.Open",
+        "default": [],
         "states": [
           {
             "id": "Inventory.Open",
@@ -183,6 +184,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -274,6 +276,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -305,6 +308,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -395,6 +399,7 @@
         "params": [],
         "vars": [],
         "initial": "Order.Waiting",
+        "default": [],
         "states": [
           {
             "id": "Order.Waiting",
@@ -411,6 +416,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -650,6 +656,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -673,6 +680,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -696,6 +704,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -719,6 +728,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -790,6 +800,7 @@
         "params": [],
         "vars": [],
         "initial": "Clerk.Open",
+        "default": [],
         "states": [
           {
             "id": "Clerk.Open",
@@ -806,6 +817,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -851,6 +863,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -922,6 +935,7 @@
         "params": [],
         "vars": [],
         "initial": "Picker.Idle",
+        "default": [],
         "states": [
           {
             "id": "Picker.Idle",
@@ -938,6 +952,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -983,6 +998,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1033,6 +1049,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1104,6 +1121,7 @@
         "params": [],
         "vars": [],
         "initial": "Guard.Idle",
+        "default": [],
         "states": [
           {
             "id": "Guard.Idle",
@@ -1120,6 +1138,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1165,6 +1184,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1215,6 +1235,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1315,6 +1336,7 @@
         "params": [],
         "vars": [],
         "initial": "Switcher.Watching",
+        "default": [],
         "states": [
           {
             "id": "Switcher.Watching",
@@ -1331,6 +1353,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1432,6 +1455,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

@@ -131,6 +131,7 @@
         "params": [],
         "vars": [],
         "initial": "Player.Idle",
+        "default": [],
         "states": [
           {
             "id": "Player.Idle",
@@ -147,6 +148,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -215,6 +217,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Player.On.Playback",
@@ -231,6 +234,7 @@
                 "params": [],
                 "vars": [],
                 "initial": "Player.On.Playback.Playing",
+                "default": [],
                 "states": [
                   {
                     "id": "Player.On.Playback.Last",
@@ -247,6 +251,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -270,6 +275,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -293,6 +299,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -346,6 +353,7 @@
                 "params": [],
                 "vars": [],
                 "initial": "Player.On.Volume.Normal",
+                "default": [],
                 "states": [
                   {
                     "id": "Player.On.Volume.Normal",
@@ -362,6 +370,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -385,6 +394,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -430,6 +440,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -461,6 +472,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
