@@ -298,6 +298,7 @@ fn blank() -> Snapshot {
         active: Vec::new(),
         input: Map::new(),
         vars: Map::new(),
+        locals: Default::default(),
         invokes: Vec::new(),
         calls: Vec::new(),
         spawned: Vec::new(),
@@ -307,6 +308,7 @@ fn blank() -> Snapshot {
         next_timer: 1,
         next_message: 1,
         history: Default::default(),
+        history_locals: Default::default(),
         result: None,
     }
 }

@@ -9,7 +9,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use roadbook_ir::{Call, ChildrenKind, Field, Ir, Machine, TypeDef, TypeRef};
+use roadbook_ir::{Call, ChildrenKind, Field, Ir, Machine, State, TypeDef, TypeRef};
 use serde_json::Value;
 
 use crate::{Defect, Input, InvokeEntry, Object, Record, Saved, SpawnedEntry};
@@ -41,6 +41,7 @@ impl Marks {
             || ir.machines.values().any(|m| {
                 fields(&m.params)
                     || m.vars.iter().any(|v| v.sensitive)
+                    || marks_a_local(&m.root)
                     || m.calls.values().any(|c| fields(&c.params))
                     || m.events
                         .values()
@@ -60,6 +61,27 @@ impl Marks {
         }
         marks
     }
+}
+
+/// Whether `s` or a state below it has a sensitive parameter or variable.
+fn marks_a_local(s: &State) -> bool {
+    s.params.iter().any(|p| p.sensitive)
+        || s.vars.iter().any(|v| v.sensitive)
+        || s.states.iter().any(marks_a_local)
+}
+
+/// The state of `m` with id `id`.
+fn find_state<'m>(m: &'m Machine, id: &str) -> Option<&'m State> {
+    fn walk<'m>(s: &'m State, id: &str) -> Option<&'m State> {
+        if s.id == id {
+            return Some(s);
+        }
+        if !id.starts_with(s.id.as_str()) {
+            return None;
+        }
+        s.states.iter().find_map(|c| walk(c, id))
+    }
+    walk(&m.root, id)
 }
 
 /// Whether a value of the declared type `name` can hold a sensitive value whatever its type
@@ -472,10 +494,53 @@ impl Redactor<'_> {
 
     /// Redacts `value`, the value of variable `name` of `m`: whole if it is sensitive, or if `m`
     /// has no such variable.
+    ///
+    /// A `name` of the form `<state id>.<name>` is a local of that state
+    /// (`spec/trace.md#redaction`).
     fn var(&self, m: &Machine, name: &str, value: &mut Value) {
+        if let Some((state, local)) = name.rsplit_once('.') {
+            match find_state(m, state) {
+                Some(s) => self.local(s, local, value),
+                None => redact(value),
+            }
+            return;
+        }
         match m.vars.iter().find(|v| v.name == name) {
             Some(v) if !v.sensitive => self.value(&v.ty, value),
             _ => redact(value),
+        }
+    }
+
+    /// Redacts `value`, the value of parameter or variable `name` of state `s`: whole if it is
+    /// sensitive, or if `s` has no such local.
+    fn local(&self, s: &State, name: &str, value: &mut Value) {
+        let declared = s
+            .params
+            .iter()
+            .find(|p| p.name == name)
+            .map(|p| (p.sensitive, &p.ty))
+            .or_else(|| {
+                s.vars
+                    .iter()
+                    .find(|v| v.name == name)
+                    .map(|v| (v.sensitive, &v.ty))
+            });
+        match declared {
+            Some((false, ty)) => self.value(ty, value),
+            _ => redact(value),
+        }
+    }
+
+    /// Redacts `locals`, keyed by state id and then by name, as the locals of `m`'s states.
+    fn locals(&self, m: &Machine, locals: &mut crate::Locals) {
+        for (id, obj) in locals.iter_mut() {
+            let s = find_state(m, id);
+            for (name, value) in obj.iter_mut() {
+                match s {
+                    Some(s) => self.local(s, name, value),
+                    None => redact(value),
+                }
+            }
         }
     }
 
@@ -523,6 +588,10 @@ impl Redactor<'_> {
         self.object(&m.params, &mut saved.input);
         for (name, value) in saved.vars.iter_mut() {
             self.var(m, name, value);
+        }
+        self.locals(m, &mut saved.locals);
+        for locals in saved.history_locals.values_mut() {
+            self.locals(m, locals);
         }
         for ch in saved.spawned.iter_mut().flatten() {
             let params = self.collection(m, &ch.children).map(|(p, _)| p);

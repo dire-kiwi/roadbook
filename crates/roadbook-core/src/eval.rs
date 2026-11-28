@@ -18,6 +18,8 @@ pub(crate) struct Scope<'a> {
     pub machine: &'a roadbook_ir::Machine,
     pub input: &'a Map<String, Value>,
     pub vars: &'a Map<String, Value>,
+    /// The locals of the active states (and of those being exited), keyed by state id.
+    pub locals: &'a crate::Locals,
     pub implicit: &'a [(&'static str, Value)],
     pub key: Option<&'a Value>,
 }
@@ -31,9 +33,12 @@ pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, 
             Literal::Bool(b) => Value::from(*b),
             Literal::Duration(ms) => Value::from(*ms),
         },
-        ExprKind::Ref { path, .. } => {
+        ExprKind::Ref { path, state } => {
             let (first, rest) = path.split_first().expect("a ref path is never empty");
-            let mut v = lookup(first, s)?;
+            let mut v = match state {
+                Some(state) => local(state, first, s)?,
+                None => lookup(first, s)?,
+            };
             for f in rest {
                 v = field(v, f);
             }
@@ -118,6 +123,18 @@ pub(crate) fn lookup(name: &str, s: &Scope<'_>) -> Result<Value, Defect> {
         });
     }
     Ok(s.input.get(name).cloned().unwrap_or(Value::Null))
+}
+
+/// Parameter or variable `name` of state `state`, from the locals: one with no value is
+/// `unassigned`, named `<state id>.<name>` (`spec/execution.md#data-local-to-a-state`).
+pub(crate) fn local(state: &str, name: &str, s: &Scope<'_>) -> Result<Value, Defect> {
+    s.locals
+        .get(state)
+        .and_then(|l| l.get(name))
+        .cloned()
+        .ok_or_else(|| Defect::Unassigned {
+            var: format!("{state}.{name}"),
+        })
 }
 
 fn field(v: Value, name: &str) -> Value {

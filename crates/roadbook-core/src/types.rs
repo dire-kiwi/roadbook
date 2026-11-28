@@ -14,6 +14,14 @@ pub type Object = Map<String, Value>;
 /// What each history state recorded, keyed by its id: state ids, in document order.
 pub type History = BTreeMap<String, Vec<String>>;
 
+/// The locals of states, keyed by state id: each state's parameters and variables that have a
+/// value, keyed by name (`spec/execution.md#data-local-to-a-state`).
+pub type Locals = BTreeMap<String, Object>;
+
+/// The locals each history state recorded with the states it will re-enter, keyed by the
+/// history state's id.
+pub type HistoryLocals = BTreeMap<String, Locals>;
+
 /// A run's status. Only [`Status::Running`] is not final.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -291,6 +299,9 @@ pub struct Snapshot {
     pub input: Object,
     /// Every variable that has a value.
     pub vars: Object,
+    /// The locals of the active states that declare any, keyed by state id.
+    #[serde(default)]
+    pub locals: Locals,
     /// The running invokes, in the order they were started.
     pub invokes: Vec<InvokeEntry>,
     /// The calls the run has taken and not answered yet, in the order it took them.
@@ -311,6 +322,9 @@ pub struct Snapshot {
     pub next_message: u64,
     /// What each history state recorded when its parent was last exited.
     pub history: History,
+    /// The locals each history state recorded with the states it will re-enter.
+    #[serde(default)]
+    pub history_locals: HistoryLocals,
     /// `null` while running and when cancelled.
     pub result: Option<RunResult>,
 }
@@ -967,6 +981,10 @@ pub struct Saved {
     pub input: Object,
     /// Every variable that has a value.
     pub vars: Object,
+    /// The locals of the active states that declare any, keyed by state id. Written only when
+    /// there are some; a snapshot without the member has none.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub locals: Locals,
     /// The running invokes, in the order they were started.
     pub invokes: Vec<SavedInvoke>,
     /// The calls the run had taken and not answered, in the order it took them. Written
@@ -993,6 +1011,10 @@ pub struct Saved {
     /// `history` member and restores as if it were empty.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub history: Option<History>,
+    /// The locals each history state recorded with the states it will re-enter. Written only
+    /// when there are some; a snapshot without the member has none.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub history_locals: HistoryLocals,
     /// `null` while running and when cancelled.
     pub result: Option<RunResult>,
 }
@@ -1014,6 +1036,7 @@ impl Saved {
             active: snap.active.clone(),
             input: snap.input.clone(),
             vars: snap.vars.clone(),
+            locals: snap.locals.clone(),
             invokes: snap
                 .invokes
                 .iter()
@@ -1063,6 +1086,7 @@ impl Saved {
             next_timer: snap.next_timer,
             next_message: snap.next_message,
             history: Some(snap.history.clone()),
+            history_locals: snap.history_locals.clone(),
             result: snap.result.clone(),
         };
         // Integers in integer form: a float that holds one (`2.0`, `-0.0`) is saved as it.
@@ -1082,6 +1106,7 @@ impl Saved {
             active: self.active.clone(),
             input: self.input.clone(),
             vars: self.vars.clone(),
+            locals: self.locals.clone(),
             invokes: self
                 .invokes
                 .iter()
@@ -1127,6 +1152,7 @@ impl Saved {
             next_timer: self.next_timer,
             next_message: self.next_message,
             history: self.history.clone().unwrap_or_default(),
+            history_locals: self.history_locals.clone(),
             result: self.result.clone(),
         }
     }
