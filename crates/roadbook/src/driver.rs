@@ -15,7 +15,7 @@ use roadbook_ir::{Field, TypeRef};
 use serde_json::{Map, Value};
 
 use crate::defect::defect_from_panic;
-use crate::dynamic::{Host, Invocation, Outcome};
+use crate::dynamic::{Emitter, Host, Invocation, Outcome};
 use crate::env::{BoxFuture, Config, TraceRecord};
 use crate::handle::{Peers, with_scope};
 use crate::shared::{Finished, InvokeContext, RunHandle, Shared, with_context};
@@ -58,11 +58,19 @@ enum Next {
 }
 
 /// A running invoke or spawned child: its future and, for a machine, the context it is
-/// polled in. `spawn` says that its outcome is a `spawn.*` input.
+/// polled in. `spawn` says that its outcome is a `spawn.*` input. A task's emitter is closed
+/// when its slot is dropped, however that happens (`spec/execution.md#the-emitter`).
 struct Slot<'a> {
     fut: BoxFuture<'a, Outcome>,
     ctx: Option<Arc<InvokeContext>>,
     spawn: bool,
+    emitter: Emitter,
+}
+
+impl Drop for Slot<'_> {
+    fn drop(&mut self) {
+        self.emitter.close();
+    }
 }
 
 pub(crate) struct Driver<'a> {
@@ -717,8 +725,14 @@ impl<'a> Driver<'a> {
                 Err(p) => ended.push((id, Outcome::Defect(defect_from_panic(p)))),
             }
         }
-        // What a child run emitted in the poll that ended it is in the inbox: it goes before
-        // the child's outcome.
+        // What a child run or a task emitted in the poll that ended it is in the inbox: it
+        // goes before the outcome. A task's emitter is closed first, so that nothing it emits
+        // from another thread can reach the queue after its outcome.
+        for (id, _) in &ended {
+            if let Some(slot) = self.invokes.get(id) {
+                slot.emitter.close();
+            }
+        }
         if !ended.is_empty() && self.shared.drain(&mut self.queue, cx.waker()) {
             self.cancel_requested = true;
         }
@@ -851,15 +865,16 @@ impl<'a> Driver<'a> {
                 self.start_invoke(invoke, src, src_kind, delivers, args, false, saved);
                 Ok(())
             }
-            // A spawned child is a machine invoke whose emitted events reach this run, as an
-            // `as` child's do: those this run's machine has an `on` for.
+            // A spawned child is a machine or task invoke whose emitted events reach this run,
+            // as an `as` child's or task's do: those this run's machine has an `on` for.
             Command::SpawnStart {
                 spawn,
                 src,
+                src_kind,
                 args,
                 saved,
             } => {
-                self.start_invoke(spawn, src, SrcKind::Machine, true, args, true, saved);
+                self.start_invoke(spawn, src, src_kind, true, args, true, saved);
                 Ok(())
             }
             Command::InvokeCancel { invoke } | Command::SpawnStop { spawn: invoke } => {
@@ -990,8 +1005,10 @@ impl<'a> Driver<'a> {
 
     /// Starts an invoke, or (`spawn`) a spawned child, whose outcome is then a `spawn.*` input.
     /// A child run that `delivers` (invoked with `as`, or spawned) delivers to this run the
-    /// events it emits that this run's machine has an `on` for. A machine's child run restores
-    /// `saved` if that is given.
+    /// events it emits that this run's machine has an `on` for, and a task that `delivers`
+    /// gets a live emitter for those events (an inert one otherwise). A machine's child run
+    /// restores `saved` if that is given. A task, invoked or spawned, runs with no invoke
+    /// context.
     #[allow(clippy::too_many_arguments)]
     fn start_invoke(
         &mut self,
@@ -1003,6 +1020,12 @@ impl<'a> Driver<'a> {
         spawn: bool,
         saved: Option<Box<Saved>>,
     ) {
+        let emitter = if src_kind == SrcKind::Task && delivers {
+            let heard = self.program.heard(&self.snap.machine, &src);
+            Emitter::live(self.shared.clone(), invoke, heard)
+        } else {
+            Emitter::inert()
+        };
         let ctx = (src_kind == SrcKind::Machine).then(|| {
             Arc::new(InvokeContext {
                 config: self.config.clone(),
@@ -1040,6 +1063,7 @@ impl<'a> Driver<'a> {
             refs,
             run: self.id.clone(),
             invoke,
+            emitter: emitter.clone(),
         };
         let host = self.host;
         let peers = self.peers.clone();
@@ -1052,7 +1076,15 @@ impl<'a> Driver<'a> {
             let d = defect_from_panic(p);
             Box::pin(async move { Outcome::Defect(d) })
         });
-        self.invokes.insert(invoke, Slot { fut, ctx, spawn });
+        self.invokes.insert(
+            invoke,
+            Slot {
+                fut,
+                ctx,
+                spawn,
+                emitter,
+            },
+        );
     }
 
     /// Stops a running invoke. A task's or stub's future is dropped at once. A child run is

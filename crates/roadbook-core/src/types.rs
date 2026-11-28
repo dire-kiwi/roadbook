@@ -315,6 +315,16 @@ pub enum Input {
         /// The event, a tagged record.
         value: Value,
     },
+    /// A task's emit: the task of this run's invoke or spawned task `invoke` emitted one of
+    /// its task's `emits` while it ran. Given only for an invoke with `as` or a spawned task,
+    /// and only for an event the run's machine hears from that task.
+    #[serde(rename = "task.emitted")]
+    TaskEmitted {
+        /// The id of the invoke or spawned task.
+        invoke: u64,
+        /// The event, a tagged record.
+        value: Value,
+    },
     /// A call: run `from` called this machine's call `call` with its invoke `invoke`.
     #[serde(rename = "call")]
     Call {
@@ -509,17 +519,21 @@ pub enum Command {
         /// The invoke's id.
         invoke: u64,
     },
-    /// Start machine `src` as a spawned child, which delivers what it emits to this run; queue
-    /// its outcome as a `spawn.*` input when it ends.
+    /// Start machine or task `src` as a spawned child, which delivers what it emits to this
+    /// run; queue its outcome as a `spawn.*` input when it ends.
     #[serde(rename = "spawn.start")]
     SpawnStart {
         /// The spawned child's id.
         spawn: u64,
-        /// The machine's name.
+        /// The machine's or task's name.
         src: String,
+        /// [`SrcKind::Machine`] or [`SrcKind::Task`], by the collection's kind.
+        #[serde(rename = "srcKind")]
+        src_kind: SrcKind,
         /// Its arguments, keyed by parameter name.
         args: Object,
-        /// The saved snapshot of the child run, as for [`Command::InvokeStart`].
+        /// The saved snapshot of the child run, as for [`Command::InvokeStart`]; always `None`
+        /// for a task.
         saved: Option<Box<Saved>>,
     },
     /// Stop the spawned child and wait until it has stopped, as `invoke.cancel` does.

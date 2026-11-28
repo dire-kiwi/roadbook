@@ -7,7 +7,7 @@
 use std::collections::HashSet;
 use std::fmt;
 
-use roadbook_ir::{Builtin, Field, StateKind, Trigger, TypeDef, TypeRef};
+use roadbook_ir::{Builtin, ChildrenKind, Field, StateKind, Trigger, TypeDef, TypeRef};
 use serde_json::{Map, Value};
 
 use crate::program::Program;
@@ -181,7 +181,8 @@ impl Program {
 
     /// The child run snapshots nested in `saved`, a saved snapshot as JSON, each with the
     /// machine its entry starts: an `invokes` entry's `src` when that is a machine, a
-    /// `spawned` entry's collection's machine when the collection is one of `machine`'s.
+    /// `spawned` entry's collection's machine when the collection is one of `machine`'s and
+    /// holds machines.
     /// Entries whose work is not such a machine are left out: they are refused as `invalid`.
     fn nested<'v>(&'v self, saved: &'v Value, machine: &str) -> Vec<(&'v Value, &'v str)> {
         let mut out = Vec::new();
@@ -197,7 +198,9 @@ impl Program {
         let collections = self.ir().machines.get(machine).map(|m| &m.children);
         for ch in entries("spawned") {
             let decl = collections.and_then(|c| c.get(ch["children"].as_str().unwrap_or_default()));
-            if let (Some(child), Some(decl)) = (ch.get("child"), decl) {
+            if let (Some(child), Some(decl)) = (ch.get("child"), decl)
+                && decl.kind == ChildrenKind::Machine
+            {
                 out.push((child, decl.src.as_str()));
             }
         }
@@ -424,22 +427,27 @@ impl Program {
                     ch.id, decl.key
                 ));
             }
-            let child = self
-                .ir()
-                .machines
-                .get(&decl.src)
-                .ok_or_else(|| format!("no machine `{}`", decl.src))?;
-            if ch.args.len() != child.params.len() {
+            let params = match decl.kind {
+                ChildrenKind::Machine => self.ir().machines.get(&decl.src).map(|m| &m.params),
+                ChildrenKind::Task => self.ir().tasks.get(&decl.src).map(|t| &t.params),
+            }
+            .ok_or_else(|| format!("no machine or task `{}`", decl.src))?;
+            if ch.args.len() != params.len() {
                 return Err(format!(
                     "the arguments of spawned child {} are not exactly `{}`'s parameters",
                     ch.id, decl.src
                 ));
             }
-            for p in &child.params {
+            // A task's parameters name no events of their own, so the parent stands in for it.
+            let owner = match decl.kind {
+                ChildrenKind::Machine => decl.src.as_str(),
+                ChildrenKind::Task => s.machine.as_str(),
+            };
+            for p in params {
                 let v = ch.args.get(&p.name).ok_or_else(|| {
                     format!("spawned child {} lacks the argument `{}`", ch.id, p.name)
                 })?;
-                if !self.value_fits(&decl.src, &p.ty, v) {
+                if !self.value_fits(owner, &p.ty, v) {
                     return Err(format!(
                         "the argument `{}` of spawned child {} is not a {}",
                         p.name, ch.id, p.ty
@@ -636,7 +644,8 @@ impl Program {
                         .ir()
                         .machines
                         .get(owner)
-                        .and_then(|m| m.events.get(ev).or_else(|| m.emits.get(ev)));
+                        .and_then(|m| m.events.get(ev).or_else(|| m.emits.get(ev)))
+                        .or_else(|| self.ir().tasks.get(owner)?.emits.get(ev));
                     decl.is_some_and(|d| self.fields_fit(machine, Some(ev), &d.fields, v))
                 }
             },

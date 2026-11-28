@@ -9,7 +9,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use roadbook_ir::{Call, Field, Ir, Machine, TypeDef, TypeRef};
+use roadbook_ir::{Call, ChildrenKind, Field, Ir, Machine, TypeDef, TypeRef};
 use serde_json::Value;
 
 use crate::{Defect, Input, InvokeEntry, Object, Record, Saved, SpawnedEntry};
@@ -34,7 +34,10 @@ impl Marks {
             _ => false,
         }) || ir.functions.values().any(|f| fields(&f.params))
             || ir.actions.values().any(|a| fields(&a.params))
-            || ir.tasks.values().any(|t| fields(&t.params))
+            || ir
+                .tasks
+                .values()
+                .any(|t| fields(&t.params) || t.emits.values().any(|e| fields(&e.fields)))
             || ir.machines.values().any(|m| {
                 fields(&m.params)
                     || m.vars.iter().any(|v| v.sensitive)
@@ -224,6 +227,33 @@ impl Redactor<'_> {
         self.tagged(decls.into_iter(), v);
     }
 
+    /// Redacts `v`, an event a task emitted, as task `task`'s emitted event of its tag, or,
+    /// when the task is not known (a stale one, whose invoke or spawned task has ended), as
+    /// each task of the IR that emits an event of its tag with exactly its members would.
+    fn task_emitted(&self, task: Option<&str>, v: &mut Value) {
+        let t = tag(v).unwrap_or_default();
+        if let Some(task) = task {
+            let decl = self.ir.tasks.get(task).and_then(|d| d.emits.get(&t));
+            return self.tagged(decl.map(|e| e.fields.as_slice()).into_iter(), v);
+        }
+        let members: Vec<&String> = match v {
+            Value::Object(obj) => obj.keys().filter(|k| *k != "_tag").collect(),
+            _ => Vec::new(),
+        };
+        let fits = |fields: &[Field]| {
+            fields.len() == members.len() && fields.iter().all(|f| members.contains(&&f.name))
+        };
+        let decls: Vec<&[Field]> = self
+            .ir
+            .tasks
+            .values()
+            .filter_map(|d| d.emits.get(&t))
+            .map(|e| e.fields.as_slice())
+            .filter(|fields| fits(fields))
+            .collect();
+        self.tagged(decls.into_iter(), v);
+    }
+
     /// Redacts `v`, a tagged error, by its tag.
     fn error(&self, v: &mut Value) {
         let t = tag(v).unwrap_or_default();
@@ -254,6 +284,18 @@ impl Redactor<'_> {
             // whose invoke has ended), so the event is redacted as each machine that emits an
             // event of its name would redact it.
             Input::Emitted { value, .. } => self.emitted(value),
+            // The task that the invoke or spawned task runs; a stale one's is not known.
+            Input::TaskEmitted { invoke, value } => {
+                let task = match invokes.iter().find(|i| i.id == *invoke) {
+                    Some(inv) => Some(inv.src.as_str()),
+                    None => spawned
+                        .iter()
+                        .find(|c| c.id == *invoke)
+                        .and_then(|c| m.children.get(&c.children))
+                        .map(|c| c.src.as_str()),
+                };
+                self.task_emitted(task, value);
+            }
             Input::Call { call, args, .. } => {
                 let params = m.calls.get(call.as_str()).map(|c| &c.params);
                 self.object(params.map_or(&[][..], |p| p), args);
@@ -279,7 +321,11 @@ impl Redactor<'_> {
                     .find(|c| c.id == *spawn)
                     .and_then(|c| self.collection(m, &c.children));
                 match child {
-                    Some(c) => self.output(c, value),
+                    Some((_, returns)) => match returns {
+                        Some(t) => self.value(t, value),
+                        None if value.is_null() => {}
+                        None => redact(value),
+                    },
                     // A stale outcome: the child is no longer in the snapshot, so the type of
                     // the value is not known.
                     None => redact(value),
@@ -295,11 +341,22 @@ impl Redactor<'_> {
         }
     }
 
-    /// The machine the children of collection `children` of `m` run.
-    fn collection(&self, m: &Machine, children: &str) -> Option<&Machine> {
-        m.children
-            .get(children)
-            .and_then(|c| self.ir.machines.get(&c.src))
+    /// The parameters and result type of the machine or task the children of collection
+    /// `children` of `m` run.
+    fn collection(&self, m: &Machine, children: &str) -> Option<(&[Field], Option<&TypeRef>)> {
+        let c = m.children.get(children)?;
+        match c.kind {
+            ChildrenKind::Machine => self
+                .ir
+                .machines
+                .get(&c.src)
+                .map(|m| (m.params.as_slice(), m.returns.as_ref())),
+            ChildrenKind::Task => self
+                .ir
+                .tasks
+                .get(&c.src)
+                .map(|t| (t.params.as_slice(), t.returns.as_ref())),
+        }
     }
 
     /// The result type of what an invoke of a run of `m` runs: task or machine `src`, or the
@@ -358,7 +415,10 @@ impl Redactor<'_> {
                 self.object(params.map_or(&[][..], |p| p), args);
             }
             Record::SpawnStarted { src, args, .. } => {
-                let params = self.ir.machines.get(src.as_str()).map(|m| &m.params);
+                let params = match self.ir.tasks.get(src.as_str()) {
+                    Some(t) => Some(&t.params),
+                    None => self.ir.machines.get(src.as_str()).map(|m| &m.params),
+                };
                 self.object(params.map_or(&[][..], |p| p), args);
             }
             Record::Emitted { value, .. } => self.event(m, true, value),
@@ -457,8 +517,8 @@ impl Redactor<'_> {
             self.var(m, name, value);
         }
         for ch in saved.spawned.iter_mut().flatten() {
-            let params = self.collection(m, &ch.children).map(|c| &c.params);
-            self.object(params.map_or(&[][..], |p| p), &mut ch.args);
+            let params = self.collection(m, &ch.children).map(|(p, _)| p);
+            self.object(params.unwrap_or_default(), &mut ch.args);
         }
         match &mut saved.result {
             Some(crate::RunResult::Output(output)) => self.output(m, output),

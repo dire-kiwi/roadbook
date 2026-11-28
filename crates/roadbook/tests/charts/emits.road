@@ -1,0 +1,62 @@
+// Tasks that emit, for include_emits.rs: an upload that says how far it has got, a stream
+// task that ticks until it is cancelled, and a reading that cannot be encoded.
+
+/// Already the name the `ticks` task's emitted-event enum would have.
+type TicksEmitted { n: int }
+
+/// Store a file of `size` bytes, saying how far it has got. Returns the bytes stored.
+task upload(size: int) -> int
+  /// How much of the file is stored, in percent.
+  emits Progress { percent: int }
+  /// Which stage the upload has reached. No machine here hears it.
+  emits Stage { name: string }
+
+/// Emits a `Tick` every `every`, until it is cancelled.
+task ticks(every: duration) emits Tick { n: int }
+
+/// Takes a reading, saying what it read on the way.
+task measure() -> float emits Reading { value: float }
+
+/// Show how far the upload has got.
+action shown(percent: int)
+
+/// Uploads, then counts ticks until it is told to stop.
+machine Uploader(size: int) -> int {
+  var percent: int = 0
+  var count:   int = 0
+
+  event Stop
+
+  initial Uploading
+
+  state Uploading {
+    invoke upload(size) as up {
+      done -> Waiting  set percent = result
+    }
+    on up.Progress set percent = event.percent  do shown(event.percent)
+  }
+
+  state Waiting {
+    invoke ticks(10ms) as clock
+    on clock.Tick set count = event.n
+    on Stop -> Done
+  }
+
+  final state Done { output count }
+}
+
+/// Takes one reading.
+machine Meter() -> float {
+  var last: float = 0.0
+
+  initial Reading
+
+  state Reading {
+    invoke measure() as m {
+      done -> Read  set last = result
+    }
+    on m.Reading set last = event.value
+  }
+
+  final state Read { output last }
+}

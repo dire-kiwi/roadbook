@@ -21,7 +21,7 @@
 {"kind":"exited","run":"r1","state":"Eager.Uploading","t":0}
 {"kind":"set","run":"r1","t":0,"value":100,"var":"percent"}
 {"kind":"entered","run":"r1","state":"Eager.Stored","t":0}
-{"event":{"invoke":2,"kind":"invoke.done","value":50},"kind":"stale","run":"r1","t":0}
+{"event":{"invoke":2,"kind":"invoke.done","value":"<redacted>"},"kind":"stale","run":"r1","t":0}
 {"event":{"kind":"event","value":{"_tag":"Finish"}},"kind":"event","run":"r1","t":0}
 {"from":"Eager.Stored","index":1,"kind":"transition","run":"r1","t":0,"to":["Eager.Published"]}
 {"kind":"exited","run":"r1","state":"Eager.Stored","t":0}

@@ -3,8 +3,8 @@
 use std::collections::VecDeque;
 
 use roadbook_ir::{
-    Address, AddressKind, Effect, InvokeKind, Machine, ReplyOutcome, State, StateKind, Transition,
-    Trigger, TypeRef, UNANSWERED,
+    Address, AddressKind, ChildrenKind, Effect, InvokeKind, Machine, ReplyOutcome, State,
+    StateKind, Transition, Trigger, TypeRef, UNANSWERED,
 };
 use serde_json::{Map, Value};
 
@@ -577,7 +577,19 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     self.key = child.map(|c| c.key.clone());
                 }
                 bound = vec![("event", value.clone())];
-                chosen = self.select_emitted(from, *invoke, value)?;
+                chosen = self.select_emitted(Some(from), *invoke, value)?;
+            }
+            Input::TaskEmitted { invoke, value } => {
+                let child = self.snap.spawned.iter().find(|c| c.id == *invoke);
+                if child.is_none() && !self.snap.invokes.iter().any(|e| e.id == *invoke) {
+                    self.trace(Record::Stale {
+                        event: shown.unwrap_or(input),
+                    });
+                    return Ok(());
+                }
+                self.key = child.map(|c| c.key.clone());
+                bound = vec![("event", value.clone())];
+                chosen = self.select_emitted(None, Some(*invoke), value)?;
             }
             Input::Ended { from, status } => {
                 bound = vec![("event", serde_json::json!({ "status": status.as_str() }))];
@@ -615,7 +627,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         Ok(())
     }
 
-    /// The machine the children of collection `children` run.
+    /// The machine or task the children of collection `children` run.
     fn collection_machine(&self, children: &str) -> &'p str {
         self.m
             .children
@@ -898,10 +910,20 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         }
     }
 
+    /// Whether collection `children` of the machine holds tasks.
+    fn task_collection(&self, children: &str) -> bool {
+        self.m
+            .children
+            .get(children)
+            .is_some_and(|c| c.kind == ChildrenKind::Task)
+    }
+
     /// Whether `address` names the sender `from` of an emitted event, which this run's
     /// invoke `invoke` started (`None`: a peer this run holds a `ref` to).
     fn names_sender(&self, address: &Address, from: &str, invoke: Option<u64>) -> bool {
         match address.kind {
+            // A task is not a run: it never sends an `emitted` input.
+            AddressKind::Children if self.task_collection(&address.name) => false,
             AddressKind::Child => invoke.is_some_and(|i| {
                 self.snap
                     .invokes
@@ -924,8 +946,29 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                         .and_then(Value::as_str)
                         == Some(from)
             }
-            // Task emits are not implemented by this core yet (SM-26).
             AddressKind::Task => false,
+        }
+    }
+
+    /// Whether `address` names the task of this run's invoke or spawned task `invoke`, the
+    /// sender of a `task.emitted` input: the invoke of the address's state, or a spawned task
+    /// of the collection of tasks it names.
+    fn names_task(&self, address: &Address, invoke: u64) -> bool {
+        match address.kind {
+            AddressKind::Task => self
+                .snap
+                .invokes
+                .iter()
+                .any(|e| e.id == invoke && Some(&e.state) == address.state.as_ref()),
+            AddressKind::Children => {
+                self.task_collection(&address.name)
+                    && self
+                        .snap
+                        .spawned
+                        .iter()
+                        .any(|c| c.id == invoke && c.children == address.name)
+            }
+            AddressKind::Child | AddressKind::Ref => false,
         }
     }
 
@@ -963,7 +1006,15 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         })
     }
 
-    fn select_emitted(&mut self, from: &str, invoke: Option<u64>, value: &Value) -> R<Vec<Tr>> {
+    /// `selectEmitted`: the candidates of each state are its `emitted` transitions for the
+    /// value's tag whose address names the sender: run `from` (an `emitted` input) or, when
+    /// `from` is `None`, the task of invoke or spawned task `invoke` (a `task.emitted` input).
+    fn select_emitted(
+        &mut self,
+        from: Option<&str>,
+        invoke: Option<u64>,
+        value: &Value,
+    ) -> R<Vec<Tr>> {
         let tag = value.get("_tag").and_then(Value::as_str).unwrap_or("");
         let bound = [("event", value.clone())];
         self.select_walks(|cx, s| {
@@ -972,7 +1023,11 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 let candidate = matches!(
                     &t.trigger,
                     Trigger::Emitted { from: address, event }
-                        if event == tag && cx.names_sender(address, from, invoke)
+                        if event == tag && match (from, invoke) {
+                            (Some(from), _) => cx.names_sender(address, from, invoke),
+                            (None, Some(invoke)) => cx.names_task(address, invoke),
+                            (None, None) => false,
+                        }
                 );
                 if candidate && cx.holds(t, &bound)? {
                     return Ok(Some((s, i)));
@@ -1315,12 +1370,16 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 }
                 Effect::Spawn {
                     children,
-                    src: machine,
+                    src,
                     key,
                     args,
                 } => {
                     let key = key_form(self.eval(key, implicit)?);
-                    let params = &self.program.ir().machines[machine.as_str()].params;
+                    let ir = self.program.ir();
+                    let params = match ir.tasks.get(src.as_str()) {
+                        Some(t) if self.task_collection(children) => &t.params,
+                        _ => &ir.machines[src.as_str()].params,
+                    };
                     let mut obj = Map::new();
                     for (p, a) in params.iter().zip(args) {
                         let v = self.eval(a, implicit)?;
@@ -1395,6 +1454,11 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     /// from `saved` if that is given.
     fn start_child(&mut self, ch: &SpawnedEntry, saved: Option<Box<Saved>>) {
         let src = self.collection_machine(&ch.children).to_owned();
+        let src_kind = if self.task_collection(&ch.children) {
+            SrcKind::Task
+        } else {
+            SrcKind::Machine
+        };
         self.trace(Record::SpawnStarted {
             spawn: ch.id,
             children: ch.children.clone(),
@@ -1405,6 +1469,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         self.cmds.push(Command::SpawnStart {
             spawn: ch.id,
             src,
+            src_kind,
             args: ch.args.clone(),
             saved,
         });

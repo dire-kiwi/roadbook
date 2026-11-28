@@ -25,20 +25,31 @@ pub struct Foreign {
     /// The names those crates gave the error enums of their fallible tasks (`false`) and
     /// machines (`true`).
     pub error_enums: HashMap<(bool, String), String>,
+    /// The names those crates gave the `{Task}Emitted` enums of their tasks that emit.
+    pub emitted_enums: HashMap<String, String>,
 }
 
+/// The names an expansion gives its error enums, keyed as [`Foreign::error_enums`], and its
+/// tasks' emitted-event enums, keyed as [`Foreign::emitted_enums`].
+pub type EnumNames = (HashMap<(bool, String), String>, HashMap<String, String>);
+
 /// The name of the error enum of every fallible task (`false`) and machine (`true`) of `ir`,
-/// as its expansion with `foreign` names them: what the crate hands over to importers, which
-/// cannot work the names out from `ir` alone, since they depend on the names `foreign` took.
-pub fn error_enum_names(
-    ir: &Ir,
-    foreign: &Foreign,
-) -> Result<HashMap<(bool, String), String>, String> {
+/// and of the emitted-event enum of every task that emits, as its expansion with `foreign`
+/// names them: what the crate hands over to importers, which cannot work the names out from
+/// `ir` alone, since they depend on the names `foreign` took.
+pub fn enum_names(ir: &Ir, foreign: &Foreign) -> Result<EnumNames, String> {
     let g = Gen::new(ir, foreign)?;
-    Ok(g.error_enums
+    let errors = g
+        .error_enums
         .into_iter()
         .map(|((m, n), id)| ((m, n.to_owned()), plain(&id)))
-        .collect())
+        .collect();
+    let emitted = g
+        .emitted_enums
+        .into_iter()
+        .map(|(n, id)| (n.to_owned(), plain(&id)))
+        .collect();
+    Ok((errors, emitted))
 }
 
 /// The name of the hidden constant that holds the IR of the chart whose package path,
@@ -70,6 +81,7 @@ pub fn generate(ir: &Ir, foreign: &Foreign, suffix: &str) -> Result<TokenStream,
         }
     }
     items.extend(g.error_enums());
+    items.extend(g.emitted_enums()?);
     let mut modules: HashMap<String, String> = HashMap::new();
     for (name, m) in &ir.machines {
         let module = plain(&ident(&snake(name)));
@@ -180,6 +192,9 @@ struct Method<'a> {
     returns: Option<&'a TypeRef>,
     /// The error enum, for a fallible task or machine.
     error: Option<Ident>,
+    /// The emitted-event enum, for a task that declares `emits`: its method takes an
+    /// `Emitter` of it.
+    emitted: Option<Ident>,
     doc: &'a str,
 }
 
@@ -187,6 +202,8 @@ struct Gen<'a> {
     ir: &'a Ir,
     /// The error enum of each fallible task (`false`) and machine (`true`).
     error_enums: HashMap<(bool, &'a str), Ident>,
+    /// The emitted-event enum of each task that declares `emits`.
+    emitted_enums: HashMap<&'a str, Ident>,
     /// The crate each declaration from another package is re-exported from.
     foreign: &'a HashMap<String, TokenStream>,
     /// The hidden static the machines' runners read the program from.
@@ -453,10 +470,47 @@ impl<'a> Gen<'a> {
             }
             error_enums.insert((machine, n), ident(&name));
         }
+        // The emitted-event enums of tasks that emit, named as error enums are: `{Task}Emitted`,
+        // or `{Task}TaskEmitted` when that is taken.
+        let emitting: Vec<&str> = ir
+            .tasks
+            .iter()
+            .filter(|(_, t)| !t.emits.is_empty())
+            .map(|(n, _)| n.as_str())
+            .collect();
+        let short = |n: &str| format!("{}Emitted", camel(n));
+        let mut count: HashMap<String, usize> = HashMap::new();
+        for n in &emitting {
+            *count.entry(short(n)).or_default() += 1;
+        }
+        let mut emitted_enums = HashMap::new();
+        for &n in &emitting {
+            if let Some(name) = foreign.emitted_enums.get(n) {
+                taken.insert(name.clone());
+                emitted_enums.insert(n, ident(name));
+            }
+        }
+        for n in emitting {
+            if emitted_enums.contains_key(n) {
+                continue;
+            }
+            let mut name = short(n);
+            if count[&name] > 1 || taken.contains(&name) {
+                name = format!("{}TaskEmitted", camel(n));
+            }
+            if !taken.insert(name.clone()) {
+                return Err(format!(
+                    "the emitted-event enum of `{n}` would be named `{name}`, which is already \
+                     taken"
+                ));
+            }
+            emitted_enums.insert(n, ident(&name));
+        }
         let held = held_params(ir);
         Ok(Gen {
             ir,
             error_enums,
+            emitted_enums,
             foreign: &foreign.krate,
             program: program_static(""),
             contains: containment(ir, &held)?,
@@ -719,6 +773,18 @@ impl<'a> Gen<'a> {
         fields: &[Field],
         public: bool,
     ) -> Result<TokenStream, String> {
+        self.fields_in(owner, params, fields, public, !public)
+    }
+
+    /// [`Gen::fields_of`], naming the chart's types as `super::Name` when `sup`.
+    fn fields_in(
+        &self,
+        owner: &str,
+        params: &[String],
+        fields: &[Field],
+        public: bool,
+        sup: bool,
+    ) -> Result<TokenStream, String> {
         let mut seen = HashSet::new();
         let mut out = Vec::new();
         for f in fields {
@@ -742,7 +808,7 @@ impl<'a> Gen<'a> {
                 TokenStream::new()
             };
             // Only a type's fields can close a cycle: an event is no type.
-            let ty = self.ty_in(&f.ty, !public, public.then_some(owner));
+            let ty = self.ty_in(&f.ty, sup, public.then_some(owner));
             let vis = if public {
                 quote!(pub)
             } else {
@@ -1005,6 +1071,30 @@ impl<'a> Gen<'a> {
         }
     }
 
+    /// The emitted-event enum of every task that declares `emits`: a tagged enum of them, as a
+    /// machine's `Emitted` is.
+    fn emitted_enums(&self) -> Result<Vec<TokenStream>, String> {
+        let mut out = Vec::new();
+        for (n, t) in &self.ir.tasks {
+            let Some(id) = self.emitted_enums.get(n.as_str()) else {
+                continue;
+            };
+            out.push(match self.foreign.get(n) {
+                Some(krate) => quote!(pub use #krate::#id;),
+                None => {
+                    let text = format!(
+                        "The events task `{n}` emits while it runs (`emits`), through the \
+                         `roadbook::Emitter` its `Handlers` method is given. In JSON an event \
+                         is an object with `\"_tag\": \"Name\"` and its fields."
+                    );
+                    let e = self.event_enum_in(id, &text, &t.emits, false)?;
+                    quote!(#[allow(dead_code, missing_docs)] #e)
+                }
+            });
+        }
+        Ok(out)
+    }
+
     // ---- machines -----------------------------------------------------------------------
 
     fn machine(&self, name: &'a str, m: &'a Machine) -> Result<TokenStream, String> {
@@ -1067,6 +1157,7 @@ impl<'a> Gen<'a> {
                 params: &f.params,
                 returns: Some(&f.returns),
                 error: None,
+                emitted: None,
                 doc: &f.doc,
             });
         }
@@ -1078,6 +1169,7 @@ impl<'a> Gen<'a> {
                 params: &a.params,
                 returns: None,
                 error: None,
+                emitted: None,
                 doc: &a.doc,
             });
         }
@@ -1089,6 +1181,7 @@ impl<'a> Gen<'a> {
                 params: &t.params,
                 returns: t.returns.as_ref(),
                 error: self.error_enums.get(&(false, n.as_str())).cloned(),
+                emitted: self.emitted_enums.get(n.as_str()).cloned(),
                 doc: &t.doc,
             });
         }
@@ -1104,6 +1197,7 @@ impl<'a> Gen<'a> {
                 params: &c.params,
                 returns: c.returns.as_ref(),
                 error: self.error_enums.get(&(true, n.as_str())).cloned(),
+                emitted: None,
                 doc: &c.doc,
             });
         }
@@ -1117,6 +1211,9 @@ impl<'a> Gen<'a> {
                 ));
             }
             let mut params = HashSet::new();
+            if method.emitted.is_some() {
+                params.insert("emit".to_owned());
+            }
             for p in method.params {
                 if !params.insert(plain(&ident(&snake(&p.name)))) {
                     return Err(format!(
@@ -1142,11 +1239,19 @@ impl<'a> Gen<'a> {
     fn handlers(&self, name: &str, methods: &[Method]) -> TokenStream {
         let sigs = methods.iter().map(|m| {
             let id = &m.ident;
-            let params = m.params.iter().map(|p| {
-                let pid = ident(&snake(&p.name));
-                let (ty, _) = self.param(&p.ty);
-                quote!(#pid: #ty)
-            });
+            let emit = m
+                .emitted
+                .as_ref()
+                .map(|e| quote!(emit: ::roadbook::Emitter<super::#e>));
+            let params = m
+                .params
+                .iter()
+                .map(|p| {
+                    let pid = ident(&snake(&p.name));
+                    let (ty, _) = self.param(&p.ty);
+                    quote!(#pid: #ty)
+                })
+                .chain(emit);
             let kind = match m.kind {
                 Kind::Function => "Function",
                 Kind::Action => "Action",
@@ -1159,6 +1264,13 @@ impl<'a> Gen<'a> {
                     " Usually `{}::run(self, …)`, which then runs as this run's child.",
                     snake(m.name)
                 ));
+            }
+            if m.emitted.is_some() {
+                text.push_str(
+                    " It emits its events through `emit`, which queues each one the invoking \
+                     run has an `on` for; it does nothing for an invoke without `as`, or once \
+                     the task's work has been cancelled or has ended.",
+                );
             }
             if !m.doc.is_empty() {
                 text = format!("{}\n\n{text}", m.doc);
@@ -1284,6 +1396,14 @@ impl<'a> Gen<'a> {
                         return ::roadbook::__private::ready(::roadbook::__private::Outcome::Defect(e))
                     },
                 );
+                let (emit_let, emit_pass) = match m.emitted {
+                    Some(_) => (
+                        quote!(let __emit = ::roadbook::Emitter::new(call.emitter);),
+                        Some(quote!(__emit)),
+                    ),
+                    None => (TokenStream::new(), None),
+                };
+                let pass = pass.into_iter().chain(emit_pass);
                 let call = quote!(<H as Handlers>::#id(&*self.0, #(#pass),*).await);
                 let null = quote!(::roadbook::__private::serde_json::Value::Null);
                 let ok = quote!(::core::result::Result::Ok);
@@ -1321,6 +1441,7 @@ impl<'a> Gen<'a> {
                 quote! {
                     #name => {
                         #(#lets)*
+                        #emit_let
                         ::std::boxed::Box::pin(async move { #body })
                     }
                 }
@@ -1385,6 +1506,7 @@ impl<'a> Gen<'a> {
             .map(str::to_owned)
             .chain(self.ir.types.keys().cloned())
             .chain(self.error_enums.values().map(plain))
+            .chain(self.emitted_enums.values().map(plain))
             .collect();
         let mut enums = Vec::new();
         let mut leaves = Vec::new();
@@ -1474,12 +1596,23 @@ impl<'a> Gen<'a> {
         Ok(())
     }
 
-    /// A tagged enum of `events`, `Event` or `Emitted`.
+    /// A tagged enum of `events`, `Event` or `Emitted`, in a machine's module.
     fn event_enum(
         &self,
         id: &Ident,
         text: &str,
         events: &indexmap::IndexMap<String, roadbook_ir::EventDecl>,
+    ) -> Result<TokenStream, String> {
+        self.event_enum_in(id, text, events, true)
+    }
+
+    /// [`Gen::event_enum`], in a machine's module (`sup`) or at the top.
+    fn event_enum_in(
+        &self,
+        id: &Ident,
+        text: &str,
+        events: &indexmap::IndexMap<String, roadbook_ir::EventDecl>,
+        sup: bool,
     ) -> Result<TokenStream, String> {
         let mut variants = Vec::new();
         for (name, e) in events {
@@ -1489,7 +1622,7 @@ impl<'a> Gen<'a> {
             if e.fields.is_empty() {
                 variants.push(quote!(#doc #rename #vid));
             } else {
-                let fields = self.fields(name, &e.fields, false)?;
+                let fields = self.fields_in(name, &[], &e.fields, false, sup)?;
                 variants.push(quote!(#doc #rename #vid { #fields }));
             }
         }

@@ -700,3 +700,55 @@ fn lint_catches_parallel_and_snapshot_mistakes() {
     after.insert(i + 1, extra);
     assert!(!lint_runs(&after, &st, ir).is_empty());
 }
+
+#[test]
+fn lint_catches_task_emit_mistakes() {
+    let c = cases()
+        .into_iter()
+        .find(|c| c.name == "task-emit-stale")
+        .unwrap();
+    let st = statuses(&c);
+    let ir = c.ir.as_ref();
+    assert!(lint_runs(&c.records, &st, ir).is_empty());
+    let emits: Vec<usize> = c
+        .records
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| r["event"]["kind"] == "task.emitted")
+        .map(|(i, _)| i)
+        .collect();
+    let (stale, taken) = (emits[0], emits[1]);
+    assert_eq!(c.records[stale]["kind"], "stale");
+    // A stale emit written as taken, and a taken one written as stale.
+    let mut live = c.records.clone();
+    live[stale]["kind"] = json!("dropped");
+    assert!(!lint_runs(&live, &st, ir).is_empty());
+    let mut gone = c.records.clone();
+    gone[taken]["kind"] = json!("stale");
+    assert!(!lint_runs(&gone, &st, ir).is_empty());
+    // An emit of an invoke never started, and one of an event the task does not declare.
+    let mut unknown = c.records.clone();
+    unknown[taken]["event"]["invoke"] = json!(9);
+    assert!(!lint_runs(&unknown, &st, ir).is_empty());
+    let mut undeclared = c.records.clone();
+    undeclared[taken]["event"]["value"] = json!({"_tag": "Tick"});
+    assert!(!lint_runs(&undeclared, &st, ir).is_empty());
+
+    // A spawned task has no run, so no group of records.
+    let c = cases()
+        .into_iter()
+        .find(|c| c.name == "spawn-task")
+        .unwrap();
+    let st = statuses(&c);
+    assert!(lint_runs(&c.records, &st, c.ir.as_ref()).is_empty());
+    let mut grouped = c.records.clone();
+    grouped.push(
+        json!({"input": {}, "ir": "x", "kind": "started", "machine": "Batch",
+                        "parent": "r1", "run": "r1.1", "t": 0}),
+    );
+    let problems = lint_runs(&grouped, &st, None);
+    assert!(
+        problems.iter().any(|p| p.contains("has no run")),
+        "{problems:#?}"
+    );
+}

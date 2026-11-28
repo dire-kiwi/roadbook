@@ -474,8 +474,15 @@ fn step_from_value(v: Value) -> Result<Step, String> {
             outcomes.push(Outcome::Emit(v));
         }
         return match <[Outcome; 1]>::try_from(outcomes) {
-            Ok([outcome]) => Ok(Step::Task(TaskStep { task, run, key, outcome })),
-            Err(_) => Err("a task step has exactly one of `done`, `fail`, `defect` and `emit`".into()),
+            Ok([outcome]) => Ok(Step::Task(TaskStep {
+                task,
+                run,
+                key,
+                outcome,
+            })),
+            Err(_) => {
+                Err("a task step has exactly one of `done`, `fail`, `defect` and `emit`".into())
+            }
         };
     }
     Err("unknown script step".into())

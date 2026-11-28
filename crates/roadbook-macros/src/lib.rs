@@ -48,6 +48,9 @@ mod names;
 ///   `<Name>Error` (`ChargeCardError`), with `From` for each so `?` converts into it. If that
 ///   name is taken by a type or another such enum, a task's is `<Name>TaskError` and a
 ///   machine's `<Name>MachineError`.
+/// - For every task that declares `emits`, a tagged enum of its emitted events,
+///   `<Name>Emitted` (`UploadEmitted`), or `<Name>TaskEmitted` if that name is taken. The
+///   task's `Handlers` method takes a last parameter `emit: roadbook::Emitter<UploadEmitted>`.
 /// - For every machine, a module named in `snake_case` (`PlaceOrder` is `place_order`) with
 ///   a `Handlers` trait (one method per function, action, task and child machine the machine
 ///   uses directly), `State`, `Event` (what it accepts) and `Emitted` (what it `emits`) enums,
@@ -117,6 +120,8 @@ struct Dep {
     /// (`false`) and machines (`true`). They depend on the names the owner took from the
     /// crates it imports from, so the IR alone does not tell them.
     errors: HashMap<(bool, String), String>,
+    /// The names the owning crate gave the emitted-event enums of the chart's tasks that emit.
+    emitted: HashMap<String, String>,
 }
 
 /// The macro's arguments.
@@ -280,7 +285,7 @@ fn parse_dep(input: Tokens) -> Result<Dep, String> {
     else {
         return Err(malformed());
     };
-    let errors = decode_errors(&errors).ok_or_else(malformed)?;
+    let (errors, emitted) = decode_errors(&errors).ok_or_else(malformed)?;
     let ir = roadbook_ir::Ir::from_json(&ir).map_err(|e| {
         format!(
             "roadbook::include!: the IR of `{package}/{path}` that crate `{package}` handed over \
@@ -293,32 +298,37 @@ fn parse_dep(input: Tokens) -> Result<Dep, String> {
         krate,
         ir,
         errors,
+        emitted,
     })
 }
 
 /// The error enums' names as a hand-over carries them: a line per fallible task or machine,
-/// `task <name> <enum>` or `machine <name> <enum>`. Chart names and Rust identifiers have no
-/// spaces or line breaks.
-fn encode_errors(errors: &HashMap<(bool, String), String>) -> String {
+/// `task <name> <enum>` or `machine <name> <enum>`, and one per task that emits, `emits <name>
+/// <enum>`. Chart names and Rust identifiers have no spaces or line breaks.
+fn encode_errors((errors, emitted): &codegen::EnumNames) -> String {
     let mut lines: Vec<String> = errors
         .iter()
         .map(|((machine, name), e)| {
             let kind = if *machine { "machine" } else { "task" };
             format!("{kind} {name} {e}")
         })
+        .chain(emitted.iter().map(|(name, e)| format!("emits {name} {e}")))
         .collect();
     lines.sort();
     lines.join("\n")
 }
 
-fn decode_errors(text: &str) -> Option<HashMap<(bool, String), String>> {
-    text.lines()
-        .map(|line| match line.split(' ').collect::<Vec<_>>()[..] {
-            ["task", name, e] => Some(((false, name.to_owned()), e.to_owned())),
-            ["machine", name, e] => Some(((true, name.to_owned()), e.to_owned())),
-            _ => None,
-        })
-        .collect()
+fn decode_errors(text: &str) -> Option<codegen::EnumNames> {
+    let mut out = codegen::EnumNames::default();
+    for line in text.lines() {
+        match line.split(' ').collect::<Vec<_>>()[..] {
+            ["task", name, e] => out.0.insert((false, name.to_owned()), e.to_owned()),
+            ["machine", name, e] => out.0.insert((true, name.to_owned()), e.to_owned()),
+            ["emits", name, e] => out.1.insert(name.to_owned(), e.to_owned()),
+            _ => return None,
+        };
+    }
+    Some(out)
 }
 
 /// Reads project files from disk, and answers each import of another package's file with
@@ -500,7 +510,7 @@ fn expand(input: Tokens) -> Tokens {
     };
     let package_path = relative(&manifest_dir, &entry);
     let generated = codegen::generate(&ir, &foreign, &encode_path(&package_path))
-        .and_then(|items| Ok((items, codegen::error_enum_names(&ir, &foreign)?)));
+        .and_then(|items| Ok((items, codegen::enum_names(&ir, &foreign)?)));
     match generated {
         Ok((items, errors)) => {
             let export = if exports(&package_path, args.span) {
@@ -563,6 +573,9 @@ fn foreign(ir: &roadbook_ir::Ir, deps: &[Dep]) -> Result<codegen::Foreign, Strin
                 out.error_enums.insert(key, e.clone());
             }
         }
+        if let Some(e) = deps[i].emitted.get(name) {
+            out.emitted_enums.insert(name.clone(), e.clone());
+        }
     }
     Ok(out)
 }
@@ -581,7 +594,7 @@ fn foreign(ir: &roadbook_ir::Ir, deps: &[Dep]) -> Result<codegen::Foreign, Strin
 /// which shadows the empty one beside it only if it is there.
 fn export_macro(
     ir: &roadbook_ir::Ir,
-    errors: &HashMap<(bool, String), String>,
+    errors: &codegen::EnumNames,
     package_path: &str,
     span: Span,
 ) -> Tokens {
@@ -679,8 +692,10 @@ mod tests {
             ((false, "charge".to_owned()), "ChargeError".to_owned()),
             ((true, "Charge".to_owned()), "ChargeMachineError".to_owned()),
         ]);
-        assert_eq!(decode_errors(&encode_errors(&errors)), Some(errors));
-        assert_eq!(decode_errors(""), Some(HashMap::new()));
+        let emitted = HashMap::from([("upload".to_owned(), "UploadTaskEmitted".to_owned())]);
+        let names = (errors, emitted);
+        assert_eq!(decode_errors(&encode_errors(&names)), Some(names));
+        assert_eq!(decode_errors(""), Some(Default::default()));
         assert_eq!(decode_errors("task charge"), None);
     }
 
