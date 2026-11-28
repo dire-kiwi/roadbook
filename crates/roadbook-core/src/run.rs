@@ -273,6 +273,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             locals: &self.snap.locals,
             implicit,
             key: self.key.as_ref(),
+            idx: self.idx,
+            active: &self.active,
         };
         eval(e, &scope, self.fns)
     }
@@ -287,6 +289,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             locals: &self.snap.locals,
             implicit,
             key: self.key.as_ref(),
+            idx: self.idx,
+            active: &self.active,
         };
         crate::eval::lookup(name, &scope)
     }

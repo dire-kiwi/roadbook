@@ -41,6 +41,11 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  on A|B  |C -> S\n  state S { on  B |A ignore }\n}\n",
         "machine M() {\n  on A | B | C -> S\n  state S { on B | A ignore }\n}\n",
     ),
+    // `in(…)` is written with no space before or inside its parentheses.
+    (
+        "machine M() {\n  state S { on Go if not in ( P . R ) and in(S)->S }\n}\n",
+        "machine M() {\n  state S { on Go if not in(P.R) and in(S) -> S }\n}\n",
+    ),
     // A choice keeps its block, its header not aligned with the branches, which are aligned
     // with each other; `choice` is a name elsewhere.
     (

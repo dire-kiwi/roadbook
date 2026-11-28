@@ -163,3 +163,10 @@ machine Choices() {
     else          -> B
   }
 }
+
+// Whether a state is active: `in(…)` in a guard, a target's arguments and an effect.
+machine Ins() {
+  state S {
+    on Go if not in(Main.Volume.Muted) -> Paused(in(Main.Volume.Loud))  do note(in(Main))
+  }
+}

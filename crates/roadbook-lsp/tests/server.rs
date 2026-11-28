@@ -451,6 +451,63 @@ fn states_named_in_checks_are_uses() {
 }
 
 #[test]
+fn states_named_in_in_are_uses() {
+    let text = "action note(flag: bool)\nmachine M() {\n  event Go\n  initial P\n  parallel state P {\n    state V {\n      initial Loud\n      state Loud { on Go -> Muted }\n      state Muted { on Go -> Loud }\n    }\n    state W {\n      initial X\n      state X {\n        on Go if in(P.V.Muted) -> X  do note(in(P.V.Muted))\n      }\n    }\n  }\n}\n";
+    let p = Project::new("in", &[("c.road", text)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, text);
+    assert!(c.diagnostics(&uri).is_empty());
+    // Go to definition from `in(…)`, on any segment.
+    let loc = c
+        .request(
+            "textDocument/definition",
+            at(&uri, text, "if in(P.V.^Muted)"),
+        )
+        .unwrap();
+    assert_eq!(loc["range"]["start"], position(text, "state ^Muted"));
+    let loc = c
+        .request(
+            "textDocument/definition",
+            at(&uri, text, "if in(P.^V.Muted)"),
+        )
+        .unwrap();
+    assert_eq!(loc["range"]["start"], position(text, "state ^V {"));
+    // References include both `in(…)`s.
+    let mut params = at(&uri, text, "state ^Muted");
+    params["context"] = json!({ "includeDeclaration": false });
+    let found = c.request("textDocument/references", params).unwrap();
+    let cols: Vec<(u64, u64)> = found
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| {
+            (
+                l["range"]["start"]["line"].as_u64().unwrap() + 1,
+                l["range"]["start"]["character"].as_u64().unwrap() + 1,
+            )
+        })
+        .collect();
+    assert_eq!(cols, [(8, 29), (14, 25), (14, 53)]);
+    // Renaming the state renames it in `in(…)`, from its declaration or from `in(…)`.
+    let text = rename(&mut c, &uri, text, "state ^Muted", "Quiet");
+    assert!(
+        text.contains("on Go if in(P.V.Quiet) -> X  do note(in(P.V.Quiet))"),
+        "{text}"
+    );
+    c.change(&uri, 2, &text);
+    let text = rename(&mut c, &uri, &text, "note(in(P.^V.Quiet)", "Volume");
+    for e in [
+        "state Volume {",
+        "if in(P.Volume.Quiet)",
+        "note(in(P.Volume.Quiet))",
+    ] {
+        assert!(text.contains(e), "no `{e}` in\n{text}");
+    }
+    c.shutdown();
+}
+
+#[test]
 fn rename_refuses_to_capture_a_target() {
     // `-> Out` in `P.A` means the top-level `Out`; a sibling of `A` named `Out` would take it.
     let text = "machine M() {\n  initial P\n  state P {\n    initial A\n    state A { always -> Out }\n    state X {}\n  }\n  final state Out {}\n}\n";

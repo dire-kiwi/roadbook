@@ -1,0 +1,46 @@
+/// `in(…)`: one region asks about another, in guards, effects, a state's arguments, an `after`
+/// delay, an invoke's arguments and an `output`.
+action louder()
+action note(flag: bool)
+fn delay(muted: bool)   -> duration
+task fetch(muted: bool)
+
+machine Player() -> bool {
+  event VolumeUp
+  event Mute
+  event Stop
+  var startedMuted: bool = in(Main.Volume.Muted)
+
+  initial Main
+  parallel state Main {
+    state Volume {
+      initial Loud
+      state Loud { on Mute -> Muted }
+      state Muted {
+        entry do note(in(Main.Playback.Paused))
+        exit do note(in(Main.Playback.Playing))
+        on VolumeUp -> Loud  do note(in(Main.Volume.Muted))
+      }
+    }
+    state Playback {
+      initial Playing
+      state Playing {
+        on VolumeUp if not in(Main.Volume.Muted)                                  do louder()
+        on Mute                                  -> Paused(in(Main.Volume.Loud))
+        on Stop                                  -> Done
+        after delay(in(Main.Volume.Muted))       -> .Buffering
+        initial Buffering
+        state Buffering {
+          invoke fetch(in(Main.Volume.Muted)) {
+            done -> Playing
+          }
+        }
+      }
+      state Paused(wasLoud: bool) {
+        on Mute if in(Main.Volume.Loud) or wasLoud -> Playing
+        on Stop                                    -> Done
+      }
+    }
+  }
+  final state Done { output in(Main.Volume.Muted) }
+}

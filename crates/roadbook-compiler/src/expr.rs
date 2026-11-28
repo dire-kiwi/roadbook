@@ -396,6 +396,11 @@ impl Cx<'_, '_> {
                 };
                 (node(kind, &ty, e), ty)
             }
+            ExprKind::In(t) => {
+                // Resolved once the machine is lowered, as a check's states are.
+                let state = self.in_state(t);
+                (node(K::In { state }, &BOOL, e), BOOL)
+            }
             ExprKind::Record { .. } => self.record(e, scope, None),
             ExprKind::Unary(UnaryOp::Not, x) => {
                 // `self.sens` stays the operand's: nothing below evaluates another expression.

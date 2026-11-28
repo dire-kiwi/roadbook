@@ -2042,7 +2042,10 @@ impl Uses {
             ExprKind::Op { args, .. } => args.iter().for_each(|a| self.expr(a)),
             ExprKind::Field { of, .. } => self.expr(of),
             ExprKind::Record { fields } => fields.iter().for_each(|f| self.expr(&f.value)),
-            ExprKind::Lit(_) | ExprKind::Ref { .. } | ExprKind::Enum { .. } => {}
+            ExprKind::Lit(_)
+            | ExprKind::Ref { .. }
+            | ExprKind::Enum { .. }
+            | ExprKind::In { .. } => {}
         }
     }
 }

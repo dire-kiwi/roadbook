@@ -645,7 +645,8 @@ fn visit(e: &ast::Expr, f: &mut impl FnMut(&ast::Expr)) {
         | ExprKind::String(_)
         | ExprKind::Bool(_)
         | ExprKind::Var(_)
-        | ExprKind::Enum(..) => {}
+        | ExprKind::Enum(..)
+        | ExprKind::In(_) => {}
     }
 }
 

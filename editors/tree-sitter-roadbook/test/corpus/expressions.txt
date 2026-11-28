@@ -252,3 +252,47 @@ machine M() {
                   (identifier))))
             (target
               (type_identifier))))))))
+
+================================================================================
+Whether a state is active
+================================================================================
+
+machine M() {
+  state S {
+    on Go if not in(P.R.X) and in(S) -> S  do note(in(P))
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (guard
+              (binary_expression
+                (not_expression
+                  (in_expression
+                    (state_path
+                      (type_identifier)
+                      (type_identifier)
+                      (type_identifier))))
+                (in_expression
+                  (state_path
+                    (type_identifier)))))
+            (target
+              (type_identifier))
+            (do
+              (call
+                (identifier)
+                (arguments
+                  (in_expression
+                    (state_path
+                      (type_identifier))))))))))))

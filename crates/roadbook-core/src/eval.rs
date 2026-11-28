@@ -22,6 +22,10 @@ pub(crate) struct Scope<'a> {
     pub locals: &'a crate::Locals,
     pub implicit: &'a [(&'static str, Value)],
     pub key: Option<&'a Value>,
+    /// The machine's index, and the active states by index in document order, as they are
+    /// at the moment of evaluation: what `in` reads.
+    pub idx: &'a crate::program::MachineIndex,
+    pub active: &'a [usize],
 }
 
 pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, Defect> {
@@ -104,6 +108,12 @@ pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, 
             Value::Object(obj)
         }
         ExprKind::Enum { variant } => Value::from(variant.as_str()),
+        ExprKind::In { state } => Value::from(
+            s.idx
+                .by_id
+                .get(state)
+                .is_some_and(|i| s.active.binary_search(i).is_ok()),
+        ),
         ExprKind::Op { op, args } => op_value(*op, args, e, s, fns)?,
     })
 }

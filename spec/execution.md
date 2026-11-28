@@ -903,7 +903,17 @@ Expressions are evaluated by their IR node, recursively. Every node's `type` is 
 | `call` | Evaluate `args` left to right, then `fns(fn, args)`. |
 | `record` | An object with the fields in order. Its `type` may be an instance of a generic record (`Page<Order>`); the fields are the same. If `type` is an error, it also has `"_tag": type`. If `type` is an event (the value of a `send`, `emit` or `raise`: `Machine.Name`, or the name of one of the current machine's `emits`, `events` or `internalEvents`), it also has `"_tag"` with the event's name, the part after the dot: `send upload.Pause` sends `{"_tag": "Pause"}`. |
 | `enum` | The string `variant`. |
+| `in` | `true` if `state` is in `active` at the moment the node is evaluated, else `false` (an id that names no state of the machine is never active). See below. |
 | `op` | See below. |
+
+**What `in` sees.** `active` is the live set the core keeps, changed only where the pseudocode on this page changes it, so `in` reads it as it is at that point:
+
+- **Guards**, and the `after` delays and invoke arguments of [starting work](#starting-work), see the configuration the step reached: a guard is evaluated while transitions are selected, before the microstep exits anything, so every guard of one selection sees the same set.
+- **`exit` effects** run before their state is removed (`exitState`), so `in(s)` is true in `s`'s own `exit` effects and in those of every state below it. States exited earlier in the same microstep (innermost first) are already gone.
+- **A transition's effects and arguments** run after every exit of the microstep and before any entry: the states the microstep exits are not active, and the states it enters not yet.
+- **Entering** adds a state just before its `entered` record (`enterStates`), so `in(s)` is true in the initial values of `s`'s variables, in `s`'s `entry` effects, and in those of every state entered after it; states entered later in the same microstep (outermost first, regions in order) are not active yet.
+- **Output and fail** values are evaluated before any exit of `finish`, so the final state and its ancestors are active.
+- **A machine variable's initial value** is evaluated before the root is entered (`start`), when no state is active.
 
 Operators, by `op`. An operand's type is its IR `type` with aliases expanded, transitively, the arguments of a generic alias substituted: `<` on a `Money` after `type Money = int` compares integers, and so does `+` on a `First<int>` after `type First<T> = T`. The IR keeps the alias's name, so a runtime that dispatches on the type string must expand it first.
 

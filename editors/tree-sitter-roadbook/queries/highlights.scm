@@ -91,6 +91,7 @@
   "and"
   "or"
   "not"
+  "in"
 ] @keyword.operator
 
 ; ─── Types ───

@@ -294,6 +294,13 @@ pub(crate) struct Cx<'c, 'p> {
     locals: Vec<Vec<Local>>,
     /// The node whose items are being lowered: its locals and its ancestors' are in scope.
     here: usize,
+    /// The innermost state certain to be active, with its ancestors, wherever the expressions
+    /// being lowered are evaluated: `None` where no state is (a machine variable's initial
+    /// value, the effects of a transition with no target, which another region's transition
+    /// may leave).
+    sure: Option<usize>,
+    /// Every `in(…)` lowered so far, resolved once the machine is (`checks::resolve_in`).
+    pub ins: Vec<crate::checks::InRef>,
 }
 
 /// Checks machine `m` declared in `file` and lowers it. Its hash is left empty.
@@ -348,6 +355,8 @@ pub(crate) fn lower<'p>(
         sens: false,
         locals: Vec::new(),
         here: 0,
+        sure: None,
+        ins: Vec::new(),
     };
 
     // Parameters and variables share one namespace.
@@ -691,6 +700,8 @@ pub(crate) fn lower<'p>(
         .filter_map(|n| Some((n.id.clone(), n.symbol?)))
         .collect();
     crate::checks::resolve(cx.ck, &name, &m.body, &root, &symbols);
+    let ins = std::mem::take(&mut cx.ins);
+    crate::checks::resolve_in(cx.ck, &name, &ins, &root, &symbols);
 
     let info = cx.info;
     ck.machines.push(info);
@@ -2230,6 +2241,7 @@ impl<'p> Cx<'_, 'p> {
             }
         }
         self.here = idx;
+        self.sure = Some(idx);
         let (params, vars, locals) = self.lower_locals(idx);
         self.info.states.insert(
             id.clone(),
@@ -2482,6 +2494,7 @@ impl<'p> Cx<'_, 'p> {
         let children = self.nodes[idx].order.clone();
         let states = children.into_iter().map(|c| self.lower_state(c)).collect();
         self.here = idx;
+        self.sure = Some(idx);
         let mut lowered = ir::State {
             name: self.nodes[idx].name.clone(),
             id,
@@ -3172,7 +3185,9 @@ impl<'p> Cx<'_, 'p> {
             };
             let (effects, effect_reads) = self.effects(&b.effects, scope, place);
             self.reads.clear();
+            let sure = std::mem::replace(&mut self.sure, domain);
             let args = self.state_args(idx, &b.targets, &resolved, &target_nodes, domain, scope);
+            self.sure = sure;
             let arg_reads = std::mem::take(&mut self.reads);
             let span = match &t.branches {
                 Branches::Single(_) => t.span,
@@ -3768,6 +3783,21 @@ impl<'p> Cx<'_, 'p> {
         Some(node)
     }
 
+    /// Records `in(t)` for resolution once the machine is lowered, and gives the id it
+    /// names if it resolves: the machine's name and the path, joined by dots.
+    pub(crate) fn in_state(&mut self, t: &Target) -> String {
+        let mut id = self.machine.clone();
+        for seg in &t.path {
+            id.push('.');
+            id.push_str(&seg.name);
+        }
+        self.ins.push(crate::checks::InRef {
+            target: t.clone(),
+            sure: self.sure.map(|n| self.nodes[n].id.clone()),
+        });
+        id
+    }
+
     fn refer_state(&mut self, node: usize, name: &Ident) {
         if let Some(symbol) = self.nodes[node].symbol {
             self.ck.index.refer(symbol, name.span);
@@ -3777,6 +3807,23 @@ impl<'p> Cx<'_, 'p> {
     /// Checks and lowers effects: every `set`, then the `do`, `send` and `emit` effects, each
     /// in the order written, which is the order they run in. With each effect, what it reads.
     pub(crate) fn effects(
+        &mut self,
+        effects: &[Effect],
+        scope: &Scope,
+        place: Place,
+    ) -> (Vec<ir::Effect>, Vec<Reads>) {
+        let sure = self.sure;
+        self.sure = match place {
+            Place::Entry(n) | Place::Exit(n) => Some(n),
+            // After the exits, before the entries: the domain is kept.
+            Place::Transition { domain, .. } => domain,
+        };
+        let lowered = self.effects_in(effects, scope, place);
+        self.sure = sure;
+        lowered
+    }
+
+    fn effects_in(
         &mut self,
         effects: &[Effect],
         scope: &Scope,

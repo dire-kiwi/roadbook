@@ -14,7 +14,8 @@
 //!   state name has: `<state>_invoke` for an invoke, `<state>_after_<group>` for a timer.
 //! - **Data model.** `datamodel="roadbook"`: every `cond`, `expr`, `delayexpr`, `targetexpr`
 //!   and `location` is the canonical text of a Roadbook expression, which reads `event`,
-//!   `result` and `error` as the IR says. Parameters and variables are `<data>`, with their
+//!   `result` and `error` as the IR says, and `in(A.B)` as the chart writes it (SCXML's
+//!   `In('M_A_B')`). Parameters and variables are `<data>`, with their
 //!   types, and the machine's result type, errors and `strict`, in attributes of the `rb:`
 //!   namespace.
 //! - **State parameters and variables** are `<data>` in the `<datamodel>` of their state, with

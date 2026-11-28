@@ -1014,3 +1014,54 @@
 #  ^ punctuation.section.braces.roadbook
 >}
 #^ punctuation.section.braces.roadbook
+>
+>// Whether a state is active: `in(…)` in a guard, a target's arguments and an effect.
+#^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.double-slash.roadbook
+>machine Ins() {
+#^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
+#        ^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
+#           ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#            ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#              ^ punctuation.section.braces.roadbook
+>  state S {
+#  ^^^^^ storage.type.state.roadbook
+#        ^ entity.name.type.state.roadbook
+#          ^ punctuation.section.braces.roadbook
+>    on Go if not in(Main.Volume.Muted) -> Paused(in(Main.Volume.Loud))  do note(in(Main))
+#    ^^ keyword.control.trigger.roadbook
+#       ^^ entity.name.type.event.roadbook
+#          ^^ keyword.control.if.roadbook
+#             ^^^ keyword.operator.logical.roadbook
+#                 ^^ keyword.operator.in.roadbook
+#                   ^ punctuation.section.parens.roadbook
+#                    ^^^^ entity.name.type.state.roadbook
+#                        ^ punctuation.accessor.roadbook
+#                         ^^^^^^ entity.name.type.state.roadbook
+#                               ^ punctuation.accessor.roadbook
+#                                ^^^^^ entity.name.type.state.roadbook
+#                                     ^ punctuation.section.parens.roadbook
+#                                       ^^ keyword.operator.arrow.roadbook
+#                                          ^^^^^^ entity.name.type.state.roadbook
+#                                                ^ meta.arguments.roadbook punctuation.definition.arguments.begin.roadbook
+#                                                 ^^ meta.arguments.roadbook keyword.operator.in.roadbook
+#                                                   ^ meta.arguments.roadbook punctuation.section.parens.roadbook
+#                                                    ^^^^ meta.arguments.roadbook entity.name.type.state.roadbook
+#                                                        ^ meta.arguments.roadbook punctuation.accessor.roadbook
+#                                                         ^^^^^^ meta.arguments.roadbook entity.name.type.state.roadbook
+#                                                               ^ meta.arguments.roadbook punctuation.accessor.roadbook
+#                                                                ^^^^ meta.arguments.roadbook entity.name.type.state.roadbook
+#                                                                    ^ meta.arguments.roadbook punctuation.section.parens.roadbook
+#                                                                     ^ meta.arguments.roadbook punctuation.definition.arguments.end.roadbook
+#                                                                        ^^ keyword.other.effect.roadbook
+#                                                                           ^^^^ entity.name.function.call.roadbook
+#                                                                               ^ punctuation.section.parens.roadbook
+#                                                                                ^^ keyword.operator.in.roadbook
+#                                                                                  ^ punctuation.section.parens.roadbook
+#                                                                                   ^^^^ entity.name.type.state.roadbook
+#                                                                                       ^ punctuation.section.parens.roadbook
+#                                                                                        ^ punctuation.section.parens.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>}
+#^ punctuation.section.braces.roadbook

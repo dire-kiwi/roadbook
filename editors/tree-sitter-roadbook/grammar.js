@@ -33,7 +33,7 @@ module.exports = grammar({
       'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'strict',
       'var', 'event', 'emits', 'initial', 'state', 'final', 'parallel', 'entry', 'exit', 'on',
       'after', 'always', 'done', 'invoke', 'output', 'fail', 'if', 'else', 'set', 'do', 'send',
-      'emit', 'ignore', 'and', 'or', 'not', 'true', 'false', 'call', 'reply',
+      'emit', 'ignore', 'and', 'or', 'not', 'in', 'true', 'false', 'call', 'reply',
     ],
   },
 
@@ -604,8 +604,13 @@ module.exports = grammar({
         $._implicit_name,
         $.enum_value,
         $.record_value,
+        $.in_expression,
         $.parenthesized_expression,
       ),
+
+    // `in(Main.Volume.Muted)`: whether a state is active, its path written from the machine
+    // body as a check's is.
+    in_expression: ($) => seq('in', '(', field('state', $.state_path), ')'),
 
     // The names in scope inside a transition: the current event, an invoke's result and its
     // error, the call being taken, and a spawned child's key. `event`, `error` and `call` are

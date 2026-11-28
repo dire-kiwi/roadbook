@@ -846,6 +846,18 @@
             "type": { "$ref": "#/$defs/upperName" },
             "text": { "type": "string" }
           }
+        },
+        {
+          "description": "`in(A.B)`: whether the state is active when the expression is evaluated.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "state", "type", "text"],
+          "properties": {
+            "kind": { "const": "in" },
+            "state": { "$ref": "#/$defs/stateId" },
+            "type": { "const": "bool" },
+            "text": { "type": "string" }
+          }
         }
       ]
     },

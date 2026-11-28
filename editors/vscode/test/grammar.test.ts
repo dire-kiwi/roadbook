@@ -113,6 +113,16 @@ describe('scopes', () => {
     expect(await scopesAt('    always set n = choice + 1', 'choice')).not.toContain('storage.type.choice.roadbook')
   })
 
+  it('marks in(…) as a keyword and its path as states', async () => {
+    const line = '    on Go if not in(Main.Volume.Muted) -> Paused(in(Main.Volume.Loud))  do note(in(Main))'
+    expect(await scopesAt(line, 'in')).toContain('keyword.operator.in.roadbook')
+    expect(await scopesAt(line, 'in')).not.toContain('entity.name.function.call.roadbook')
+    expect(await scopesAt(line, 'Volume')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(line, 'Muted')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(line, 'Loud')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(line, 'note')).toContain('entity.name.function.call.roadbook')
+  })
+
   it('marks internal targets and several targets as states', async () => {
     const line = '    on Sleep -> .Playback.Paused, .Volume.Muted  do log()'
     expect(await scopesAt(line, 'Playback')).toContain('entity.name.type.state.roadbook')

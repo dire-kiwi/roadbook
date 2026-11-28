@@ -1,0 +1,34 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0917]: `in(Main.Volume.Loud)` is always true here
+  --> RB0917-in-always-true.road:12:26
+   |
+12 |         entry do note(in(Main.Volume.Loud))
+   |                          ^^^^^^^^^^^^^^^^ active wherever this is evaluated
+   |
+   = help: this is evaluated only while `Main.Volume.Loud` is active; name another state, or drop the test
+
+warning[RB0917]: `in(Main)` is always true here
+  --> RB0917-in-always-true.road:13:25
+   |
+13 |         exit do note(in(Main))
+   |                         ^^^^ active wherever this is evaluated
+   |
+   = help: this is evaluated only while `Main.Volume.Loud` is active, and `Main` is a state around it; name another state, or drop the test
+
+warning[RB0917]: `in(Main.Volume)` is always true here
+  --> RB0917-in-always-true.road:14:21
+   |
+14 |         on Go if in(Main.Volume) -> Muted  do note(in(Main.Volume))
+   |                     ^^^^^^^^^^^ active wherever this is evaluated
+   |
+   = help: this is evaluated only while `Main.Volume.Loud` is active, and `Main.Volume` is a state around it; name another state, or drop the test
+
+warning[RB0917]: `in(Main.Volume)` is always true here
+  --> RB0917-in-always-true.road:14:55
+   |
+14 |         on Go if in(Main.Volume) -> Muted  do note(in(Main.Volume))
+   |                                                       ^^^^^^^^^^^ active wherever this is evaluated
+   |
+   = help: this is evaluated only while `Main.Volume` is active; name another state, or drop the test

@@ -1100,7 +1100,10 @@ impl<'a> Uses<'a> {
                     self.expr(&f.value);
                 }
             }
-            ExprKind::Lit(_) | ExprKind::Ref { .. } | ExprKind::Enum { .. } => {}
+            ExprKind::Lit(_)
+            | ExprKind::Ref { .. }
+            | ExprKind::Enum { .. }
+            | ExprKind::In { .. } => {}
         }
     }
 }

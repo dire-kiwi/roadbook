@@ -1,0 +1,18 @@
+{
+  "description": "`in(S)` reads the active states as they are when it is evaluated. A guard of one region reads the other's state: `Up` counts while the volume is loud and is dropped while it is muted, and `Playing`'s `Mute` guard sees `Loud` still active, since guards are evaluated before the microstep exits anything. In the microstep `Mute` takes in both regions, the later region's `Playing` is exited first, so its exit effect sees `Loud` and `Loud`'s does not see `Playing`; the transition's effects and `Paused`'s argument run after both exits and before both entries, so they see neither the states left nor those entered; and `Muted`, entered first, does not see `Paused`, while `Paused` sees `Muted`. Starting and `Unmute` enter `Loud` before `Playing` in the same way.",
+  "requires": ["parallel", "locals"],
+  "chart": "charts/in-state.road",
+  "machine": "Jukebox",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    { "event": { "_tag": "Up" } },
+    { "event": { "_tag": "Mute" } },
+    { "event": { "_tag": "Up" } },
+    { "event": { "_tag": "Unmute" } },
+    { "event": { "_tag": "Up" } }
+  ],
+  "status": "running"
+}

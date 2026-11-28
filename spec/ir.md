@@ -388,6 +388,7 @@ Every expression node is an object with `kind`, the kind's own members, then two
 | `op` | `a + b`, `not ok`, `-n` | `op`: one of `==` `!=` `<` `<=` `>` `>=` `+` `-` `*` `and` `or` (two `args`, left then right) or `not` `neg` (one `args`). |
 | `record` | `CardDeclined { reason: "expired" }`, `GatewayUnavailable`, `Page { items: orders }` | `fields`: `[{"name", "value"}]`, in the order written. `type` is the record or error type being built: its name, or for a generic record its instance with the arguments the compiler worked out (`Page<Order>`); or, for the value of a `send` or `emit`, the [event type](#type-references). A field-less error or event written bare is a record with no fields. Its `text` is the value as written after `send name.` or `emit`: `Reserve { orderId: id }`. |
 | `enum` | `Role.Admin` | `variant`. `type` is the enum. |
+| `in` | `in(Volume.Muted)` | `state`: the id of a state of the machine, `Player.Volume.Muted`, never a history or choice state. `type` is `bool`. True when the state is active at the moment the expression is evaluated ([`execution.md`](execution.md#expressions) says when that is). |
 
 **Literal values.** Read a literal by its `type`, never by the form of its JSON number, since JavaScript and canonical JSON do not keep the difference between `2` and `2.0`.
 
@@ -460,7 +461,7 @@ Version 0.14 adds the small language additions from the XState comparison (SM-30
 - `on A | B` adds no trigger: it is lowered to one copy of its branches per event, in the order written, and only the copies of one of its branches share both `group` and `span` among a state's transitions, so a reader can merge them back into one edge ([several events](#several-events)). No member changes, so no hash does.
 - Every [state](#states) has `default`: for a [history state](#history-states) written with a default target (`history Previous -> Editing`), the ids of the states it enters when it has recorded nothing; `[]` for one written without, and for every other state. The [machine hash](#the-machine-hash) leaves it out when it is `[]`. What entering one does is in [`execution.md`](execution.md#history-states).
 - The state kind `choice` ([choice states](#choice-states)): no children, locals, effects or invokes, and only `always` transitions, each with a target, the last unguarded. A runtime runs it as an `atomic` state. A machine with no choice is unchanged, so its hash is too.
-- The [expression](#expressions) kind `in`, true when a state is active.
+- The [expression](#expressions) kind `in`, `{"kind": "in", "state": "Player.Volume.Muted", "type": "bool", "text": "in(Volume.Muted)"}`: true when the state is active as the expression is evaluated ([`execution.md`](execution.md#expressions)). It appears only where a chart writes `in(…)`, so no other machine, and no hash, changes.
 - Every [state](#states) has `tags` and `meta`, left out of the hash as `doc` is.
 
 Structural `==` and `!=` on records, lists, maps and optionals need no change to the IR: an `op` expression for `==` or `!=` already has its operands' types ([equality](execution.md#equality)).

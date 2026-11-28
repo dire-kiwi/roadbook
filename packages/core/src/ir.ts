@@ -314,6 +314,8 @@ export type Expr =
     readonly fields: ReadonlyArray<{ readonly name: string; readonly value: Expr }>
   })
   | (ExprBase & { readonly kind: "enum"; readonly variant: string })
+  /** Whether state `state`, an id, is active when the expression is evaluated. Its `type` is `bool`. */
+  | (ExprBase & { readonly kind: "in"; readonly state: string })
 
 export type Op = "==" | "!=" | "<" | "<=" | ">" | ">=" | "+" | "-" | "*" | "and" | "or" | "not" | "neg"
 

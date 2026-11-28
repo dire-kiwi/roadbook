@@ -1342,7 +1342,7 @@ impl Parser<'_> {
         })
     }
 
-    /// `Name { . Name }`: a state named in a `check` or a history state's default.
+    /// `Name { . Name }`: a state named in a `check`, a history state's default or `in(…)`.
     fn state_path(&mut self) -> PResult<Target> {
         // A lower-case name on the next line is the next item, not a misspelt state.
         if !self.at(T::Upper) && self.starts_line() {
@@ -2498,6 +2498,16 @@ impl Parser<'_> {
                     kind: inner.kind,
                 });
             }
+            T::Keyword(K::In) => {
+                self.bump();
+                self.expect_p(P::LParen, " after `in`")?;
+                let state = self.state_path()?;
+                self.expect_p(P::RParen, " to close `in(`")?;
+                return Ok(Expr {
+                    span: t.span.to(self.prev()),
+                    kind: ExprKind::In(state),
+                });
+            }
             T::Keyword(K::Not) => {
                 let d = Diagnostic::error(
                     codes::UNEXPECTED_TOKEN,
@@ -2528,7 +2538,7 @@ fn starts_expr(k: T) -> bool {
             | T::Lower
             | T::Upper
             | T::Punct(P::LParen | P::Minus)
-            | T::Keyword(K::True | K::False | K::Not | K::Event | K::Error | K::Call)
+            | T::Keyword(K::True | K::False | K::Not | K::In | K::Event | K::Error | K::Call)
     )
 }
 

@@ -404,7 +404,10 @@ impl Walker<'_> {
     fn expr(&mut self, e: &Expr) -> Result<(), HashError> {
         self.type_ref(&e.ty)?;
         match &e.kind {
-            ExprKind::Lit(_) | ExprKind::Ref { .. } | ExprKind::Enum { .. } => Ok(()),
+            ExprKind::Lit(_)
+            | ExprKind::Ref { .. }
+            | ExprKind::Enum { .. }
+            | ExprKind::In { .. } => Ok(()),
             ExprKind::Field { of, .. } => self.expr(of),
             ExprKind::Call { func, args } => {
                 if !self.ir.functions.contains_key(func) {

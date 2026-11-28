@@ -1491,6 +1491,8 @@ class Macrostep {
       }
       case "enum":
         return expr.variant
+      case "in":
+        return this.active.includes(expr.state)
       case "op":
         return this.evalOp(expr, bindings)
     }

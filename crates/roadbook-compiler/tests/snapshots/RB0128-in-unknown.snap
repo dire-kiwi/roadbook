@@ -1,0 +1,34 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0128]: unknown state `Volume` in `in(…)` in `M`
+  --> RB0128-in-unknown.road:10:33
+   |
+10 |       state Loud  { on Go if in(Volume.Muted) -> Muted }
+   |                                 ^^^^^^
+   |
+   = help: the path in `in(…)` starts at the machine's top-level states, and `Volume` is inside `Main`: `Main.Volume.Muted`
+
+error[RB0128]: unknown state `Main.Volume.Mute` in `in(…)`: `M.Main.Volume` has no child `Mute`
+  --> RB0128-in-unknown.road:11:45
+   |
+11 |       state Muted { on Go if in(Main.Volume.Mute) -> Loud }
+   |                                             ^^^^
+   |
+   = help: did you mean `Muted`?
+
+error[RB0128]: unknown state `M` in `in(…)` in `M`
+  --> RB0128-in-unknown.road:16:26
+   |
+16 |         entry do note(in(M.Main.Volume))
+   |                          ^
+   |
+   = help: `in(…)` names a state from the machine's top-level states, without the machine's name: `Main.Volume`
+
+error[RB0128]: unknown state `Mian` in `in(…)` in `M`
+  --> RB0128-in-unknown.road:17:21
+   |
+17 |         on Go if in(Mian) -> Playing
+   |                     ^^^^
+   |
+   = help: did you mean `Main`?

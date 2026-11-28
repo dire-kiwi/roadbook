@@ -1032,6 +1032,9 @@ pub enum ExprKind {
     },
     Unary(UnaryOp, Box<Expr>),
     Binary(BinaryOp, Box<Expr>, Box<Expr>),
+    /// `in(A.B)`: whether a state is active. The path is resolved from the machine body, as a
+    /// check's is.
+    In(Target),
 }
 
 /// `field: expr` in a record value.
@@ -1168,7 +1171,8 @@ impl Expr {
             | ExprKind::String(_)
             | ExprKind::Bool(_)
             | ExprKind::Var(_)
-            | ExprKind::Enum(..) => {}
+            | ExprKind::Enum(..)
+            | ExprKind::In(_) => {}
         }
     }
 }

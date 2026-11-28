@@ -17,6 +17,7 @@
         { "include": "#declarations" },
         { "include": "#messages" },
         { "include": "#target" },
+        { "include": "#in-state" },
         { "include": "#keywords" },
         { "include": "#numbers" },
         { "include": "#calls" },
@@ -328,7 +329,7 @@
         },
         {
           "comment": "`cancel` is not reserved: it is an effect only before a name that is not a keyword.",
-          "match": "\\b(cancel)\\s+(?!(?:import|type|enum|error|extern|fn|action|task|machine|strict|var|event|emits|initial|state|final|parallel|entry|exit|on|after|always|done|invoke|output|fail|if|else|set|do|send|emit|ignore|and|or|not|true|false|call|reply)\\b)([a-z][A-Za-z0-9]*)",
+          "match": "\\b(cancel)\\s+(?!(?:import|type|enum|error|extern|fn|action|task|machine|strict|var|event|emits|initial|state|final|parallel|entry|exit|on|after|always|done|invoke|output|fail|if|else|set|do|send|emit|ignore|and|or|not|in|true|false|call|reply)\\b)([a-z][A-Za-z0-9]*)",
           "captures": {
             "1": { "name": "keyword.other.effect.roadbook" },
             "2": { "name": "variable.other.roadbook" }
@@ -417,6 +418,21 @@
         { "include": "#comments" },
         { "match": "\\b(never|reachable|only|after|can|finish)\\b", "name": "keyword.other.check.roadbook" },
         { "match": "\\band\\b", "name": "keyword.operator.logical.roadbook" },
+        { "match": "\\b[A-Z][A-Za-z0-9]*\\b", "name": "entity.name.type.state.roadbook" },
+        { "match": "\\.", "name": "punctuation.accessor.roadbook" }
+      ]
+    },
+
+    "in-state": {
+      "comment": "`in(Main.Volume.Muted)`: whether a state is active. `in` is a keyword, not a function, and the path names states.",
+      "begin": "\\b(in)\\s*(\\()",
+      "beginCaptures": {
+        "1": { "name": "keyword.operator.in.roadbook" },
+        "2": { "name": "punctuation.section.parens.roadbook" }
+      },
+      "end": "\\)",
+      "endCaptures": { "0": { "name": "punctuation.section.parens.roadbook" } },
+      "patterns": [
         { "match": "\\b[A-Z][A-Za-z0-9]*\\b", "name": "entity.name.type.state.roadbook" },
         { "match": "\\.", "name": "punctuation.accessor.roadbook" }
       ]

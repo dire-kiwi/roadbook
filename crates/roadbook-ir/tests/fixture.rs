@@ -135,7 +135,7 @@ fn exprs_mut(e: &mut Expr, f: &mut impl FnMut(&mut Expr)) {
             args.iter_mut().for_each(|a| exprs_mut(a, f))
         }
         ExprKind::Record { fields } => fields.iter_mut().for_each(|fv| exprs_mut(&mut fv.value, f)),
-        ExprKind::Lit(_) | ExprKind::Ref { .. } | ExprKind::Enum { .. } => {}
+        ExprKind::Lit(_) | ExprKind::Ref { .. } | ExprKind::Enum { .. } | ExprKind::In { .. } => {}
     }
 }
 

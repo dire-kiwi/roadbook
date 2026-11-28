@@ -67,7 +67,8 @@ pub const NOT_A_COLLECTION: Code = Code(121);
 /// `key`, the implicit name of a spawned child's key, as the name of a machine parameter,
 /// variable, `as` name or collection.
 pub const KEY_AS_NAME: Code = Code(122);
-/// A state path in a `check` that names no state of the machine, or names a history state.
+/// A state path in a `check` that names no state of the machine, or names a history or
+/// choice state.
 pub const UNKNOWN_CHECK_STATE: Code = Code(123);
 /// An `on name.ended` through an `invoke … as name` child or task or a `children` collection,
 /// whose ends are their outcomes, not through a `ref`.
@@ -80,6 +81,9 @@ pub const UNKNOWN_RAISE_NAME: Code = Code(126);
 /// parameter or variable, a collection, a delayed raise's name, an `as` name, a local of a
 /// state around it), or is a local of a state inside it.
 pub const LOCAL_SHADOWS: Code = Code(127);
+/// The state of an `in(…)` that names no state of the machine, or names a history or choice
+/// state.
+pub const UNKNOWN_IN_STATE: Code = Code(128);
 
 // ───────────── structure ─────────────
 
@@ -309,6 +313,9 @@ pub const RAISED_NOT_TAKEN: Code = Code(915);
 /// A `set` of a state's variable in a transition that leaves that state, so the value is
 /// discarded with it.
 pub const LOCAL_SET_LOST: Code = Code(916);
+/// An `in(S)` where `S` is always active: the state the expression is written in, or one
+/// around it.
+pub const IN_ALWAYS_TRUE: Code = Code(917);
 
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
@@ -339,6 +346,7 @@ pub const ALL: &[Code] = &[
     NOT_RAISABLE,
     UNKNOWN_RAISE_NAME,
     LOCAL_SHADOWS,
+    UNKNOWN_IN_STATE,
     UNKNOWN_TARGET,
     MISSING_INITIAL,
     BAD_INITIAL,
@@ -419,6 +427,7 @@ pub const ALL: &[Code] = &[
     NEVER_RAISED,
     RAISED_NOT_TAKEN,
     LOCAL_SET_LOST,
+    IN_ALWAYS_TRUE,
 ];
 
 #[cfg(test)]

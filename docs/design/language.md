@@ -261,8 +261,39 @@ Expressions are deliberately small. There are no loops, lambdas or string operat
 | Comparison | `==`, `!=`, `<`, `<=`, `>`, `>=` |
 | Integer and float arithmetic | `+`, `-`, `*` |
 | Logic | `and`, `or`, `not` |
+| Whether a state is active | `in(Volume.Muted)` |
 
 `not` binds more loosely than comparison, so `not a > b` means `not (a > b)`, and the formatter writes the parentheses. Integer overflow is a runtime error in both runtimes, not a wrap. Anything more involved belongs in a `fn`. The operators exist so that the two most common pieces of flow logic, counters and thresholds, are readable in the chart (`if attempts < 3`) instead of hidden behind a name (`if canRetry`).
+
+### Whether a state is active
+
+`in(S)` is a `bool`: true when state `S` is active. It reads the run's own configuration, so one region can ask about another without a variable kept in step by `entry` and `exit`:
+
+```
+machine Player() {
+  event VolumeUp
+  event Mute
+
+  initial Main
+  parallel state Main {
+    state Volume {
+      initial Loud
+      state Loud  { on Mute -> Muted }
+      state Muted { on VolumeUp -> Loud }
+    }
+    state Playback {
+      initial Playing
+      state Playing { on VolumeUp if not in(Main.Volume.Muted) do louder() }
+    }
+  }
+}
+```
+
+- **The path** is written from the machine body, as a [check's](#checking-properties) is, whatever state the expression is in: `in(Main.Volume.Muted)`, not `in(Volume.Muted)` or `in(.Muted)`. It may name any state, including a region, a final state, or the `Attempt` and `Backoff` states a [`retry`](#what-retry-compiles-to) writes out, but not a history state, which is never active, nor a choice state, which a run leaves in the step that enters it. An unknown state, a history state or a choice state is `RB0128`. `in` is a keyword, so nothing can be named `in`.
+- **Where.** `in(S)` is an expression like any other: in a guard, an effect's arguments, a state's arguments, an `after` delay, an invoke's arguments or an `output`.
+- **When.** It reads the configuration at the moment it is evaluated. A guard sees the states active before the transition is taken. A state is active from its `entered` record, so in its variables' initial values and its `entry` effects, and stays active through its own `exit` effects. A transition's effects run after the states it leaves are exited and before the states it enters are entered, so neither is active there. A machine variable's initial value is evaluated before any state is active, so `in(S)` is `false` there. [`execution.md`](../../spec/execution.md#expressions) gives the exact rule.
+- **Always true.** `in(S)` where `S` is certain to be active is a warning (`RB0917`): in a guard, an `entry`, an `exit` or an invoke's arguments of `S` or of a state inside it, or in the effects and arguments of a transition that does not leave `S`, one whose [domain](../../spec/execution.md#a-microstep) is `S` or a state inside it. The effects of a transition with no target are not counted, since a transition another region takes in the same step may leave `S`.
+- **Checks** do not evaluate `in(…)` in guards, as they evaluate no guard: such a guard may hold or fail ([how checks are decided](#how-checks-are-decided)).
 
 ### Types
 
@@ -1194,7 +1225,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0010` | An unexpected token. | `type A { x int }` |
 | `RB0011` | A `{` or `(` that is never closed. | `state A {` at the end of the file |
 | `RB0012` | A name of the wrong case. | `type order`, `state idle` |
-| `RB0013` | A keyword, or `result`, used as a name, or a declaration or event named `Unanswered` or `Ended`. | `var on: int`, `var result: int`, `type Evt { type: string }`, `error Unanswered`, `enum Ended { A }` |
+| `RB0013` | A keyword, or `result`, used as a name, or a declaration or event named `Unanswered` or `Ended`. | `var on: int`, `var in: bool`, `var result: int`, `type Evt { type: string }`, `error Unanswered`, `enum Ended { A }` |
 | `RB0014` | `done`, `invoke`, `output`, `fail` or a history state directly in a machine body. | `machine M() { done -> A }`, `machine M() { history H }` |
 | `RB0015` | `event`, `internal event`, `emits`, `call`, `children` or `check` inside a state. (`var` is allowed there: a [state variable](#data-local-to-a-state).) | `state A { event Go }`, `state A { check can finish }` |
 | `RB0016` | A machine item at the top level of a file. | `state A {}` or `check can finish` outside a machine |
@@ -1242,6 +1273,7 @@ The compiler's codes:
 | `RB0125` | A `raise` of an event that is not one of the machine's own events or internal events: an event it emits, another machine's, or an unknown one. | `raise Progress` for `emits Progress`, `raise Unknown` |
 | `RB0126` | A `cancel` of a name that no `raise … after … as name` of the machine uses. | `cancel reminder` with no `raise … as reminder` |
 | `RB0127` | A state's parameter or variable whose name is already in scope in the state, or is a local of a state inside it: a machine parameter or variable, a collection, the name of a delayed raise, an `as` name in scope, or a local of a state around it. | `state Retrying(attempts: int)` with `var attempts: int`, `var n` in both `A` and `A.B` |
+| `RB0128` | The state of an `in(…)` that names no state of the machine, or names a history or choice state. | `in(Volum.Muted)`, `in(Volume.Muted)` for `Main.Volume.Muted`, `in(Editing.Last)` for `history Last` |
 | `RB0201` | A transition target that does not resolve, or a path through a history state. | `-> Dne`, `-> Working.Previous.Editing` |
 | `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }`, `machine M() { initial A }` |
 | `RB0203` | An `initial` that is not a child state, is written twice, or is in a state without children. | `initial Strat`, `initial Previous` for `history Previous` |
@@ -1322,6 +1354,7 @@ The compiler's codes:
 | `RB0914` | An `internal event` that no `raise` of the machine raises, so it can never happen (warning). | `internal event Ping` with no `raise Ping` |
 | `RB0915` | A `raise E` where no `on E` and no `on *` of the machine takes `E`, so it is always dropped, or `unhandled` in a strict machine (warning). | `raise Ping` with no `on Ping` |
 | `RB0916` | A `set` of a state's variable in a transition that leaves that state, so the value is discarded with it (warning). | `on Retry -> Trying  set tries = tries + 1` written in `Trying` |
+| `RB0917` | An `in(S)` where `S` is always active: the state the expression is written in or one around it, or the domain of the transition whose effect it is in (warning). | `on Go if in(Main.Volume)` written in `Main.Volume.Muted` |
 
 ## Grammar
 
@@ -1419,6 +1452,7 @@ primary     = int | float | duration | string | "true" | "false"
             | call
             | lower | "event" | "error" | "call"
             | Upper [ "." Upper | recordBody ]
+            | "in" "(" statePath ")"
             | "(" expr ")" ;
 
 name        = Upper | lower ;
@@ -1434,7 +1468,7 @@ comment     = "//" … end of line ;        doc comment = "///" … end of line 
 Rules the grammar does not express:
 
 - Every comma-separated list accepts a trailing comma.
-- All keywords are reserved: `import type enum error extern fn action task machine strict var event emits call initial state final parallel entry exit on after always done invoke output fail if else set do send emit reply ignore and or not true false`. `from`, `as`, `retry`, `ref`, `map`, `sensitive`, `history`, `deep`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `check`, `never`, `reachable`, `only`, `can`, `finish` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`) and after a delayed raise's delay (`as`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), at the start of an item of a state body (`history`, `deep`), `choice` followed by a name at the start of a machine or state item, in `children name:` at the start of a machine item, after a collection's machine, in `spawn name[`, `stop name[`, `raise Name` and `cancel name` at the start of an effect (so `action stop()` is still a valid action), in `internal event` at the start of a machine item, and in a check: `check` followed by a name at the start of a machine item, and the words of its property after it (so `var check: int` is still a variable). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field. (`call` is a keyword.)
+- All keywords are reserved: `import type enum error extern fn action task machine strict var event emits call initial state final parallel entry exit on after always done invoke output fail if else set do send emit reply ignore and or not in true false`. `from`, `as`, `retry`, `ref`, `map`, `sensitive`, `history`, `deep`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `check`, `never`, `reachable`, `only`, `can`, `finish` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`) and after a delayed raise's delay (`as`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), at the start of an item of a state body (`history`, `deep`), `choice` followed by a name at the start of a machine or state item, in `children name:` at the start of a machine item, after a collection's machine, in `spawn name[`, `stop name[`, `raise Name` and `cancel name` at the start of an effect (so `action stop()` is still a valid action), in `internal event` at the start of a machine item, and in a check: `check` followed by a name at the start of a machine item, and the words of its property after it (so `var check: int` is still a variable). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field. (`call` is a keyword.)
 - In a type, the `>` closing type arguments may be written as the first character of a `>=`: `var m: map<string, int>= f()` reads as written (the formatter writes `> =` with a space).
 - A `///` comment documents the declaration, machine, state, history state, event, variable or check that follows it. A `///` anywhere else is an error: use `//`.
 - A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust, and so must one in a retry's delay, which the invoke's `{` follows. A `{` after the event of a `send`, `emit` or `raise` is always its record body.

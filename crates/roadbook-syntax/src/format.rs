@@ -1122,6 +1122,7 @@ pub(crate) fn expr(e: &Expr) -> String {
         ExprKind::Field(x, f) => format!("{}.{}", operand(x, 8), f.name),
         ExprKind::Call(c) => call(c),
         ExprKind::Enum(t, v) => format!("{}.{}", t.name, v.name),
+        ExprKind::In(t) => format!("in({})", path_text(t)),
         ExprKind::Record { ty, fields } if fields.is_empty() => ty.name.clone(),
         ExprKind::Record { ty, fields } => {
             let fs: Vec<_> = fields
