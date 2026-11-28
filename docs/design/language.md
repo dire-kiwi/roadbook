@@ -383,7 +383,9 @@ A state may run several tasks or machines at once. When it has more than one `in
 
 ```
 state Watching {
-  invoke heartbeat(server) as beat { fail Lost -> Offline }
+  invoke heartbeat(server) as beat {
+    fail Lost -> Offline
+  }
   invoke syncFiles(folder) as sync {
     done   -> Synced
     fail * -> Failed
