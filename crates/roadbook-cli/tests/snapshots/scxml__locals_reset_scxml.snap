@@ -1,0 +1,201 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A password reset whose token lives only in the states that need it. -->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Reset" datamodel="roadbook" initial="Reset" rb:returns="string">
+  <datamodel>
+    <data id="email" rb:type="string" rb:param="true"/>
+    <data id="password" rb:type="string" rb:param="true"/>
+    <data id="resettingAttempt" expr="0" rb:type="int"/>
+  </datamodel>
+  <state id="Reset" initial="Reset_Requesting">
+    <transition event="Back" target="Reset_Both_Left_B Reset_Both_Right_D" type="internal">
+      <assign location="Reset_Both.label" expr="&quot;both&quot;"/>
+    </transition>
+    <state id="Reset_Requesting">
+      <invoke id="Reset_Requesting_invoke" type="urn:roadbook:task" src="request">
+        <param name="email" expr="email"/>
+      </invoke>
+      <transition event="done.invoke.Reset_Requesting_invoke" target="Reset_Confirming">
+        <assign location="Reset_Confirming.token" expr="result"/>
+      </transition>
+    </state>
+    <!-- The token is only needed while the code is being confirmed. -->
+    <state id="Reset_Confirming">
+      <datamodel>
+        <!-- Roadbook gives these their values each time the state is entered and drops them when it is left -->
+        <data id="Reset_Confirming.token" rb:type="Token" rb:param="true"/>
+        <data id="Reset_Confirming.tries" rb:type="int"/>
+        <data id="Reset_Confirming.last" rb:type="string?"/>
+        <data id="Reset_Confirming.shown" rb:type="string"/>
+      </datamodel>
+      <onentry>
+        <assign location="Reset_Confirming.tries" expr="0"/>
+        <assign location="Reset_Confirming.shown" expr="token.id"/>
+      </onentry>
+      <transition event="Submit" cond="matches(token, event.code)" target="Reset_Resetting">
+        <assign location="Reset_Resetting.token" expr="token"/>
+        <assign location="Reset_Resetting.secret" expr="password"/>
+      </transition>
+      <transition event="Submit" cond="tries &lt; 2" type="internal">
+        <assign location="Reset_Confirming.tries" expr="tries + 1"/>
+        <assign location="Reset_Confirming.last" expr="event.code"/>
+      </transition>
+      <transition event="Submit" target="Reset_Rejected">
+        <assign location="Reset_Rejected.reason" expr="&quot;too many tries&quot;"/>
+      </transition>
+      <transition event="Skip" target="Reset_Confirming">
+        <assign location="Reset_Confirming.token" expr="token"/>
+      </transition>
+    </state>
+    <!-- A retry inside a state with parameters: the token lives through every attempt. -->
+    <state id="Reset_Resetting" initial="Reset_Resetting_Attempt">
+      <datamodel>
+        <!-- Roadbook gives these their values each time the state is entered and drops them when it is left -->
+        <data id="Reset_Resetting.token" rb:type="Token" rb:param="true"/>
+        <data id="Reset_Resetting.secret" rb:type="string" rb:param="true"/>
+      </datamodel>
+      <onentry>
+        <assign location="resettingAttempt" expr="0"/>
+        <rb:do action="log">
+          <param name="text" expr="token.user"/>
+        </rb:do>
+      </onentry>
+      <state id="Reset_Resetting_Attempt">
+        <invoke id="Reset_Resetting_Attempt_invoke" type="urn:roadbook:task" src="reset">
+          <param name="token" expr="token"/>
+          <param name="password" expr="secret"/>
+        </invoke>
+        <transition event="done.invoke.Reset_Resetting_Attempt_invoke" target="Reset_Editing_Changing">
+          <assign location="Reset_Editing.user" expr="token.user"/>
+          <assign location="Reset_Editing_Changing.count" expr="1"/>
+        </transition>
+        <transition event="error.Busy.Reset_Resetting_Attempt_invoke" cond="resettingAttempt &lt; 2" target="Reset_Resetting_Backoff">
+          <assign location="resettingAttempt" expr="resettingAttempt + 1"/>
+        </transition>
+        <transition event="error.Busy.Reset_Resetting_Attempt_invoke" target="Reset_Rejected">
+          <assign location="Reset_Rejected.reason" expr="&quot;busy&quot;"/>
+        </transition>
+      </state>
+      <state id="Reset_Resetting_Backoff">
+        <onentry>
+          <send id="Reset_Resetting_Backoff_after_0" event="roadbook.after.Reset_Resetting_Backoff.0" delayexpr="backoff(resettingAttempt)"/>
+        </onentry>
+        <onexit>
+          <cancel sendid="Reset_Resetting_Backoff_after_0"/>
+        </onexit>
+        <transition event="roadbook.after.Reset_Resetting_Backoff.0" target="Reset_Resetting_Attempt"/>
+      </state>
+    </state>
+    <state id="Reset_Editing" initial="Reset_Editing_Viewing">
+      <datamodel>
+        <!-- Roadbook gives these their values each time the state is entered and drops them when it is left -->
+        <data id="Reset_Editing.user" rb:type="string" rb:param="true"/>
+        <data id="Reset_Editing.note" rb:type="string"/>
+      </datamodel>
+      <onentry>
+        <assign location="Reset_Editing.note" expr="user"/>
+      </onentry>
+      <transition event="Help" target="Reset_Helping">
+        <assign location="Reset_Helping.user" expr="user"/>
+      </transition>
+      <transition event="Skip" target="Reset_Editing_Changing" type="internal">
+        <assign location="Reset_Editing_Changing.count" expr="5"/>
+      </transition>
+      <history id="Reset_Editing_Previous" type="deep">
+        <transition target="Reset_Editing_Viewing"/>
+      </history>
+      <state id="Reset_Editing_Viewing">
+        <transition event="Edit" target="Reset_Editing_Changing">
+          <assign location="Reset_Editing_Changing.count" expr="0"/>
+        </transition>
+      </state>
+      <state id="Reset_Editing_Changing">
+        <datamodel>
+          <!-- Roadbook gives these their values each time the state is entered and drops them when it is left -->
+          <data id="Reset_Editing_Changing.count" rb:type="int" rb:param="true"/>
+          <data id="Reset_Editing_Changing.total" rb:type="int"/>
+        </datamodel>
+        <onentry>
+          <assign location="Reset_Editing_Changing.total" expr="count + 1"/>
+          <rb:do action="log">
+            <param name="text" expr="note"/>
+          </rb:do>
+        </onentry>
+        <transition event="Edit" target="Reset_Editing_Changing">
+          <assign location="Reset_Editing_Changing.count" expr="total"/>
+        </transition>
+        <transition event="Submit" target="Reset_Done">
+          <assign location="Reset_Done.value" expr="note"/>
+        </transition>
+      </state>
+    </state>
+    <state id="Reset_Helping">
+      <datamodel>
+        <!-- Roadbook gives these their values each time the state is entered and drops them when it is left -->
+        <data id="Reset_Helping.user" rb:type="string" rb:param="true"/>
+      </datamodel>
+      <transition event="Back" target="Reset_Editing_Previous">
+        <assign location="Reset_Editing.user" expr="user"/>
+      </transition>
+      <transition event="Edit" target="Reset_Both">
+        <assign location="Reset_Both.label" expr="user"/>
+      </transition>
+    </state>
+    <parallel id="Reset_Both">
+      <datamodel>
+        <!-- Roadbook gives these their values each time the state is entered and drops them when it is left -->
+        <data id="Reset_Both.label" rb:type="string" rb:param="true"/>
+      </datamodel>
+      <transition event="done.state.Reset_Both" target="Reset_Done">
+        <assign location="Reset_Done.value" expr="label"/>
+      </transition>
+      <state id="Reset_Both_Left" initial="Reset_Both_Left_A">
+        <datamodel>
+          <!-- Roadbook gives these their values each time the state is entered and drops them when it is left -->
+          <data id="Reset_Both_Left.n" rb:type="int"/>
+        </datamodel>
+        <onentry>
+          <assign location="Reset_Both_Left.n" expr="0"/>
+        </onentry>
+        <state id="Reset_Both_Left_A">
+          <transition event="Edit" target="Reset_Both_Left_B"/>
+        </state>
+        <final id="Reset_Both_Left_B"/>
+      </state>
+      <state id="Reset_Both_Right" initial="Reset_Both_Right_C">
+        <datamodel>
+          <!-- Roadbook gives these their values each time the state is entered and drops them when it is left -->
+          <data id="Reset_Both_Right.n" rb:type="int"/>
+        </datamodel>
+        <onentry>
+          <assign location="Reset_Both_Right.n" expr="1"/>
+        </onentry>
+        <state id="Reset_Both_Right_C">
+          <transition event="Edit" target="Reset_Both_Right_D"/>
+        </state>
+        <final id="Reset_Both_Right_D"/>
+      </state>
+    </parallel>
+  </state>
+  <final id="Reset_Done">
+    <datamodel>
+      <!-- Roadbook gives these their values each time the state is entered and drops them when it is left -->
+      <data id="Reset_Done.value" rb:type="string" rb:param="true"/>
+    </datamodel>
+    <donedata>
+      <content expr="value"/>
+    </donedata>
+  </final>
+  <final id="Reset_Rejected">
+    <datamodel>
+      <!-- Roadbook gives these their values each time the state is entered and drops them when it is left -->
+      <data id="Reset_Rejected.reason" rb:type="string" rb:param="true"/>
+    </datamodel>
+    <donedata>
+      <content expr="reason"/>
+    </donedata>
+  </final>
+</scxml>

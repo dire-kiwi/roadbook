@@ -1043,6 +1043,22 @@ fn export_mermaid_snapshots_calls() {
     insta::assert_snapshot!("calls_mermaid", text(&out.stdout));
 }
 
+/// A state's parameters label it, its variables are lines of its description, and a
+/// transition's arguments end its label.
+#[test]
+fn export_mermaid_snapshots_state_locals() {
+    let out = roadbook(
+        &repo(),
+        &[
+            "export",
+            "mermaid",
+            "crates/roadbook-compiler/tests/pass/locals.road",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    insta::assert_snapshot!("locals_mermaid", text(&out.stdout));
+}
+
 /// A transition with several targets is an arrow to each, with the same label.
 #[test]
 fn export_mermaid_snapshots_several_targets() {

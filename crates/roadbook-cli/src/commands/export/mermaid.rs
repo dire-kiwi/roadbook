@@ -17,6 +17,9 @@
 //! Mermaid has no history states: one is a small state labelled `H` (or `H*` for a deep one)
 //! inside its parent, which transitions target as any state; in a parallel state it is in the
 //! first region's part of the box, since every state there is in one.
+//! A state that takes parameters is labelled with them, `Confirming(token: ResetToken)`, its
+//! variables are lines of its description (`var tries: int = 0`), and a transition's arguments
+//! end its label, as the target path writes them: `-> Editing(doc).Changing`.
 //! What it loses: the line styles of the kinds of transition, the details panel, drill-down
 //! into invoked machines, and the viewer's layout.
 //!
@@ -286,7 +289,12 @@ impl Writer<'_> {
             self.line(depth, &line);
             return;
         }
-        if id != s.name {
+        if !s.params.is_empty() {
+            let params: Vec<String> = s.params.iter().map(param).collect();
+            let label = format!("{}({})", s.name, params.join(", "));
+            let line = format!("state \"{}\" as {id}", escape(&label));
+            self.line(depth, &line);
+        } else if id != s.name {
             let line = format!("state \"{}\" as {id}", s.name);
             self.line(depth, &line);
         }
@@ -426,12 +434,69 @@ fn label(s: &State, t: &Transition) -> String {
         let effects: Vec<String> = t.effects.iter().map(effect).collect();
         text.push_str(&format!(" / {}", effects.join(", ")));
     }
+    if !t.args.is_empty() {
+        let mut used = Vec::new();
+        let targets: Vec<String> = t
+            .targets
+            .iter()
+            .map(|x| target_with_args(s, t, x, &mut used))
+            .filter(|x| !x.is_empty())
+            .collect();
+        text.push_str(&format!(" -> {}", targets.join(", ")));
+    }
     text
+}
+
+/// A target with its arguments: below the source for an internal transition
+/// (`.Changing(5)`), otherwise from the first state on its path that takes some
+/// (`Editing(doc).Changing`). A state's arguments are written once, on the first target whose
+/// path goes through it, as the chart writes them; `used` holds those already written.
+fn target_with_args(s: &State, t: &Transition, target: &str, used: &mut Vec<String>) -> String {
+    let mut out: Vec<String> = Vec::new();
+    let mut id = String::new();
+    let below = format!("{}.", s.id);
+    for seg in target.split('.') {
+        if !id.is_empty() {
+            id.push('.');
+        }
+        id.push_str(seg);
+        let written = t.internal && id.starts_with(&below);
+        match t.args.iter().find(|a| a.state == id) {
+            Some(a) if !used.contains(&a.state) => {
+                used.push(a.state.clone());
+                let values: Vec<&str> = a.values.iter().map(|v| v.text.as_str()).collect();
+                out.push(format!("{seg}({})", values.join(", ")));
+            }
+            Some(_) => out.push(seg.to_string()),
+            None if written || !out.is_empty() => out.push(seg.to_string()),
+            _ => {}
+        }
+    }
+    let path = out.join(".");
+    if t.internal && !path.is_empty() {
+        format!(".{path}")
+    } else {
+        path
+    }
+}
+
+/// `sensitive token: ResetToken`
+fn param(f: &roadbook_ir::Field) -> String {
+    let sensitive = if f.sensitive { "sensitive " } else { "" };
+    format!("{sensitive}{}: {}", f.name, f.ty)
 }
 
 /// The lines Mermaid shows inside a state box.
 fn description(s: &State) -> Vec<String> {
     let mut out = Vec::new();
+    for v in &s.vars {
+        let sensitive = if v.sensitive { "sensitive " } else { "" };
+        let init = v
+            .init
+            .as_ref()
+            .map_or(String::new(), |e| format!(" = {}", e.text));
+        out.push(format!("{sensitive}var {}: {}{init}", v.name, v.ty));
+    }
     if let Some(inv) = &s.invoke {
         let args: Vec<&str> = inv.args.iter().map(|a| a.text.as_str()).collect();
         let kind = if inv.kind == InvokeKind::Machine {
