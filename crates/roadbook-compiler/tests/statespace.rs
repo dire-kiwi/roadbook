@@ -49,11 +49,14 @@ fn repository() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-/// As `roadbook.toml` compiles them: one chart reads a variable before it is assigned, on
+/// As `roadbook.toml` compiles them: two charts read a variable before it is assigned, on
 /// purpose, for the `unassigned` defect.
 fn options() -> Options {
     Options {
-        allow_unassigned: vec!["spec/conformance/charts/defects.road".into()],
+        allow_unassigned: vec![
+            "spec/conformance/charts/defects.road".into(),
+            "spec/conformance/charts/locals-defects.road".into(),
+        ],
         ..Options::default()
     }
 }
