@@ -88,7 +88,7 @@ const state = (
   states: [],
   entry: [],
   exit: [],
-  invoke: null,
+  invokes: [],
   transitions: [],
   output: null,
   fail: null,
