@@ -130,6 +130,8 @@ stateDiagram-v2
   note right of Active
     after resolutionSla(priority) / do pageOnCall(ticket, 2)
     on InternalNote / do addNote(ticket, event.text)
+    on FollowUpIn / raise FollowUp after event.delay as followUp
+    on FollowUp / do notifyAgent(agentId, ticket, "follow_up")
   end note
   state Closing {
     state "Surveying" as Closing_Surveying
@@ -139,6 +141,9 @@ stateDiagram-v2
     Closing_Surveying --> Closing_Surveyed: done / set survey = result
     Closing_Surveyed --> [*]
   }
+  note right of Closing
+    entry cancel followUp
+  end note
   Resolved: output ratedClosure(ticket, reopens, survey)
   AutoClosed: output closure(ticket, CloseReason.AutoClosed, reopens)
   Spam: output closure(ticket, CloseReason.Spam, reopens)
