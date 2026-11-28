@@ -125,7 +125,7 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
         .map((t) => {
           const st = findState(m, t.state)
           const tr = st?.transitions[t.index]
-          return `<li><button class="rb-link rb-mono" type="button" data-m-transition="${esc(JSON.stringify([t.state, t.index]))}">${esc(stateName(t.state) || t.state)}: ${esc(tr ? triggerText(tr.trigger) : `#${t.index}`)}${tr?.targets.length ? ` → ${esc(tr.targets.map(stateName).join(', '))}` : ''}</button></li>`
+          return `<li><button class="rb-link rb-mono" type="button" data-m-transition="${esc(JSON.stringify([t.state, t.index]))}">${esc(stateName(t.state) || t.state)}: ${esc(tr ? triggerText(tr.trigger, st ?? undefined) : `#${t.index}`)}${tr?.targets.length ? ` → ${esc(tr.targets.map(stateName).join(', '))}` : ''}</button></li>`
         })
         .join('')}</ul>`
     }
@@ -234,7 +234,7 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
       for (const t of c.timers) {
         const st = findState(s.def, t.state)
         const tr = st?.transitions[t.index]
-        h += `<div class="rb-choice">${button(k(`timer:${t.id}`), `fire timer ${t.id}`, () => s.fire(t.id))}<span class="rb-cnote"><code>${esc(tr ? triggerText(tr.trigger) : 'after')}</code> on ${esc(stateName(t.state) || t.state)}: ${t.delay} ms, due at t = ${t.due}</span></div>`
+        h += `<div class="rb-choice">${button(k(`timer:${t.id}`), `fire timer ${t.id}`, () => s.fire(t.id))}<span class="rb-cnote"><code>${esc(tr ? triggerText(tr.trigger, st ?? undefined) : 'after')}</code> on ${esc(stateName(t.state) || t.state)}: ${t.delay} ms, due at t = ${t.due}</span></div>`
       }
     }
     h += '<h4>Clock and run</h4>'

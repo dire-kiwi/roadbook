@@ -20,8 +20,10 @@ import {
   guardText,
   historyText,
   invokeCall,
+  invokeNamed,
   invokeText,
   isHistory,
+  isOutcomeOf,
   isTaskEvent,
   kindText,
   messageSites,
@@ -189,7 +191,7 @@ function transitionSummary(ctx: PanelContext, state: State, index: number, withS
   return (
     `<button class="rb-tlink" type="button" data-select-transition="${esc(JSON.stringify([state.id, index]))}">` +
     (withSource ? `<span class="rb-arrow-text">${esc(shortId(ctx, state.id))}: </span>` : '') +
-    `<b class="${cls}">${esc(triggerText(t.trigger))}</b>${g ? ' ' + esc(g) : ''} <span class="rb-arrow-text">→</span> ${esc(target)}` +
+    `<b class="${cls}">${esc(triggerText(t.trigger, state))}</b>${g ? ' ' + esc(g) : ''} <span class="rb-arrow-text">→</span> ${esc(target)}` +
     t.effects.map((e) => `<span class="rb-sub">${esc(effectText(e))}</span>`).join('') +
     `</button>`
   )
@@ -208,10 +210,13 @@ const invokeName = (inv: Invoke) => (inv.kind === 'call' && inv.to ? `${inv.to.n
 const UNANSWERED_NOTE =
   'Every call can also fail with the built-in <code>Unanswered</code>: the callee was not running, took no <code>on</code> for it (it is dropped), or ended before it replied.'
 
+/** A section for each of the state's invokes. */
 function invokeSection(ctx: PanelContext, state: State): string {
+  return state.invokes.map((inv) => invokeOne(ctx, state, inv)).join('')
+}
+
+function invokeOne(ctx: PanelContext, state: State, inv: Invoke): string {
   const { ir } = ctx
-  const inv = state.invoke
-  if (!inv) return ''
   const decl = invokeDecl(ir, inv)
   let s = code(`invoke ${invokeText(inv)}`)
   if (!decl) return section('Invoke', s)
@@ -237,7 +242,10 @@ function invokeSection(ctx: PanelContext, state: State): string {
   if (inv.kind === 'machine' && inv.as) {
     s += `<p class="rb-empty">While ${esc(state.name)} is active, <code>${esc(inv.as)}</code> names the child: <code>send ${esc(inv.as)}.Event</code> queues one of its events, <code>on ${esc(inv.as)}.Event</code> handles one it emits.</p>`
   }
-  if (!state.transitions.some((t) => t.trigger.kind === 'invoke.done' || t.trigger.kind === 'invoke.fail')) {
+  if (inv.as && state.invokes.length > 1 && !(task && Object.keys(task.emits).length) && !(inv.kind === 'machine')) {
+    s += `<p class="rb-empty"><code>${esc(inv.as)}</code> names this invoke among the ${state.invokes.length} of ${esc(state.name)}: its outcomes are written <code>${esc(inv.as)}: done</code> and <code>${esc(inv.as)}: fail …</code>.</p>`
+  }
+  if (!state.transitions.some((t) => isOutcomeOf(t, inv))) {
     s += `<p class="rb-empty">No outcomes are written: it runs until ${esc(state.name)} is left, which cancels it. If it ends by itself first, its outcome is dropped.</p>`
   }
   if (inv.kind === 'machine') s += `<p><button class="rb-btn" type="button" data-open-machine="${esc(inv.src)}" data-via="invoke">Open machine ${esc(inv.src)} →</button></p>`
@@ -258,7 +266,7 @@ export function callersOf(ir: Ir, name: string): [string, string][] {
   const out: [string, string][] = []
   for (const [other, m] of Object.entries(ir.machines)) {
     walkStates(m.root, (s) => {
-      if (s.invoke && s.invoke.kind === 'machine' && s.invoke.src === name) out.push([other, s.id])
+      if (s.invokes.some((inv) => inv.kind === 'machine' && inv.src === name)) out.push([other, s.id])
     })
   }
   return out
@@ -456,7 +464,8 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
   const m = own(ir.machines, ctx.machine)!
   const group = state.transitions.map((o, i) => [o, i] as const).filter(([o]) => o.group === t.group)
   const pos = group.findIndex(([, i]) => i === index) + 1
-  const inv = state.invoke
+  // The invoke an outcome belongs to.
+  const inv = t.trigger.kind === 'invoke.done' || t.trigger.kind === 'invoke.fail' ? state.invokes.find((i) => i.as === (t.trigger as { as: string | null }).as) : undefined
   const decl = inv ? invokeDecl(ir, inv) : undefined
   const invName = inv ? invokeName(inv) : 'The invoke'
   let what = ''
@@ -669,8 +678,9 @@ export function taskEventPanel(ctx: PanelContext, task: string, name: string): s
   const runs: string[] = []
   for (const [other, om] of Object.entries(ir.machines)) {
     walkStates(om.root, (s) => {
-      if (s.invoke?.kind === 'task' && s.invoke.src === task) {
-        const note = s.invoke.as ? `as ${s.invoke.as}` : 'without as: what it emits reaches no one'
+      for (const inv of s.invokes) {
+        if (inv.kind !== 'task' || inv.src !== task) continue
+        const note = inv.as ? `as ${inv.as}` : 'without as: what it emits reaches no one'
         runs.push(`${gotoLink(other, { type: 'state', id: s.id }, `${other} · ${s.id.slice(other.length + 1)}`)} <span class="rb-cnote">invokes it ${esc(note)}</span>`)
       }
     })

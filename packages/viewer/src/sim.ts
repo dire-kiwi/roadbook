@@ -18,7 +18,7 @@ import { canonicalJson, ENDED_VARIANTS, getMachine, IrError, start as coreStart,
 import type { Command, EndedStatus, Fns, FnResult, Input, Ir as CoreIr, Json, Snapshot, Stepped, Tagged, TraceRecord } from '@dire-kiwi/roadbook-core'
 import type { Field, FunctionDecl, Ir, Machine } from './ir.ts'
 import { own } from './ir.ts'
-import { findState, walkStates } from './model.ts'
+import { findState, invokeNamed, isOutcomeOf, walkStates } from './model.ts'
 
 /** The reader's answer to a function call: a value of the function's type, or a host defect. */
 export type Answer = { value: Json } | { defect: string }
@@ -331,7 +331,7 @@ export class Simulation {
     const inv = this.current?.snapshot.invokes.find((i) => i.id === invoke)
     const who = spawned ? spawnedText(spawned) : inv?.src
     if (who === undefined) return { kind: 'error', message: `invoke ${invoke} is not running` }
-    const invoked = inv ? findState(this.def, inv.state)?.invoke : undefined
+    const invoked = inv ? invokeNamed(findState(this.def, inv.state), inv.as) : undefined
     const task = spawned ? own(this.def.children, spawned.children)?.kind === 'task' : invoked?.kind === 'task'
     if (task) {
       // The emitter pushes only what the machine hears, and nothing for an invoke without `as`.
@@ -438,7 +438,7 @@ export class Simulation {
     }))
     const pending = f.snapshot.calls.map((c) => ({ from: c.from, invoke: c.invoke, call: c.call }))
     const invokes = f.snapshot.invokes.map((inv): InvokeChoice => {
-      const invoke = findState(m, inv.state)?.invoke
+      const invoke = invokeNamed(findState(m, inv.state), inv.as)
       // A call is simulated like a task, answered from its declaration. The snapshot's src
       // names its address (`inventory.reserve`); the invoke's, the call.
       const srcKind = invoke?.kind ?? 'task'
@@ -467,7 +467,7 @@ export class Simulation {
         errors,
         as,
         emits: as && child ? Object.entries(child.emits).flatMap(([name, d]) => (srcKind !== 'task' || this.hears(inv.src, name) ? [{ name, fields: d.fields }] : [])) : [],
-        open: !findState(m, inv.state)?.transitions.some((t) => t.trigger.kind === 'invoke.done' || t.trigger.kind === 'invoke.fail'),
+        open: !(invoke && findState(m, inv.state)?.transitions.some((t) => isOutcomeOf(t, invoke))),
       }
     })
     const spawned = f.snapshot.spawned.map((c): SpawnChoice => {

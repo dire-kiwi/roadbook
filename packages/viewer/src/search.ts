@@ -31,7 +31,7 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
     // The events of the tasks it runs, invoked or spawned, opened on its page: a task has none of its own.
     const tasks = new Set<string>()
     walkStates(m.root, (s) => {
-      if (s.invoke?.kind === 'task') tasks.add(s.invoke.src)
+      for (const inv of s.invokes) if (inv.kind === 'task') tasks.add(inv.src)
     })
     for (const c of Object.values(m.children)) if (c.kind === 'task') tasks.add(c.src)
     for (const task of tasks) {
@@ -51,11 +51,11 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
     }
     walkStates(m.root, (s, _parent, depth) => {
       if (depth > 0) out.push({ kind: 'state', name: s.name, label: `${machine}.${short(s.id)}${isHistory(s) ? ` (${kindText(s)})` : ''}`, machine, target: { type: 'state', id: s.id } })
-      if (s.invoke) {
+      for (const inv of s.invokes) {
         out.push({
-          kind: s.invoke.kind,
-          name: s.invoke.src,
-          label: `invoke ${invokeText(s.invoke)} in ${machine}.${short(s.id)}`,
+          kind: inv.kind,
+          name: inv.src,
+          label: `invoke ${invokeText(inv)} in ${machine}.${short(s.id)}`,
           machine,
           target: { type: 'state', id: s.id },
         })
