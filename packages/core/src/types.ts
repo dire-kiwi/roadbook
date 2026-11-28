@@ -78,6 +78,11 @@ export interface Snapshot {
   readonly input: { readonly [param: string]: Json }
   /** Every variable that has a value. */
   readonly vars: { readonly [name: string]: Json }
+  /**
+   * The locals of the active states, keyed by state id in document order: one member for each
+   * active state that declares a parameter or a variable, holding those that have a value.
+   */
+  readonly locals: Locals
   readonly invokes: ReadonlyArray<InvokeEntry>
   /** The calls taken and not answered, in the order they were taken. */
   readonly calls: ReadonlyArray<CallEntry>
@@ -94,7 +99,22 @@ export interface Snapshot {
    * history state whose parent no microstep has exited yet has no member.
    */
   readonly history: History
+  /**
+   * The locals each history state recorded with the states it will re-enter, keyed by the
+   * history state's id, then by state id. One whose record holds no state with locals has none.
+   */
+  readonly historyLocals: HistoryLocals
   readonly result: RunResult | null
+}
+
+/** A snapshot's `locals`: the parameters and variables of active states, keyed by state id, then by name. */
+export interface Locals {
+  readonly [state: string]: { readonly [name: string]: Json }
+}
+
+/** A snapshot's `historyLocals`: keyed by the history state's id, then as {@link Locals}. */
+export interface HistoryLocals {
+  readonly [historyState: string]: Locals
 }
 
 /** A snapshot's `history`: what each history state recorded, keyed by the history state's id. */
@@ -123,7 +143,9 @@ export interface SavedScheduled extends ScheduledEntry {
  * restores with no children, and version 1, written before history states, has no `history`
  * either and restores as if it had `{}`.
  */
-export interface Saved extends Omit<Snapshot, "invokes" | "timers" | "calls" | "history" | "spawned" | "scheduled"> {
+export interface Saved
+  extends Omit<Snapshot, "invokes" | "timers" | "calls" | "history" | "spawned" | "scheduled" | "locals" | "historyLocals">
+{
   readonly snapshotVersion: 1 | 2 | 3 | 4
   readonly invokes: ReadonlyArray<SavedInvoke>
   /** Written only when the run has pending calls, in any version; a snapshot without it has none. */
@@ -131,8 +153,12 @@ export interface Saved extends Omit<Snapshot, "invokes" | "timers" | "calls" | "
   readonly timers: ReadonlyArray<SavedTimer>
   /** Written only when the run has pending delayed raises, in any version; a snapshot without it has none. */
   readonly scheduled?: ReadonlyArray<SavedScheduled>
+  /** Written only when not `{}`, in any version; a snapshot without it has none. */
+  readonly locals?: Locals
   /** Set exactly in versions 2 to 4. */
   readonly history?: History
+  /** Written only when not `{}`, in any version; a snapshot without it has none. */
+  readonly historyLocals?: HistoryLocals
   /** Set exactly in versions 3 and 4. */
   readonly spawned?: ReadonlyArray<SavedSpawned>
 }

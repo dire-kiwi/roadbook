@@ -30,6 +30,7 @@ import type {
   Fns,
   Input,
   InvokeEntry,
+  Locals,
   RunResult,
   Saved,
   ScheduledEntry,
@@ -65,6 +66,7 @@ export const start = (
     active: [],
     input,
     vars: {},
+    locals: {},
     invokes: [],
     calls: [],
     spawned: [],
@@ -74,6 +76,7 @@ export const start = (
     nextTimer: 1,
     nextMessage: 1,
     history: {},
+    historyLocals: {},
     result: null
   }
   const started: Command = {
@@ -148,6 +151,8 @@ export const restore = (
     active: saved.active,
     input: saved.input,
     vars: saved.vars,
+    // Written only when not empty.
+    locals: saved.locals ?? {},
     invokes: saved.invokes.map(({ id, src, state }) => ({ id, state, src })),
     // A snapshot with pending calls is refused (`calls`), so the restored run has none.
     calls: [],
@@ -159,6 +164,7 @@ export const restore = (
     nextMessage: saved.nextMessage,
     // A version 1 snapshot, written before history states, has none.
     history: saved.history ?? {},
+    historyLocals: saved.historyLocals ?? {},
     result: saved.result
   }
   const restored: Command = {
@@ -333,6 +339,8 @@ class Macrostep {
   status: Status
   active: Array<string>
   readonly vars: Record<string, Json>
+  /** The active states' locals, by state id in document order (execution.md, "Data local to a state"). */
+  locals: Record<string, Record<string, Json>>
   invokes: Array<InvokeEntry>
   calls: Array<CallEntry>
   spawned: Array<SpawnedEntry>
@@ -342,6 +350,7 @@ class Macrostep {
   nextTimer: number
   nextMessage: number
   history: Record<string, ReadonlyArray<string>>
+  historyLocals: Record<string, Locals>
   result: RunResult | null
   readonly commands: Array<Command> = []
   /** The states entered during this macrostep. */
@@ -367,6 +376,8 @@ class Macrostep {
     this.status = snapshot.status
     this.active = [...snapshot.active]
     this.vars = { ...snapshot.vars }
+    this.locals = {}
+    for (const [id, own] of Object.entries(snapshot.locals ?? {})) this.locals[id] = { ...own }
     this.invokes = [...snapshot.invokes]
     this.calls = [...snapshot.calls]
     this.spawned = [...snapshot.spawned]
@@ -376,6 +387,7 @@ class Macrostep {
     this.nextTimer = snapshot.nextTimer
     this.nextMessage = snapshot.nextMessage
     this.history = { ...snapshot.history }
+    this.historyLocals = { ...(snapshot.historyLocals ?? {}) }
     this.result = snapshot.result
   }
 
@@ -390,6 +402,7 @@ class Macrostep {
         active: this.active,
         input: s.input,
         vars: this.vars,
+        locals: this.locals,
         invokes: this.invokes,
         calls: this.calls,
         spawned: this.spawned,
@@ -399,6 +412,7 @@ class Macrostep {
         nextTimer: this.nextTimer,
         nextMessage: this.nextMessage,
         history: this.history,
+        historyLocals: this.historyLocals,
         result: this.result
       },
       commands: this.commands
@@ -869,12 +883,22 @@ class Macrostep {
     for (const id of exits) {
       const s = this.index.state(id)
       for (const h of s.states) {
+        // The states entering the record re-enters, whose locals it keeps.
+        let kept: Array<string>
         if (h.kind === "history") {
-          this.history[h.id] = this.active.filter((a) => this.index.parent(this.index.state(a)) === s)
+          kept = this.active.filter((a) => this.index.parent(this.index.state(a)) === s)
+          this.history[h.id] = kept
         } else if (h.kind === "deepHistory") {
           const leaves = this.activeLeaves().filter((leaf) => this.index.isProperAncestor(s, leaf))
           this.history[h.id] = leaves.map((leaf) => leaf.id)
+          kept = this.active.filter((a) => this.index.isProperAncestor(s, this.index.state(a)))
+        } else continue
+        const saved: Record<string, Record<string, Json>> = {}
+        for (const id of kept) {
+          if (Object.hasOwn(this.locals, id)) saved[id] = { ...this.locals[id]! }
         }
+        if (Object.keys(saved).length === 0) delete this.historyLocals[h.id]
+        else this.historyLocals[h.id] = saved
       }
     }
   }
@@ -890,13 +914,28 @@ class Macrostep {
       if (exits.has(state.id)) this.exitState(state)
     }
     for (const t of selected) this.runEffects(t.transition.effects, bindings)
+    // The arguments, after every effect: they see what the transitions assigned and the locals
+    // of the states being left, which go only then.
+    const args = new Map<string, Array<Json>>()
+    for (const t of selected) {
+      for (const a of t.transition.args ?? []) args.set(a.state, a.values.map((v) => this.eval(v, bindings)))
+    }
+    for (const id of exits) delete this.locals[id]
+    const restored: Record<string, Record<string, Json>> = {}
+    for (const t of selected) {
+      for (const id of t.transition.targets) {
+        if (isHistory(this.index.state(id)) && Object.hasOwn(this.historyLocals, id)) {
+          Object.assign(restored, this.historyLocals[id])
+        }
+      }
+    }
     const entries = new Set<State>()
     for (const t of selected) {
       if (t.transition.targets.length > 0) {
         for (const state of this.entrySet(t)) entries.add(state)
       }
     }
-    this.enterStates([...entries].sort((a, b) => this.index.position(a) - this.index.position(b)))
+    this.enterStates([...entries].sort((a, b) => this.index.position(a) - this.index.position(b)), args, restored)
   }
 
   private exitState(state: State) {
@@ -925,13 +964,18 @@ class Macrostep {
     this.trace({ kind: "exited", state: state.id })
   }
 
-  enterStates(states: ReadonlyArray<State>) {
+  enterStates(
+    states: ReadonlyArray<State>,
+    args: ReadonlyMap<string, ReadonlyArray<Json>> = new Map(),
+    restored: Locals = {}
+  ) {
     for (const state of states) {
       const order = this.index.order.get(state.id)!
       const at = this.active.findIndex((id) => this.index.order.get(id)! > order)
       if (at === -1) this.active.push(state.id)
       else this.active.splice(at, 0, state.id)
       this.trace({ kind: "entered", state: state.id })
+      this.bindLocals(state, args, restored)
       this.runEffects(state.entry, NO_BINDINGS)
       this.entered.add(state.id)
       if (state.kind === "final") {
@@ -942,6 +986,50 @@ class Macrostep {
         this.complete(state)
       }
     }
+  }
+
+  /**
+   * execution.md's `bindLocals`: give `state`, just entered, its locals, each with a `set`
+   * record: those a history record kept for it, or else its arguments, then its variables'
+   * initial values (`null` for an optional variable with none).
+   */
+  private bindLocals(state: State, args: ReadonlyMap<string, ReadonlyArray<Json>>, restored: Locals) {
+    const params = state.params ?? []
+    const vars = state.vars ?? []
+    if (params.length === 0 && vars.length === 0) return
+    // A member in document order among the locals.
+    const order = this.index.position(state)
+    const locals: Record<string, Record<string, Json>> = {}
+    let placed = false
+    for (const [id, own] of Object.entries(this.locals)) {
+      if (!placed && this.index.order.get(id)! > order) {
+        locals[state.id] = {}
+        placed = true
+      }
+      locals[id] = own
+    }
+    if (!placed) locals[state.id] = {}
+    this.locals = locals
+    if (Object.hasOwn(restored, state.id)) {
+      const kept = restored[state.id]!
+      for (const local of [...params, ...vars]) {
+        if (Object.hasOwn(kept, local.name)) this.bind(state, local.name, kept[local.name]!)
+      }
+      return
+    }
+    const values = args.get(state.id) ?? []
+    params.forEach((p, i) => {
+      if (i < values.length) this.bind(state, p.name, values[i]!)
+    })
+    for (const v of vars) {
+      if (v.init !== null) this.bind(state, v.name, this.eval(v.init, NO_BINDINGS))
+      else if (isOptionalType(this.ir, v.type)) this.bind(state, v.name, null)
+    }
+  }
+
+  private bind(state: State, name: string, value: Json) {
+    this.locals[state.id]![name] = value
+    this.trace({ kind: "set", var: `${state.id}.${name}`, value })
   }
 
   /** Final state `final`, not a child of the root, was just entered: queue what it completes. */
@@ -977,8 +1065,16 @@ class Macrostep {
     for (const effect of effects) {
       if (effect.kind !== "set") continue
       const value = this.eval(effect.value, bindings)
-      this.vars[effect.var] = value
-      this.trace({ kind: "set", var: effect.var, value })
+      if (effect.state === null || effect.state === undefined) {
+        this.vars[effect.var] = value
+        this.trace({ kind: "set", var: effect.var, value })
+      } else {
+        // A variable of a state that is active or being left in this microstep: the compiler
+        // allows no other.
+        const own = this.locals[effect.state]
+        if (own !== undefined) own[effect.var] = value
+        this.trace({ kind: "set", var: `${effect.state}.${effect.var}`, value })
+      }
     }
     for (const effect of effects) {
       switch (effect.kind) {
@@ -1300,6 +1396,7 @@ class Macrostep {
       value = this.eval(final.fail, NO_BINDINGS)
     }
     for (const state of this.innermostFirst()) this.exitState(state)
+    this.locals = {}
     this.stopChildren()
     this.cancelRaises()
     this.result = status === "done" ? { output: value } : { error: value }
@@ -1311,6 +1408,7 @@ class Macrostep {
 
   private cancelRun() {
     for (const state of this.innermostFirst()) this.exitState(state)
+    this.locals = {}
     this.stopChildren()
     this.cancelRaises()
     this.queue = []
@@ -1343,7 +1441,8 @@ class Macrostep {
         const [name, ...fields] = expr.path
         let value: Json
         if (name === undefined) throw new Error("empty ref path")
-        if (Object.hasOwn(bindings, name)) value = (bindings as Record<string, Json>)[name]!
+        if (expr.state !== null && expr.state !== undefined) value = this.readLocal(expr.state, name)
+        else if (Object.hasOwn(bindings, name)) value = (bindings as Record<string, Json>)[name]!
         else value = this.readName(name)
         for (const field of fields) value = readField(value, field)
         return value
@@ -1368,6 +1467,16 @@ class Macrostep {
       case "op":
         return this.evalOp(expr, bindings)
     }
+  }
+
+  /**
+   * A parameter or variable of state `state`, active or being left in this microstep (an
+   * `unassigned` defect, named `<state id>.<name>`, if it has no value).
+   */
+  private readLocal(state: string, name: string): Json {
+    const own = this.locals[state]
+    if (own === undefined || !Object.hasOwn(own, name)) throw new Abort({ kind: "unassigned", var: `${state}.${name}` })
+    return own[name]!
   }
 
   /** A parameter, or a variable (an `unassigned` defect if it has no value). */

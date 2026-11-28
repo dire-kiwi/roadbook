@@ -35,8 +35,9 @@ export type Checked =
 
 /**
  * The saved form of `snapshot`: the version (always 4) added, the due time of each timer and
- * delayed raise from `due` (given its timer id), `calls` only when the run has pending calls and
- * `scheduled` only when it has pending delayed raises. No child run is nested in it: see
+ * delayed raise from `due` (given its timer id), `calls` only when the run has pending calls,
+ * `scheduled` only when it has pending delayed raises, and `locals` and `historyLocals` only
+ * when they are not `{}`. No child run is nested in it: see
  * `withChildren`.
  */
 export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Saved => ({
@@ -48,6 +49,7 @@ export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Sav
   active: snapshot.active,
   input: snapshot.input,
   vars: snapshot.vars,
+  ...(Object.keys(snapshot.locals).length > 0 ? { locals: snapshot.locals } : {}),
   invokes: snapshot.invokes,
   ...(snapshot.calls.length > 0 ? { calls: snapshot.calls } : {}),
   spawned: snapshot.spawned,
@@ -57,6 +59,7 @@ export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Sav
   nextTimer: snapshot.nextTimer,
   nextMessage: snapshot.nextMessage,
   history: snapshot.history,
+  ...(Object.keys(snapshot.historyLocals).length > 0 ? { historyLocals: snapshot.historyLocals } : {}),
   result: snapshot.result
 })
 
@@ -251,8 +254,8 @@ const shapeIssue = (json: unknown): string | undefined => {
     return `it is version ${JSON.stringify(version)} and has spawned, which version 3 added`
   }
   const expected = version === 1 ? MEMBERS : version === 2 ? [...MEMBERS, "history"] : [...MEMBERS, "history", "spawned"]
-  // `calls` and `scheduled` are written only when not empty, in any version.
-  const members = membersIssue(json, expected, "it", ["calls", "scheduled"])
+  // `calls`, `scheduled`, `locals` and `historyLocals` are written only when not empty, in any version.
+  const members = membersIssue(json, expected, "it", ["calls", "scheduled", "locals", "historyLocals"])
   if (members !== undefined) return members
   if (version !== 1 && version !== 2 && version !== 3 && version !== SNAPSHOT_VERSION) {
     return `snapshotVersion is ${JSON.stringify(version)}, and this runtime reads 1 to ${SNAPSHOT_VERSION}`
@@ -278,6 +281,29 @@ const shapeIssue = (json: unknown): string | undefined => {
   for (const name of ["input", "vars"]) {
     const args = json[name]
     if (!isObject(args) || !Object.keys(args).every((k) => LOWER.test(k))) return `${name} is not an object keyed by name`
+  }
+  // A state's locals: an object keyed by name.
+  const localsIssue = (locals: unknown, what: string): string | undefined => {
+    if (!isObject(locals)) return `${what} is not an object keyed by state id`
+    for (const [id, own] of Object.entries(locals)) {
+      if (!STATE_ID.test(id)) return `${what} has ${JSON.stringify(id)}, which is not a state id`
+      if (!isObject(own) || !Object.keys(own).every((k) => LOWER.test(k))) return `${what}.${id} is not an object keyed by name`
+    }
+    return undefined
+  }
+  if (Object.hasOwn(json, "locals")) {
+    const issue = localsIssue(json["locals"], "locals")
+    if (issue !== undefined) return issue
+  }
+  if (Object.hasOwn(json, "historyLocals")) {
+    const historyLocals = json["historyLocals"]
+    if (!isObject(historyLocals)) return "historyLocals is not an object keyed by state id"
+    for (const [id, kept] of Object.entries(historyLocals)) {
+      if (!STATE_ID.test(id)) return `historyLocals has ${JSON.stringify(id)}, which is not a state id`
+      if (isObject(kept) && Object.keys(kept).length === 0) return `historyLocals.${id} is empty`
+      const issue = localsIssue(kept, `historyLocals.${id}`)
+      if (issue !== undefined) return issue
+    }
   }
   const invokes = json["invokes"]
   if (!Array.isArray(invokes)) return "invokes is not a list"
@@ -547,6 +573,72 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
   }
   const optional = m.vars.find((v) => isOptionalType(ir, v.type) && !Object.hasOwn(saved.vars, v.name))
   if (optional !== undefined) return `vars has no ${optional.name}, which is optional and always has a value`
+
+  // The active states' locals: a member for each that declares any.
+  const locals = saved.locals ?? {}
+  for (const id of saved.active) {
+    const state = states.get(id)!.state
+    if (declaresLocals(state) && !Object.hasOwn(locals, id)) return `locals has no ${id}, which is active and has locals`
+  }
+  for (const id of Object.keys(locals)) {
+    const state = states.get(id)?.state
+    if (state === undefined || !active.has(id)) return `locals has ${id}, which is not an active state`
+    if (!declaresLocals(state)) return `locals has ${id}, which has no parameters or variables`
+    const issue = ownLocalsIssue(ir, state, locals[id]!, `locals.${id}`)
+    if (issue !== undefined) return issue
+  }
+  // The locals the history states kept, of the states their records re-enter.
+  for (const [id, kept] of Object.entries(saved.historyLocals ?? {})) {
+    const entry = states.get(id)
+    const record = saved.history?.[id]
+    if (entry === undefined || !isHistory(entry.state) || record === undefined) {
+      return `historyLocals has ${id}, which is not a history state with a record`
+    }
+    const parent = entry.parent!
+    const reentered = new Set<string>()
+    for (const r of record) {
+      reentered.add(r)
+      if (entry.state.kind === "deepHistory") {
+        for (let p = states.get(r)?.parent; p !== undefined && p !== parent; p = states.get(p.id)?.parent) {
+          reentered.add(p.id)
+        }
+      }
+    }
+    const expected = [...reentered].filter((s) => declaresLocals(states.get(s)!.state))
+    const absent = expected.find((s) => !Object.hasOwn(kept, s))
+    if (absent !== undefined) return `historyLocals.${id} has no ${absent}, which its record re-enters`
+    for (const s of Object.keys(kept)) {
+      if (!expected.includes(s)) return `historyLocals.${id} has ${s}, which its record does not re-enter with locals`
+      const issue = ownLocalsIssue(ir, states.get(s)!.state, kept[s]!, `historyLocals.${id}.${s}`)
+      if (issue !== undefined) return issue
+    }
+  }
+  return undefined
+}
+
+/** Whether `state` declares a parameter or a variable. */
+const declaresLocals = (state: State): boolean => (state.params ?? []).length > 0 || (state.vars ?? []).length > 0
+
+/**
+ * What makes `own`, the locals of `state` held at `what`, not fit it: a name that is not one of
+ * its locals, a parameter or an optional variable missing, or a value not of its type.
+ */
+const ownLocalsIssue = (ir: Ir, state: State, own: { readonly [name: string]: Json }, what: string) => {
+  const params = state.params ?? []
+  const vars = state.vars ?? []
+  for (const name of Object.keys(own)) {
+    const local = params.find((p) => p.name === name) ?? vars.find((v) => v.name === name)
+    if (local === undefined) return `${what} has ${name}, which is not a parameter or variable of ${state.id}`
+  }
+  const param = params.find((p) => !Object.hasOwn(own, p.name))
+  if (param !== undefined) return `${what} has no ${param.name}, a parameter of ${state.id}`
+  const optional = vars.find((v) => isOptionalType(ir, v.type) && !Object.hasOwn(own, v.name))
+  if (optional !== undefined) return `${what} has no ${optional.name}, which is optional and always has a value`
+  for (const local of [...params, ...vars]) {
+    if (!Object.hasOwn(own, local.name)) continue
+    const issue = valueIssue(ir, local.type, own[local.name] ?? null, `${what}.${local.name}`)
+    if (issue !== undefined) return issue
+  }
   return undefined
 }
 
