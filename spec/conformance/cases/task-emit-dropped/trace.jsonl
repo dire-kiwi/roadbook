@@ -1,4 +1,4 @@
-{"input":{"size":10},"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"started","machine":"Gauge","run":"r1","t":0}
+{"input":{"size":10},"ir":"sha256:7069a6afc7bcaecb1b3be76d176383782a4b601699fa3cd55fa261ff92e13b34","kind":"started","machine":"Gauge","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Gauge","t":0}
 {"kind":"entered","run":"r1","state":"Gauge.Uploading","t":0}
 {"args":{"size":10},"invoke":1,"kind":"invoke.started","run":"r1","src":"upload","state":"Gauge.Uploading","t":0}

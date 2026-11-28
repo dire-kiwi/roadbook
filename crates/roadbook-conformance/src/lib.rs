@@ -50,6 +50,7 @@ pub const FEATURES: &[&str] = &[
     "history",
     "spawn",
     "ended",
+    "task-emits",
 ];
 
 /// `spec/conformance` in this repository.
@@ -286,14 +287,17 @@ pub struct StartStep {
 }
 
 /// `{"task": …}`: end the running scripted invoke of a task or stubbed
-/// machine.
+/// machine, or make a running scripted task emit an event.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TaskStep {
     /// The task's or stubbed machine's name.
     pub task: String,
     /// The run whose invoke is meant, when several runs have one.
     pub run: Option<String>,
-    /// How it ends.
+    /// The key of the spawned task meant, when a run has several of that
+    /// name running.
+    pub key: Option<Value>,
+    /// How it ends, or what it emits.
     pub outcome: Outcome,
 }
 
@@ -307,6 +311,9 @@ pub enum Outcome {
     /// A host defect with this message: the input `invoke.defect` with
     /// `{"kind": "host", "message": …}`.
     Defect(String),
+    /// A task emits this event, a tagged record, and keeps running: the
+    /// input `task.emitted`, if the invoking run hears it.
+    Emit(Value),
 }
 
 impl<'de> Deserialize<'de> for Step {
@@ -444,11 +451,12 @@ fn step_from_value(v: Value) -> Result<Step, String> {
         return Ok(Step::Together(steps));
     }
     if let Some(task) = m.remove("task") {
-        only(&m, &["run", "done", "fail", "defect"])?;
+        only(&m, &["run", "key", "done", "fail", "defect", "emit"])?;
         let Value::String(task) = task else {
             return Err("`task` is a name".into());
         };
         let run = take_run(&mut m)?;
+        let key = m.remove("key");
         let mut outcomes = Vec::new();
         if let Some(v) = m.remove("done") {
             outcomes.push(Outcome::Done(v));
@@ -462,9 +470,12 @@ fn step_from_value(v: Value) -> Result<Step, String> {
                 _ => return Err("`defect` is a message".into()),
             }
         }
+        if let Some(v) = m.remove("emit") {
+            outcomes.push(Outcome::Emit(v));
+        }
         return match <[Outcome; 1]>::try_from(outcomes) {
-            Ok([outcome]) => Ok(Step::Task(TaskStep { task, run, outcome })),
-            Err(_) => Err("a task step has exactly one of `done`, `fail` and `defect`".into()),
+            Ok([outcome]) => Ok(Step::Task(TaskStep { task, run, key, outcome })),
+            Err(_) => Err("a task step has exactly one of `done`, `fail`, `defect` and `emit`".into()),
         };
     }
     Err("unknown script step".into())
@@ -858,6 +869,7 @@ mod tests {
             Step::Task(TaskStep {
                 task: "t".into(),
                 run: Some("r1.2".into()),
+                key: None,
                 outcome: Outcome::Fail(json!({"_tag": "E"}))
             })
         );

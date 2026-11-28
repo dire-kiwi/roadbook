@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"started","machine":"Clock","run":"r1","t":0}
+{"input":{},"ir":"sha256:e602b4979ab632a552bb1a39c9bb0c861162005c84b932ca4bd66763b639a395","kind":"started","machine":"Clock","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Clock","t":0}
 {"kind":"entered","run":"r1","state":"Clock.Waiting","t":0}
 {"args":{"every":1000},"invoke":1,"kind":"invoke.started","run":"r1","src":"ticks","state":"Clock.Waiting","t":0}

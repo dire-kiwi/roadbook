@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"started","machine":"Batch","run":"r1","t":0}
+{"input":{},"ir":"sha256:77b636b9fae665a4cb5648d4b8705c4ced673946da2275b9e7fb743fcd35f9e5","kind":"started","machine":"Batch","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Batch","t":0}
 {"kind":"entered","run":"r1","state":"Batch.Open","t":0}
 {"event":{"kind":"event","value":{"_tag":"Add","name":"a","size":10}},"kind":"event","run":"r1","t":0}
@@ -7,7 +7,7 @@
 {"event":{"invoke":1,"kind":"task.emitted","value":{"_tag":"Progress","percent":30}},"kind":"event","run":"r1","t":0}
 {"from":"Batch.Open","index":2,"kind":"transition","run":"r1","t":0,"to":[]}
 {"action":"showProgress","args":{"name":"a","percent":30},"kind":"action","run":"r1","t":0}
-{"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"restored","machine":"Batch","migrated":null,"run":"r2","snapshot":{"active":["Batch","Batch.Open"],"history":{},"input":{},"invokes":[],"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","machine":"Batch","nextInvoke":2,"nextMessage":1,"nextTimer":1,"result":null,"run":"r1","snapshotVersion":4,"spawned":[{"args":{"size":10},"children":"uploads","id":1,"key":"a"}],"status":"running","timers":[],"vars":{"stored":0}},"t":0}
+{"ir":"sha256:77b636b9fae665a4cb5648d4b8705c4ced673946da2275b9e7fb743fcd35f9e5","kind":"restored","machine":"Batch","migrated":null,"run":"r2","snapshot":{"active":["Batch","Batch.Open"],"history":{},"input":{},"invokes":[],"ir":"sha256:77b636b9fae665a4cb5648d4b8705c4ced673946da2275b9e7fb743fcd35f9e5","machine":"Batch","nextInvoke":2,"nextMessage":1,"nextTimer":1,"result":null,"run":"r1","snapshotVersion":4,"spawned":[{"args":{"size":10},"children":"uploads","id":1,"key":"a"}],"status":"running","timers":[],"vars":{"stored":0}},"t":0}
 {"args":{"size":10},"children":"uploads","key":"a","kind":"spawn.started","run":"r2","spawn":1,"src":"upload","t":0}
 {"event":{"invoke":1,"kind":"task.emitted","value":{"_tag":"Progress","percent":60}},"kind":"event","run":"r2","t":0}
 {"from":"Batch.Open","index":2,"kind":"transition","run":"r2","t":0,"to":[]}

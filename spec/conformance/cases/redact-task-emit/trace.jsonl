@@ -1,4 +1,4 @@
-{"input":{"user":"ann"},"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"started","machine":"Login","run":"r1","t":0}
+{"input":{"user":"ann"},"ir":"sha256:0d8c00ea239fdd1e3724d9cc7dbbd3fec46fc3fc5db223d39b3930571d327df2","kind":"started","machine":"Login","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Login","t":0}
 {"kind":"entered","run":"r1","state":"Login.Signing","t":0}
 {"args":{"user":"ann"},"invoke":1,"kind":"invoke.started","run":"r1","src":"signIn","state":"Login.Signing","t":0}

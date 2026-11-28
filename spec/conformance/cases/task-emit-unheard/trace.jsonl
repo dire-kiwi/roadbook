@@ -1,4 +1,4 @@
-{"input":{"size":10},"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"started","machine":"Quiet","run":"r1","t":0}
+{"input":{"size":10},"ir":"sha256:0b16c9cc73301f859c935c96385e534df366846f988d3771ab442925c77189a6","kind":"started","machine":"Quiet","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Quiet","t":0}
 {"kind":"entered","run":"r1","state":"Quiet.Heard","t":0}
 {"args":{"size":10},"invoke":1,"kind":"invoke.started","run":"r1","src":"upload","state":"Quiet.Heard","t":0}
