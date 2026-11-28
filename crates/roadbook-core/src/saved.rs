@@ -500,6 +500,42 @@ impl Program {
                 ));
             }
         }
+        // Delayed raises: their ids are timer ids.
+        let names = m.raise_names();
+        let mut taken = HashSet::new();
+        for sc in &s.scheduled {
+            let tag = sc
+                .value
+                .get("_tag")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            let fits = m
+                .own_event(tag)
+                .is_some_and(|d| self.fields_fit(&s.machine, Some(tag), &d.fields, &sc.value));
+            if !fits {
+                return Err(format!(
+                    "the value of delayed raise {} is not one of `{}`'s events",
+                    sc.id, s.machine
+                ));
+            }
+            if let Some(n) = &sc.name {
+                if !names.contains(&n.as_str()) {
+                    return Err(format!(
+                        "delayed raise {} is named `{n}`, which no `raise` of `{}` uses",
+                        sc.id, s.machine
+                    ));
+                }
+                if !taken.insert(n.as_str()) {
+                    return Err(format!("two delayed raises are named `{n}`"));
+                }
+            }
+            if !ids.insert(sc.id) || sc.id >= s.next_timer {
+                return Err(format!(
+                    "the timer id {} of a delayed raise is repeated or not below nextTimer",
+                    sc.id
+                ));
+            }
+        }
         // Values.
         if s.input.len() != m.params.len() {
             return Err("`input` does not have exactly the machine's parameters".into());
@@ -644,7 +680,7 @@ impl Program {
                         .ir()
                         .machines
                         .get(owner)
-                        .and_then(|m| m.events.get(ev).or_else(|| m.emits.get(ev)))
+                        .and_then(|m| m.own_event(ev).or_else(|| m.emits.get(ev)))
                         .or_else(|| self.ir().tasks.get(owner)?.emits.get(ev));
                     decl.is_some_and(|d| self.fields_fit(machine, Some(ev), &d.fields, v))
                 }
@@ -718,7 +754,7 @@ fn integer(v: &Value) -> Option<i64> {
 // ---- the schema ----------------------------------------------------------------------------
 
 /// The members every saved snapshot has. `history` (version 2 to 4) and `spawned` (version 3
-/// and 4) are added by version; `calls` is optional in any version.
+/// and 4) are added by version; `calls` and `scheduled` are optional in any version.
 const MEMBERS: [&str; 14] = [
     "snapshotVersion",
     "machine",
@@ -760,9 +796,10 @@ fn schema_at(v: &Value, nested: bool) -> Result<(), String> {
         Some(v @ (1..=4)) => format!("a version {v} saved snapshot"),
         _ => "a saved snapshot".to_owned(),
     };
-    // `calls` is optional in any version.
+    // `calls` and `scheduled` are optional in any version.
     let mut required = o.clone();
     let calls = required.remove("calls");
+    let scheduled = required.remove("scheduled");
     exactly(&required, &members, &what)?;
     if !matches!(version, Some(1..=4)) {
         return Err(format!(
@@ -875,6 +912,30 @@ fn schema_at(v: &Value, nested: bool) -> Result<(), String> {
         natural(&tm["index"], "a timer's index", 0)?;
         natural(&tm["delay"], "a timer's delay", 0)?;
         natural(&tm["due"], "a timer's due", 0)?;
+    }
+    if let Some(scheduled) = scheduled {
+        let scheduled = scheduled.as_array().ok_or("`scheduled` is not an array")?;
+        if scheduled.is_empty() {
+            return Err("`scheduled` is empty, which the schema does not allow".into());
+        }
+        for sc in scheduled {
+            let sc = sc.as_object().ok_or("a delayed raise is not an object")?;
+            exactly(
+                sc,
+                &["id", "name", "delay", "value", "due"],
+                "a delayed raise",
+            )?;
+            natural(&sc["id"], "a delayed raise's id", 1)?;
+            if !sc["name"].is_null() {
+                string(&sc["name"], "a delayed raise's name", lower_name)?;
+            }
+            natural(&sc["delay"], "a delayed raise's delay", 0)?;
+            natural(&sc["due"], "a delayed raise's due", 0)?;
+            let tag = sc["value"].as_object().and_then(|e| e.get("_tag"));
+            if !tag.is_some_and(|t| t.as_str().is_some_and(upper_name)) {
+                return Err("a delayed raise's value is not a tagged record".into());
+            }
+        }
     }
     for k in ["nextInvoke", "nextTimer", "nextMessage"] {
         natural(&o[k], k, 1)?;

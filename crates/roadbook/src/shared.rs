@@ -121,7 +121,8 @@ impl Answer {
 /// read, so a step's is built only when it is first read.
 enum Published {
     Saved(Arc<Saved>),
-    /// The core's snapshot, and each of its timers' due time, in order.
+    /// The core's snapshot, and the due time of each of its timers and then of each of its
+    /// delayed raises, in order.
     Step {
         snap: Arc<Snapshot>,
         dues: Vec<u64>,
@@ -135,7 +136,7 @@ impl Inner {
             Published::Saved(saved) => saved,
             Published::Step { snap, dues } => {
                 let mut dues = dues.into_iter();
-                Arc::new(Saved::new(&snap, |_| dues.next().unwrap_or(0)))
+                Arc::new(Saved::new(&snap, |_, _| dues.next().unwrap_or(0)))
             }
         };
         self.saved = Some(Published::Saved(saved.clone()));
@@ -463,7 +464,7 @@ impl Shared {
     }
 
     /// Publishes the run's saved snapshot as `Saved::new(snap, …)` with `dues`, each timer's
-    /// due time in order, built when it is first read. The tokens of invokes and spawned
+    /// due time in order and then each delayed raise's, built when it is first read. The tokens of invokes and spawned
     /// children no longer in `snap` are forgotten.
     pub fn publish(&self, snap: Arc<Snapshot>, dues: Vec<u64>) {
         let mut g = self.lock();

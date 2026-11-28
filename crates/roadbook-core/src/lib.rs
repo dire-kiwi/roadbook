@@ -68,8 +68,8 @@ pub use run::{StepResult, UnknownMachine};
 pub use saved::{Migration, RUN_ID_PATTERN, Refusal, RestoreError, is_run_id};
 pub use types::{
     CallEntry, Command, Defect, Ended, History, Input, InvokeEntry, Object, Record, ReplyOutcome,
-    RunResult, Saved, SavedInvoke, SavedSpawned, SavedTimer, Snapshot, SpawnedEntry, SrcKind,
-    Status, TimerEntry,
+    RunResult, Saved, SavedInvoke, SavedScheduled, SavedSpawned, SavedTimer, ScheduledEntry,
+    Snapshot, SpawnedEntry, SrcKind, Status, TimerEntry,
 };
 
 /// The most microsteps settling may take for one input before it is a `limit` defect.

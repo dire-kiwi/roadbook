@@ -932,6 +932,29 @@ impl Machine {
             .get(name)
             .or_else(|| self.internal_events.get(name))
     }
+
+    /// The names of the machine's delayed raises (`raise … after … as name`), each once, in
+    /// document order.
+    pub fn raise_names(&self) -> Vec<&str> {
+        fn walk<'a>(s: &'a State, out: &mut Vec<&'a str>) {
+            let effects = s
+                .entry
+                .iter()
+                .chain(&s.exit)
+                .chain(s.transitions.iter().flat_map(|t| &t.effects));
+            for e in effects {
+                if let Effect::Raise { name: Some(n), .. } = e
+                    && !out.contains(&n.as_str())
+                {
+                    out.push(n);
+                }
+            }
+            s.states.iter().for_each(|c| walk(c, out));
+        }
+        let mut out = Vec::new();
+        walk(&self.root, &mut out);
+        out
+    }
 }
 
 /// How a `reply` answers a call.

@@ -65,7 +65,7 @@ fn core(c: &mut Criterion) {
         g.bench_function(BenchmarkId::new("publish", name), |b| {
             b.iter(|| {
                 for (snap, _) in &steps {
-                    std::hint::black_box(Saved::new(snap, |t| t.delay));
+                    std::hint::black_box(Saved::new(snap, |_, delay| delay));
                 }
             })
         });

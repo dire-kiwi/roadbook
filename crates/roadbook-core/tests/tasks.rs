@@ -181,7 +181,7 @@ fn a_spawned_task_in_a_saved_snapshot_restarts_with_its_args() {
         value: json!({"_tag": "Add", "name": "a"}),
     };
     let (s, _) = p.step(&s, add, &mut no_fns);
-    let v = Saved::new(&s, |t| t.delay).to_value();
+    let v = Saved::new(&s, |_, delay| delay).to_value();
     // Its saved entry has no `child`, and with one it would be invalid.
     assert_eq!(
         v["spawned"],
