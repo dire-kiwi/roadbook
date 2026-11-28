@@ -1,6 +1,6 @@
 # XState and Roadbook side by side, in code
 
-This page gives the code behind the rows of [Roadbook compared with XState](xstate.md) where the difference is easiest to see in an example. Each section shows XState v5, then the XState v6 beta where it differs, then Roadbook as it is today. Where Roadbook would need new syntax, the section ends with a **proposed** form. Proposed syntax is not in the language. It shows the shape of an addition, and the task that builds it decides the exact form. [What to add](xstate-plan.md) says which of these are recommended.
+This page gives the code behind the rows of [Roadbook compared with XState](xstate.md) where the difference is easiest to see in an example. Each section shows XState v5, then the XState v6 beta where it differs, then Roadbook as it is today. Where Roadbook added a feature after the comparison, the section names the task that added it. [What to add](xstate-plan.md) says what was recommended for each.
 
 The XState v6 code follows Stately's [migration guide](https://stately.ai/docs/xstate/v6/xstate-v5-to-v6). XState is MIT-licensed.
 
@@ -395,7 +395,13 @@ on: { VOLUME_UP: { guard: not(stateIn('#player.volume.muted')), actions: 'louder
 on: { VOLUME_UP: ({ self }, enq) => { if (!self.getSnapshot().matches('volume.muted')) enq(louder) } }
 ```
 
-**Roadbook** keeps a variable in step with the state:
+**Roadbook** (SM-30) has `in(State)`, a `bool` that is true while the state is active. The path is written from the machine body, as a `check`'s is, wherever the expression is:
+
+```
+on VolumeUp if not in(Volume.Muted) do louder()
+```
+
+Before SM-30 a chart kept a variable in step with the state, which is easy to get wrong:
 
 ```
 var muted: bool = false
@@ -406,10 +412,7 @@ state Muted {
 on VolumeUp if not muted do louder()
 ```
 
-```
-// proposed
-on VolumeUp if not in(Player.Volume.Muted) do louder()
-```
+The compiler rejects a path that names no state, or a history or choice state (`RB0128`), and warns about an `in(S)` that is always true where it is written (`RB0917`).
 
 ## Data that belongs to a state
 

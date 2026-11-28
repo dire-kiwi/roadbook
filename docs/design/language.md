@@ -158,7 +158,11 @@ state Session {
 
 **Several targets** are written with commas, `-> Player.Playback.Paused, Player.Volume.Muted`: the transition enters the parallel state with each target in its region, and every other region by its `initial`. Any two of the targets must be in different regions of a parallel state, at any depth: two in one compound state, or one inside another, is an error (`RB0222`). The dot belongs to the transition, so either every target has it or none does (`RB0221`): `on Sleep -> .Playback.Paused, .Volume.Muted` written in `Player`.
 
-**Several events** share one transition when their names are joined with `|`, instead of an `on` for each with the same branches:
+`entry`, `exit`, `on`, `after` and `always` may also be written directly in the machine body, where they apply to the whole machine.
+
+### Several events
+
+Several events share one transition when their names are joined with `|`, instead of an `on` for each with the same branches:
 
 ```
 state Idle {
@@ -171,8 +175,6 @@ state Idle {
 - Each event is still a trigger of its own. One listed twice, or also named by another `on` of the same state, is an error (`RB0205`), as `on A` written twice is, and the state's `on *` does not take it.
 - `event` has the fields every listed event has with the same type, aliases expanded: `event.reason` above is a `string` in `Retry` and in `Reconnect`. A field that one of them lacks, or has with another type, is an error (`RB0304`) that names the event or the two types. `event` used whole is an error (`RB0309`), as in `on *`. A field is sensitive if it is sensitive in any of the events.
 - It is taken as separate `on`s would be: the compiler writes one copy of its branches per event, in the order written ([the IR](../../spec/ir.md#several-events)), so the rules below apply to each event on its own, and a trace names the copy that was taken. The viewer, Mermaid and SCXML export draw the copies as one edge, labelled `Retry | Reconnect`.
-
-`entry`, `exit`, `on`, `after` and `always` may also be written directly in the machine body, where they apply to the whole machine.
 
 ### Which transition is taken
 
