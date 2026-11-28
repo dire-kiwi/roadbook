@@ -1110,10 +1110,13 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         snapshot.invokes.every((inv) => childIdle(inv.id)) && snapshot.spawned.every((ch) => childIdle(ch.id))
 
       /**
-       * A durable child run that hears a peer's events or end is never durably idle: it hears
-       * them through its port, only while it is live, so a park would lose them.
+       * A durable child run that hears the events or end of a peer that is not a durable run is
+       * never durably idle: it hears them through its port, only while it is live, so a park
+       * would lose them. A durable peer's events and end reach it through its root's registry entry.
        */
-      const hearsPeers = [...peers].some((peer) => Core.heard(ir, name, peer.machine).size > 0)
+      const hearsPeers = [...peers].some((peer) =>
+        entryOfPort(peer) === undefined && Core.heard(ir, name, peer.machine).size > 0
+      )
 
       /**
        * Durably idle (typescript.md, "Parking"): open, nothing queued, no cancel asked of it, no
@@ -1331,26 +1334,33 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
               quiet = !exec.replayTrace
             }
             // Subscribed to the peers' emitted events: a durable holder from the message id it
-            // first subscribed at, so that it is given again what it missed.
+            // first subscribed at, so that it is given again what it missed. A child run is
+            // reached through its root's registry entry, which keeps what reaches it while its
+            // tree is parked (and wakes the tree) or recovering.
+            const holder = entry ?? exec.root
+            if (env.token !== undefined && peers.size > 0) exec.root.hold(env.runId, queue)
             for (const peer of peers) {
               const peerEntry = entryOfPort(peer)
               const heard = Core.heard(ir, name, peer.machine)
-              if (peerEntry === undefined || entry === undefined) {
+              if (peerEntry === undefined) {
                 subscribeTo(peer, heard)
                 continue
               }
+              // What the peer has emitted, and whether it has ended, are known once it has
+              // replayed in this process (it is woken for that if it must be). A holder that
+              // recovers subscribes again: it is given what the peer emitted meanwhile, a peer
+              // that has ended meanwhile is told to it as to one that subscribes late, and what
+              // it has taken already is not taken twice. A peer was always started before its
+              // holder, so no two runs wait for each other here.
+              yield* peerEntry.whenKnown()
               const subName = `${env.runId}/sub/${peer.id}`
               let from = (yield* peek(exec, subName)) as number | undefined
               if (from === undefined) {
-                // From what the peer emits next: what it has emitted is known once it replayed.
-                yield* peerEntry.whenKnown()
+                // From what the peer emits next.
                 from = peerEntry.emitted + 1
                 yield* writeRecord(exec, subName, from)
               }
-              // A holder that recovers subscribes again: a peer that has ended meanwhile is told
-              // to it as to one that subscribes late, and an end it has taken is not taken twice.
-              if (heard.has(Core.ENDED_INPUT)) yield* peerEntry.whenKnown()
-              const closedAs = peerEntry.subscribe(entry, from, heard)
+              const closedAs = peerEntry.subscribe(holder, env.runId, from, heard)
               if (closedAs !== undefined && heard.has(Core.ENDED_INPUT)) endedPeers.push(endedInput(peer.id, closedAs))
             }
             let next = yield* journalled(1)
@@ -1547,6 +1557,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         if (durable !== undefined && durable.exec.root.callers.get(env.runId) === heard) {
           durable.exec.root.callers.delete(env.runId)
         }
+        if (durable !== undefined && env.token !== undefined) durable.exec.root.release(env.runId, queue, !stopping)
         Queue.shutdownUnsafe(queue)
         // The tree as it stopped: a suspended run's was kept as it stopped; a run that stops
         // durably keeps its child runs' snapshots from before they stop.

@@ -107,9 +107,9 @@ const ir: unknown = {
       "doc": "Note how far a task has got.",
       "span": {
         "file": 0,
-        "line": 202,
+        "line": 226,
         "col": 1,
-        "endLine": 202,
+        "endLine": 226,
         "endCol": 26
       }
     }
@@ -160,9 +160,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 205,
+            "line": 229,
             "col": 30,
-            "endLine": 205,
+            "endLine": 229,
             "endCol": 60
           }
         }
@@ -170,9 +170,9 @@ const ir: unknown = {
       "doc": "One step of work that says how far it has got as it goes. Gives `n * 10`.",
       "span": {
         "file": 0,
-        "line": 205,
+        "line": 229,
         "col": 1,
-        "endLine": 205,
+        "endLine": 229,
         "endCol": 60
       }
     }
@@ -3166,13 +3166,331 @@ const ir: unknown = {
       },
       "hash": "sha256:d60cedc07d477e69337a56e98b398717194e91e83457c8e5299b9cc9a5191aee"
     },
+    "Lookout": {
+      "doc": "Waits for its Counter to end, and gives 1 once it has.",
+      "span": {
+        "file": 0,
+        "line": 202,
+        "col": 1,
+        "endLine": 208,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "counter",
+          "type": "ref Counter",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [],
+      "events": {},
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Lookout",
+        "name": "Lookout",
+        "kind": "compound",
+        "doc": "Waits for its Counter to end, and gives 1 once it has.",
+        "span": {
+          "file": 0,
+          "line": 202,
+          "col": 1,
+          "endLine": 208,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Lookout.Watching",
+        "states": [
+          {
+            "id": "Lookout.Watching",
+            "name": "Watching",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 205,
+              "col": 3,
+              "endLine": 205,
+              "endCol": 46
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "ended",
+                  "from": {
+                    "kind": "ref",
+                    "name": "counter",
+                    "machine": "Counter",
+                    "state": null
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Lookout.Seen"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 205,
+                  "col": 20,
+                  "endLine": 205,
+                  "endCol": 44
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Lookout.Seen",
+            "name": "Seen",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 207,
+              "col": 3,
+              "endLine": 207,
+              "endCol": 32
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": 1,
+              "type": "int",
+              "text": "1"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:10883858428d7a740f7c692326874dc5b2d0d76f285c37b1005b3e2f88051e51"
+    },
+    "Post": {
+      "doc": "Runs a Lookout on its Counter, and gives what it gives.",
+      "span": {
+        "file": 0,
+        "line": 211,
+        "col": 1,
+        "endLine": 223,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "counter",
+          "type": "ref Counter",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "got",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 212,
+            "col": 3,
+            "endLine": 212,
+            "endCol": 19
+          }
+        }
+      ],
+      "events": {},
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Post",
+        "name": "Post",
+        "kind": "compound",
+        "doc": "Runs a Lookout on its Counter, and gives what it gives.",
+        "span": {
+          "file": 0,
+          "line": 211,
+          "col": 1,
+          "endLine": 223,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Post.Running",
+        "states": [
+          {
+            "id": "Post.Running",
+            "name": "Running",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 216,
+              "col": 3,
+              "endLine": 220,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [
+              {
+                "kind": "machine",
+                "src": "Lookout",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "counter"
+                    ],
+                    "state": null,
+                    "type": "ref Counter",
+                    "text": "counter"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 217,
+                  "col": 5,
+                  "endLine": 219,
+                  "endCol": 6
+                }
+              }
+            ],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done",
+                  "as": null
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Post.Done"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "got",
+                    "state": null,
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "state": null,
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 218,
+                  "col": 7,
+                  "endLine": 218,
+                  "endCol": 37
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Post.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 222,
+              "col": 3,
+              "endLine": 222,
+              "endCol": 34
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "got"
+              ],
+              "state": null,
+              "type": "int",
+              "text": "got"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:5915fd761f9abad6c7a1b83933b9fb7ff18f6514c9a9a2297196f333479e6cad"
+    },
     "Tracker": {
       "doc": "Notes each `Reached` of its task, and gives how many it took once the task is done.",
       "span": {
         "file": 0,
-        "line": 208,
+        "line": 232,
         "col": 1,
-        "endLine": 221,
+        "endLine": 245,
         "endCol": 2
       },
       "strict": false,
@@ -3200,9 +3518,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 209,
+            "line": 233,
             "col": 3,
-            "endLine": 209,
+            "endLine": 233,
             "endCol": 20
           }
         }
@@ -3221,9 +3539,9 @@ const ir: unknown = {
         "meta": {},
         "span": {
           "file": 0,
-          "line": 208,
+          "line": 232,
           "col": 1,
-          "endLine": 221,
+          "endLine": 245,
           "endCol": 2
         },
         "params": [],
@@ -3240,9 +3558,9 @@ const ir: unknown = {
             "meta": {},
             "span": {
               "file": 0,
-              "line": 213,
+              "line": 237,
               "col": 3,
-              "endLine": 218,
+              "endLine": 242,
               "endCol": 4
             },
             "params": [],
@@ -3268,9 +3586,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 214,
+                  "line": 238,
                   "col": 5,
-                  "endLine": 216,
+                  "endLine": 240,
                   "endCol": 6
                 }
               }
@@ -3291,9 +3609,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 215,
+                  "line": 239,
                   "col": 7,
-                  "endLine": 215,
+                  "endLine": 239,
                   "endCol": 19
                 }
               },
@@ -3361,9 +3679,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 217,
+                  "line": 241,
                   "col": 5,
-                  "endLine": 217,
+                  "endLine": 241,
                   "endCol": 63
                 }
               }
@@ -3380,9 +3698,9 @@ const ir: unknown = {
             "meta": {},
             "span": {
               "file": 0,
-              "line": 220,
+              "line": 244,
               "col": 3,
-              "endLine": 220,
+              "endLine": 244,
               "endCol": 35
             },
             "params": [],
@@ -3419,9 +3737,9 @@ const ir: unknown = {
       "doc": "Spawns a `progress` task per key, notes what they say, and adds up what they give.",
       "span": {
         "file": 0,
-        "line": 224,
+        "line": 248,
         "col": 1,
-        "endLine": 242,
+        "endLine": 266,
         "endCol": 2
       },
       "strict": false,
@@ -3449,9 +3767,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 225,
+            "line": 249,
             "col": 3,
-            "endLine": 225,
+            "endLine": 249,
             "endCol": 21
           }
         }
@@ -3475,9 +3793,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 227,
+            "line": 251,
             "col": 3,
-            "endLine": 227,
+            "endLine": 251,
             "endCol": 39
           }
         },
@@ -3486,9 +3804,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 228,
+            "line": 252,
             "col": 3,
-            "endLine": 228,
+            "endLine": 252,
             "endCol": 15
           }
         }
@@ -3504,9 +3822,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 230,
+            "line": 254,
             "col": 3,
-            "endLine": 230,
+            "endLine": 254,
             "endCol": 36
           }
         }
@@ -3520,9 +3838,9 @@ const ir: unknown = {
         "meta": {},
         "span": {
           "file": 0,
-          "line": 224,
+          "line": 248,
           "col": 1,
-          "endLine": 242,
+          "endLine": 266,
           "endCol": 2
         },
         "params": [],
@@ -3539,9 +3857,9 @@ const ir: unknown = {
             "meta": {},
             "span": {
               "file": 0,
-              "line": 234,
+              "line": 258,
               "col": 3,
-              "endLine": 239,
+              "endLine": 263,
               "endCol": 4
             },
             "params": [],
@@ -3594,9 +3912,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 235,
+                  "line": 259,
                   "col": 5,
-                  "endLine": 235,
+                  "endLine": 259,
                   "endCol": 71
                 }
               },
@@ -3636,9 +3954,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 236,
+                  "line": 260,
                   "col": 5,
-                  "endLine": 236,
+                  "endLine": 260,
                   "endCol": 52
                 }
               },
@@ -3687,9 +4005,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 237,
+                  "line": 261,
                   "col": 5,
-                  "endLine": 237,
+                  "endLine": 261,
                   "endCol": 56
                 }
               },
@@ -3708,9 +4026,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 238,
+                  "line": 262,
                   "col": 5,
-                  "endLine": 238,
+                  "endLine": 262,
                   "endCol": 28
                 }
               }
@@ -3727,9 +4045,9 @@ const ir: unknown = {
             "meta": {},
             "span": {
               "file": 0,
-              "line": 241,
+              "line": 265,
               "col": 3,
-              "endLine": 241,
+              "endLine": 265,
               "endCol": 36
             },
             "params": [],
@@ -3766,9 +4084,9 @@ const ir: unknown = {
       "doc": "A reminder that belongs to the run: a delayed raise, which leaving `Asleep` does not cancel,\ncounted when it fires.",
       "span": {
         "file": 0,
-        "line": 246,
+        "line": 270,
         "col": 1,
-        "endLine": 262,
+        "endLine": 286,
         "endCol": 2
       },
       "strict": false,
@@ -3796,9 +4114,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 247,
+            "line": 271,
             "col": 3,
-            "endLine": 247,
+            "endLine": 271,
             "endCol": 20
           }
         }
@@ -3809,9 +4127,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 249,
+            "line": 273,
             "col": 3,
-            "endLine": 249,
+            "endLine": 273,
             "endCol": 13
           }
         }
@@ -3822,9 +4140,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 250,
+            "line": 274,
             "col": 3,
-            "endLine": 250,
+            "endLine": 274,
             "endCol": 21
           }
         }
@@ -3841,9 +4159,9 @@ const ir: unknown = {
         "meta": {},
         "span": {
           "file": 0,
-          "line": 246,
+          "line": 270,
           "col": 1,
-          "endLine": 262,
+          "endLine": 286,
           "endCol": 2
         },
         "params": [],
@@ -3860,9 +4178,9 @@ const ir: unknown = {
             "meta": {},
             "span": {
               "file": 0,
-              "line": 254,
+              "line": 278,
               "col": 3,
-              "endLine": 257,
+              "endLine": 281,
               "endCol": 4
             },
             "params": [],
@@ -3908,9 +4226,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 256,
+                  "line": 280,
                   "col": 5,
-                  "endLine": 256,
+                  "endLine": 280,
                   "endCol": 21
                 }
               }
@@ -3927,9 +4245,9 @@ const ir: unknown = {
             "meta": {},
             "span": {
               "file": 0,
-              "line": 259,
+              "line": 283,
               "col": 3,
-              "endLine": 259,
+              "endLine": 283,
               "endCol": 69
             },
             "params": [],
@@ -3997,9 +4315,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 259,
+                  "line": 283,
                   "col": 17,
-                  "endLine": 259,
+                  "endLine": 283,
                   "endCol": 67
                 }
               }
@@ -4016,9 +4334,9 @@ const ir: unknown = {
             "meta": {},
             "span": {
               "file": 0,
-              "line": 261,
+              "line": 285,
               "col": 3,
-              "endLine": 261,
+              "endLine": 285,
               "endCol": 35
             },
             "params": [],
@@ -4293,6 +4611,50 @@ export interface RelayDef extends Roadbook.MachineDef {
 
 /** Runs an Adder as its child, which hears the Counter. */
 export const Relay = Roadbook.make<RelayDef>(ir, "Relay", errors)
+
+// ---- machine: Lookout ----
+
+export interface LookoutDef extends Roadbook.MachineDef {
+  readonly name: "Lookout"
+  readonly input: { readonly counter: Roadbook.Handle<CounterDef> }
+  readonly output: number
+  readonly error: never
+  readonly event: never
+  readonly emits: never
+  readonly state: "Lookout" | "Lookout.Watching" | "Lookout.Seen"
+  readonly fns: {}
+  readonly actions: {}
+  readonly tasks: {}
+  readonly machines: {}
+}
+
+/** Waits for its Counter to end, and gives 1 once it has. */
+export const Lookout = Roadbook.make<LookoutDef>(ir, "Lookout", errors)
+
+// ---- machine: Post ----
+
+export interface PostDef extends Roadbook.MachineDef {
+  readonly name: "Post"
+  readonly input: { readonly counter: Roadbook.Handle<CounterDef> }
+  readonly output: number
+  readonly error: never
+  readonly event: never
+  readonly emits: never
+  readonly state: "Post" | "Post.Running" | "Post.Done"
+  readonly fns: {}
+  readonly actions: {}
+  readonly tasks: {}
+  readonly machines: {
+    readonly Lookout: {
+      readonly args: { readonly counter: Roadbook.Handle<CounterDef> }
+      readonly success: number
+      readonly error: never
+    }
+  }
+}
+
+/** Runs a Lookout on its Counter, and gives what it gives. */
+export const Post = Roadbook.make<PostDef>(ir, "Post", errors)
 
 // ---- machine: Tracker ----
 

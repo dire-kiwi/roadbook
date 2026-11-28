@@ -198,6 +198,30 @@ machine Relay(counter: ref Counter, goal: int) -> int {
   final state Done { output got }
 }
 
+/// Waits for its Counter to end, and gives 1 once it has.
+machine Lookout(counter: ref Counter) -> int {
+  initial Watching
+
+  state Watching { on counter.ended -> Seen }
+
+  final state Seen { output 1 }
+}
+
+/// Runs a Lookout on its Counter, and gives what it gives.
+machine Post(counter: ref Counter) -> int {
+  var got: int = 0
+
+  initial Running
+
+  state Running {
+    invoke Lookout(counter) {
+      done -> Done  set got = result
+    }
+  }
+
+  final state Done { output got }
+}
+
 /// Note how far a task has got.
 action note(percent: int)
 
