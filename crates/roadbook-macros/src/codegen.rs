@@ -1965,7 +1965,7 @@ impl Uses {
         for e in s.entry.iter().chain(&s.exit) {
             self.effect(e);
         }
-        if let Some(i) = &s.invoke {
+        for i in &s.invokes {
             if i.kind != InvokeKind::Call {
                 self.invokes.insert(i.src.clone());
             }

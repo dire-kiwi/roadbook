@@ -283,9 +283,10 @@ const shapeIssue = (json: unknown): string | undefined => {
   if (!Array.isArray(invokes)) return "invokes is not a list"
   for (const inv of invokes) {
     if (!isObject(inv)) return "an invoke is not an object"
-    const issue = membersIssue(inv, ["id", "state", "src"], "an invoke", ["child"])
+    const issue = membersIssue(inv, ["id", "state", "src"], "an invoke", ["child", "as"])
     if (issue !== undefined) return issue
     if (!isId(inv["id"]) || !matches(STATE_ID, inv["state"]) || !matches(SRC, inv["src"])) return "an invoke is malformed"
+    if (Object.hasOwn(inv, "as") && !matches(LOWER, inv["as"])) return "an invoke's as is malformed"
     const child = childIssue(inv, `invoke ${inv["id"]}`)
     if (child !== undefined) return child
   }
@@ -394,7 +395,8 @@ const nestedIssue = (
   if (nested.what.startsWith("invoke")) {
     // `saved` fits `m`, so the entry's state has an invoke of its `src`.
     const inv = saved.invokes.find((i) => i.id === nested.id)!
-    const kind = findState(m.root, inv.state)?.invoke?.kind
+    const invokes = findState(m.root, inv.state)?.invokes ?? []
+    const kind = (inv.as === undefined ? invokes[0] : invokes.find((i) => i.as === inv.as))?.kind
     if (kind !== "machine") return `it is nested in the invoke of a ${kind ?? "task"}, which is not a child run`
   }
   if (nested.machine === undefined) return `its entry starts no machine of the IR`
@@ -455,17 +457,20 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
   }
 
   // The work.
-  const invokeStates = new Set<string>()
+  const invokesSeen = new Set<string>()
   const invokeIds = new Set<number>()
   for (const inv of saved.invokes) {
     const state = states.get(inv.state)?.state
     if (state === undefined || !active.has(inv.state)) return `invoke ${inv.id} is of ${inv.state}, which is not active`
-    const src = state.invoke?.kind === "call" && state.invoke.to !== null
-      ? `${state.invoke.to.name}.${state.invoke.src}`
-      : state.invoke?.src
-    if (src !== inv.src) return `${inv.state} has no invoke of ${inv.src}`
-    if (invokeStates.has(inv.state)) return `${inv.state} has two invokes`
-    invokeStates.add(inv.state)
+    const several = state.invokes.length > 1
+    if (inv.as !== undefined && !several) return `invoke ${inv.id} has as ${inv.as}, but ${inv.state} has at most one invoke`
+    if (inv.as === undefined && several) return `invoke ${inv.id} has no as, but ${inv.state} has several invokes`
+    const invoke = inv.as === undefined ? state.invokes[0] : state.invokes.find((i) => i.as === inv.as)
+    const src = invoke?.kind === "call" && invoke.to !== null ? `${invoke.to.name}.${invoke.src}` : invoke?.src
+    if (src !== inv.src) return `${inv.state} has no invoke of ${inv.src}${inv.as === undefined ? "" : ` as ${inv.as}`}`
+    const seen = `${inv.state} ${inv.as ?? ""}`
+    if (invokesSeen.has(seen)) return `${inv.state} runs one invoke twice`
+    invokesSeen.add(seen)
     if (invokeIds.has(inv.id)) return `invoke id ${inv.id} is repeated`
     invokeIds.add(inv.id)
     if (inv.id >= saved.nextInvoke) return `invoke id ${inv.id} is not below nextInvoke`

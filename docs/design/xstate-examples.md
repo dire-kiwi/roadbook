@@ -255,7 +255,7 @@ loading: {
 },
 ```
 
-**Roadbook** allows one invoke per state, so the two fetches go in the regions of a parallel state. `done` on the parallel state is taken when both regions reach a final state, which is the join:
+**Roadbook** lets a state run several invokes (SM-37), but each has its own outcomes and none waits for the others, so a join goes in the regions of a parallel state. `done` on the parallel state is taken when both regions reach a final state:
 
 ```
 parallel state Loading {
@@ -285,15 +285,21 @@ parallel state Loading {
 
 `-> Failed` resolves outward to a sibling of `Loading`, so a failure in either region leaves `Loading` and cancels the other fetch. It is longer than XState's array, but the diagram shows both fetches and the join, and the compiler proves `user` and `prefs` are assigned in `Ready`.
 
+Several invokes in one state, each named with `as`, are for a background task beside the main one, like a heartbeat, rather than for a join:
+
 ```
-// proposed: several invokes, each named with `as`
 state Watching {
-  invoke heartbeat(server) as beat  { fail Lost -> Offline }
-  invoke syncFiles(folder) as sync  { done -> Synced  fail * -> Failed }
+  invoke heartbeat(server) as beat {
+    fail Lost -> Offline
+  }
+  invoke syncFiles(folder) as sync {
+    done   -> Synced
+    fail * -> Failed
+  }
 }
 ```
 
-Several invokes are most useful for a background task beside the main one, like the heartbeat here, rather than for a join.
+They start in the order written. `sync`'s `done` leaves the state, which cancels `beat`, and `beat` failing `Lost` cancels `sync` the same way.
 
 ## Invoked work: Roadbook's tasks and v6's async logic
 

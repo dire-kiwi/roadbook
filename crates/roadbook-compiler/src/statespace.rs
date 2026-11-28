@@ -243,8 +243,9 @@ fn add_races(chart: &Chart<'_>, successors: &mut [Successor]) {
 /// Who sent an emitted event.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Sender {
-    /// The child machine or the task invoked (with `as`) by this state.
-    Child(StateIndex),
+    /// The child machine or the task invoked (with `as`) by this state: its invoke at this
+    /// position among the state's invokes.
+    Child(StateIndex, usize),
     /// A peer that these `ref` parameters and variables hold, and none of the others that a
     /// trigger expects the event through. Several names can hold the same run (a variable
     /// set from a parameter, or two arguments given the same handle).
@@ -272,12 +273,16 @@ pub enum Input {
     InvokeDone {
         /// The state that owns the invoke.
         state: StateIndex,
+        /// The invoke's position among the state's invokes.
+        invoke: usize,
     },
     /// The invoke of `state` failed with `error`, one its task or machine declares, or for a
     /// call, one the call declares or `Unanswered`.
     InvokeFail {
         /// The state that owns the invoke.
         state: StateIndex,
+        /// The invoke's position among the state's invokes.
+        invoke: usize,
         /// The error's name.
         error: String,
     },
@@ -635,13 +640,26 @@ impl Graph {
         match input {
             Input::Event(e) => e.clone(),
             Input::Call(c) => format!("the call {c}"),
-            Input::InvokeDone { state } => format!("done of the invoke in {}", id(state)),
-            Input::InvokeFail { state, error } => {
-                format!("fail {error} of the invoke in {}", id(state))
+            Input::InvokeDone { state, invoke } => {
+                format!("done of the {} in {}", nth_invoke(*invoke), id(state))
+            }
+            Input::InvokeFail {
+                state,
+                invoke,
+                error,
+            } => {
+                format!(
+                    "fail {error} of the {} in {}",
+                    nth_invoke(*invoke),
+                    id(state)
+                )
             }
             Input::After { state, index } => format!("the after at #{index} of {}", id(state)),
             Input::Emitted { from, event } => match from {
-                Sender::Child(s) => format!("{event} from the child of {}", id(s)),
+                Sender::Child(s, 0) => format!("{event} from the child of {}", id(s)),
+                Sender::Child(s, k) => {
+                    format!("{event} from the child of invoke #{k} of {}", id(s))
+                }
                 Sender::Refs(names) => format!("{}.{event}", names.join(" = ")),
                 Sender::Children(c) => format!("{c}.{event}"),
                 Sender::Callers => format!("{event} from a caller"),
@@ -729,10 +747,32 @@ impl Graph {
     }
 }
 
+/// "invoke", or "invoke #k" for one after the first of a state.
+fn nth_invoke(k: usize) -> String {
+    if k == 0 {
+        "invoke".into()
+    } else {
+        format!("invoke #{k}")
+    }
+}
+
 /// A transition's trigger as the viewer labels it (`triggerText` in
 /// `packages/viewer/src/model.ts`): `Go`, `reserve`, `after 5s`, `fail Declined`, `on *`. `roadbook
-/// paths` and the counterexamples of checks write triggers this way.
-pub fn trigger_text(t: &Trigger) -> String {
+/// paths` and the counterexamples of checks write triggers this way. In state `s` with several
+/// invokes, an outcome names its invoke: `sync: done`, `beat: fail Lost`.
+pub fn trigger_text(s: &ir::State, t: &Trigger) -> String {
+    match t {
+        Trigger::InvokeDone { alias: Some(a) } | Trigger::InvokeFail { alias: Some(a), .. }
+            if s.has_several_invokes() =>
+        {
+            format!("{a}: {}", plain_trigger_text(t))
+        }
+        _ => plain_trigger_text(t),
+    }
+}
+
+/// [`trigger_text`] without the name of the invoke an outcome belongs to.
+pub fn plain_trigger_text(t: &Trigger) -> String {
     match t {
         Trigger::Event { event } => event.clone(),
         Trigger::Call { call } => call.clone(),
@@ -740,8 +780,8 @@ pub fn trigger_text(t: &Trigger) -> String {
         Trigger::Any => "on *".into(),
         Trigger::After { delay } => format!("after {}", delay.text),
         Trigger::Always => "always".into(),
-        Trigger::Done | Trigger::InvokeDone => "done".into(),
-        Trigger::InvokeFail { error } => format!("fail {error}"),
+        Trigger::Done | Trigger::InvokeDone { .. } => "done".into(),
+        Trigger::InvokeFail { error, .. } => format!("fail {error}"),
         Trigger::SpawnDone { children } => format!("{children}.done"),
         Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
         Trigger::Ended { from } => format!("{}.ended", from.name),
@@ -769,8 +809,14 @@ type T = (u32, usize);
 /// A selection's outcome: the transitions taken, and the guard outcomes it relies on.
 type Selected = (Vec<T>, Vec<(T, bool)>);
 
-/// The slot of an invoke in [`Config::consumed`]; a timer's is its `after` block's group.
+/// The slot of a state's first invoke in [`Config::consumed`], counting down for the others; a
+/// timer's is its `after` block's group.
 const INVOKE: u32 = u32::MAX;
+
+/// The slot of the state's `k`th invoke in [`Config::consumed`].
+fn invoke_slot(k: usize) -> u32 {
+    INVOKE - k as u32
+}
 
 /// A machine's states in document order, with what the exploration looks up.
 struct Chart<'a> {
@@ -807,7 +853,8 @@ struct Chart<'a> {
     /// The `after` blocks of each state: (group, index of its first transition).
     after_blocks: Vec<Vec<(u32, usize)>>,
     /// The events a trigger expects from the child invoked by each state.
-    child_events: Vec<Vec<&'a str>>,
+    /// By state, then by invoke: what the invoke's child or task is heard emitting.
+    child_events: Vec<Vec<Vec<&'a str>>>,
     /// For each collection, the events a trigger expects from its children.
     children_events: Vec<Vec<&'a str>>,
     /// The peers' events: for each machine and event that an `on name.Event` with a `ref`
@@ -922,7 +969,11 @@ impl<'a> Chart<'a> {
                 .collect()
         };
         let n = c.states.len();
-        let mut child_events: Vec<Vec<&str>> = vec![Vec::new(); n];
+        let mut child_events: Vec<Vec<Vec<&str>>> = c
+            .states
+            .iter()
+            .map(|s| vec![Vec::new(); s.invokes.len()])
+            .collect();
         let mut children_events = c.children_events.clone();
         let mut ref_events: IndexMap<(&str, &str), Vec<&str>> = IndexMap::new();
         for i in 0..n {
@@ -981,8 +1032,12 @@ impl<'a> Chart<'a> {
                             // the invoke runs.
                             AddressKind::Child | AddressKind::Task => {
                                 if let Some(&st) = from.state.as_deref().and_then(|x| index.get(x))
+                                    && let Some(k) = c.states[st as usize]
+                                        .invokes
+                                        .iter()
+                                        .position(|i| i.alias.as_deref() == Some(&from.name))
                                 {
-                                    push(&mut child_events[st as usize]);
+                                    push(&mut child_events[st as usize][k]);
                                 }
                             }
                             AddressKind::Children => {
@@ -1398,8 +1453,11 @@ impl<'a> Chart<'a> {
             Cand::Call(n) => pick(&|t| matches!(t, Trigger::Call { call } if call == n)),
             Cand::Emitted(sender, n) => pick(&|t| match t {
                 Trigger::Emitted { from, event } if event == n => match (sender, from.kind) {
-                    (SenderRef::Child(st), AddressKind::Child | AddressKind::Task) => {
-                        from.state.as_deref() == Some(self.states[*st as usize].id.as_str())
+                    (SenderRef::Child(st, k), AddressKind::Child | AddressKind::Task) => {
+                        let state = self.states[*st as usize];
+                        from.state.as_deref() == Some(state.id.as_str())
+                            && state.invokes.get(*k).and_then(|i| i.alias.as_deref())
+                                == Some(from.name.as_str())
                     }
                     (SenderRef::Refs(names), AddressKind::Ref) => {
                         names.contains(&from.name.as_str())
@@ -1429,11 +1487,17 @@ impl<'a> Chart<'a> {
                     named
                 }
             }
-            Cand::InvokeDone => pick(&|t| matches!(t, Trigger::InvokeDone)),
-            Cand::InvokeFail(e) => {
-                let named = pick(&|t| matches!(t, Trigger::InvokeFail { error } if error == e));
+            Cand::InvokeDone(a) => {
+                pick(&|t| matches!(t, Trigger::InvokeDone { alias } if alias.as_deref() == *a))
+            }
+            Cand::InvokeFail(a, e) => {
+                let named = pick(
+                    &|t| matches!(t, Trigger::InvokeFail { alias, error } if alias.as_deref() == *a && error == e),
+                );
                 if named.is_empty() {
-                    pick(&|t| matches!(t, Trigger::InvokeFail { error } if error == "*"))
+                    pick(
+                        &|t| matches!(t, Trigger::InvokeFail { alias, error } if alias.as_deref() == *a && error == "*"),
+                    )
                 } else {
                     named
                 }
@@ -1670,61 +1734,65 @@ impl<'a> Chart<'a> {
         // Invoke outcomes, and what invoked children emit.
         for &s in &cfg.active {
             let state = self.states[s as usize];
-            let Some(inv) = &state.invoke else { continue };
-            if cfg.consumed.contains(&(s, INVOKE)) {
-                continue;
-            }
-            self.one_state(
-                cfg,
-                s,
-                INVOKE,
-                Input::InvokeDone {
-                    state: StateIndex(s),
-                },
-                &Cand::InvokeDone,
-                &mut out,
-            );
-            let mut errors: Vec<&str> = match inv.kind {
-                InvokeKind::Task => self.ir.tasks.get(&inv.src).map(|t| &t.errors[..]),
-                InvokeKind::Machine => self.ir.machines.get(&inv.src).map(|m| &m.errors[..]),
-                InvokeKind::Call => inv
-                    .to
-                    .as_ref()
-                    .and_then(|to| self.ir.machines.get(to.peer()))
-                    .and_then(|m| m.calls.get(&inv.src))
-                    .map(|c| &c.errors[..]),
-            }
-            .unwrap_or(&[])
-            .iter()
-            .map(String::as_str)
-            .collect();
-            // Every call can fail with `Unanswered` besides its declared errors.
-            if inv.kind == InvokeKind::Call {
-                errors.push(ir::UNANSWERED);
-            }
-            for e in errors {
+            for (k, inv) in state.invokes.iter().enumerate() {
+                if cfg.consumed.contains(&(s, invoke_slot(k))) {
+                    continue;
+                }
+                let alias = inv.alias.as_deref();
                 self.one_state(
                     cfg,
                     s,
-                    INVOKE,
-                    Input::InvokeFail {
+                    invoke_slot(k),
+                    Input::InvokeDone {
                         state: StateIndex(s),
-                        error: e.to_string(),
+                        invoke: k,
                     },
-                    &Cand::InvokeFail(e),
+                    &Cand::InvokeDone(alias),
                     &mut out,
                 );
-            }
-            for &event in &self.child_events[s as usize] {
-                self.by_walks(
-                    cfg,
-                    Input::Emitted {
-                        from: Sender::Child(StateIndex(s)),
-                        event: event.to_string(),
-                    },
-                    &Cand::Emitted(SenderRef::Child(s), event),
-                    &mut out,
-                );
+                let mut errors: Vec<&str> = match inv.kind {
+                    InvokeKind::Task => self.ir.tasks.get(&inv.src).map(|t| &t.errors[..]),
+                    InvokeKind::Machine => self.ir.machines.get(&inv.src).map(|m| &m.errors[..]),
+                    InvokeKind::Call => inv
+                        .to
+                        .as_ref()
+                        .and_then(|to| self.ir.machines.get(to.peer()))
+                        .and_then(|m| m.calls.get(&inv.src))
+                        .map(|c| &c.errors[..]),
+                }
+                .unwrap_or(&[])
+                .iter()
+                .map(String::as_str)
+                .collect();
+                // Every call can fail with `Unanswered` besides its declared errors.
+                if inv.kind == InvokeKind::Call {
+                    errors.push(ir::UNANSWERED);
+                }
+                for e in errors {
+                    self.one_state(
+                        cfg,
+                        s,
+                        invoke_slot(k),
+                        Input::InvokeFail {
+                            state: StateIndex(s),
+                            invoke: k,
+                            error: e.to_string(),
+                        },
+                        &Cand::InvokeFail(alias, e),
+                        &mut out,
+                    );
+                }
+                for &event in &self.child_events[s as usize][k] {
+                    self.by_walks(
+                        cfg,
+                        Input::Emitted {
+                            from: Sender::Child(StateIndex(s), k),
+                            event: event.to_string(),
+                        },
+                        &Cand::Emitted(SenderRef::Child(s, k), event),
+                        &mut out,
+                    );
+                }
             }
         }
         // Timers.
@@ -1849,14 +1917,14 @@ impl<'a> Chart<'a> {
     /// peer its address names.
     fn sender(&self, input: &Input) -> Option<Sender> {
         match input {
-            Input::InvokeDone { state } | Input::InvokeFail { state, .. } => {
+            Input::InvokeDone { state, invoke } | Input::InvokeFail { state, invoke, .. } => {
                 match self.states[state.index()]
-                    .invoke
-                    .as_ref()
+                    .invokes
+                    .get(*invoke)
                     .and_then(|i| i.to.as_ref())
                 {
                     Some(to) => Some(Sender::Refs(vec![to.name.clone()])),
-                    None => Some(Sender::Child(*state)),
+                    None => Some(Sender::Child(*state, *invoke)),
                 }
             }
             Input::Call(_) => Some(Sender::Callers),
@@ -1880,17 +1948,17 @@ impl<'a> Chart<'a> {
     /// others running, or that another machine does what the input says.
     fn input_assumption(&self, cfg: &Config, input: &Input) -> Option<Assumption> {
         match input {
-            Input::InvokeDone { state } | Input::InvokeFail { state, .. } => {
-                let invoke = self.states[state.index()].invoke.as_ref()?;
+            Input::InvokeDone { state, invoke } | Input::InvokeFail { state, invoke, .. } => {
+                let invoke = self.states[state.index()].invokes.get(*invoke)?;
                 (invoke.kind != InvokeKind::Task).then(|| Assumption::Machine(input.clone()))
             }
             // A task's emits and a spawned task's outcomes are the host's to give, as an
             // invoked task's outcomes are: they assume nothing.
             Input::Emitted {
-                from: Sender::Child(state),
+                from: Sender::Child(state, invoke),
                 ..
             } => {
-                let invoke = self.states[state.index()].invoke.as_ref()?;
+                let invoke = self.states[state.index()].invokes.get(*invoke)?;
                 (invoke.kind != InvokeKind::Task).then(|| Assumption::Machine(input.clone()))
             }
             Input::Emitted {
@@ -2083,15 +2151,16 @@ enum Cand<'s> {
     Always,
     SpawnDone(&'s str),
     SpawnFail(&'s str, &'s str),
-    InvokeDone,
-    InvokeFail(&'s str),
+    /// An outcome of the invoke with this `as`.
+    InvokeDone(Option<&'s str>),
+    InvokeFail(Option<&'s str>, &'s str),
     After(u32),
     Done,
 }
 
 /// [`Sender`], borrowed.
 enum SenderRef<'s> {
-    Child(u32),
+    Child(u32, usize),
     Refs(&'s [&'s str]),
     Children(&'s str),
 }
@@ -2148,7 +2217,7 @@ struct Config {
     active: Vec<u32>,
     /// History records, sorted by history state.
     history: Vec<(u32, Vec<u32>)>,
-    /// The consumed work of active states: (state, [`INVOKE`] or the `after` block's group),
+    /// The consumed work of active states: (state, [`invoke_slot`] or the `after` block's group),
     /// sorted.
     consumed: Vec<(u32, u32)>,
     /// Per collection, whether a `spawn` into it has run.
@@ -2748,7 +2817,7 @@ mod tests {
             match &e.input {
                 Input::Event(_) => assert!(own.is_empty(), "{d}"),
                 // A task's outcome is the host's to give.
-                Input::InvokeDone { state } if g.state_id(*state) == "M.T" => {
+                Input::InvokeDone { state, .. } if g.state_id(*state) == "M.T" => {
                     assert!(own.is_empty(), "{d}")
                 }
                 _ => assert!(
@@ -2783,13 +2852,16 @@ mod tests {
         ));
         let a = g.state_index("M.A").unwrap();
         let race = Assumption::Unpreempted {
-            senders: vec![Sender::Child(a)],
+            senders: vec![Sender::Child(a, 0)],
         };
         // The timer races the child; the child's own outcome does not race itself.
         assert_eq!(assumed_by(&g, "the after at #1 of M.A"), vec![vec![race]]);
         assert_eq!(
             assumed_by(&g, "done of the invoke in M.A"),
-            vec![vec![Assumption::Machine(Input::InvokeDone { state: a })]]
+            vec![vec![Assumption::Machine(Input::InvokeDone {
+                state: a,
+                invoke: 0
+            })]]
         );
         // No other machine live: nothing to race.
         let g = graph(
@@ -2806,13 +2878,13 @@ mod tests {
         );
         let first = assumed_by(&g, "done of the invoke in M.P.L.A");
         assert!(first[0].contains(&Assumption::Unpreempted {
-            senders: vec![Sender::Child(r)]
+            senders: vec![Sender::Child(r, 0)]
         }));
         // Once R's child has ended, L's races nothing.
         assert!(first.iter().any(|a| a.len() == 1));
         assert!(!first.iter().flatten().any(|a| matches!(
             a,
-            Assumption::Unpreempted { senders } if senders.contains(&Sender::Child(l))
+            Assumption::Unpreempted { senders } if senders.contains(&Sender::Child(l, 0))
         )));
     }
 

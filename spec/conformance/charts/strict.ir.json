@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/strict.road",
@@ -136,20 +136,22 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "fetch",
-              "to": null,
-              "as": null,
-              "args": [],
-              "span": {
-                "file": 0,
-                "line": 26,
-                "col": 5,
-                "endLine": 28,
-                "endCol": 6
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "fetch",
+                "to": null,
+                "as": null,
+                "args": [],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 6
+                }
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
@@ -237,7 +239,8 @@
               },
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 3,
                 "guard": {
@@ -295,7 +298,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -342,7 +345,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [
           {
             "trigger": {

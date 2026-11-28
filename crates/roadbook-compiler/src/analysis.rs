@@ -275,11 +275,12 @@ pub(crate) fn run(
                 continue;
             }
             let si = info.states.get(*id);
-            if let Some(inv) = &s.invoke
-                && inv.kind == InvokeKind::Machine
-                && let Some(span) = si.and_then(|i| i.invoke_span)
-            {
-                edges.push((inv.src.as_str(), span));
+            for (k, inv) in s.invokes.iter().enumerate() {
+                if inv.kind == InvokeKind::Machine
+                    && let Some(&span) = si.and_then(|i| i.invoke_spans.get(k))
+                {
+                    edges.push((inv.src.as_str(), span));
+                }
             }
             // A spawn in the `entry` of a state entered without waiting, or in a transition
             // taken without waiting, starts its machine without waiting too; so does one in
@@ -738,9 +739,10 @@ fn warnings(
                 .with_help("nothing leaves it or a state containing it; add a transition, or make it a `final state`"),
             );
         }
-        if options.warn_invoke_timeout
-            && let (Some(inv), Some(span)) = (&s.invoke, si.invoke_span)
-        {
+        for (inv, &span) in s.invokes.iter().zip(&si.invoke_spans) {
+            if !options.warn_invoke_timeout {
+                break;
+            }
             let timed = std::iter::once(id).chain(tree.ancestors(id)).any(|a| {
                 tree.states[a]
                     .transitions

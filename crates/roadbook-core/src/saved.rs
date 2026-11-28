@@ -387,7 +387,7 @@ impl Program {
         }
         // Invokes.
         let mut ids = HashSet::new();
-        let mut states = HashSet::new();
+        let mut invokes = HashSet::new();
         for inv in &s.invokes {
             let i = idx.by_id.get(&inv.state).copied().filter(|&i| is_active(i));
             let Some(i) = i else {
@@ -396,14 +396,35 @@ impl Program {
                     inv.id
                 ));
             };
-            if idx.state(m, i).invoke.as_ref().map(|v| v.callee()) != Some(inv.src.clone()) {
+            let state = idx.state(m, i);
+            let invoke = match (&inv.alias, state.has_several_invokes()) {
+                (Some(a), true) => state.invoke_named(Some(a)),
+                (None, false) => state.invokes.first(),
+                (Some(a), false) => {
+                    return Err(format!(
+                        "invoke {} has `as` `{a}`, but the state `{}` has at most one invoke",
+                        inv.id, inv.state
+                    ));
+                }
+                (None, true) => {
+                    return Err(format!(
+                        "invoke {} has no `as`, but the state `{}` has several invokes",
+                        inv.id, inv.state
+                    ));
+                }
+            };
+            if invoke.map(|v| v.callee()) != Some(inv.src.clone()) {
+                let named = inv
+                    .alias
+                    .as_ref()
+                    .map_or(String::new(), |a| format!(" as `{a}`"));
                 return Err(format!(
-                    "the state `{}` has no invoke of `{}`",
+                    "the state `{}` has no invoke of `{}`{named}",
                     inv.state, inv.src
                 ));
             }
-            if !states.insert(&inv.state) {
-                return Err(format!("the state `{}` has two invokes", inv.state));
+            if !invokes.insert((&inv.state, &inv.alias)) {
+                return Err(format!("the state `{}` runs one invoke twice", inv.state));
             }
             if !ids.insert(inv.id) || inv.id >= s.next_invoke {
                 return Err(format!(
@@ -864,6 +885,9 @@ fn schema_at(v: &Value, nested: bool) -> Result<(), String> {
     for inv in o["invokes"].as_array().ok_or("`invokes` is not an array")? {
         let mut inv = inv.as_object().ok_or("an invoke is not an object")?.clone();
         child(&mut inv, "an invoke")?;
+        if let Some(a) = inv.remove("as") {
+            string(&a, "an invoke's as", lower_name)?;
+        }
         exactly(&inv, &["id", "state", "src"], "an invoke")?;
         natural(&inv["id"], "an invoke's id", 1)?;
         string(&inv["state"], "an invoke's state", state_id)?;

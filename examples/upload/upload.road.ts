@@ -70,7 +70,7 @@ export interface UploadDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/upload/upload.road",
@@ -393,37 +393,39 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "sendChunk",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "file"
-                  ],
-                  "type": "File",
-                  "text": "file"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "offset"
-                  ],
-                  "type": "int",
-                  "text": "offset"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "sendChunk",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "file"
+                    ],
+                    "type": "File",
+                    "text": "file"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "offset"
+                    ],
+                    "type": "int",
+                    "text": "offset"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 40,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 37,
-                "col": 5,
-                "endLine": 40,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
@@ -469,7 +471,8 @@ const ir: unknown = {
               },
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 1,
                 "guard": null,
@@ -540,6 +543,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "UploadFailed"
                 },
                 "group": 2,
@@ -610,7 +614,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -652,33 +656,36 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "finishUpload",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "file"
-                  ],
-                  "type": "File",
-                  "text": "file"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "finishUpload",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "file"
+                    ],
+                    "type": "File",
+                    "text": "file"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 48,
+                  "col": 5,
+                  "endLine": 51,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 48,
-                "col": 5,
-                "endLine": 51,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -711,6 +718,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "UploadFailed"
                 },
                 "group": 1,
@@ -761,7 +769,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -789,7 +797,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -804,7 +812,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

@@ -24,7 +24,7 @@ fn the_calls_chart_matches_the_schema_and_round_trips() {
     bad["machines"]["Inventory"]["calls"]["reserve"]["errors"] = serde_json::json!(["Unanswered"]);
     assert!(!v.is_valid(&bad));
     let mut bad = doc.clone();
-    bad["machines"]["Order"]["root"]["states"][0]["invoke"]["to"] = Value::Null;
+    bad["machines"]["Order"]["root"]["states"][0]["invokes"][0]["to"] = Value::Null;
     assert!(!v.is_valid(&bad));
     let mut bad = doc;
     bad["machines"]["Inventory"]
@@ -45,7 +45,7 @@ fn the_ir_holds_calls_invokes_and_replies() {
         Trigger::Call { call } if call == "count"
     ));
     let order = &ir.machines["Order"].root.states[0];
-    let invoke = order.invoke.as_ref().unwrap();
+    let invoke = &order.invokes[0];
     assert_eq!(invoke.kind, InvokeKind::Call);
     assert_eq!(invoke.callee(), "inventory.reserve");
     assert_eq!(

@@ -116,6 +116,30 @@ fn export_scxml_snapshots_tasks_that_emit() {
     }
 }
 
+/// Several invokes in a state: an `<invoke>` each, with ids `<state>_invoke_<as>`, and outcomes
+/// and sends by those ids.
+#[test]
+fn export_scxml_snapshots_several_invokes() {
+    for (machine, snapshot) in [
+        ("Watch", "invokes_watch_scxml"),
+        ("Twins", "invokes_twins_scxml"),
+    ] {
+        let out = roadbook(
+            &repo(),
+            &[
+                "export",
+                "scxml",
+                "spec/conformance/charts/invokes.road",
+                "--machine",
+                machine,
+            ],
+        );
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        let doc = text(&out.stdout);
+        insta::assert_snapshot!(snapshot, doc);
+    }
+}
+
 /// An immediate raise is `<raise>`, or a `<send target="#_internal">` with the event's fields; a
 /// delayed one is a `<send>` with no target and a `delayexpr`, preceded, when it is named, by a
 /// `<cancel sendid>` and carrying that `id`; `cancel` is `<cancel sendid>`.

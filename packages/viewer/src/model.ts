@@ -225,7 +225,14 @@ export function triggerKind(trigger: Trigger): EdgeKind {
  * `after 30s`, `always`, `done`, `fail CardDeclined`, `sessions.done`, `sessions.fail Lost`,
  * `inventory.ended`.
  */
-export function triggerText(trigger: Trigger): string {
+/**
+ * The trigger as the viewer labels it. In `state` with several invokes, an outcome names its
+ * invoke: `sync: done`, `beat: fail Lost` (`trigger_text` in the compiler's statespace).
+ */
+export function triggerText(trigger: Trigger, state?: State): string {
+  if ((trigger.kind === 'invoke.done' || trigger.kind === 'invoke.fail') && trigger.as !== null && state && state.invokes.length > 1) {
+    return `${trigger.as}: ${triggerText(trigger)}`
+  }
   switch (trigger.kind) {
     case 'event':
       return trigger.event
@@ -257,7 +264,7 @@ export function triggerText(trigger: Trigger): string {
  * The trigger as written in source: `on Cancel`, `on upload.Progress`, `on reserve`, `on *`,
  * `after 30s`, `done`, `fail E`, `on sessions.done`, `on sessions.fail E`, `on inventory.ended`.
  */
-export function triggerSource(trigger: Trigger): string {
+export function triggerSource(trigger: Trigger, state?: State): string {
   const on =
     trigger.kind === 'event' ||
     trigger.kind === 'emitted' ||
@@ -265,7 +272,21 @@ export function triggerSource(trigger: Trigger): string {
     trigger.kind === 'spawn.done' ||
     trigger.kind === 'spawn.fail' ||
     trigger.kind === 'ended'
-  return on ? `on ${triggerText(trigger)}` : triggerText(trigger)
+  return on ? `on ${triggerText(trigger)}` : triggerText(trigger, state)
+}
+
+/**
+ * The invoke of `state` a snapshot entry or an `invoke.started` record names: by its `as`, or
+ * the state's one invoke when it has none.
+ */
+export function invokeNamed(state: State | null | undefined, as: string | undefined): Invoke | undefined {
+  if (!state) return undefined
+  return as === undefined ? state.invokes[0] : state.invokes.find((i) => i.as === as)
+}
+
+/** The outcomes of `inv`, one of `state`'s invokes. */
+export function isOutcomeOf(t: Transition, inv: Invoke): boolean {
+  return (t.trigger.kind === 'invoke.done' || t.trigger.kind === 'invoke.fail') && t.trigger.as === inv.as
 }
 
 /** `[guard]` for a guarded branch, `[else]` for the unguarded last branch of a block, `""` otherwise. */
@@ -298,7 +319,7 @@ export interface LabelLine {
 export function transitionLines(state: State, index: number): LabelLine[] {
   const t = state.transitions[index]
   if (!t) return []
-  const head = triggerText(t.trigger)
+  const head = triggerText(t.trigger, state)
   const guard = guardText(state, index)
   const split = state.transitions.some((o, i) => {
     const g = o.group === t.group ? guardText(state, i) : ''
@@ -410,8 +431,7 @@ export function stateRows(state: State, collapsed = false): Row[] {
     })
   }
   const effectExtra = (e: Effect): Partial<Row> => effectLink(machine, e)
-  if (state.invoke) {
-    const inv = state.invoke
+  for (const inv of state.invokes) {
     if (inv.kind === 'machine') {
       const text = `machine ${invokeText(inv)}`
       // A machine invoke is a pill on its first line; its `as` name ends it when it fits there.
@@ -492,7 +512,7 @@ export function ancestorIds(id: string): string[] {
 /** The machine root is drawn as a frame only when it carries something of its own. */
 export function rootIsVisible(machine: Machine): boolean {
   const r = machine.root
-  return r.transitions.length > 0 || r.entry.length > 0 || r.exit.length > 0 || r.invoke !== null
+  return r.transitions.length > 0 || r.entry.length > 0 || r.exit.length > 0 || r.invokes.length > 0
 }
 
 export function paramsText(params: Field[]): string {
@@ -558,7 +578,7 @@ export function typeNamesOf(ref: string): string[] {
 export function invokedMachines(machine: Machine): string[] {
   const out: string[] = []
   walkStates(machine.root, (s) => {
-    if (s.invoke && s.invoke.kind === 'machine' && !out.includes(s.invoke.src)) out.push(s.invoke.src)
+    for (const inv of s.invokes) if (inv.kind === 'machine' && !out.includes(inv.src)) out.push(inv.src)
   })
   return out
 }
@@ -651,8 +671,10 @@ export function messageSites(machineName: string, machine: Machine): MessageSite
     }
   }
   walkStates(machine.root, (s) => {
-    const call = s.invoke && invokeCall(s.invoke)
-    if (call) out.push({ dir: 'call', state: s.id, at: 'invoke', address: s.invoke!.to, event: call })
+    for (const inv of s.invokes) {
+      const call = invokeCall(inv)
+      if (call) out.push({ dir: 'call', state: s.id, at: 'invoke', address: inv.to, event: call })
+    }
     effects(s.id, 'entry', s.entry)
     effects(s.id, 'exit', s.exit)
     s.transitions.forEach((t, i) => {
@@ -731,7 +753,7 @@ export function talks(ir: Ir, machineName: string): Talks {
   const ends: { machine: string; values: string[] }[] = []
   if (m) {
     walkStates(m.root, (s) => {
-      if (s.invoke && s.invoke.kind === 'machine') invokes.push({ machine: s.invoke.src, as: s.invoke.as, state: s.id })
+      for (const inv of s.invokes) if (inv.kind === 'machine') invokes.push({ machine: inv.src, as: inv.as, state: s.id })
     })
     for (const [name, c] of Object.entries(m.children)) group(c.kind === 'task' ? spawnsTasks : spawns, c.src, name)
     for (const v of [...m.params, ...m.vars]) {

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/cancel.road",
@@ -104,24 +104,27 @@
                 ]
               }
             ],
-            "invoke": {
-              "kind": "machine",
-              "src": "Child",
-              "to": null,
-              "as": null,
-              "args": [],
-              "span": {
-                "file": 0,
-                "line": 17,
-                "col": 5,
-                "endLine": 19,
-                "endCol": 6
+            "invokes": [
+              {
+                "kind": "machine",
+                "src": "Child",
+                "to": null,
+                "as": null,
+                "args": [],
+                "span": {
+                  "file": 0,
+                  "line": 17,
+                  "col": 5,
+                  "endLine": 19,
+                  "endCol": 6
+                }
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -191,7 +194,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -212,7 +215,7 @@
             ]
           }
         ],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -295,7 +298,7 @@
                     ]
                   }
                 ],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -342,7 +345,7 @@
                 ]
               }
             ],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -363,7 +366,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -384,7 +387,7 @@
             ]
           }
         ],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

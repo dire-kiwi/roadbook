@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/orders.road",
@@ -447,7 +447,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -536,49 +536,52 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "reserveStock",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "warehouse"
-                  ],
-                  "type": "string",
-                  "text": "warehouse"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "orderId"
-                  ],
-                  "type": "string",
-                  "text": "orderId"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "items"
-                  ],
-                  "type": "Item[]",
-                  "text": "items"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "reserveStock",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "warehouse"
+                    ],
+                    "type": "string",
+                    "text": "warehouse"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "orderId"
+                    ],
+                    "type": "string",
+                    "text": "orderId"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "items"
+                    ],
+                    "type": "Item[]",
+                    "text": "items"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 58,
+                  "col": 5,
+                  "endLine": 61,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 58,
-                "col": 5,
-                "endLine": 61,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -621,6 +624,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "OutOfStock"
                 },
                 "group": 1,
@@ -744,7 +748,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -752,7 +756,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [
           {
             "trigger": {
@@ -995,7 +999,7 @@
               }
             ],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1187,41 +1191,44 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "charge",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "id"
-                  ],
-                  "type": "string",
-                  "text": "id"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "draft"
-                  ],
-                  "type": "OrderDraft",
-                  "text": "draft"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "charge",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "id"
+                    ],
+                    "type": "string",
+                    "text": "id"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "draft"
+                    ],
+                    "type": "OrderDraft",
+                    "text": "draft"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 83,
+                  "col": 5,
+                  "endLine": 86,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 83,
-                "col": 5,
-                "endLine": 86,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -1254,6 +1261,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "PaymentDeclined"
                 },
                 "group": 1,
@@ -1321,7 +1329,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -1349,7 +1357,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -1377,7 +1385,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -1390,7 +1398,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -1489,7 +1497,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1592,7 +1600,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -1600,7 +1608,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

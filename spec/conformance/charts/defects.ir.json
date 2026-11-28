@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/defects.road",
@@ -186,7 +186,7 @@
               }
             ],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -248,24 +248,27 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "load",
-              "to": null,
-              "as": null,
-              "args": [],
-              "span": {
-                "file": 0,
-                "line": 30,
-                "col": 5,
-                "endLine": 36,
-                "endCol": 6
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "load",
+                "to": null,
+                "as": null,
+                "args": [],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 36,
+                  "endCol": 6
+                }
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": {
@@ -307,7 +310,8 @@
               },
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -369,24 +373,27 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "machine",
-              "src": "Sub",
-              "to": null,
-              "as": null,
-              "args": [],
-              "span": {
-                "file": 0,
-                "line": 41,
-                "col": 5,
-                "endLine": 44,
-                "endCol": 6
+            "invokes": [
+              {
+                "kind": "machine",
+                "src": "Sub",
+                "to": null,
+                "as": null,
+                "args": [],
+                "span": {
+                  "file": 0,
+                  "line": 41,
+                  "col": 5,
+                  "endLine": 44,
+                  "endCol": 6
+                }
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -406,6 +413,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "Nope"
                 },
                 "group": 1,
@@ -443,7 +451,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "lit",
@@ -456,7 +464,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -514,7 +522,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "lit",
@@ -527,7 +535,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/vault.road",
@@ -516,41 +516,44 @@
               }
             ],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "signIn",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "login"
-                  ],
-                  "type": "Login",
-                  "text": "login"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "current"
-                  ],
-                  "type": "int",
-                  "text": "current"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "signIn",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "login"
+                    ],
+                    "type": "Login",
+                    "text": "login"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "current"
+                    ],
+                    "type": "int",
+                    "text": "current"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 40,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 37,
-                "col": 5,
-                "endLine": 40,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -583,6 +586,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "Locked"
                 },
                 "group": 1,
@@ -633,7 +637,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -787,33 +791,36 @@
               }
             ],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "loadProfile",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "session"
-                  ],
-                  "type": "Session",
-                  "text": "session"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "loadProfile",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "session"
+                    ],
+                    "type": "Session",
+                    "text": "session"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 51,
+                  "col": 5,
+                  "endLine": 53,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 51,
-                "col": 5,
-                "endLine": 53,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -883,7 +890,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -911,7 +918,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -926,7 +933,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

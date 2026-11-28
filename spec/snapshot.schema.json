@@ -76,6 +76,11 @@
             "type": "string",
             "pattern": "^([A-Za-z][A-Za-z0-9]*|[a-z][A-Za-z0-9]*\\.[a-z][A-Za-z0-9]*)$"
           },
+          "as": {
+            "description": "The as of the invoke it runs. Present exactly when its state has several invokes.",
+            "type": "string",
+            "pattern": "^[a-z][A-Za-z0-9]*$"
+          },
           "child": { "$ref": "#/$defs/child" }
         }
       }

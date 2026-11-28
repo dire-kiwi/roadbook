@@ -54,6 +54,7 @@ const SUPPORTED: &[&str] = &[
     "ended",
     "task-emits",
     "raise",
+    "invokes",
 ];
 
 // ---- the executor ------------------------------------------------------------------------
@@ -200,6 +201,8 @@ struct Scripted {
     run: String,
     invoke: u64,
     src: String,
+    /// The invoke's `as`.
+    alias: Option<String>,
     slot: Arc<Slot>,
     /// What the driver gave it to emit through: an `emit` step emits through it, so that the
     /// driver's filter applies.
@@ -243,7 +246,12 @@ impl Registry {
         let mut invokes = self.invokes.lock().unwrap();
         let mut found: Vec<(&mut Scripted, Option<Value>)> = invokes
             .iter_mut()
-            .filter(|s| !s.resolved && s.src == task && t.run.as_deref().is_none_or(|r| r == s.run))
+            .filter(|s| {
+                !s.resolved
+                    && s.src == task
+                    && t.run.as_deref().is_none_or(|r| r == s.run)
+                    && t.alias.as_ref().is_none_or(|a| s.alias.as_ref() == Some(a))
+            })
             .map(|s| {
                 let key = spawned(&s.run, s.invoke);
                 (s, key)
@@ -270,7 +278,7 @@ impl Registry {
             }
             0 => Err(format!("no running scripted invoke of `{task}`")),
             n => Err(format!(
-                "{n} running scripted invokes of `{task}`; name a run or a key"
+                "{n} running scripted invokes of `{task}`; name a run, a key or an `as`"
             )),
         }
     }
@@ -389,6 +397,7 @@ impl Host for CaseHost<'_> {
                 run: call.run.clone(),
                 invoke: call.invoke,
                 src: call.src.clone(),
+                alias: call.alias.clone(),
                 slot: slot.clone(),
                 emitter: call.emitter.clone(),
                 resolved: false,

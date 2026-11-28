@@ -1,0 +1,27 @@
+{
+  "description": "Two child machines of one state, `left` (r1.1) and `right` (r1.2). Go sends Poke to `left` alone, and its Poked is taken by `on left.Poked`, not `on right.Poked`. Next makes `left` quit; its `done` has no target and sends Poke to `right`, which is still running. `right`'s Poked leaves the state, which cancels `right`.",
+  "requires": [
+    "messaging",
+    "task-emits",
+    "invokes"
+  ],
+  "chart": "charts/invokes.road",
+  "machine": "Twins",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Next"
+      }
+    }
+  ],
+  "status": "done"
+}

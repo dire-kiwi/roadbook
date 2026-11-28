@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/catalog.road",
@@ -168,7 +168,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -234,7 +234,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -331,46 +331,49 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "call",
-              "src": "search",
-              "to": {
-                "kind": "ref",
-                "name": "catalog",
-                "machine": "Catalog",
-                "state": null
-              },
-              "as": null,
-              "args": [
-                {
+            "invokes": [
+              {
+                "kind": "call",
+                "src": "search",
+                "to": {
                   "kind": "ref",
-                  "path": [
-                    "stock"
-                  ],
-                  "type": "map<string, int>",
-                  "text": "stock"
+                  "name": "catalog",
+                  "machine": "Catalog",
+                  "state": null
                 },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "wanted"
-                  ],
-                  "type": "Page<Item>",
-                  "text": "wanted"
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "stock"
+                    ],
+                    "type": "map<string, int>",
+                    "text": "stock"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "wanted"
+                    ],
+                    "type": "Page<Item>",
+                    "text": "wanted"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 33,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 30,
-                "col": 5,
-                "endLine": 33,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -403,6 +406,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "Unanswered"
                 },
                 "group": 1,
@@ -440,7 +444,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -455,7 +459,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

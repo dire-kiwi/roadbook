@@ -1,0 +1,37 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0108]: `x` is already a parameter of `M`
+  --> RB0108-invoke-names-namespace.road:18:21
+   |
+18 |     invoke one() as x
+   |                     ^
+   |
+   = help: an `as` name shares the machine's names with its parameters and variables; choose another
+
+error[RB0108]: `y` is already a variable of `M`
+  --> RB0108-invoke-names-namespace.road:19:21
+   |
+19 |     invoke two() as y
+   |                     ^
+   |
+   = help: an `as` name shares the machine's names with its parameters and variables; choose another
+
+error[RB0108]: `kids` is already a children collection of `M`
+  --> RB0108-invoke-names-namespace.road:20:21
+   |
+20 |     invoke one() as kids
+   |                     ^^^^
+   |
+   = help: an `as` name shares the machine's names with its collections; choose another
+
+error[RB0108]: `kid` already names the machine invoked by `N.A`, which contains this state
+  --> RB0108-invoke-names-namespace.road:30:23
+   |
+27 |     invoke Kid() as kid
+   |                     --- named here
+...
+30 |       invoke Kid() as kid
+   |                       ^^^
+   |
+   = help: choose another name: both invokes run at once here

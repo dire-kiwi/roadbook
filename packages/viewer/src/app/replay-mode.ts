@@ -104,7 +104,7 @@ export function replayMode(host: Host, el: HTMLElement, embedded: { name: string
       if (view.taken) {
         const st = findState(m, view.taken.state)
         const tr = st?.transitions[view.taken.index]
-        h += `<h3>Last transition</h3><p><button class="rb-link rb-mono" type="button" data-m-transition="${esc(JSON.stringify([view.taken.state, view.taken.index]))}">${esc(stateName(view.taken.state) || view.taken.state)}: ${esc(tr ? triggerText(tr.trigger) : `#${view.taken.index}`)}${tr?.targets.length ? ` → ${esc(tr.targets.map(stateName).join(', '))}` : ''}</button></p>`
+        h += `<h3>Last transition</h3><p><button class="rb-link rb-mono" type="button" data-m-transition="${esc(JSON.stringify([view.taken.state, view.taken.index]))}">${esc(stateName(view.taken.state) || view.taken.state)}: ${esc(tr ? triggerText(tr.trigger, st ?? undefined) : `#${view.taken.index}`)}${tr?.targets.length ? ` → ${esc(tr.targets.map(stateName).join(', '))}` : ''}</button></p>`
       }
       const childRun = (id: number) => (replay!.runs.some((x) => x.id === `${run}.${id}`) ? `child run ${esc(`${run}.${id}`)}` : '')
       if (view.invokes.length || view.spawned.length || view.timers.length || view.scheduled.length) {

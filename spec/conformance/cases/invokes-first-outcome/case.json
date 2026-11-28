@@ -1,0 +1,24 @@
+{
+  "description": "`files` ends `done`: its outcome is the `done` of `files`, which leaves the state. Its own invoke is consumed; the child state's invoke and the state's other two, `beat` and `extra`, are cancelled in that order, then the timer.",
+  "requires": [
+    "messaging",
+    "task-emits",
+    "invokes"
+  ],
+  "chart": "charts/invokes.road",
+  "machine": "Watch",
+  "input": {
+    "server": "s",
+    "folder": "f"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "copy",
+      "done": 7
+    }
+  ],
+  "status": "done"
+}

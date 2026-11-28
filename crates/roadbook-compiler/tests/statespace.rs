@@ -101,7 +101,7 @@ fn every_conformance_run_is_a_path_of_its_graph() {
                 statespace::explore(&ir, &ir.machines[machine], statespace::DEFAULT_MAX_NODES)
                     .unwrap_or_else(|e| panic!("{name}: {machine}: {e}"))
             });
-            let mut replay = Replay::new(g);
+            let mut replay = Replay::new(g, &ir.machines[machine]);
             match replay.run(records) {
                 Ok(()) => {
                     runs += 1;
@@ -152,7 +152,10 @@ struct Replay<'g> {
     input: Option<Input>,
     /// The run has started to exit everything: it is finishing or cancelled.
     ending: bool,
-    invokes: HashMap<u64, StateIndex>,
+    /// By invoke id: the state and the invoke's position among the state's invokes.
+    invokes: HashMap<u64, (StateIndex, usize)>,
+    /// By state id, the `as` names of its invokes.
+    aliases: HashMap<String, Vec<Option<String>>>,
     timers: HashMap<u64, (StateIndex, usize)>,
     /// The delayed raises started, by timer id: their names and events.
     raises: HashMap<u64, (Option<String>, String)>,
@@ -163,8 +166,18 @@ struct Replay<'g> {
 }
 
 impl<'g> Replay<'g> {
-    fn new(g: &'g Graph) -> Replay<'g> {
+    fn new(g: &'g Graph, machine: &roadbook_ir::Machine) -> Replay<'g> {
+        fn walk(s: &roadbook_ir::State, out: &mut HashMap<String, Vec<Option<String>>>) {
+            out.insert(
+                s.id.clone(),
+                s.invokes.iter().map(|i| i.alias.clone()).collect(),
+            );
+            s.states.iter().for_each(|c| walk(c, out));
+        }
+        let mut aliases = HashMap::new();
+        walk(&machine.root, &mut aliases);
         Replay {
+            aliases,
             g,
             current: BTreeSet::new(),
             active: BTreeSet::new(),
@@ -182,6 +195,21 @@ impl<'g> Replay<'g> {
             holders: HashMap::new(),
             microsteps: 0,
         }
+    }
+
+    /// The state and position of the invoke an `invoke.started` record or a snapshot entry
+    /// names: by its `as` when it has one, else the state's one invoke.
+    fn invoke_of(&self, r: &Value) -> Result<(StateIndex, usize), String> {
+        let s = self.state(&r["state"])?;
+        let k = match r["as"].as_str() {
+            Some(a) => self
+                .aliases
+                .get(r["state"].as_str().unwrap_or(""))
+                .and_then(|names| names.iter().position(|n| n.as_deref() == Some(a)))
+                .ok_or_else(|| format!("no invoke {a} in {}", r["state"]))?,
+            None => 0,
+        };
+        Ok((s, k))
     }
 
     fn state(&self, id: &Value) -> Result<StateIndex, String> {
@@ -272,8 +300,8 @@ impl<'g> Replay<'g> {
                     }
                 }
                 "invoke.started" => {
-                    let s = self.state(&r["state"])?;
-                    self.invokes.insert(r["invoke"].as_u64().unwrap(), s);
+                    let at = self.invoke_of(r)?;
+                    self.invokes.insert(r["invoke"].as_u64().unwrap(), at);
                 }
                 "timer.started" => {
                     let s = self.state(&r["state"])?;
@@ -364,8 +392,8 @@ impl<'g> Replay<'g> {
                 .insert(sc["id"].as_u64().unwrap(), (name, event));
         }
         for inv in list("invokes") {
-            let s = self.state(&inv["state"])?;
-            self.invokes.insert(inv["id"].as_u64().unwrap(), s);
+            let at = self.invoke_of(&inv)?;
+            self.invokes.insert(inv["id"].as_u64().unwrap(), at);
         }
         for ch in list("spawned") {
             let c = ch["children"].as_str().unwrap().to_string();
@@ -393,7 +421,7 @@ impl<'g> Replay<'g> {
     fn input_of(&self, event: &Value) -> Result<Input, String> {
         let tag = || event["value"]["_tag"].as_str().unwrap_or("").to_string();
         let error = || event["error"]["_tag"].as_str().unwrap_or("").to_string();
-        let invoke = |key: &str| -> Result<StateIndex, String> {
+        let invoke = |key: &str| -> Result<(StateIndex, usize), String> {
             let id = event[key].as_u64().unwrap();
             self.invokes
                 .get(&id)
@@ -411,13 +439,18 @@ impl<'g> Replay<'g> {
             "event" | "message" => Input::Event(tag()),
             // A call from another run, taken among the `on c` transitions.
             "call" => Input::Call(event["call"].as_str().unwrap_or("").to_string()),
-            "invoke.done" => Input::InvokeDone {
-                state: invoke("invoke")?,
-            },
-            "invoke.fail" => Input::InvokeFail {
-                state: invoke("invoke")?,
-                error: error(),
-            },
+            "invoke.done" => {
+                let (state, invoke) = invoke("invoke")?;
+                Input::InvokeDone { state, invoke }
+            }
+            "invoke.fail" => {
+                let (state, invoke) = invoke("invoke")?;
+                Input::InvokeFail {
+                    state,
+                    invoke,
+                    error: error(),
+                }
+            }
             "after" => {
                 let id = event["timer"].as_u64().unwrap();
                 match (self.timers.get(&id), self.raises.get(&id)) {
@@ -468,7 +501,7 @@ impl<'g> Replay<'g> {
                         Sender::Refs(names)
                     }
                     Some(id) => match (self.invokes.get(&id), self.spawns.get(&id)) {
-                        (Some(&s), _) => Sender::Child(s),
+                        (Some(&(s, k)), _) => Sender::Child(s, k),
                         (_, Some(c)) => Sender::Children(c.clone()),
                         _ => return Err(format!("no invoke or spawn {id}")),
                     },

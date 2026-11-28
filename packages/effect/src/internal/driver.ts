@@ -858,7 +858,11 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             return Queue.offer(queue, input)
           }),
           Effect.provideService(CurrentInvoke, context),
-          Effect.annotateLogs("roadbook.invoke", command.invoke)
+          Effect.annotateLogs(
+            command.as === null
+              ? { "roadbook.invoke": command.invoke }
+              : { "roadbook.invoke": command.invoke, "roadbook.as": command.as }
+          )
         )
         return Effect.map(Effect.forkDetach(fiber, { startImmediately: true }), (forked) => {
           invokes.set(command.invoke, forked)

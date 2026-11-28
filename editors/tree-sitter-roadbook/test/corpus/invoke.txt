@@ -265,3 +265,57 @@ machine M() {
             (done_transition
               (target
                 (type_identifier)))))))))
+
+================================================================================
+Several invokes in a state, each named with as
+================================================================================
+
+machine M() {
+  state Watching {
+    invoke heartbeat(server) as beat {
+      fail Lost -> Offline
+    }
+    invoke syncFiles(folder) as sync {
+      done   -> Synced
+      fail * -> Failed
+    }
+    invoke ticks(1s) as clock
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (invoke
+            (identifier)
+            (arguments
+              (identifier))
+            (identifier)
+            (fail_transition
+              (type_identifier)
+              (target
+                (type_identifier))))
+          (invoke
+            (identifier)
+            (arguments
+              (identifier))
+            (identifier)
+            (done_transition
+              (target
+                (type_identifier)))
+            (fail_transition
+              (wildcard)
+              (target
+                (type_identifier))))
+          (invoke
+            (identifier)
+            (arguments
+              (duration))
+            (identifier)))))))

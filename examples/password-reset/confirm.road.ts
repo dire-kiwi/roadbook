@@ -77,7 +77,7 @@ export interface ConfirmPasswordResetDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/password-reset/confirm.road",
@@ -521,33 +521,36 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "findResetToken",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "token"
-                      ],
-                      "type": "string",
-                      "text": "token"
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "findResetToken",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "token"
+                        ],
+                        "type": "string",
+                        "text": "token"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 26,
+                      "col": 7,
+                      "endLine": 30,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 26,
-                    "col": 7,
-                    "endLine": 30,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -580,6 +583,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "TokenNotFound"
                     },
                     "group": 1,
@@ -600,6 +604,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "TokenExpired"
                     },
                     "group": 2,
@@ -658,7 +663,7 @@ const ir: unknown = {
                   }
                 ],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -733,33 +738,36 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "hashPassword",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "newPassword"
-                      ],
-                      "type": "string",
-                      "text": "newPassword"
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "hashPassword",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "newPassword"
+                        ],
+                        "type": "string",
+                        "text": "newPassword"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 43,
+                      "col": 7,
+                      "endLine": 45,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 43,
-                    "col": 7,
-                    "endLine": 45,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -809,42 +817,45 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "updatePassword",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "reset",
-                        "userId"
-                      ],
-                      "type": "UserId",
-                      "text": "reset.userId"
-                    },
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "hash"
-                      ],
-                      "type": "string",
-                      "text": "hash"
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "updatePassword",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "reset",
+                          "userId"
+                        ],
+                        "type": "UserId",
+                        "text": "reset.userId"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "hash"
+                        ],
+                        "type": "string",
+                        "text": "hash"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 50,
+                      "col": 7,
+                      "endLine": 53,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 50,
-                    "col": 7,
-                    "endLine": 53,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -864,6 +875,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "UserGone"
                     },
                     "group": 1,
@@ -932,7 +944,7 @@ const ir: unknown = {
                   }
                 ],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -960,7 +972,7 @@ const ir: unknown = {
             ],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1007,7 +1019,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1034,7 +1046,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1074,7 +1086,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1114,7 +1126,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1150,7 +1162,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1190,7 +1202,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1217,7 +1229,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

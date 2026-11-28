@@ -5,6 +5,11 @@ import type { Duration } from "effect"
 import * as Roadbook from "@dire-kiwi/roadbook-effect"
 import { File, UploadFailed, Url } from "./upload.road.js"
 
+// ---- types ----
+
+/** The user's session ended while the file was being stored. */
+export class SessionEnded extends Schema.TaggedError<SessionEnded>()("SessionEnded", {}) {}
+
 // ---- task: storeFile ----
 
 export const Progress = Schema.TaggedStruct("Progress", { percent: Schema.Int })
@@ -27,7 +32,7 @@ export interface AttachDef extends Roadbook.MachineDef {
   readonly name: "Attach"
   readonly input: { readonly file: File }
   readonly output: Url
-  readonly error: UploadFailed
+  readonly error: UploadFailed | SessionEnded
   readonly event: Confirm
   readonly emits: never
   readonly state:
@@ -36,6 +41,7 @@ export interface AttachDef extends Roadbook.MachineDef {
     | "Attach.Confirming"
     | "Attach.Attached"
     | "Attach.Failed"
+    | "Attach.SignedOut"
   readonly fns: {}
   readonly actions: {
     readonly showProgress: { readonly percent: number }
@@ -49,6 +55,7 @@ export interface AttachDef extends Roadbook.MachineDef {
       readonly error: UploadFailed
       readonly emits: Progress | Retrying
     }
+    readonly keepAlive: { readonly args: {}; readonly success: void; readonly error: SessionEnded }
     readonly ticks: {
       readonly args: { readonly every: Duration.Duration }
       readonly success: void
@@ -60,7 +67,7 @@ export interface AttachDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/upload/attach.road",
@@ -72,6 +79,18 @@ const ir: unknown = {
     }
   ],
   "types": {
+    "SessionEnded": {
+      "kind": "error",
+      "fields": [],
+      "doc": "The user's session ended while the file was being stored.",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 19
+      }
+    },
     "File": {
       "kind": "record",
       "params": [],
@@ -196,9 +215,9 @@ const ir: unknown = {
       "doc": "Show how much of the attachment is stored.",
       "span": {
         "file": 0,
-        "line": 13,
+        "line": 19,
         "col": 1,
-        "endLine": 13,
+        "endLine": 19,
         "endCol": 34
       }
     },
@@ -214,9 +233,9 @@ const ir: unknown = {
       "doc": "Say that the storage service is being asked again.",
       "span": {
         "file": 0,
-        "line": 16,
+        "line": 22,
         "col": 1,
-        "endLine": 16,
+        "endLine": 22,
         "endCol": 34
       }
     },
@@ -232,9 +251,9 @@ const ir: unknown = {
       "doc": "Show how long the user has been asked to confirm.",
       "span": {
         "file": 0,
-        "line": 19,
+        "line": 25,
         "col": 1,
-        "endLine": 19,
+        "endLine": 25,
         "endCol": 33
       }
     },
@@ -256,9 +275,9 @@ const ir: unknown = {
       "doc": "Show how far one of several files has got.",
       "span": {
         "file": 0,
-        "line": 22,
+        "line": 28,
         "col": 1,
-        "endLine": 22,
+        "endLine": 28,
         "endCol": 52
       }
     }
@@ -324,6 +343,22 @@ const ir: unknown = {
         "endCol": 34
       }
     },
+    "keepAlive": {
+      "params": [],
+      "returns": null,
+      "errors": [
+        "SessionEnded"
+      ],
+      "emits": {},
+      "doc": "Keep the user's session alive for as long as it runs. Fails when the session ends.",
+      "span": {
+        "file": 0,
+        "line": 13,
+        "col": 1,
+        "endLine": 13,
+        "endCol": 32
+      }
+    },
     "ticks": {
       "params": [
         {
@@ -341,9 +376,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 10,
+            "line": 16,
             "col": 29,
-            "endLine": 10,
+            "endLine": 16,
             "endCol": 39
           }
         }
@@ -351,9 +386,9 @@ const ir: unknown = {
       "doc": "A tick every `every`, until the state that invokes it is left: a stream task.",
       "span": {
         "file": 0,
-        "line": 10,
+        "line": 16,
         "col": 1,
-        "endLine": 10,
+        "endLine": 16,
         "endCol": 39
       }
     },
@@ -415,9 +450,9 @@ const ir: unknown = {
       "doc": "Attach a file to a message: store it with a task that reports its progress, then wait for\nthe user to confirm, showing how long they have waited.",
       "span": {
         "file": 0,
-        "line": 26,
+        "line": 32,
         "col": 1,
-        "endLine": 54,
+        "endLine": 66,
         "endCol": 2
       },
       "strict": false,
@@ -431,7 +466,8 @@ const ir: unknown = {
       ],
       "returns": "Url",
       "errors": [
-        "UploadFailed"
+        "UploadFailed",
+        "SessionEnded"
       ],
       "vars": [
         {
@@ -442,9 +478,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 27,
+            "line": 33,
             "col": 3,
-            "endLine": 27,
+            "endLine": 33,
             "endCol": 19
           }
         },
@@ -456,9 +492,23 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 28,
+            "line": 34,
             "col": 3,
-            "endLine": 28,
+            "endLine": 34,
+            "endCol": 28
+          }
+        },
+        {
+          "name": "ended",
+          "type": "SessionEnded",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 35,
+            "col": 3,
+            "endLine": 35,
             "endCol": 28
           }
         },
@@ -475,9 +525,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 29,
+            "line": 36,
             "col": 3,
-            "endLine": 29,
+            "endLine": 36,
             "endCol": 23
           }
         }
@@ -488,9 +538,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 31,
+            "line": 38,
             "col": 3,
-            "endLine": 31,
+            "endLine": 38,
             "endCol": 16
           }
         }
@@ -506,9 +556,9 @@ const ir: unknown = {
         "doc": "Attach a file to a message: store it with a task that reports its progress, then wait for\nthe user to confirm, showing how long they have waited.",
         "span": {
           "file": 0,
-          "line": 26,
+          "line": 32,
           "col": 1,
-          "endLine": 54,
+          "endLine": 66,
           "endCol": 2
         },
         "initial": "Attach.Storing",
@@ -517,45 +567,62 @@ const ir: unknown = {
             "id": "Attach.Storing",
             "name": "Storing",
             "kind": "atomic",
-            "doc": "`store` names the task while it runs, so the state hears what it emits.",
+            "doc": "`store` names the task while it runs, so the state hears what it emits. Beside it,\n`session` keeps the user signed in: whichever ends the state first cancels the other.",
             "span": {
               "file": 0,
-              "line": 36,
+              "line": 44,
               "col": 3,
-              "endLine": 43,
+              "endLine": 54,
               "endCol": 4
             },
             "initial": null,
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "storeFile",
-              "to": null,
-              "as": "store",
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "file"
-                  ],
-                  "type": "File",
-                  "text": "file"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "storeFile",
+                "to": null,
+                "as": "store",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "file"
+                    ],
+                    "type": "File",
+                    "text": "file"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 45,
+                  "col": 5,
+                  "endLine": 48,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 37,
-                "col": 5,
-                "endLine": 40,
-                "endCol": 6
+              },
+              {
+                "kind": "task",
+                "src": "keepAlive",
+                "to": null,
+                "as": "session",
+                "args": [],
+                "span": {
+                  "file": 0,
+                  "line": 49,
+                  "col": 5,
+                  "endLine": 51,
+                  "endCol": 6
+                }
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": "store"
                 },
                 "group": 0,
                 "guard": null,
@@ -579,15 +646,16 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 38,
+                  "line": 46,
                   "col": 7,
-                  "endLine": 38,
+                  "endLine": 46,
                   "endCol": 56
                 }
               },
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": "store",
                   "error": "UploadFailed"
                 },
                 "group": 1,
@@ -612,10 +680,44 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 39,
+                  "line": 47,
                   "col": 7,
-                  "endLine": 39,
+                  "endLine": 47,
                   "endCol": 59
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "as": "session",
+                  "error": "SessionEnded"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [
+                  "Attach.SignedOut"
+                ],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "ended",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "error"
+                      ],
+                      "type": "SessionEnded",
+                      "text": "error"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 50,
+                  "col": 7,
+                  "endLine": 50,
+                  "endCol": 56
                 }
               },
               {
@@ -629,7 +731,7 @@ const ir: unknown = {
                   },
                   "event": "Progress"
                 },
-                "group": 2,
+                "group": 3,
                 "guard": null,
                 "targets": [],
                 "internal": false,
@@ -652,9 +754,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 41,
+                  "line": 52,
                   "col": 5,
-                  "endLine": 41,
+                  "endLine": 52,
                   "endCol": 53
                 }
               },
@@ -669,7 +771,7 @@ const ir: unknown = {
                   },
                   "event": "Retrying"
                 },
-                "group": 3,
+                "group": 4,
                 "guard": null,
                 "targets": [],
                 "internal": false,
@@ -692,9 +794,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 42,
+                  "line": 53,
                   "col": 5,
-                  "endLine": 42,
+                  "endLine": 53,
                   "endCol": 53
                 }
               }
@@ -709,36 +811,38 @@ const ir: unknown = {
             "doc": "The clock ticks until the user confirms: leaving the state stops it.",
             "span": {
               "file": 0,
-              "line": 46,
+              "line": 57,
               "col": 3,
-              "endLine": 50,
+              "endLine": 61,
               "endCol": 4
             },
             "initial": null,
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "ticks",
-              "to": null,
-              "as": "clock",
-              "args": [
-                {
-                  "kind": "lit",
-                  "value": 1000,
-                  "type": "duration",
-                  "text": "1s"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "ticks",
+                "to": null,
+                "as": "clock",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 58,
+                  "col": 5,
+                  "endLine": 58,
+                  "endCol": 30
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 47,
-                "col": 5,
-                "endLine": 47,
-                "endCol": 30
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
@@ -799,9 +903,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 48,
+                  "line": 59,
                   "col": 5,
-                  "endLine": 48,
+                  "endLine": 59,
                   "endCol": 79
                 }
               },
@@ -819,9 +923,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 49,
+                  "line": 60,
                   "col": 5,
-                  "endLine": 49,
+                  "endLine": 60,
                   "endCol": 30
                 }
               }
@@ -836,16 +940,16 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 52,
+              "line": 63,
               "col": 3,
-              "endLine": 52,
-              "endCol": 38
+              "endLine": 63,
+              "endCol": 39
             },
             "initial": null,
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -864,16 +968,16 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 53,
+              "line": 64,
               "col": 3,
-              "endLine": 53,
-              "endCol": 40
+              "endLine": 64,
+              "endCol": 41
             },
             "initial": null,
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -884,24 +988,52 @@ const ir: unknown = {
               "type": "UploadFailed",
               "text": "failure"
             }
+          },
+          {
+            "id": "Attach.SignedOut",
+            "name": "SignedOut",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 65,
+              "col": 3,
+              "endLine": 65,
+              "endCol": 39
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "ref",
+              "path": [
+                "ended"
+              ],
+              "type": "SessionEnded",
+              "text": "ended"
+            }
           }
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
       },
-      "hash": "sha256:caffd3ff4de6c2996b5d5d18497fa334def31114f724f2b172749f6ef8b57501"
+      "hash": "sha256:cf9242fbbd5a856f0d286d8bb8d1b0246456889e718effaffe1049cb4fb41f02"
     },
     "AttachMany": {
       "doc": "Attach several files at once: one `storeFile` task per file, keyed by the file's name, in a\ncollection of tasks. Counts the files stored.",
       "span": {
         "file": 0,
-        "line": 58,
+        "line": 70,
         "col": 1,
-        "endLine": 80,
+        "endLine": 92,
         "endCol": 2
       },
       "strict": false,
@@ -922,9 +1054,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 59,
+            "line": 71,
             "col": 3,
-            "endLine": 59,
+            "endLine": 71,
             "endCol": 22
           }
         }
@@ -942,9 +1074,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 61,
+            "line": 73,
             "col": 3,
-            "endLine": 61,
+            "endLine": 73,
             "endCol": 30
           }
         },
@@ -960,9 +1092,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 62,
+            "line": 74,
             "col": 3,
-            "endLine": 62,
+            "endLine": 74,
             "endCol": 32
           }
         },
@@ -971,9 +1103,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 63,
+            "line": 75,
             "col": 3,
-            "endLine": 63,
+            "endLine": 75,
             "endCol": 13
           }
         }
@@ -989,9 +1121,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 65,
+            "line": 77,
             "col": 3,
-            "endLine": 65,
+            "endLine": 77,
             "endCol": 39
           }
         }
@@ -1003,9 +1135,9 @@ const ir: unknown = {
         "doc": "Attach several files at once: one `storeFile` task per file, keyed by the file's name, in a\ncollection of tasks. Counts the files stored.",
         "span": {
           "file": 0,
-          "line": 58,
+          "line": 70,
           "col": 1,
-          "endLine": 80,
+          "endLine": 92,
           "endCol": 2
         },
         "initial": "AttachMany.Open",
@@ -1017,16 +1149,16 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 69,
+              "line": 81,
               "col": 3,
-              "endLine": 76,
+              "endLine": 88,
               "endCol": 4
             },
             "initial": null,
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1067,9 +1199,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 70,
+                  "line": 82,
                   "col": 5,
-                  "endLine": 70,
+                  "endLine": 82,
                   "endCol": 97
                 }
               },
@@ -1099,9 +1231,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 71,
+                  "line": 83,
                   "col": 5,
-                  "endLine": 71,
+                  "endLine": 83,
                   "endCol": 67
                 }
               },
@@ -1147,9 +1279,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 72,
+                  "line": 84,
                   "col": 5,
-                  "endLine": 72,
+                  "endLine": 84,
                   "endCol": 83
                 }
               },
@@ -1192,9 +1324,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 73,
+                  "line": 85,
                   "col": 5,
-                  "endLine": 73,
+                  "endLine": 85,
                   "endCol": 67
                 }
               },
@@ -1232,9 +1364,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 74,
+                  "line": 86,
                   "col": 5,
-                  "endLine": 74,
+                  "endLine": 86,
                   "endCol": 71
                 }
               },
@@ -1252,9 +1384,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 75,
+                  "line": 87,
                   "col": 5,
-                  "endLine": 75,
+                  "endLine": 87,
                   "endCol": 42
                 }
               }
@@ -1269,16 +1401,16 @@ const ir: unknown = {
             "doc": "Closing stops the files still being stored.",
             "span": {
               "file": 0,
-              "line": 79,
+              "line": 91,
               "col": 3,
-              "endLine": 79,
+              "endLine": 91,
               "endCol": 39
             },
             "initial": null,
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -1293,7 +1425,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -1448,37 +1580,39 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "sendChunk",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "file"
-                  ],
-                  "type": "File",
-                  "text": "file"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "offset"
-                  ],
-                  "type": "int",
-                  "text": "offset"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "sendChunk",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "file"
+                    ],
+                    "type": "File",
+                    "text": "file"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "offset"
+                    ],
+                    "type": "int",
+                    "text": "offset"
+                  }
+                ],
+                "span": {
+                  "file": 1,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 40,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 1,
-                "line": 37,
-                "col": 5,
-                "endLine": 40,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
@@ -1524,7 +1658,8 @@ const ir: unknown = {
               },
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 1,
                 "guard": null,
@@ -1595,6 +1730,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "UploadFailed"
                 },
                 "group": 2,
@@ -1665,7 +1801,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1707,33 +1843,36 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "finishUpload",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "file"
-                  ],
-                  "type": "File",
-                  "text": "file"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "finishUpload",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "file"
+                    ],
+                    "type": "File",
+                    "text": "file"
+                  }
+                ],
+                "span": {
+                  "file": 1,
+                  "line": 48,
+                  "col": 5,
+                  "endLine": 51,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 1,
-                "line": 48,
-                "col": 5,
-                "endLine": 51,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -1766,6 +1905,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "UploadFailed"
                 },
                 "group": 1,
@@ -1816,7 +1956,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -1844,7 +1984,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -1859,7 +1999,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -1869,7 +2009,7 @@ const ir: unknown = {
   }
 }
 
-const errors = { UploadFailed }
+const errors = { SessionEnded, UploadFailed }
 
 /**
  * Attach a file to a message: store it with a task that reports its progress, then wait for

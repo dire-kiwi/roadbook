@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/crash.road",
@@ -108,31 +108,34 @@
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "machine",
-                  "src": "Child",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "lit",
-                      "value": "A",
-                      "type": "string",
-                      "text": "\"A\""
+                "invokes": [
+                  {
+                    "kind": "machine",
+                    "src": "Child",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "A",
+                        "type": "string",
+                        "text": "\"A\""
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 13,
+                      "col": 7,
+                      "endLine": 15,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 13,
-                    "col": 7,
-                    "endLine": 15,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -169,31 +172,34 @@
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "machine",
-                  "src": "Child",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "lit",
-                      "value": "B",
-                      "type": "string",
-                      "text": "\"B\""
+                "invokes": [
+                  {
+                    "kind": "machine",
+                    "src": "Child",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "B",
+                        "type": "string",
+                        "text": "\"B\""
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 19,
+                      "col": 7,
+                      "endLine": 21,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 19,
-                    "col": 7,
-                    "endLine": 21,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -230,24 +236,27 @@
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "crash",
-                  "to": null,
-                  "as": null,
-                  "args": [],
-                  "span": {
-                    "file": 0,
-                    "line": 25,
-                    "col": 7,
-                    "endLine": 27,
-                    "endCol": 8
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "crash",
+                    "to": null,
+                    "as": null,
+                    "args": [],
+                    "span": {
+                      "file": 0,
+                      "line": 25,
+                      "col": 7,
+                      "endLine": 27,
+                      "endCol": 8
+                    }
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -271,7 +280,7 @@
             ],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -292,7 +301,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -300,7 +309,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -390,7 +399,7 @@
                 ]
               }
             ],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -432,7 +441,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -440,7 +449,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

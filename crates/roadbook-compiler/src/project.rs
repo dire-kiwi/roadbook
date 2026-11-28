@@ -549,7 +549,7 @@ fn remap_machine(m: &mut ir::Machine, f: &impl Fn(&mut ir::Span)) {
 
 fn remap_state(s: &mut ir::State, f: &impl Fn(&mut ir::Span)) {
     f(&mut s.span);
-    if let Some(inv) = &mut s.invoke {
+    for inv in &mut s.invokes {
         f(&mut inv.span);
     }
     for t in &mut s.transitions {

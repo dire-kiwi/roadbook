@@ -464,11 +464,12 @@ fn messages(s: &State, t: &mut Talks) {
             }
         }
     }
-    if let Some(inv) = &s.invoke
-        && inv.kind == InvokeKind::Call
-        && let Some(to) = &inv.to
-    {
-        group(&mut t.calls, to.peer(), &inv.src);
+    for inv in &s.invokes {
+        if inv.kind == InvokeKind::Call
+            && let Some(to) = &inv.to
+        {
+            group(&mut t.calls, to.peer(), &inv.src);
+        }
     }
     effects(&s.entry, t);
     effects(&s.exit, t);
@@ -490,11 +491,10 @@ fn count(s: &State) -> usize {
 }
 
 fn invokes(s: &State, out: &mut Vec<String>) {
-    if let Some(inv) = &s.invoke
-        && inv.kind == InvokeKind::Machine
-        && !out.contains(&inv.src)
-    {
-        out.push(inv.src.clone());
+    for inv in &s.invokes {
+        if inv.kind == InvokeKind::Machine && !out.contains(&inv.src) {
+            out.push(inv.src.clone());
+        }
     }
     for c in &s.states {
         invokes(c, out);

@@ -1,0 +1,16 @@
+{"input":{},"ir":"sha256:6afd6b8200c5bea18d96b17f98bee2e5654df2d5d78f76ad4246101619aecc5e","kind":"started","machine":"Lookup","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Lookup","t":0}
+{"kind":"entered","run":"r1","state":"Lookup.Both","t":0}
+{"args":{"id":"a"},"as":"a","invoke":1,"kind":"invoke.started","run":"r1","src":"fetch","state":"Lookup.Both","t":0}
+{"args":{"id":"b"},"as":"b","invoke":2,"kind":"invoke.started","run":"r1","src":"fetch","state":"Lookup.Both","t":0}
+{"event":{"error":{"_tag":"Busy"},"invoke":2,"kind":"invoke.fail"},"kind":"event","run":"r1","t":0}
+{"from":"Lookup.Both","index":3,"kind":"transition","run":"r1","t":0,"to":[]}
+{"kind":"set","run":"r1","t":0,"value":"b was busy","var":"got"}
+{"event":{"invoke":1,"kind":"invoke.done","value":"x"},"kind":"event","run":"r1","t":0}
+{"from":"Lookup.Both","index":0,"kind":"transition","run":"r1","t":0,"to":["Lookup.Found"]}
+{"kind":"exited","run":"r1","state":"Lookup.Both","t":0}
+{"kind":"set","run":"r1","t":0,"value":"x","var":"got"}
+{"kind":"entered","run":"r1","state":"Lookup.Found","t":0}
+{"kind":"exited","run":"r1","state":"Lookup.Found","t":0}
+{"kind":"exited","run":"r1","state":"Lookup","t":0}
+{"kind":"done","output":"x","run":"r1","state":"Lookup.Found","t":0}

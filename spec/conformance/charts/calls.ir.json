@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "spec/conformance/charts/calls.road",
@@ -324,7 +324,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -445,49 +445,52 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "reserveStock",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "warehouse"
-                  ],
-                  "type": "string",
-                  "text": "warehouse"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "orderId"
-                  ],
-                  "type": "string",
-                  "text": "orderId"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "items"
-                  ],
-                  "type": "Item[]",
-                  "text": "items"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "reserveStock",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "warehouse"
+                    ],
+                    "type": "string",
+                    "text": "warehouse"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "orderId"
+                    ],
+                    "type": "string",
+                    "text": "orderId"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "items"
+                    ],
+                    "type": "Item[]",
+                    "text": "items"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 48,
+                  "col": 5,
+                  "endLine": 51,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 48,
-                "col": 5,
-                "endLine": 51,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -575,6 +578,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "OutOfStock"
                 },
                 "group": 1,
@@ -775,7 +779,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -817,7 +821,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -825,7 +829,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [
           {
             "trigger": {
@@ -971,46 +975,49 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "call",
-              "src": "reserve",
-              "to": {
-                "kind": "ref",
-                "name": "inventory",
-                "machine": "Inventory",
-                "state": null
-              },
-              "as": null,
-              "args": [
-                {
+            "invokes": [
+              {
+                "kind": "call",
+                "src": "reserve",
+                "to": {
                   "kind": "ref",
-                  "path": [
-                    "id"
-                  ],
-                  "type": "string",
-                  "text": "id"
+                  "name": "inventory",
+                  "machine": "Inventory",
+                  "state": null
                 },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "items"
-                  ],
-                  "type": "Item[]",
-                  "text": "items"
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "id"
+                    ],
+                    "type": "string",
+                    "text": "id"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "items"
+                    ],
+                    "type": "Item[]",
+                    "text": "items"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 71,
+                  "col": 5,
+                  "endLine": 75,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 71,
-                "col": 5,
-                "endLine": 75,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -1043,6 +1050,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "OutOfStock"
                 },
                 "group": 1,
@@ -1076,6 +1084,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "Unanswered"
                 },
                 "group": 2,
@@ -1180,7 +1189,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -1208,7 +1217,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -1223,7 +1232,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -1301,29 +1310,32 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "call",
-              "src": "count",
-              "to": {
-                "kind": "ref",
-                "name": "inventory",
-                "machine": "Inventory",
-                "state": null
-              },
-              "as": null,
-              "args": [],
-              "span": {
-                "file": 0,
-                "line": 90,
-                "col": 5,
-                "endLine": 93,
-                "endCol": 6
+            "invokes": [
+              {
+                "kind": "call",
+                "src": "count",
+                "to": {
+                  "kind": "ref",
+                  "name": "inventory",
+                  "machine": "Inventory",
+                  "state": null
+                },
+                "as": null,
+                "args": [],
+                "span": {
+                  "file": 0,
+                  "line": 90,
+                  "col": 5,
+                  "endLine": 93,
+                  "endCol": 6
+                }
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -1356,6 +1368,7 @@
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "*"
                 },
                 "group": 1,
@@ -1393,7 +1406,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -1421,7 +1434,7 @@
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "lit",
@@ -1434,7 +1447,7 @@
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

@@ -90,7 +90,7 @@ export interface PlaceOrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.11",
+  "irVersion": "0.12",
   "sources": [
     {
       "path": "examples/shop/place_order.road",
@@ -729,33 +729,36 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "authenticate",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "token"
-                  ],
-                  "type": "string",
-                  "text": "token"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "authenticate",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "token"
+                    ],
+                    "type": "string",
+                    "text": "token"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 24,
+                  "col": 5,
+                  "endLine": 27,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 24,
-                "col": 5,
-                "endLine": 27,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -788,6 +791,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "Unauthenticated"
                 },
                 "group": 1,
@@ -839,33 +843,36 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "validateOrder",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "draft"
-                      ],
-                      "type": "OrderDraft",
-                      "text": "draft"
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "validateOrder",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "draft"
+                        ],
+                        "type": "OrderDraft",
+                        "text": "draft"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 39,
+                      "col": 7,
+                      "endLine": 42,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 39,
-                    "col": 7,
-                    "endLine": 42,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -898,6 +905,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "ValidationFailed"
                     },
                     "group": 1,
@@ -949,41 +957,44 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "priceOrder",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "order"
-                      ],
-                      "type": "Order",
-                      "text": "order"
-                    },
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "user"
-                      ],
-                      "type": "User",
-                      "text": "user"
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "priceOrder",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "order"
+                        ],
+                        "type": "Order",
+                        "text": "order"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "user"
+                        ],
+                        "type": "User",
+                        "text": "user"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 47,
+                      "col": 7,
+                      "endLine": 49,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 47,
-                    "col": 7,
-                    "endLine": 49,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -1033,41 +1044,44 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "machine",
-                  "src": "Checkout",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "order"
-                      ],
-                      "type": "Order",
-                      "text": "order"
-                    },
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "user"
-                      ],
-                      "type": "User",
-                      "text": "user"
+                "invokes": [
+                  {
+                    "kind": "machine",
+                    "src": "Checkout",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "order"
+                        ],
+                        "type": "Order",
+                        "text": "order"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "user"
+                        ],
+                        "type": "User",
+                        "text": "user"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 54,
+                      "col": 7,
+                      "endLine": 58,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 54,
-                    "col": 7,
-                    "endLine": 58,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -1100,6 +1114,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "CardDeclined"
                     },
                     "group": 1,
@@ -1141,6 +1156,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "GatewayUnavailable"
                     },
                     "group": 2,
@@ -1230,7 +1246,7 @@ const ir: unknown = {
                   }
                 ],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -1258,7 +1274,7 @@ const ir: unknown = {
             ],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1325,7 +1341,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1369,7 +1385,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1409,7 +1425,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1445,7 +1461,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1485,7 +1501,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1525,7 +1541,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1552,7 +1568,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -1672,41 +1688,44 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "chargeCard",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "order"
-                  ],
-                  "type": "Order",
-                  "text": "order"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "user"
-                  ],
-                  "type": "User",
-                  "text": "user"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "chargeCard",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "order"
+                    ],
+                    "type": "Order",
+                    "text": "order"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "user"
+                    ],
+                    "type": "User",
+                    "text": "user"
+                  }
+                ],
+                "span": {
+                  "file": 2,
+                  "line": 13,
+                  "col": 5,
+                  "endLine": 20,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 2,
-                "line": 13,
-                "col": 5,
-                "endLine": 20,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -1739,6 +1758,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "CardDeclined"
                 },
                 "group": 1,
@@ -1772,6 +1792,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "GatewayUnavailable"
                 },
                 "group": 2,
@@ -1813,6 +1834,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "GatewayUnavailable"
                 },
                 "group": 2,
@@ -1877,7 +1899,7 @@ const ir: unknown = {
               }
             ],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1934,7 +1956,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -1962,7 +1984,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -1990,7 +2012,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -2003,7 +2025,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

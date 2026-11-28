@@ -6,6 +6,12 @@ task storeFile(file: File) -> Url ! UploadFailed
   emits Progress { percent: int }
   emits Retrying { attempt: int }
 
+/// The user's session ended while the file was being stored.
+error SessionEnded
+
+/// Keep the user's session alive for as long as it runs. Fails when the session ends.
+task keepAlive() ! SessionEnded
+
 /// A tick every `every`, until the state that invokes it is left: a stream task.
 task ticks(every: duration) emits Tick
 
@@ -23,20 +29,25 @@ action showFileProgress(name: string, percent: int)
 
 /// Attach a file to a message: store it with a task that reports its progress, then wait for
 /// the user to confirm, showing how long they have waited.
-machine Attach(file: File) -> Url ! UploadFailed {
+machine Attach(file: File) -> Url ! UploadFailed | SessionEnded {
   var url:     Url
   var failure: UploadFailed
+  var ended:   SessionEnded
   var waited:  int = 0
 
   event Confirm
 
   initial Storing
 
-  /// `store` names the task while it runs, so the state hears what it emits.
+  /// `store` names the task while it runs, so the state hears what it emits. Beside it,
+  /// `session` keeps the user signed in: whichever ends the state first cancels the other.
   state Storing {
     invoke storeFile(file) as store {
       done              -> Confirming  set url = result
       fail UploadFailed -> Failed      set failure = error
+    }
+    invoke keepAlive() as session {
+      fail SessionEnded -> SignedOut  set ended = error
     }
     on store.Progress do showProgress(event.percent)
     on store.Retrying do showRetrying(event.attempt)
@@ -49,8 +60,9 @@ machine Attach(file: File) -> Url ! UploadFailed {
     on Confirm    -> Attached
   }
 
-  final state Attached { output url }
-  final state Failed   { fail failure }
+  final state Attached  { output url }
+  final state Failed    { fail failure }
+  final state SignedOut { fail ended }
 }
 
 /// Attach several files at once: one `storeFile` task per file, keyed by the file's name, in a

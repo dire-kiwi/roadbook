@@ -45,7 +45,7 @@ pub use model::{
 pub use types::{Builtin, TypeRef, TypeRefError};
 
 /// The IR version this crate reads and writes.
-pub const IR_VERSION: &str = "0.11";
+pub const IR_VERSION: &str = "0.12";
 
 /// An `irVersion` this crate cannot read.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -85,7 +85,7 @@ fn parse_version(v: &str) -> Option<(u32, u32)> {
 /// crate.
 ///
 /// Versions are `"MAJOR.MINOR"`. While the major version is 0 every change
-/// is breaking, so only `"0.11"` is accepted. From `1.0` on, a reader accepts
+/// is breaking, so only `"0.12"` is accepted. From `1.0` on, a reader accepts
 /// its own major version with any minor version up to its own: a minor
 /// version only adds to the IR, and an older reader must not silently ignore
 /// what it does not know.
@@ -214,10 +214,10 @@ mod tests {
 
     #[test]
     fn versions() {
-        assert!(check_version("0.11").is_ok());
+        assert!(check_version("0.12").is_ok());
         for v in [
-            "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.0", "1.0",
-            "0.011", "00.11", "0.11.0", "0", "", "v0.11", "0.11 ",
+            "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.0",
+            "1.0", "0.012", "00.12", "0.12.0", "0", "", "v0.12", "0.12 ",
         ] {
             assert!(check_version(v).is_err(), "{v:?}");
         }
@@ -230,7 +230,7 @@ mod tests {
             Err(ReadError::Version(VersionError { found: None }))
         ));
         assert!(matches!(
-            Ir::from_json(r#"{"irVersion":"0.11"}"#),
+            Ir::from_json(r#"{"irVersion":"0.12"}"#),
             Err(ReadError::Json(_))
         ));
     }
@@ -239,7 +239,7 @@ mod tests {
     fn depth_is_bounded_without_recursing() {
         assert_eq!(json_depth(r#"{"a": "[[{", "b": [[1], {"c": "\"]"}]}"#), 3);
         let deep = format!(
-            r#"{{"irVersion":"0.11","x":{}{}}}"#,
+            r#"{{"irVersion":"0.12","x":{}{}}}"#,
             "[".repeat(MAX_JSON_DEPTH),
             "]".repeat(MAX_JSON_DEPTH)
         );
