@@ -1,0 +1,135 @@
+// Conformance chart: several invokes in one state, each named with `as`. They start in the
+// order written, before the state's timers; leaving the state cancels them in the order they
+// started; and each outcome is offered only to its own invoke's transitions.
+
+error Lost
+error Busy
+error Full
+
+/// Fails when the server stops answering.
+task heartbeat(server: string) ! Lost
+
+/// Copies the folder. Returns how many files it copied.
+task copy(folder: string) -> int ! Busy | Full
+
+/// Some other work.
+task work(n: int) -> int
+
+/// Looks `id` up.
+task fetch(id: string) -> string ! Busy
+
+/// Emits a `Tick` every `every`, until it is cancelled.
+task ticks(every: duration) emits Tick
+
+/// Three invokes and a timer in one state, and one more invoke in its child state.
+machine Watch(server: string, folder: string) -> int {
+  var copied: int = 0
+  var busy:   int = 0
+
+  event Stop
+
+  initial Watching
+
+  state Watching {
+    invoke heartbeat(server) as beat {
+      fail Lost -> Offline
+    }
+    invoke copy(folder) as files {
+      done      -> Copied   set copied = result
+      fail Busy             set busy = busy + 1
+      fail *    -> Stopped
+    }
+    invoke work(1) as extra
+    after 1m -> Stopped
+    on Stop  -> Stopped
+
+    initial Inner
+    state Inner {
+      invoke work(2)
+    }
+  }
+
+  final state Copied  { output copied }
+  final state Offline { output busy }
+  final state Stopped { output busy }
+}
+
+/// The same task twice in one state, told apart by `as`: `a`'s `fail *` is not `b`'s.
+machine Lookup() -> string {
+  var got: string = ""
+
+  initial Both
+
+  state Both {
+    invoke fetch("a") as a {
+      done   -> Found  set got = result
+      fail * -> Gave
+    }
+    invoke fetch("b") as b {
+      done      set got = result
+      fail Busy set got = "b was busy"
+    }
+  }
+
+  final state Found { output got }
+  final state Gave  { output got }
+}
+
+/// A stream task beside the work that ends the state.
+machine Ticker() -> int {
+  var ticks: int = 0
+
+  initial Running
+
+  state Running {
+    invoke ticks(1s) as clock
+    invoke work(3) as job {
+      done -> Over
+    }
+    on clock.Tick set ticks = ticks + 1
+  }
+
+  final state Over { output ticks }
+}
+
+/// Answers a poke, and ends when told to quit.
+machine Kid() {
+  event Poke
+  event Quit
+  emits Poked
+
+  initial Idle
+
+  state Idle {
+    on Poke          emit Poked
+    on Quit -> Gone
+  }
+
+  final state Gone {}
+}
+
+/// Two children in one state: each is sent to and heard from by its name, and the outcome of
+/// one may send to the other, which is still running.
+machine Twins() -> int {
+  var heard: int = 0
+
+  event Go
+  event Next
+
+  initial Both
+
+  state Both {
+    invoke Kid() as left {
+      done send right.Poke
+    }
+    invoke Kid() as right {
+      done -> Over
+    }
+    on Go                   send left.Poke
+    on Next                 send left.Quit
+    on left.Poked           set heard = heard + 1
+    on right.Poked -> Over  set heard = heard + 10
+  }
+
+  final state Over { output heard }
+}

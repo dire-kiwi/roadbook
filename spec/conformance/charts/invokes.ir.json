@@ -1,0 +1,1756 @@
+{
+  "irVersion": "0.11",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/invokes.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Lost": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 11
+      }
+    },
+    "Busy": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 11
+      }
+    },
+    "Full": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 11
+      }
+    }
+  },
+  "functions": {},
+  "actions": {},
+  "tasks": {
+    "heartbeat": {
+      "params": [
+        {
+          "name": "server",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [
+        "Lost"
+      ],
+      "emits": {},
+      "doc": "Fails when the server stops answering.",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 38
+      }
+    },
+    "copy": {
+      "params": [
+        {
+          "name": "folder",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [
+        "Busy",
+        "Full"
+      ],
+      "emits": {},
+      "doc": "Copies the folder. Returns how many files it copied.",
+      "span": {
+        "file": 0,
+        "line": 13,
+        "col": 1,
+        "endLine": 13,
+        "endCol": 47
+      }
+    },
+    "work": {
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "emits": {},
+      "doc": "Some other work.",
+      "span": {
+        "file": 0,
+        "line": 16,
+        "col": 1,
+        "endLine": 16,
+        "endCol": 25
+      }
+    },
+    "fetch": {
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [
+        "Busy"
+      ],
+      "emits": {},
+      "doc": "Looks `id` up.",
+      "span": {
+        "file": 0,
+        "line": 19,
+        "col": 1,
+        "endLine": 19,
+        "endCol": 40
+      }
+    },
+    "ticks": {
+      "params": [
+        {
+          "name": "every",
+          "type": "duration",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "emits": {
+        "Tick": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 22,
+            "col": 29,
+            "endLine": 22,
+            "endCol": 39
+          }
+        }
+      },
+      "doc": "Emits a `Tick` every `every`, until it is cancelled.",
+      "span": {
+        "file": 0,
+        "line": 22,
+        "col": 1,
+        "endLine": 22,
+        "endCol": 39
+      }
+    }
+  },
+  "machines": {
+    "Watch": {
+      "doc": "Three invokes and a timer in one state, and one more invoke in its child state.",
+      "span": {
+        "file": 0,
+        "line": 25,
+        "col": 1,
+        "endLine": 55,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "server",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "folder",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "copied",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 26,
+            "col": 3,
+            "endLine": 26,
+            "endCol": 22
+          }
+        },
+        {
+          "name": "busy",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 27,
+            "col": 3,
+            "endLine": 27,
+            "endCol": 22
+          }
+        }
+      ],
+      "events": {
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 29,
+            "col": 3,
+            "endLine": 29,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Watch",
+        "name": "Watch",
+        "kind": "compound",
+        "doc": "Three invokes and a timer in one state, and one more invoke in its child state.",
+        "span": {
+          "file": 0,
+          "line": 25,
+          "col": 1,
+          "endLine": 55,
+          "endCol": 2
+        },
+        "initial": "Watch.Watching",
+        "states": [
+          {
+            "id": "Watch.Watching",
+            "name": "Watching",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 33,
+              "col": 3,
+              "endLine": 50,
+              "endCol": 4
+            },
+            "initial": "Watch.Watching.Inner",
+            "states": [
+              {
+                "id": "Watch.Watching.Inner",
+                "name": "Inner",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 47,
+                  "col": 5,
+                  "endLine": 49,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "work",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": 2,
+                        "type": "int",
+                        "text": "2"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 48,
+                      "col": 7,
+                      "endLine": 48,
+                      "endCol": 21
+                    }
+                  }
+                ],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "heartbeat",
+                "to": null,
+                "as": "beat",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "server"
+                    ],
+                    "type": "string",
+                    "text": "server"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 34,
+                  "col": 5,
+                  "endLine": 36,
+                  "endCol": 6
+                }
+              },
+              {
+                "kind": "task",
+                "src": "copy",
+                "to": null,
+                "as": "files",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "folder"
+                    ],
+                    "type": "string",
+                    "text": "folder"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 41,
+                  "endCol": 6
+                }
+              },
+              {
+                "kind": "task",
+                "src": "work",
+                "to": null,
+                "as": "extra",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 1,
+                    "type": "int",
+                    "text": "1"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 42,
+                  "col": 5,
+                  "endLine": 42,
+                  "endCol": 28
+                }
+              }
+            ],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "as": "beat",
+                  "error": "Lost"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Watch.Offline"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 35,
+                  "col": 7,
+                  "endLine": 35,
+                  "endCol": 27
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.done",
+                  "as": "files"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Watch.Copied"
+                ],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "copied",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 38,
+                  "col": 7,
+                  "endLine": 38,
+                  "endCol": 48
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "as": "files",
+                  "error": "Busy"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "busy",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "busy"
+                          ],
+                          "type": "int",
+                          "text": "busy"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "busy + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 39,
+                  "col": 7,
+                  "endLine": 39,
+                  "endCol": 48
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "as": "files",
+                  "error": "*"
+                },
+                "group": 3,
+                "guard": null,
+                "targets": [
+                  "Watch.Stopped"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 40,
+                  "col": 7,
+                  "endLine": 40,
+                  "endCol": 27
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 60000,
+                    "type": "duration",
+                    "text": "1m"
+                  }
+                },
+                "group": 4,
+                "guard": null,
+                "targets": [
+                  "Watch.Stopped"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 43,
+                  "col": 5,
+                  "endLine": 43,
+                  "endCol": 24
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 5,
+                "guard": null,
+                "targets": [
+                  "Watch.Stopped"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 44,
+                  "endCol": 24
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Watch.Copied",
+            "name": "Copied",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 52,
+              "col": 3,
+              "endLine": 52,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "copied"
+              ],
+              "type": "int",
+              "text": "copied"
+            },
+            "fail": null
+          },
+          {
+            "id": "Watch.Offline",
+            "name": "Offline",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 53,
+              "col": 3,
+              "endLine": 53,
+              "endCol": 38
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "busy"
+              ],
+              "type": "int",
+              "text": "busy"
+            },
+            "fail": null
+          },
+          {
+            "id": "Watch.Stopped",
+            "name": "Stopped",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 54,
+              "col": 3,
+              "endLine": 54,
+              "endCol": 38
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "busy"
+              ],
+              "type": "int",
+              "text": "busy"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:8cac80d387c0fd172d547253b1bfdd28ce18bd8dc63fbe3f9ff615fe7e4f99a7"
+    },
+    "Lookup": {
+      "doc": "The same task twice in one state, told apart by `as`: `a`'s `fail *` is not `b`'s.",
+      "span": {
+        "file": 0,
+        "line": 58,
+        "col": 1,
+        "endLine": 76,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": "string",
+      "errors": [],
+      "vars": [
+        {
+          "name": "got",
+          "type": "string",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 59,
+            "col": 3,
+            "endLine": 59,
+            "endCol": 23
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Lookup",
+        "name": "Lookup",
+        "kind": "compound",
+        "doc": "The same task twice in one state, told apart by `as`: `a`'s `fail *` is not `b`'s.",
+        "span": {
+          "file": 0,
+          "line": 58,
+          "col": 1,
+          "endLine": 76,
+          "endCol": 2
+        },
+        "initial": "Lookup.Both",
+        "states": [
+          {
+            "id": "Lookup.Both",
+            "name": "Both",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 63,
+              "col": 3,
+              "endLine": 72,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "fetch",
+                "to": null,
+                "as": "a",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "a",
+                    "type": "string",
+                    "text": "\"a\""
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 64,
+                  "col": 5,
+                  "endLine": 67,
+                  "endCol": 6
+                }
+              },
+              {
+                "kind": "task",
+                "src": "fetch",
+                "to": null,
+                "as": "b",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "b",
+                    "type": "string",
+                    "text": "\"b\""
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 68,
+                  "col": 5,
+                  "endLine": 71,
+                  "endCol": 6
+                }
+              }
+            ],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done",
+                  "as": "a"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Lookup.Found"
+                ],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "got",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "string",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 65,
+                  "col": 7,
+                  "endLine": 65,
+                  "endCol": 40
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "as": "a",
+                  "error": "*"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Lookup.Gave"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 66,
+                  "col": 7,
+                  "endLine": 66,
+                  "endCol": 21
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.done",
+                  "as": "b"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "got",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "string",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 69,
+                  "col": 7,
+                  "endLine": 69,
+                  "endCol": 33
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "as": "b",
+                  "error": "Busy"
+                },
+                "group": 3,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "got",
+                    "value": {
+                      "kind": "lit",
+                      "value": "b was busy",
+                      "type": "string",
+                      "text": "\"b was busy\""
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 70,
+                  "col": 7,
+                  "endLine": 70,
+                  "endCol": 39
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Lookup.Found",
+            "name": "Found",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 74,
+              "col": 3,
+              "endLine": 74,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "got"
+              ],
+              "type": "string",
+              "text": "got"
+            },
+            "fail": null
+          },
+          {
+            "id": "Lookup.Gave",
+            "name": "Gave",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 75,
+              "col": 3,
+              "endLine": 75,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "got"
+              ],
+              "type": "string",
+              "text": "got"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:6afd6b8200c5bea18d96b17f98bee2e5654df2d5d78f76ad4246101619aecc5e"
+    },
+    "Ticker": {
+      "doc": "A stream task beside the work that ends the state.",
+      "span": {
+        "file": 0,
+        "line": 79,
+        "col": 1,
+        "endLine": 93,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "ticks",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 80,
+            "col": 3,
+            "endLine": 80,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Ticker",
+        "name": "Ticker",
+        "kind": "compound",
+        "doc": "A stream task beside the work that ends the state.",
+        "span": {
+          "file": 0,
+          "line": 79,
+          "col": 1,
+          "endLine": 93,
+          "endCol": 2
+        },
+        "initial": "Ticker.Running",
+        "states": [
+          {
+            "id": "Ticker.Running",
+            "name": "Running",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 84,
+              "col": 3,
+              "endLine": 90,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "ticks",
+                "to": null,
+                "as": "clock",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 85,
+                  "col": 5,
+                  "endLine": 85,
+                  "endCol": 30
+                }
+              },
+              {
+                "kind": "task",
+                "src": "work",
+                "to": null,
+                "as": "job",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 3,
+                    "type": "int",
+                    "text": "3"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 86,
+                  "col": 5,
+                  "endLine": 88,
+                  "endCol": 6
+                }
+              }
+            ],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done",
+                  "as": "job"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Ticker.Over"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 87,
+                  "col": 7,
+                  "endLine": 87,
+                  "endCol": 19
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "task",
+                    "name": "clock",
+                    "task": "ticks",
+                    "state": "Ticker.Running"
+                  },
+                  "event": "Tick"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "ticks",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "ticks"
+                          ],
+                          "type": "int",
+                          "text": "ticks"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "ticks + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 89,
+                  "col": 5,
+                  "endLine": 89,
+                  "endCol": 40
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Ticker.Over",
+            "name": "Over",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 92,
+              "col": 3,
+              "endLine": 92,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "ticks"
+              ],
+              "type": "int",
+              "text": "ticks"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:4106f6344b60fec7de0b7ccbe754512ce509f69cd7695bd6230ea0874501d102"
+    },
+    "Kid": {
+      "doc": "Answers a poke, and ends when told to quit.",
+      "span": {
+        "file": 0,
+        "line": 96,
+        "col": 1,
+        "endLine": 109,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Poke": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 97,
+            "col": 3,
+            "endLine": 97,
+            "endCol": 13
+          }
+        },
+        "Quit": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 98,
+            "col": 3,
+            "endLine": 98,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {
+        "Poked": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 99,
+            "col": 3,
+            "endLine": 99,
+            "endCol": 14
+          }
+        }
+      },
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Kid",
+        "name": "Kid",
+        "kind": "compound",
+        "doc": "Answers a poke, and ends when told to quit.",
+        "span": {
+          "file": 0,
+          "line": 96,
+          "col": 1,
+          "endLine": 109,
+          "endCol": 2
+        },
+        "initial": "Kid.Idle",
+        "states": [
+          {
+            "id": "Kid.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 103,
+              "col": 3,
+              "endLine": 106,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Poke"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "emit",
+                    "event": "Poked",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Poked",
+                      "text": "Poked"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 104,
+                  "col": 5,
+                  "endLine": 104,
+                  "endCol": 32
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Quit"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Kid.Gone"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 105,
+                  "col": 5,
+                  "endLine": 105,
+                  "endCol": 20
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Kid.Gone",
+            "name": "Gone",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 108,
+              "col": 3,
+              "endLine": 108,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:2df8d05f55d93a7d76dc44458cdc5e0b55dadb293f47f621d3d2ea5fbfe0c128"
+    },
+    "Twins": {
+      "doc": "Two children in one state: each is sent to and heard from by its name, and the outcome of\none may send to the other, which is still running.",
+      "span": {
+        "file": 0,
+        "line": 113,
+        "col": 1,
+        "endLine": 135,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "heard",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 114,
+            "col": 3,
+            "endLine": 114,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 116,
+            "col": 3,
+            "endLine": 116,
+            "endCol": 11
+          }
+        },
+        "Next": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 117,
+            "col": 3,
+            "endLine": 117,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Twins",
+        "name": "Twins",
+        "kind": "compound",
+        "doc": "Two children in one state: each is sent to and heard from by its name, and the outcome of\none may send to the other, which is still running.",
+        "span": {
+          "file": 0,
+          "line": 113,
+          "col": 1,
+          "endLine": 135,
+          "endCol": 2
+        },
+        "initial": "Twins.Both",
+        "states": [
+          {
+            "id": "Twins.Both",
+            "name": "Both",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 121,
+              "col": 3,
+              "endLine": 132,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [
+              {
+                "kind": "machine",
+                "src": "Kid",
+                "to": null,
+                "as": "left",
+                "args": [],
+                "span": {
+                  "file": 0,
+                  "line": 122,
+                  "col": 5,
+                  "endLine": 124,
+                  "endCol": 6
+                }
+              },
+              {
+                "kind": "machine",
+                "src": "Kid",
+                "to": null,
+                "as": "right",
+                "args": [],
+                "span": {
+                  "file": 0,
+                  "line": 125,
+                  "col": 5,
+                  "endLine": 127,
+                  "endCol": 6
+                }
+              }
+            ],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done",
+                  "as": "left"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "child",
+                      "name": "right",
+                      "machine": "Kid",
+                      "state": "Twins.Both"
+                    },
+                    "key": null,
+                    "event": "Poke",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Kid.Poke",
+                      "text": "Poke"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 123,
+                  "col": 7,
+                  "endLine": 123,
+                  "endCol": 27
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.done",
+                  "as": "right"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Twins.Over"
+                ],
+                "internal": false,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 126,
+                  "col": 7,
+                  "endLine": 126,
+                  "endCol": 19
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "child",
+                      "name": "left",
+                      "machine": "Kid",
+                      "state": "Twins.Both"
+                    },
+                    "key": null,
+                    "event": "Poke",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Kid.Poke",
+                      "text": "Poke"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 128,
+                  "col": 5,
+                  "endLine": 128,
+                  "endCol": 43
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Next"
+                },
+                "group": 3,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "child",
+                      "name": "left",
+                      "machine": "Kid",
+                      "state": "Twins.Both"
+                    },
+                    "key": null,
+                    "event": "Quit",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Kid.Quit",
+                      "text": "Quit"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 129,
+                  "col": 5,
+                  "endLine": 129,
+                  "endCol": 43
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "child",
+                    "name": "left",
+                    "machine": "Kid",
+                    "state": "Twins.Both"
+                  },
+                  "event": "Poked"
+                },
+                "group": 4,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "heard",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "heard"
+                          ],
+                          "type": "int",
+                          "text": "heard"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "heard + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 130,
+                  "col": 5,
+                  "endLine": 130,
+                  "endCol": 50
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "child",
+                    "name": "right",
+                    "machine": "Kid",
+                    "state": "Twins.Both"
+                  },
+                  "event": "Poked"
+                },
+                "group": 5,
+                "guard": null,
+                "targets": [
+                  "Twins.Over"
+                ],
+                "internal": false,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "heard",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "heard"
+                          ],
+                          "type": "int",
+                          "text": "heard"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 10,
+                          "type": "int",
+                          "text": "10"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "heard + 10"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 131,
+                  "col": 5,
+                  "endLine": 131,
+                  "endCol": 51
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Twins.Over",
+            "name": "Over",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 134,
+              "col": 3,
+              "endLine": 134,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "heard"
+              ],
+              "type": "int",
+              "text": "heard"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:324d5cdfa68a344af79022c19201067d6e8e18e7f86f2c8f95d674f109d6674a"
+    }
+  }
+}

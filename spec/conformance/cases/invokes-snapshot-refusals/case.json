@@ -1,0 +1,47 @@
+{
+  "description": "Restoring checks each entry of `invokes` against the invoke it names: `invalid` for an entry without `as` in a state with several invokes (noas), one with `as` in a state with one (extraas), an `as` that names an invoke of another task (wrongas) or none (unknownas), and two entries of one invoke (twice). Nothing is written for a refused restore.",
+  "requires": [
+    "messaging",
+    "task-emits",
+    "invokes",
+    "snapshots"
+  ],
+  "chart": "charts/invokes.road",
+  "machine": "Watch",
+  "input": {
+    "server": "s",
+    "folder": "f"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "copy",
+      "fail": {
+        "_tag": "Busy"
+      }
+    },
+    {
+      "restore": "noas",
+      "refused": "invalid"
+    },
+    {
+      "restore": "extraas",
+      "refused": "invalid"
+    },
+    {
+      "restore": "wrongas",
+      "refused": "invalid"
+    },
+    {
+      "restore": "unknownas",
+      "refused": "invalid"
+    },
+    {
+      "restore": "twice",
+      "refused": "invalid"
+    }
+  ],
+  "status": "running"
+}

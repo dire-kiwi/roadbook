@@ -1,0 +1,25 @@
+{
+  "description": "A state with three invokes and an `after`, and a child state with one more. On entry the invokes start in the order written, with ids 1 to 3, then the state's timer, then the child's invoke, 4; `invoke.started` has `as` for the invokes of the state with several, and none for the child's one. Stop leaves both states: the child's invoke is cancelled first, then the state's three by ascending id, then its timer.",
+  "requires": [
+    "messaging",
+    "task-emits",
+    "invokes"
+  ],
+  "chart": "charts/invokes.road",
+  "machine": "Watch",
+  "input": {
+    "server": "s",
+    "folder": "f"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Stop"
+      }
+    }
+  ],
+  "status": "done"
+}

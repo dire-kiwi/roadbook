@@ -225,6 +225,14 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `stream-task` | A stream task with no outcomes: its ticks are counted, leaving the state cancels it, and when it ends by itself its `done` is dropped and consumes the invoke. |
 | `stream-task-snapshot` | A run saved while its stream task runs and restored as r2: the task starts again with the same invoke id and emits again. |
 | `redact-task-emit` | A `sensitive` field of a task's emitted event is `"<redacted>"` in the `task.emitted` input record. |
+| `invokes-start-order` | Three invokes and an `after` in one state, and one invoke in its child: ids in written order, the state's invokes before its timer and before the child's invoke; `invoke.started` has `as` only for the state with several; leaving cancels the child's invoke, then the state's by ascending id, then its timer. |
+| `invokes-first-outcome` | One invoke's `done` leaves the state: the other invokes are cancelled, then the timer. |
+| `invokes-outcome-stays` | An outcome with no target keeps the state and the other invokes; an outcome no transition takes is dropped and consumed; a `task` step names its invoke with `as`. |
+| `invokes-same-task` | The same task twice, as `a` and `b`: `b`'s error goes to `b`'s `fail Busy`, not to `a`'s `fail *` written before it. |
+| `invokes-stream-beside` | A stream task beside the work: its ticks are counted, and the work's `done` cancels it. |
+| `invokes-children` | Two child machines in one state: `send left.E` and `on left.E` reach only `left`; an outcome of `left` that stays sends to `right`. |
+| `invokes-snapshot` | Saved with several invokes running: entries of the state with several have `as`; restored, they start again state by state, by id, before each state's timer. |
+| `invokes-snapshot-refusals` | An entry without `as` in a state with several invokes, with one in a state with one, naming the wrong task, naming no invoke, or twice: each `invalid`. |
 | `spawn-task` | Two tasks spawned by key into a collection of tasks: `spawn.started` with the task as `src` and no child run, an emit from each taken with `key`, one `done` and one `fail`. |
 | `spawn-task-stop` | `stop` of a spawned task with its emit in the same `together`: `spawn.stopped`, then the emit is stale; a spawn under a key in use replaces the task; finishing stops the rest, in the order they started. |
 | `spawn-task-snapshot` | A spawned task in a saved snapshot has no `child`; restored, it starts again with its id and saved arguments, and emits again. |

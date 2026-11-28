@@ -1,0 +1,37 @@
+{
+  "description": "`files` fails `Busy`, whose outcome has no target: the state stays and `beat` and `extra` go on, and `files` is not started again. `extra` ends `done` with no outcome to take it: dropped, and consumed; the `task` step names it by `as`, since the child state runs `work` too. `beat` fails `Lost` and leaves: only the child state's invoke and the timer are left to cancel.",
+  "requires": [
+    "messaging",
+    "task-emits",
+    "invokes"
+  ],
+  "chart": "charts/invokes.road",
+  "machine": "Watch",
+  "input": {
+    "server": "s",
+    "folder": "f"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "copy",
+      "fail": {
+        "_tag": "Busy"
+      }
+    },
+    {
+      "task": "work",
+      "as": "extra",
+      "done": 5
+    },
+    {
+      "task": "heartbeat",
+      "fail": {
+        "_tag": "Lost"
+      }
+    }
+  ],
+  "status": "done"
+}
