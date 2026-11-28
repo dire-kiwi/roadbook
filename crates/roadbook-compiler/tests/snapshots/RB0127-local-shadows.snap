@@ -34,7 +34,7 @@ error[RB0127]: `later` is already the name of a delayed raise of `M`
    |
    = help: a state's locals cannot have the name of anything else in scope in the state, or of a local of a state inside it; choose another name
 
-error[RB0127]: `up` is already the `as` name of the invoke of `M.A.B`
+error[RB0127]: `up` is already the `as` name of an invoke of `M.A.B`
   --> RB0127-local-shadows.road:22:9
    |
 22 |     var up: int = 0
