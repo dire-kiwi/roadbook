@@ -1645,6 +1645,49 @@ machine Q(p: ref P) {
         assert_eq!(names, [("charge", Status::Changed)]);
     }
 
+    const INVOKES: &str = r#"
+task one() -> int
+task two() -> int
+
+machine M() {
+  initial A
+  state A {
+    invoke one() as a { done -> B }
+    invoke two() as b { done -> C }
+  }
+  final state B {}
+  final state C {}
+}
+"#;
+
+    /// The outcomes of a state's several invokes are matched by their invoke: `b`'s `done`
+    /// changing its target is a change of that transition only, though `a`'s `done` comes
+    /// first. Swapping the invokes' order changes the state's invokes.
+    #[test]
+    fn several_invokes() {
+        let after = INVOKES.replace("done -> C", "done -> B");
+        let d = diff(Some(&ir(INVOKES)), Some(&ir(&after)), "main");
+        let m = &d.machines.iter().find(|(n, _)| n == "M").unwrap().1;
+        let changed: Vec<_> = m
+            .transitions
+            .iter()
+            .filter(|(_, e)| e.status != Status::Unchanged)
+            .map(|((s, i), e)| (s.as_str(), *i, e.status, whats(e)))
+            .collect();
+        assert_eq!(changed, [("M.A", 1, Status::Changed, vec!["target"])]);
+        let state = &d.ir.machines["M"].root.states[0];
+        assert_eq!(trigger_text(state, &state.transitions[1].trigger), "b: done");
+
+        let swapped = INVOKES.replace(
+            "    invoke one() as a { done -> B }\n    invoke two() as b { done -> C }",
+            "    invoke two() as b { done -> C }\n    invoke one() as a { done -> B }",
+        );
+        let d = diff(Some(&ir(INVOKES)), Some(&ir(&swapped)), "main");
+        let m = &d.machines.iter().find(|(n, _)| n == "M").unwrap().1;
+        let a = m.states.iter().find(|(s, _)| s == "M.A").unwrap();
+        assert_eq!(whats(&a.1), ["invoke"]);
+    }
+
     const PEERS: &str = r#"
 action note(status: Ended)
 

@@ -116,6 +116,21 @@ fn export_scxml_snapshots_tasks_that_emit() {
     }
 }
 
+/// Several invokes in a state: an `<invoke>` each, with ids `<state>_invoke_<as>`, and outcomes
+/// and sends by those ids.
+#[test]
+fn export_scxml_snapshots_several_invokes() {
+    for (machine, snapshot) in [("Watch", "invokes_watch_scxml"), ("Twins", "invokes_twins_scxml")] {
+        let out = roadbook(
+            &repo(),
+            &["export", "scxml", "spec/conformance/charts/invokes.road", "--machine", machine],
+        );
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        let doc = text(&out.stdout);
+        insta::assert_snapshot!(snapshot, doc);
+    }
+}
+
 /// An internal transition (`-> .X`) is `type="internal"`, with a comment where the source is a
 /// parallel state, and several targets are one `target` attribute.
 #[test]
