@@ -3,7 +3,7 @@
 Each directory is one project: `roadbook check examples/<dir>` checks it as a whole.
 
 - [`shop/`](shop): `POST /orders` (authenticate, validate, price, pay, confirm) and the `Checkout` payment machine it invokes, with retry and backoff.
-- [`password-reset/`](password-reset): `POST /password-reset/confirm`. Token lookup, a pure password policy, hashing, the update, session revocation and a 5 second budget.
+- [`password-reset/`](password-reset): `POST /password-reset/confirm`. Token lookup, a pure password policy, hashing, the update, session revocation and a 5 second budget. Each step's data is a state parameter (`state Hashing(reset: ResetToken)`, `-> Updating(reset, result)`, `final state WeakPassword(problems: string[])`), so the machine has no variables.
 - [`webhook/`](webhook): a payment provider's webhook. Signature guard, parsing, idempotency, routing on an enum, and a retry loop for `DatabaseBusy`.
 - [`import-job/`](import-job): a long-lived CSV import that accepts `Pause`, `Resume` and `Cancel` and processes batches with timed retries. Also a pnpm package that runs it durably on `effect/workflow` and crashes in the middle of a batch: the finished batches are not imported again.
 - [`upload/`](upload): messaging with an invoked child. `Publish` invokes `Upload` as `upload`, sends it `Pause` and `Resume`, and shows the `Progress` it emits. `Batch` spawns an `Upload` per file into `children uploads: Upload by string`, keyed by the file's name: it pauses and resumes them all with `send uploads.*`, cancels one with `stop`, and hears each one's progress and outcome with `key`. `Attach` does the same with tasks instead of a child machine: a `storeFile` task that `emits Progress`, heard as `on store.Progress`, then a stream task, `ticks`, that counts while the user is asked to confirm. `AttachMany` spawns a `storeFile` task per file into `children stores: storeFile by string`.
@@ -25,7 +25,7 @@ States are counted from `roadbook export ir`, not counting the machine itself. E
 
 Zero errors does not mean the charts are correct, for two reasons:
 
-- **The check most likely to catch an agent's bugs did not exist yet.** The compiler did not yet do definite assignment (milestone 6). Deleting `set reset = result` from `password-reset` still checked clean, so I checked every read of a `var` with no default by hand. Since milestone 6 that deletion is reported as `RB0403`.
+- **The check most likely to catch an agent's bugs did not exist yet.** The compiler did not yet do definite assignment (milestone 6). Deleting `set reset = result` from `password-reset` still checked clean, so I checked every read of a `var` with no default by hand. Since milestone 6 that deletion is reported as `RB0403`. Since SM-29 the chart passes the token on as a state parameter instead, and leaving out the argument is `RB0224`.
 - **The page was read in full and its traps were avoided on purpose.** Each trap is documented, but an agent writing quickly would hit it. The list below says what a natural first draft would have contained and what the compiler does with it. I probed each case with a scratch file after the experiment.
 
 ### Unclear points in the language page

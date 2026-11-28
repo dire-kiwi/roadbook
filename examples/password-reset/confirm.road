@@ -9,10 +9,6 @@ import {
 /// POST /password-reset/confirm: exchange a reset token and a new password
 /// for a changed password. Every final state is one HTTP response.
 machine ConfirmPasswordReset(token: string, newPassword: string) -> ApiResponse {
-  var reset:    ResetToken
-  var problems: string[]
-  var hash:     string
-
   initial Working
 
   /// Everything the request does. The 5 second budget covers all of it.
@@ -24,46 +20,47 @@ machine ConfirmPasswordReset(token: string, newPassword: string) -> ApiResponse 
     /// The task reports unknown and expired tokens as errors.
     state LookingUp {
       invoke findResetToken(token) {
-        done               -> CheckingPolicy  set reset = result
+        done               -> CheckingPolicy(result)
         fail TokenNotFound -> UnknownToken
         fail TokenExpired  -> ExpiredToken
       }
     }
 
     /// The policy is a pure function: an empty list means the password is fine.
-    state CheckingPolicy {
-      entry set problems = passwordProblems(newPassword)
+    state CheckingPolicy(reset: ResetToken) {
+      var problems: string[] = passwordProblems(newPassword)
+
       always {
-        if isEmpty(problems) -> Hashing
-        else                 -> WeakPassword
+        if isEmpty(problems) -> Hashing(reset)
+        else                 -> WeakPassword(problems)
       }
     }
 
-    state Hashing {
+    state Hashing(reset: ResetToken) {
       invoke hashPassword(newPassword) {
-        done -> Updating  set hash = result
+        done -> Updating(reset, result)
       }
     }
 
     /// The user can be deleted between the lookup and the update.
-    state Updating {
+    state Updating(reset: ResetToken, hash: string) {
       invoke updatePassword(reset.userId, hash) {
-        done          -> Notifying
+        done          -> Notifying(reset.userId)
         fail UserGone -> UserVanished
       }
     }
 
     /// Both side effects cannot fail.
-    state Notifying {
-      entry do revokeSessions(reset.userId), sendPasswordChangedEmail(reset.userId)
+    state Notifying(userId: UserId) {
+      entry do revokeSessions(userId), sendPasswordChangedEmail(userId)
       always -> Changed
     }
   }
 
-  final state Changed      { output noContent() }
-  final state UnknownToken { output problem(404, "unknown_token") }
-  final state ExpiredToken { output problem(410, "token_expired") }
-  final state WeakPassword { output weakPassword(problems) }
-  final state UserVanished { output problem(409, "user_gone") }
-  final state TimedOut     { output problem(503, "timeout") }
+  final state Changed                          { output noContent() }
+  final state UnknownToken                     { output problem(404, "unknown_token") }
+  final state ExpiredToken                     { output problem(410, "token_expired") }
+  final state WeakPassword(problems: string[]) { output weakPassword(problems) }
+  final state UserVanished                     { output problem(409, "user_gone") }
+  final state TimedOut                         { output problem(503, "timeout") }
 }
