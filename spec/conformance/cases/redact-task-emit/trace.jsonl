@@ -1,0 +1,15 @@
+{"input":{"user":"ann"},"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"started","machine":"Login","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Login","t":0}
+{"kind":"entered","run":"r1","state":"Login.Signing","t":0}
+{"args":{"user":"ann"},"invoke":1,"kind":"invoke.started","run":"r1","src":"signIn","state":"Login.Signing","t":0}
+{"event":{"invoke":1,"kind":"task.emitted","value":{"_tag":"Step","code":"<redacted>","name":"otp"}},"kind":"event","run":"r1","t":0}
+{"from":"Login.Signing","index":1,"kind":"transition","run":"r1","t":0,"to":[]}
+{"kind":"set","run":"r1","t":0,"value":"otp","var":"step"}
+{"event":{"invoke":1,"kind":"invoke.done","value":"tok"},"kind":"event","run":"r1","t":0}
+{"from":"Login.Signing","index":0,"kind":"transition","run":"r1","t":0,"to":["Login.Signed"]}
+{"kind":"exited","run":"r1","state":"Login.Signing","t":0}
+{"kind":"set","run":"r1","t":0,"value":"tok","var":"step"}
+{"kind":"entered","run":"r1","state":"Login.Signed","t":0}
+{"kind":"exited","run":"r1","state":"Login.Signed","t":0}
+{"kind":"exited","run":"r1","state":"Login","t":0}
+{"kind":"done","output":"tok","run":"r1","state":"Login.Signed","t":0}

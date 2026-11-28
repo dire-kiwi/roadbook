@@ -1,0 +1,29 @@
+// Conformance chart: a stream task, which returns nothing, emits, and runs until its invoke is
+// cancelled. Its invoke has no outcomes.
+
+/// Emits a `Tick` every `every`, until it is cancelled.
+task ticks(every: duration) emits Tick
+
+/// Counts ticks while it waits. Can stop the clock and start it again.
+machine Clock() -> int {
+  var seconds: int = 0
+
+  event Stop
+  event Start
+  event Finish
+
+  initial Waiting
+
+  state Waiting {
+    invoke ticks(1s) as clock
+    on clock.Tick          set seconds = seconds + 1
+    on Stop       -> Idle
+  }
+
+  state Idle {
+    on Start  -> Waiting
+    on Finish -> Over
+  }
+
+  final state Over { output seconds }
+}

@@ -1,0 +1,38 @@
+{
+  "description": "A run saved while its stream task runs: the snapshot has the running invoke and nothing of what the task emitted. Restored as r2, the task starts again with the same invoke id and a new emitter, and its next Tick is taken by r2; r1 carries on untouched.",
+  "requires": [
+    "messaging",
+    "task-emits",
+    "snapshots"
+  ],
+  "chart": "charts/streams.road",
+  "machine": "Clock",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "ticks",
+      "emit": {
+        "_tag": "Tick"
+      }
+    },
+    {
+      "snapshot": "ticking"
+    },
+    {
+      "restore": "ticking",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "task": "ticks",
+      "run": "r2",
+      "emit": {
+        "_tag": "Tick"
+      }
+    }
+  ],
+  "status": "running"
+}

@@ -1,0 +1,1 @@
+{"active":["Batch","Batch.Open"],"history":{},"input":{},"invokes":[],"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","machine":"Batch","nextInvoke":2,"nextMessage":1,"nextTimer":1,"result":null,"run":"r1","snapshotVersion":4,"spawned":[{"args":{"size":10},"children":"uploads","id":1,"key":"a"}],"status":"running","timers":[],"vars":{"stored":0}}

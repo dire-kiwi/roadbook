@@ -1,0 +1,12 @@
+{"input":{},"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"started","machine":"Clock","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Clock","t":0}
+{"kind":"entered","run":"r1","state":"Clock.Waiting","t":0}
+{"args":{"every":1000},"invoke":1,"kind":"invoke.started","run":"r1","src":"ticks","state":"Clock.Waiting","t":0}
+{"event":{"invoke":1,"kind":"task.emitted","value":{"_tag":"Tick"}},"kind":"event","run":"r1","t":0}
+{"from":"Clock.Waiting","index":0,"kind":"transition","run":"r1","t":0,"to":[]}
+{"kind":"set","run":"r1","t":0,"value":1,"var":"seconds"}
+{"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"restored","machine":"Clock","migrated":null,"run":"r2","snapshot":{"active":["Clock","Clock.Waiting"],"history":{},"input":{},"invokes":[{"id":1,"src":"ticks","state":"Clock.Waiting"}],"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","machine":"Clock","nextInvoke":2,"nextMessage":1,"nextTimer":1,"result":null,"run":"r1","snapshotVersion":4,"spawned":[],"status":"running","timers":[],"vars":{"seconds":1}},"t":0}
+{"args":{"every":1000},"invoke":1,"kind":"invoke.started","run":"r2","src":"ticks","state":"Clock.Waiting","t":0}
+{"event":{"invoke":1,"kind":"task.emitted","value":{"_tag":"Tick"}},"kind":"event","run":"r2","t":0}
+{"from":"Clock.Waiting","index":0,"kind":"transition","run":"r2","t":0,"to":[]}
+{"kind":"set","run":"r2","t":0,"value":2,"var":"seconds"}

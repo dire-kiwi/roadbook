@@ -1,0 +1,40 @@
+{
+  "description": "What the emitter keeps from the run leaves no record: a Stage from a task invoked with `as`, which the machine has no `on up.Stage` for, and a Progress from the same task invoked without `as`, whose emitter is inert. Neither is an input, so neither is dropped.",
+  "requires": [
+    "messaging",
+    "task-emits"
+  ],
+  "chart": "charts/task-emits.road",
+  "machine": "Quiet",
+  "input": {
+    "size": 10
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "upload",
+      "emit": {
+        "_tag": "Stage",
+        "name": "hashing"
+      }
+    },
+    {
+      "task": "upload",
+      "done": 10
+    },
+    {
+      "task": "upload",
+      "emit": {
+        "_tag": "Progress",
+        "percent": 20
+      }
+    },
+    {
+      "task": "upload",
+      "done": 5
+    }
+  ],
+  "status": "done"
+}

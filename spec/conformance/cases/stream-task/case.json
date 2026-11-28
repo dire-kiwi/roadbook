@@ -1,0 +1,52 @@
+{
+  "description": "A stream task invoked with `as` and no outcomes: its Ticks are counted while it runs, and leaving the state cancels it. Started again, it ends by itself: its `done`, with no result and no `done` to take it, is dropped and consumes the invoke, so leaving the state then cancels nothing.",
+  "requires": [
+    "messaging",
+    "task-emits"
+  ],
+  "chart": "charts/streams.road",
+  "machine": "Clock",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "ticks",
+      "emit": {
+        "_tag": "Tick"
+      }
+    },
+    {
+      "task": "ticks",
+      "emit": {
+        "_tag": "Tick"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Stop"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Start"
+      }
+    },
+    {
+      "task": "ticks",
+      "done": null
+    },
+    {
+      "event": {
+        "_tag": "Stop"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Finish"
+      }
+    }
+  ],
+  "status": "done"
+}

@@ -1,0 +1,41 @@
+{
+  "description": "`on up.Progress` written in the child states of the invoking state: the address is the invoking state's, so the leaf's walk finds it. The internal `-> .Second` changes the child state and keeps the task running with the same invoke, whose next Progress the new child takes.",
+  "requires": [
+    "messaging",
+    "task-emits"
+  ],
+  "chart": "charts/task-emits.road",
+  "machine": "Nested",
+  "input": {
+    "size": 10
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "upload",
+      "emit": {
+        "_tag": "Progress",
+        "percent": 10
+      }
+    },
+    {
+      "event": {
+        "_tag": "Next"
+      }
+    },
+    {
+      "task": "upload",
+      "emit": {
+        "_tag": "Progress",
+        "percent": 20
+      }
+    },
+    {
+      "task": "upload",
+      "done": 30
+    }
+  ],
+  "status": "done"
+}

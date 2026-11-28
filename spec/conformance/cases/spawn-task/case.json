@@ -1,0 +1,65 @@
+{
+  "description": "Two upload tasks spawned by key into a collection of tasks: `spawn.started` names the task as `src`, and no child run starts. Each one's Progress is a `task.emitted` input of its spawn id, taken by `on uploads.Progress` with `key`; one ends `done` and one `fail`, taken with `key`, `result` and `error`.",
+  "requires": [
+    "messaging",
+    "spawn",
+    "task-emits"
+  ],
+  "chart": "charts/spawn-tasks.road",
+  "machine": "Batch",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Add",
+        "name": "a",
+        "size": 10
+      }
+    },
+    {
+      "event": {
+        "_tag": "Add",
+        "name": "b",
+        "size": 20
+      }
+    },
+    {
+      "task": "upload",
+      "key": "a",
+      "emit": {
+        "_tag": "Progress",
+        "percent": 50
+      }
+    },
+    {
+      "task": "upload",
+      "key": "b",
+      "emit": {
+        "_tag": "Progress",
+        "percent": 25
+      }
+    },
+    {
+      "task": "upload",
+      "key": "a",
+      "done": 10
+    },
+    {
+      "task": "upload",
+      "key": "b",
+      "fail": {
+        "_tag": "UploadFailed",
+        "reason": "full"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    }
+  ],
+  "status": "done"
+}

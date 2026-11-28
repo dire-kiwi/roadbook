@@ -1,0 +1,1 @@
+{"active":["Clock","Clock.Waiting"],"history":{},"input":{},"invokes":[{"id":1,"src":"ticks","state":"Clock.Waiting"}],"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","machine":"Clock","nextInvoke":2,"nextMessage":1,"nextTimer":1,"result":null,"run":"r1","snapshotVersion":4,"spawned":[],"status":"running","timers":[],"vars":{"seconds":1}}

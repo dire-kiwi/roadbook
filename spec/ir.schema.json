@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.9" },
+    "irVersion": { "const": "0.10" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -43,7 +43,7 @@
     "upperName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
     "lowerName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "typeRef": {
-      "description": "A type in canonical source form: a built-in, a declared name with optional type arguments (Page<Order>), an event type Machine.Event, ref Machine, or map<K, V>, then any number of [] and ? suffixes; or a pending call, call name, with no suffix. The pattern checks the tokens only; spec/ir.md gives the exact grammar, whose nesting a regular expression cannot check.",
+      "description": "A type in canonical source form: a built-in, a declared name with optional type arguments (Page<Order>), an event type Machine.Event or task.Event, ref Machine, or map<K, V>, then any number of [] and ? suffixes; or a pending call, call name, with no suffix. The pattern checks the tokens only; spec/ir.md gives the exact grammar, whose nesting a regular expression cannot check.",
       "type": "string",
       "pattern": "^(call [a-z][A-Za-z0-9]*|(ref [A-Z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?)(<|, |>|\\[\\]|\\?|ref [A-Z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?)*)$"
     },
@@ -209,11 +209,17 @@
     "taskDecl": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["params", "returns", "errors", "doc", "span"],
+      "required": ["params", "returns", "errors", "emits", "doc", "span"],
       "properties": {
         "params": { "$ref": "#/$defs/fields" },
         "returns": { "oneOf": [{ "$ref": "#/$defs/typeRef" }, { "type": "null" }] },
         "errors": { "$ref": "#/$defs/errors" },
+        "emits": {
+          "description": "The events the task emits while it runs, by name, with the shape of a machine's emits.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/upperName" },
+          "additionalProperties": { "$ref": "#/$defs/eventDecl" }
+        },
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" }
       }
@@ -265,7 +271,7 @@
           "additionalProperties": { "$ref": "#/$defs/callDecl" }
         },
         "children": {
-          "description": "The machine's keyed collections of spawned children, by name.",
+          "description": "The machine's keyed collections of spawned children, machines or tasks, by name.",
           "type": "object",
           "propertyNames": { "$ref": "#/$defs/lowerName" },
           "additionalProperties": { "$ref": "#/$defs/childrenDecl" }
@@ -305,13 +311,17 @@
     "childrenDecl": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["machine", "key", "doc", "span"],
+      "required": ["kind", "src", "key", "doc", "span"],
       "properties": {
-        "machine": { "$ref": "#/$defs/upperName" },
+        "kind": { "description": "What the children run: a machine or a task.", "enum": ["machine", "task"] },
+        "src": { "description": "The machine (a key of machines) or the task (a key of tasks) the children run.", "type": "string" },
         "key": { "description": "The key type: string, int or an enum, or an alias of one.", "$ref": "#/$defs/typeRef" },
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" }
-      }
+      },
+      "if": { "properties": { "kind": { "const": "machine" } } },
+      "then": { "properties": { "src": { "$ref": "#/$defs/upperName" } } },
+      "else": { "properties": { "src": { "$ref": "#/$defs/lowerName" } } }
     },
     "eventDecl": {
       "type": "object",
@@ -396,8 +406,7 @@
           "then": {
             "properties": {
               "src": { "$ref": "#/$defs/lowerName" },
-              "to": { "type": "null" },
-              "as": { "type": "null" }
+              "to": { "type": "null" }
             }
           }
         },
@@ -418,17 +427,22 @@
       ]
     },
     "address": {
-      "description": "Another running machine: an invoked child by its as name, a parameter or variable of type ref, or a children collection. A call invoke's callee is always a ref.",
+      "description": "Another running machine or an emitting task: an invoked child or task by its as name, a parameter or variable of type ref, or a children collection. The other end is named by machine or by task, never both. An address that names a task appears only in emitted triggers. A call invoke's callee is always a ref.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "name", "machine", "state"],
+      "required": ["kind", "name", "state"],
       "properties": {
-        "kind": { "enum": ["child", "ref", "children"] },
+        "kind": { "enum": ["child", "task", "ref", "children"] },
         "name": { "$ref": "#/$defs/lowerName" },
         "machine": { "$ref": "#/$defs/upperName" },
+        "task": { "$ref": "#/$defs/lowerName" },
         "state": { "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }] }
       },
-      "if": { "properties": { "kind": { "const": "child" } } },
+      "oneOf": [
+        { "required": ["machine"], "not": { "required": ["task"] }, "properties": { "kind": { "enum": ["child", "ref", "children"] } } },
+        { "required": ["task"], "not": { "required": ["machine"] }, "properties": { "kind": { "enum": ["task", "children"] } } }
+      ],
+      "if": { "properties": { "kind": { "enum": ["child", "task"] } } },
       "then": { "properties": { "state": { "$ref": "#/$defs/stateId" } } },
       "else": { "properties": { "state": { "type": "null" } } }
     },
@@ -603,11 +617,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "children", "machine", "key", "args"],
+          "required": ["kind", "children", "src", "key", "args"],
           "properties": {
             "kind": { "const": "spawn" },
             "children": { "$ref": "#/$defs/lowerName" },
-            "machine": { "$ref": "#/$defs/upperName" },
+            "src": { "description": "The collection's machine (upper case) or task (lower case).", "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" },
             "key": { "$ref": "#/$defs/expr" },
             "args": { "type": "array", "items": { "$ref": "#/$defs/expr" } }
           }

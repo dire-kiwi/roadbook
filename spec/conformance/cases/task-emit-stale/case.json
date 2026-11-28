@@ -1,0 +1,46 @@
+{
+  "description": "Pause and a Progress from the task arrive together. Pause leaves the invoking state and cancels the invoke, so the Progress, queued before the cancel, is stale. Entering the state again starts a new invoke, whose Progress is taken.",
+  "requires": [
+    "messaging",
+    "task-emits"
+  ],
+  "chart": "charts/task-emits.road",
+  "machine": "Publish",
+  "input": {
+    "size": 100
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "together": [
+        {
+          "event": {
+            "_tag": "Pause"
+          }
+        },
+        {
+          "task": "upload",
+          "emit": {
+            "_tag": "Progress",
+            "percent": 30
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "_tag": "Resume"
+      }
+    },
+    {
+      "task": "upload",
+      "emit": {
+        "_tag": "Progress",
+        "percent": 60
+      }
+    }
+  ],
+  "status": "running"
+}

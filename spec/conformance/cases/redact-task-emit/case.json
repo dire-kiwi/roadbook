@@ -1,0 +1,30 @@
+{
+  "description": "A task's emitted event with a `sensitive` field: in the run's `event` record of the `task.emitted` input the field is `\"<redacted>\"`, by the declaration in the task's `emits`, and the other field is shown; the chart reads only that one.",
+  "requires": [
+    "messaging",
+    "task-emits"
+  ],
+  "chart": "charts/task-emits.road",
+  "machine": "Login",
+  "input": {
+    "user": "ann"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "signIn",
+      "emit": {
+        "_tag": "Step",
+        "name": "otp",
+        "code": "4321"
+      }
+    },
+    {
+      "task": "signIn",
+      "done": "tok"
+    }
+  ],
+  "status": "done"
+}
